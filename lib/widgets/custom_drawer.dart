@@ -20,7 +20,7 @@ import '../product_questions.dart';
 import '../marketplace.dart';
 import '../invoice_management.dart';
 import '../expenses.dart';
-
+import '../sales.dart';
 // Drawer implementation for the app
 class CustomDrawer extends StatelessWidget {
   final String currentPage;
@@ -498,11 +498,10 @@ class CustomDrawer extends StatelessWidget {
                       icon: Icons.trending_up_outlined,
                       title: 'Sales',
                       isSelected: currentPage == 'Sales',
-                      onTap: () {}, // TODO: Implement Sales page
+                      onTap: () => _navigateTo(context, const SalesPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
-                    ),
-                    _buildMenuItem(
+                    ),                    _buildMenuItem(
                       context: context,
                       icon: Icons.receipt_outlined,
                       title: 'Invoice Management',
