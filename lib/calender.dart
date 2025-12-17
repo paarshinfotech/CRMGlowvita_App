@@ -622,31 +622,25 @@ class _CalendarState extends State<Calendar> {
           ),
         ],
       ),
-
+  
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          Hero(
-            tag: 'calendar_add_fab',
-            child: FloatingActionButton(
-              backgroundColor: Colors.black,
-              onPressed: _showCreateAppointmentForm,
-              child: const Icon(Icons.add, color: Colors.white),
-            ),
+          FloatingActionButton(
+            backgroundColor: Colors.black,
+            onPressed: _showCreateAppointmentForm,
+            child: const Icon(Icons.add, color: Colors.white),
           ),
           SizedBox(height: 10.h),
           SizedBox(
             width: 45.w,
             height: 45.w,
-            child: Hero(
-              tag: 'calendar_staff_fab',
-              child: FloatingActionButton(
-                backgroundColor: Colors.white,
-                elevation: 6,
-                shape: CircleBorder(side: BorderSide(color: Colors.grey[300]!, width: 1)),
-                onPressed: _showStaffSelection,
-                child: const Icon(Icons.group, color: Colors.black, size: 20),
-              ),
+            child: FloatingActionButton(
+              backgroundColor: Colors.white,
+              elevation: 6,
+              shape: CircleBorder(side: BorderSide(color: Colors.grey[300]!, width: 1)),
+              onPressed: _showStaffSelection,
+              child: const Icon(Icons.group, color: Colors.black, size: 20),
             ),
           ),
         ],
