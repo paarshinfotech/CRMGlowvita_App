@@ -307,20 +307,20 @@ class _SalesPageState extends State<SalesPage> with SingleTickerProviderStateMix
     }
   }
 
-  // ---------------- UI helpers ----------------
+  // ----------------- UI helpers -----------------
   TextStyle get _h1 => GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w700, color: _text);
   TextStyle get _h2 => GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700, color: _text);
-  TextStyle get _sub => GoogleFonts.poppins(fontSize: 11.5, fontWeight: FontWeight.w500, color: _muted);
+ TextStyle get _sub => GoogleFonts.poppins(fontSize: 11.5, fontWeight: FontWeight.w500, color: _muted);
   TextStyle get _th => GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w700, color: _muted);
   TextStyle get _td => GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: _text);
 
   InputDecoration _fieldDecoration({
     required String hint,
-    required IconData icon,
+    required IconData icon, 
     bool showClear = false,
     VoidCallback? onClear,
   })
-  
+
   {
     return InputDecoration(
       hintText: hint,
