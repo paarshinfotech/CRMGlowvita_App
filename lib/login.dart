@@ -58,7 +58,7 @@ class _LoginPageState extends State<Login> {
         // Supplier login - go to supplier dashboard
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const DashboardPage()),
+          MaterialPageRoute(builder: (_) => const Supp_DashboardPage()),
         );
       } else {
         // Invalid credentials

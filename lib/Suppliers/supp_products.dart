@@ -2,19 +2,19 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import 'add_product.dart';
-import 'widgets/custom_drawer.dart';
+import 'add_supp_product.dart';
+import './supp_drawer.dart';
 
-class Products extends StatefulWidget {
+class SuppProducts extends StatefulWidget {
   final List<Map<String, dynamic>> products;
 
-  const Products({super.key, required this.products});
+  const SuppProducts({super.key, required this.products});
 
   @override
-  State<Products> createState() => _ProductsPageState();
+  State<SuppProducts> createState() => _SuppProductsPageState();
 }
 
-class _ProductsPageState extends State<Products> {
+class _SuppProductsPageState extends State<SuppProducts> {
   static const double _radius = 12;
   static const double _gap = 12;
 
@@ -40,7 +40,7 @@ class _ProductsPageState extends State<Products> {
     final editedProduct = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AddProductPage(
+        builder: (context) => AddSuppProductPage(
           existingProduct: widget.products[index],
         ),
       ),
@@ -57,7 +57,7 @@ class _ProductsPageState extends State<Products> {
   Future<void> _navigateToAddProduct() async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const AddProductPage()),
+      MaterialPageRoute(builder: (context) => const AddSuppProductPage()),
     );
     if (result != null && result is Map<String, dynamic>) {
       setState(() => widget.products.add(result));
@@ -80,13 +80,11 @@ class _ProductsPageState extends State<Products> {
 
   static Widget _buildImageWidget(dynamic image) {
     try {
-      // Handle XFile objects
       if (image is XFile) {
         return Image.file(
           File(image.path),
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
-            // Fallback to default asset image if file doesn't exist
             return Image.asset(
               'assets/images/logo.png',
               fit: BoxFit.cover,
@@ -94,16 +92,13 @@ class _ProductsPageState extends State<Products> {
           },
         );
       }
-      
-      // Handle file paths (Strings)
+
       if (image is String) {
-        // Check if it's an asset path (starts with assets/)
         if (image.startsWith('assets/')) {
           return Image.asset(
             image,
             fit: BoxFit.cover,
             errorBuilder: (context, error, stackTrace) {
-              // Fallback to default asset image if asset doesn't exist
               return Image.asset(
                 'assets/images/logo.png',
                 fit: BoxFit.cover,
@@ -111,12 +106,10 @@ class _ProductsPageState extends State<Products> {
             },
           );
         } else {
-          // Regular file path
           return Image.file(
             File(image),
             fit: BoxFit.cover,
             errorBuilder: (context, error, stackTrace) {
-              // Fallback to default asset image if file doesn't exist
               return Image.asset(
                 'assets/images/logo.png',
                 fit: BoxFit.cover,
@@ -125,14 +118,12 @@ class _ProductsPageState extends State<Products> {
           );
         }
       }
-      
-      // Fallback for any other format
+
       return Image.asset(
         'assets/images/logo.png',
         fit: BoxFit.cover,
       );
     } catch (e) {
-      // Fallback to default assets if the image loading fails
       return Image.asset(
         'assets/images/logo.png',
         fit: BoxFit.cover,
@@ -142,7 +133,6 @@ class _ProductsPageState extends State<Products> {
 
   @override
   Widget build(BuildContext context) {
-    // Keep your original palette
     const scaffoldBg = Color(0xFFF5F5F5);
     const cardBg = Colors.white;
     const accent = Color(0xFF457BFF);
@@ -151,10 +141,10 @@ class _ProductsPageState extends State<Products> {
     const pending = Colors.orange;
 
     return Scaffold(
-      drawer: const CustomDrawer(currentPage: 'Products'),  
+      drawer: const SupplierDrawer(currentPage: 'SuppProducts'),
       appBar: AppBar(
         title: Text(
-          "Product Catalog", 
+          "Supplier Product Catalog",
           style: GoogleFonts.poppins(
             fontWeight: FontWeight.w600,
             color: Colors.black,
@@ -232,7 +222,7 @@ class _ProductsPageState extends State<Products> {
                 ),
                 const SizedBox(width: 8),
 
-                // Grid/List Segmented toggle (explicit colors)
+                // Grid/List toggle
                 SegmentedButton<bool>(
                   showSelectedIcon: false,
                   segments: const [
@@ -273,7 +263,7 @@ class _ProductsPageState extends State<Products> {
 
                 const SizedBox(width: 8),
 
-                // Add (kept blue)
+                // Add Button
                 ElevatedButton.icon(
                   onPressed: _navigateToAddProduct,
                   icon: const Icon(Icons.add, color: Colors.white, size: 16),
@@ -300,7 +290,7 @@ class _ProductsPageState extends State<Products> {
             ),
             const SizedBox(height: 10),
 
-            // Count card (unchanged colors)
+            // Count card
             Container(
               width: double.infinity,
               padding:
@@ -326,7 +316,7 @@ class _ProductsPageState extends State<Products> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('My Products',
+                        Text('My Supplier Products',
                             style: GoogleFonts.poppins(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
@@ -452,13 +442,13 @@ class _EmptyState extends StatelessWidget {
           Icon(Icons.inventory_2_outlined,
               size: 80, color: Colors.grey.shade400),
           const SizedBox(height: 14),
-          Text("No products found",
+          Text("No supplier products found",
               style: GoogleFonts.poppins(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
               )),
           const SizedBox(height: 6),
-          Text("Add your first product to get started",
+          Text("Add your first supplier product to get started",
               style: GoogleFonts.poppins(
                 fontSize: 12,
                 color: Colors.grey.shade600,
@@ -503,6 +493,7 @@ class _GridCard extends StatelessWidget {
     final stock = (product['stock_quantity'] ?? 0) as int;
     final isInStock = stock > 0;
     final rating = (product['rating'] ?? 4.4).toString();
+    final brand = product['brand'] ?? '';
 
     Color statusBg;
     switch (status) {
@@ -529,26 +520,24 @@ class _GridCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image with tags overlayed
+            // Image with tags
             AspectRatio(
               aspectRatio: 1.3,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // Image
                   images.isNotEmpty
-                      ? _ProductsPageState._buildImageWidget(images[0])
+                      ? _SuppProductsPageState._buildImageWidget(images[0])
                       : Container(
                           color: Colors.grey.shade200,
                           child: const Icon(Icons.image, size: 30),
                         ),
-                  // Status badge (top left)
+                  // Status badge
                   Positioned(
                     top: 8,
                     left: 8,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: statusBg,
                         borderRadius: BorderRadius.circular(12),
@@ -557,9 +546,7 @@ class _GridCard extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            status == 'Approved'
-                                ? Icons.check_circle
-                                : Icons.pending,
+                            status == 'Approved' ? Icons.check_circle : Icons.pending,
                             color: Colors.white,
                             size: 10,
                           ),
@@ -576,13 +563,12 @@ class _GridCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Stock badge (top right)
+                  // Stock badge
                   Positioned(
                     top: 8,
                     right: 8,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
@@ -606,19 +592,17 @@ class _GridCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Category
-                  Text(
-                    product['category'] ?? '',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
-                      fontSize: 10,
-                      color: accent,
-                      fontWeight: FontWeight.w500,
+                  // Brand
+                  if (brand.isNotEmpty)
+                    Text(
+                      brand,
+                      style: GoogleFonts.poppins(
+                        fontSize: 10,
+                        color: accent,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
                   const SizedBox(height: 4),
-                  
                   // Name
                   Text(
                     product['name'] ?? '',
@@ -631,7 +615,6 @@ class _GridCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  
                   // Price and rating
                   Row(
                     children: [
@@ -656,7 +639,6 @@ class _GridCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  
                   // Edit and Delete buttons
                   Row(
                     children: [
@@ -664,17 +646,12 @@ class _GridCard extends StatelessWidget {
                         child: OutlinedButton.icon(
                           onPressed: onEdit,
                           icon: const Icon(Icons.edit, size: 16),
-                          label: Text(
-                            'Edit',
-                            style: GoogleFonts.poppins(fontSize: 12),
-                          ),
+                          label: Text('Edit', style: GoogleFonts.poppins(fontSize: 12)),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.black87,
                             side: BorderSide(color: Colors.grey.shade300),
                             padding: const EdgeInsets.symmetric(vertical: 10),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6),
-                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                           ),
                         ),
                       ),
@@ -682,17 +659,12 @@ class _GridCard extends StatelessWidget {
                       OutlinedButton.icon(
                         onPressed: onDelete,
                         icon: const Icon(Icons.delete, size: 16),
-                        label: Text(
-                          ' ',
-                          style: GoogleFonts.poppins(fontSize: 12),
-                        ),
+                        label: const Text(' '),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.red,
                           side: BorderSide(color: Colors.grey.shade300),
                           padding: const EdgeInsets.symmetric(vertical: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
-                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                         ),
                       ),
                     ],
@@ -705,7 +677,6 @@ class _GridCard extends StatelessWidget {
       ),
     );
   }
-
 }
 
 class _ListTileCard extends StatelessWidget {
@@ -736,6 +707,7 @@ class _ListTileCard extends StatelessWidget {
     final stock = (product['stock_quantity'] ?? 0) as int;
     final isInStock = stock > 0;
     final rating = (product['rating'] ?? 4.4).toString();
+    final brand = product['brand'] ?? '';
 
     Color statusBg;
     switch (status) {
@@ -769,18 +741,17 @@ class _ListTileCard extends StatelessWidget {
                   fit: StackFit.expand,
                   children: [
                     images.isNotEmpty
-                        ? _ProductsPageState._buildImageWidget(images[0])
+                        ? _SuppProductsPageState._buildImageWidget(images[0])
                         : Container(
                             color: Colors.grey.shade200,
                             child: const Icon(Icons.image, size: 30),
                           ),
-                    // Status badge (top left)
+                    // Status badge
                     Positioned(
                       top: 4,
                       left: 4,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: statusBg,
                           borderRadius: BorderRadius.circular(10),
@@ -788,9 +759,7 @@ class _ListTileCard extends StatelessWidget {
                         child: Row(
                           children: [
                             Icon(
-                              status == 'Approved'
-                                  ? Icons.check_circle
-                                  : Icons.pending,
+                              status == 'Approved' ? Icons.check_circle : Icons.pending,
                               color: Colors.white,
                               size: 9,
                             ),
@@ -807,13 +776,12 @@ class _ListTileCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    // Stock badge (top right)
+                    // Stock badge
                     Positioned(
                       top: 4,
                       right: 4,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(10),
@@ -839,15 +807,16 @@ class _ListTileCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Category
-                  Text(
-                    product['category'] ?? '',
-                    style: GoogleFonts.poppins(
-                      fontSize: 9,
-                      color: Colors.blue, // kept blue in list style
-                      fontWeight: FontWeight.w500,
+                  // Brand
+                  if (brand.isNotEmpty)
+                    Text(
+                      brand,
+                      style: GoogleFonts.poppins(
+                        fontSize: 9,
+                        color: Colors.blue,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
                   const SizedBox(height: 2),
                   // Name
                   Text(
@@ -892,18 +861,13 @@ class _ListTileCard extends StatelessWidget {
                         child: OutlinedButton.icon(
                           onPressed: onEdit,
                           icon: const Icon(Icons.edit, size: 14),
-                          label: Text(
-                            'Edit',
-                            style: GoogleFonts.poppins(fontSize: 11),
-                          ),
+                          label: Text('Edit', style: GoogleFonts.poppins(fontSize: 11)),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.black87,
                             side: BorderSide(color: Colors.grey.shade300),
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             visualDensity: VisualDensity.compact,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6),
-                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                           ),
                         ),
                       ),
@@ -911,47 +875,19 @@ class _ListTileCard extends StatelessWidget {
                       OutlinedButton.icon(
                         onPressed: onDelete,
                         icon: const Icon(Icons.delete, size: 14),
-                        label: Text(
-                          'Delete',
-                          style: GoogleFonts.poppins(fontSize: 11),
-                        ),
+                        label: Text('Delete', style: GoogleFonts.poppins(fontSize: 11)),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.red,
                           side: BorderSide(color: Colors.grey.shade300),
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           visualDensity: VisualDensity.compact,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
-                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                         ),
                       ),
                     ],
                   ),
                 ],
               ),
-            ),
-            const SizedBox(width: 8),
-
-            // Actions
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                InkWell(
-                  onTap: onEdit,
-                  child: const Padding(
-                    padding: EdgeInsets.all(6),
-                    child: Icon(Icons.edit, color: Colors.blue, size: 18),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                InkWell(
-                  onTap: onDelete,
-                  child: const Padding(
-                    padding: EdgeInsets.all(6),
-                    child: Icon(Icons.delete, color: Colors.red, size: 18),
-                  ),
-                ),
-              ],
             ),
           ],
         ),
@@ -1017,7 +953,7 @@ class _ImagePreviewPageState extends State<ImagePreviewPage> {
               final img = widget.images[index];
               return Center(
                 child: InteractiveViewer(
-                  child: _ProductsPageState._buildImageWidget(img),
+                  child: _SuppProductsPageState._buildImageWidget(img),
                 ),
               );
             },
@@ -1026,8 +962,7 @@ class _ImagePreviewPageState extends State<ImagePreviewPage> {
             child: Align(
               alignment: Alignment.topLeft,
               child: IconButton(
-                icon:
-                    const Icon(Icons.arrow_back, color: Colors.white, size: 28),
+                icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
                 onPressed: () => Navigator.pop(context),
               ),
             ),

@@ -1,14 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../login.dart';
 import 'package:google_fonts/google_fonts.dart';
-
 import '../dashboard.dart';
-import '../calender.dart';
-import '../appointment.dart';
-import '../staff.dart';
-import '../clients.dart';
-import '../products.dart';
-import '../services.dart';
+
+import 'supp_products.dart';
 import '../orders.dart';
 import '../referral.dart';
 import '../reports.dart';
@@ -22,6 +17,7 @@ import '../marketplace.dart';
 import '../invoice_management.dart';
 import '../expenses.dart';
 import '../sales.dart';
+
 // Drawer implementation for the app
 class SupplierDrawer extends StatelessWidget {
   final String currentPage;
@@ -255,29 +251,11 @@ class SupplierDrawer extends StatelessWidget {
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
-
-                    /*_buildMenuItem(
-                      context: context,
-                      icon: Icons.bar_chart_outlined,
-                      title: 'Supplier Summary',
-                      isSelected: currentPage == 'Customer Summary',
-                      onTap: () {}, // TODO: Implement Supplier Summary page
-                      scale: scale,
-                      baseFontScale: baseFontScale,
-                    ),
-                    _buildMenuItem(
-                      context: context,
-                      icon: Icons.design_services_outlined,
-                      title: 'Services',
-                      isSelected: currentPage == 'Services',
-                      onTap: () => _navigateTo(context, Services()),
-                      scale: scale,
-                      baseFontScale: baseFontScale,
-                    ),
+                    
                     _buildMenuItem(
                       context: context,
                       icon: Icons.inventory_2_outlined,
-                      title: 'Inventory',
+                      title: 'Products',
                       isSelected: currentPage == 'Products',
                       onTap: () {
                         // Sample product data with varied states
@@ -417,7 +395,7 @@ class SupplierDrawer extends StatelessWidget {
                         ];
                         _navigateTo(
                           context,
-                          Products(products: productsList),
+                          SuppProducts(products: productsList),
                         );
                       },
                       scale: scale,
@@ -575,7 +553,7 @@ class SupplierDrawer extends StatelessWidget {
                           _navigateTo(context, const ReportsPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
-                    ),*/
+                    ),
                   ],
                 ),
               ),
@@ -699,6 +677,7 @@ class SupplierDrawer extends StatelessWidget {
 
   void _navigateTo(BuildContext context, Widget page) {
     Navigator.pop(context); // Close drawer
+    print('Navigating to page: ${page.runtimeType}');
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => page),

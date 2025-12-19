@@ -6,20 +6,21 @@ import 'package:flutter/animation.dart';
 import './supp_drawer.dart';
 import '../products.dart';
 
-class DashboardPage extends StatefulWidget {
-  const DashboardPage({super.key});
+class Supp_DashboardPage extends StatefulWidget {
+  const Supp_DashboardPage({super.key});
 
   @override
-  State<DashboardPage> createState() => _DashboardPageState();
+  State<Supp_DashboardPage> createState() => _DashboardPageState();
 }
 
-class _DashboardPageState extends State<DashboardPage> with TickerProviderStateMixin {
+class _DashboardPageState extends State<Supp_DashboardPage> with TickerProviderStateMixin {
   late AnimationController _kpiAnimationController;
   late Animation<double> _kpiFadeAnimation;
 
   @override
   void initState() {
     super.initState();
+    print('Initializing Supplier Dashboard Page');
 
     _kpiAnimationController = AnimationController(
       duration: const Duration(milliseconds: 500),
@@ -44,6 +45,7 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
+    print('Building Supplier Dashboard Page');
     final mediaQuery = MediaQuery.of(context);
     final String today = DateFormat('dd MMM yyyy').format(DateTime.now());
     ScreenUtil.init(context, designSize: const Size(375, 812));
@@ -164,13 +166,17 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
                     leading: Builder(
                       builder: (ctx) => IconButton(
                         icon: const Icon(Icons.menu, color: Colors.black),
-                        onPressed: () => Scaffold.of(ctx).openDrawer(),
+                        onPressed: () {
+                          print('Opening supplier drawer menu');
+                          Scaffold.of(ctx).openDrawer();
+                        },
                       ),
                     ),
                     actions: [
                       IconButton(
                         icon: const Icon(Icons.notifications, color: Colors.black),
                         onPressed: () {
+                          print('Opening notifications page');
                          /* Navigator.push(
                             context,
                             MaterialPageRoute(builder: (_) => const NotificationPage()),
@@ -179,6 +185,7 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
                       ),
                       GestureDetector(
                         onTap: () {
+                          print('Opening profile page');
                          /* Navigator.push(
                             context,
                             MaterialPageRoute(builder: (_) => const ProfilePage()),
@@ -317,6 +324,7 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
                           Text('Product Summary', style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700)),
                           TextButton(
                             onPressed: () {
+                              print('Navigating to Products page from Dashboard');
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -386,7 +394,7 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
                     ),
                   ),
                   
-                  SizedBox(height: 12.h),
+                  SliverToBoxAdapter(child: SizedBox(height: 12.h)),
                   
                   // Category Distribution
                   SliverToBoxAdapter(

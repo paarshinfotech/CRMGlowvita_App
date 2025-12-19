@@ -3,26 +3,35 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
-class AddProductPage extends StatefulWidget {
+class AddSuppProductPage extends StatefulWidget {
   final Map<String, dynamic>? existingProduct;
 
-  const AddProductPage({super.key, this.existingProduct});
+  const AddSuppProductPage({super.key, this.existingProduct});
 
   @override
-  State<AddProductPage> createState() => _AddProductPageState();
+  State<AddSuppProductPage> createState() => _AddSuppProductPageState();
 }
 
-class _AddProductPageState extends State<AddProductPage> {
+class _AddSuppProductPageState extends State<AddSuppProductPage> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
   final TextEditingController _salePriceController = TextEditingController();
   final TextEditingController _stockController = TextEditingController();
+  final TextEditingController _brandController = TextEditingController();
+  final TextEditingController _productTypeController = TextEditingController();
+  final TextEditingController _sizeController = TextEditingController();
+  final TextEditingController _sizeMetricController = TextEditingController();
+  final TextEditingController _bodyPartController = TextEditingController();
+  final TextEditingController _bodyPartTypeController = TextEditingController();
+  final TextEditingController _keyIngredientsController = TextEditingController();
 
   String? selectedCategory;
-  String selectedStatus = 'Pending';
   List<XFile> images = [];
-  List<String> categories = [
+
+  final ImagePicker _picker = ImagePicker();
+
+  final List<String> categories = [
     'Skin Care',
     'Body Care',
     'Hair Care',
@@ -31,8 +40,6 @@ class _AddProductPageState extends State<AddProductPage> {
     'Males Grooming',
     'Beauty Tools and Accessories'
   ];
-
-  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -44,18 +51,17 @@ class _AddProductPageState extends State<AddProductPage> {
       _priceController.text = product['price'] ?? '';
       _salePriceController.text = product['sale_price'] ?? '';
       _stockController.text = product['stock_quantity']?.toString() ?? '';
+      _brandController.text = product['brand'] ?? '';
+      _productTypeController.text = product['product_type'] ?? '';
+      _sizeController.text = product['size'] ?? '';
+      _sizeMetricController.text = product['size_metric'] ?? '';
+      _bodyPartController.text = product['body_part'] ?? '';
+      _bodyPartTypeController.text = product['body_part_type'] ?? '';
+      _keyIngredientsController.text = product['key_ingredients'] ?? '';
       selectedCategory = product['category'];
-      selectedStatus = product['status'] ?? 'Pending';
-      
-      // Handle both XFile objects and file paths
+
       final existingImages = product['images'] ?? [];
-      if (existingImages is List<XFile>) {
-        images = List<XFile>.from(existingImages);
-      } else if (existingImages is List<String>) {
-        // Convert file paths back to XFile objects for display
-        images = existingImages.map((path) => XFile(path)).toList();
-      } else if (existingImages is List) {
-        // Handle mixed list or other formats
+      if (existingImages is List) {
         images = existingImages
             .where((item) => item != null)
             .map((item) => item is XFile ? item : XFile(item.toString()))
@@ -71,6 +77,13 @@ class _AddProductPageState extends State<AddProductPage> {
     _priceController.dispose();
     _salePriceController.dispose();
     _stockController.dispose();
+    _brandController.dispose();
+    _productTypeController.dispose();
+    _sizeController.dispose();
+    _sizeMetricController.dispose();
+    _bodyPartController.dispose();
+    _bodyPartTypeController.dispose();
+    _keyIngredientsController.dispose();
     super.dispose();
   }
 
@@ -92,7 +105,6 @@ class _AddProductPageState extends State<AddProductPage> {
 
   void _showAddCategoryDialog() {
     final nameController = TextEditingController();
-    final descController = TextEditingController();
 
     showDialog(
       context: context,
@@ -101,32 +113,15 @@ class _AddProductPageState extends State<AddProductPage> {
           'Add New Category',
           style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: InputDecoration(
-                labelText: 'Category Name',
-                labelStyle: GoogleFonts.poppins(),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
+        content: TextField(
+          controller: nameController,
+          decoration: InputDecoration(
+            labelText: 'Category Name',
+            labelStyle: GoogleFonts.poppins(),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: descController,
-              maxLines: 3,
-              decoration: InputDecoration(
-                labelText: 'Category Description',
-                labelStyle: GoogleFonts.poppins(),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
         actions: [
           TextButton(
@@ -143,17 +138,13 @@ class _AddProductPageState extends State<AddProductPage> {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(
-                      'Category "${nameController.text}" added successfully!',
-                    ),
+                    content: Text('Category "${nameController.text}" added successfully!'),
                     backgroundColor: Colors.green,
                   ),
                 );
               }
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
             child: Text('Add', style: GoogleFonts.poppins(color: Colors.white)),
           ),
         ],
@@ -162,10 +153,12 @@ class _AddProductPageState extends State<AddProductPage> {
   }
 
   void _submitProduct() {
-    if (_nameController.text.isEmpty || _salePriceController.text.isEmpty) {
+    if (_nameController.text.isEmpty ||
+        _salePriceController.text.isEmpty ||
+        _brandController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please fill in required fields'),
+          content: Text('Please fill in all required fields (*)'),
           backgroundColor: Colors.red,
         ),
       );
@@ -173,8 +166,6 @@ class _AddProductPageState extends State<AddProductPage> {
     }
 
     final stockQuantity = int.tryParse(_stockController.text) ?? 0;
-    
-    // Convert XFile images to file paths
     final imagePaths = images.map((image) => image.path).toList();
 
     Navigator.pop(context, {
@@ -182,12 +173,18 @@ class _AddProductPageState extends State<AddProductPage> {
       'name': _nameController.text,
       'description': _descriptionController.text,
       'category': selectedCategory,
-      'images': imagePaths, // Pass file paths instead of XFile objects
+      'images': imagePaths,
       'price': _priceController.text,
       'sale_price': _salePriceController.text,
       'stock_quantity': stockQuantity,
-      'status': selectedStatus,
-      'rating': 4.4, // Default rating
+      'rating': 4.4,
+      'brand': _brandController.text,
+      'product_type': _productTypeController.text,
+      'size': _sizeController.text,
+      'size_metric': _sizeMetricController.text,
+      'body_part': _bodyPartController.text,
+      'body_part_type': _bodyPartTypeController.text,
+      'key_ingredients': _keyIngredientsController.text,
     });
   }
 
@@ -196,7 +193,7 @@ class _AddProductPageState extends State<AddProductPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.existingProduct == null ? 'Add Product' : 'Edit Product',
+          widget.existingProduct == null ? 'Add Supplier Product' : 'Edit Supplier Product',
           style: GoogleFonts.poppins(
             fontWeight: FontWeight.w600,
             color: Colors.black,
@@ -213,7 +210,7 @@ class _AddProductPageState extends State<AddProductPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Product Name
+            // Product Name *
             _buildSectionTitle('Product Name *'),
             const SizedBox(height: 6),
             _buildTextField(
@@ -297,11 +294,7 @@ class _AddProductPageState extends State<AddProductPage> {
                                     icon: const CircleAvatar(
                                       radius: 10,
                                       backgroundColor: Colors.red,
-                                      child: Icon(
-                                        Icons.close,
-                                        size: 14,
-                                        color: Colors.white,
-                                      ),
+                                      child: Icon(Icons.close, size: 14, color: Colors.white),
                                     ),
                                   ),
                                 )
@@ -316,9 +309,7 @@ class _AddProductPageState extends State<AddProductPage> {
                               decoration: BoxDecoration(
                                 color: Colors.grey.shade100,
                                 borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                  color: Colors.grey.shade300,
-                                ),
+                                border: Border.all(color: Colors.grey.shade300),
                               ),
                               child: Icon(
                                 Icons.add_photo_alternate,
@@ -363,26 +354,16 @@ class _AddProductPageState extends State<AddProductPage> {
                         value: selectedCategory,
                         hint: Text(
                           'Select Category',
-                          style: GoogleFonts.poppins(
-                            color: Colors.grey.shade600,
-                            fontSize: 13,
-                          ),
+                          style: GoogleFonts.poppins(color: Colors.grey.shade600, fontSize: 13),
                         ),
                         isExpanded: true,
                         items: categories
                             .map((category) => DropdownMenuItem(
                                   value: category,
-                                  child: Text(
-                                    category,
-                                    style: GoogleFonts.poppins(fontSize: 13),
-                                  ),
+                                  child: Text(category, style: GoogleFonts.poppins(fontSize: 13)),
                                 ))
                             .toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            selectedCategory = value;
-                          });
-                        },
+                        onChanged: (value) => setState(() => selectedCategory = value),
                       ),
                     ),
                   ),
@@ -391,30 +372,107 @@ class _AddProductPageState extends State<AddProductPage> {
                 ElevatedButton.icon(
                   onPressed: _showAddCategoryDialog,
                   icon: const Icon(Icons.add, size: 16),
-                  label: Text(
-                    'Add',
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 12,
-                    ),
-                  ),
+                  label: Text('Add', style: GoogleFonts.poppins(fontWeight: FontWeight.w500, fontSize: 12)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
 
-            // Pricing Section
+            // Brand *
+            _buildSectionTitle('Brand *'),
+            const SizedBox(height: 6),
+            _buildTextField(
+              controller: _brandController,
+              hint: 'Enter brand name',
+              icon: Icons.business,
+            ),
+            const SizedBox(height: 16),
+
+            // Product Type
+            _buildSectionTitle('Product Type'),
+            const SizedBox(height: 6),
+            _buildTextField(
+              controller: _productTypeController,
+              hint: 'e.g., Serum, Cream, Oil, Powder',
+              icon: Icons.spa,
+            ),
+            const SizedBox(height: 16),
+
+            // Size + Size Metric
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSectionTitle('Size'),
+                      const SizedBox(height: 6),
+                      _buildTextField(
+                        controller: _sizeController,
+                        hint: 'e.g., 30, 50, 100',
+                        icon: Icons.straighten,
+                        keyboardType: TextInputType.number,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSectionTitle('Size Metric'),
+                      const SizedBox(height: 6),
+                      _buildTextField(
+                        controller: _sizeMetricController,
+                        hint: 'e.g., ml, grams, litre, pieces',
+                        icon: Icons.scale,
+                      );
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Body Part
+            _buildSectionTitle('For Body Part'),
+            const SizedBox(height: 6),
+            _buildTextField(
+              controller: _bodyPartController,
+              hint: 'e.g., Face, Body Skin, Hair, Nails',
+              icon: Icons.accessibility,
+            );
+            const SizedBox(height: 16),
+
+            // Skin/Hair Type
+            _buildSectionTitle('Suitable For (Skin/Hair Type)'),
+            const SizedBox(height: 6),
+            _buildTextField(
+              controller: _bodyPartTypeController,
+              hint: 'e.g., Oily Skin, Dry Skin, Sensitive Skin',
+              icon: Icons.face,
+            );
+            const SizedBox(height: 16),
+
+            // Key Ingredients
+            _buildSectionTitle('Key Ingredients'),
+            const SizedBox(height: 6),
+            _buildTextField(
+              controller: _keyIngredientsController,
+              hint: 'e.g., Vitamin C, Hyaluronic Acid, Niacinamide',
+              icon: Icons.science,
+              maxLines: 3,
+            ),
+            const SizedBox(height: 16),
+
+            // Pricing
             Row(
               children: [
                 Expanded(
@@ -461,59 +519,7 @@ class _AddProductPageState extends State<AddProductPage> {
               icon: Icons.inventory,
               keyboardType: TextInputType.number,
             ),
-            const SizedBox(height: 16),
-
-            // Status
-            _buildSectionTitle('Status'),
-            const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: selectedStatus,
-                  isExpanded: true,
-                  items: ['Pending', 'Approved', 'Disapproved']
-                      .map((status) => DropdownMenuItem(
-                            value: status,
-                            child: Row(
-                              children: [
-                                Icon(
-                                  status == 'Approved'
-                                      ? Icons.check_circle
-                                      : status == 'Disapproved'
-                                          ? Icons.cancel
-                                          : Icons.pending,
-                                  color: status == 'Approved'
-                                      ? Colors.green
-                                      : status == 'Disapproved'
-                                          ? Colors.red
-                                          : Colors.orange,
-                                  size: 18,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  status,
-                                  style: GoogleFonts.poppins(fontSize: 13),
-                                ),
-                              ],
-                            ),
-                          ))
-                      .toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedStatus = value!;
-                    });
-                  },
-                ),
-              ),
-            ),
             const SizedBox(height: 24),
-
             // Save Button
             SizedBox(
               width: double.infinity,
@@ -522,14 +528,10 @@ class _AddProductPageState extends State<AddProductPage> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
                 child: Text(
-                  widget.existingProduct == null
-                      ? 'Save Product'
-                      : 'Update Product',
+                  widget.existingProduct == null ? 'Save Product' : 'Update Product',
                   style: GoogleFonts.poppins(
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
@@ -569,10 +571,7 @@ class _AddProductPageState extends State<AddProductPage> {
       keyboardType: keyboardType,
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: GoogleFonts.poppins(
-          color: Colors.grey.shade500,
-          fontSize: 13,
-        ),
+        hintStyle: GoogleFonts.poppins(color: Colors.grey.shade500, fontSize: 13),
         prefixIcon: Icon(icon, color: Colors.grey.shade600, size: 20),
         filled: true,
         fillColor: Colors.white,
@@ -588,9 +587,36 @@ class _AddProductPageState extends State<AddProductPage> {
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: Colors.blue, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 12,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      ),
+    );
+  }
+
+  Widget _buildDropdown({
+    required String? value,
+    required List<String> items,
+    required String hint,
+    required void Function(String?) onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          hint: Text(hint, style: GoogleFonts.poppins(color: Colors.grey.shade600, fontSize: 13)),
+          isExpanded: true,
+          items: items
+              .map((item) => DropdownMenuItem(
+                    value: item,
+                    child: Text(item, style: GoogleFonts.poppins(fontSize: 13)),
+                  ))
+              .toList(),
+          onChanged: onChanged,
         ),
       ),
     );
