@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'get_started.dart';
 import 'calender.dart';
+import 'Suppliers/supp_dashboard.dart'; // Import supplier dashboard
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -18,13 +19,55 @@ class _LoginPageState extends State<Login> {
   bool _obscurePassword = true;
   final _formKey = GlobalKey<FormState>();
 
-  void _handleLogin() {
-  Navigator.pushReplacement(
-    context,
-    MaterialPageRoute(builder: (_) => const Calendar()),
-  );
-}
+  // Dummy credentials
+  final Map<String, Map<String, String>> dummyCredentials = {
+    'vendor': {
+      'email': 'vendor@example.com',
+      'password': 'vendor123'
+    },
+    'supplier': {
+      'email': 'supplier@example.com',
+      'password': 'supplier123'
+    }
+  };
 
+  void _fillCredentials(String userType) {
+    if (dummyCredentials.containsKey(userType)) {
+      setState(() {
+        emailController.text = dummyCredentials[userType]!['email']!;
+        passwordController.text = dummyCredentials[userType]!['password']!;
+      });
+    }
+  }
+
+  void _handleLogin() {
+    if (_formKey.currentState!.validate()) {
+      // Check if credentials match either vendor or supplier
+      String email = emailController.text.trim();
+      String password = passwordController.text.trim();
+      
+      if (email == dummyCredentials['vendor']!['email'] && 
+          password == dummyCredentials['vendor']!['password']) {
+        // Vendor login - go to calendar
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const Calendar()),
+        );
+      } else if (email == dummyCredentials['supplier']!['email'] && 
+                 password == dummyCredentials['supplier']!['password']) {
+        // Supplier login - go to supplier dashboard
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const DashboardPage()),
+        );
+      } else {
+        // Invalid credentials
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid credentials. Please try again.')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -129,6 +172,46 @@ class _LoginPageState extends State<Login> {
                               });
                             },
                           ),
+                        ),
+
+                        // Dummy Credentials Buttons
+                        SizedBox(height: 12.h),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            ElevatedButton(
+                              onPressed: () => _fillCredentials('vendor'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue.shade100,
+                                foregroundColor: Colors.blue.shade700,
+                                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(6.r),
+                                ),
+                                textStyle: GoogleFonts.poppins(
+                                  fontSize: 10.sp,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              child: Text('Vendor Demo'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () => _fillCredentials('supplier'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue.shade100,
+                                foregroundColor: Colors.blue.shade700,
+                                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(6.r),
+                                ),
+                                textStyle: GoogleFonts.poppins(
+                                  fontSize: 10.sp,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              child: Text('Supplier Demo'),
+                            ),
+                          ],
                         ),
 
                         // Forgot Password
