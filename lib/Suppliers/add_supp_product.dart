@@ -433,7 +433,7 @@ class _AddSuppProductPageState extends State<AddSuppProductPage> {
                         controller: _sizeMetricController,
                         hint: 'e.g., ml, grams, litre, pieces',
                         icon: Icons.scale,
-                      );
+                      ),
                     ],
                   ),
                 ),
@@ -448,7 +448,7 @@ class _AddSuppProductPageState extends State<AddSuppProductPage> {
               controller: _bodyPartController,
               hint: 'e.g., Face, Body Skin, Hair, Nails',
               icon: Icons.accessibility,
-            );
+            ),
             const SizedBox(height: 16),
 
             // Skin/Hair Type
@@ -458,7 +458,7 @@ class _AddSuppProductPageState extends State<AddSuppProductPage> {
               controller: _bodyPartTypeController,
               hint: 'e.g., Oily Skin, Dry Skin, Sensitive Skin',
               icon: Icons.face,
-            );
+            ),
             const SizedBox(height: 16),
 
             // Key Ingredients

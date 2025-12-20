@@ -21,6 +21,7 @@ import '../marketplace.dart';
 import '../invoice_management.dart';
 import '../expenses.dart';
 import '../sales.dart';
+import '../login.dart';
 // Drawer implementation for the app
 class CustomDrawer extends StatelessWidget {
   final String currentPage;
@@ -778,7 +779,11 @@ class CustomDrawer extends StatelessWidget {
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
-                // TODO: Navigate to login page if needed
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const Login()),
+                  (route) => false,
+                );
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF457BFF),

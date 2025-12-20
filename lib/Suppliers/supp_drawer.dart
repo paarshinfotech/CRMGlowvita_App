@@ -12,7 +12,7 @@ import '../shipping.dart';
 import '../Settlements.dart';
 import '../Offer&Coupons.dart';
 import '../reviews.dart';
-import '../product_questions.dart';
+import 'supp_product_questions.dart';
 import '../marketplace.dart';
 import '../invoice_management.dart';
 import '../expenses.dart';
@@ -409,7 +409,7 @@ class SupplierDrawer extends StatelessWidget {
                           currentPage == 'Product Questions',
                       onTap: () => _navigateTo(
                         context,
-                        const ProductQuestionsPage(),
+                        const SuppProductQuestionsPage(),
                       ),
                       scale: scale,
                       baseFontScale: baseFontScale,
@@ -421,136 +421,6 @@ class SupplierDrawer extends StatelessWidget {
                       isSelected: currentPage == 'Reviews',
                       onTap: () =>
                           _navigateTo(context, const ReviewsPage()),
-                      scale: scale,
-                      baseFontScale: baseFontScale,
-                    ),
-                    _buildMenuItem(
-                      context: context,
-                      icon: Icons.store_outlined,
-                      title: 'Supplier Marketplace',
-                      isSelected: currentPage == 'Marketplace',
-                      onTap: () => _navigateTo(
-                        context,
-                        const MarketplacePage(),
-                      ),
-                      scale: scale,
-                      baseFontScale: baseFontScale,
-                    ),
-                    _buildMenuItem(
-                      context: context,
-                      icon: Icons.trending_up_outlined,
-                      title: 'Sales',
-                      isSelected: currentPage == 'Sales',
-                      onTap: () => _navigateTo(context, const SalesPage()),
-                      scale: scale,
-                      baseFontScale: baseFontScale,
-                    ),                    _buildMenuItem(
-                      context: context,
-                      icon: Icons.receipt_outlined,
-                      title: 'Invoice Management',
-                      isSelected:
-                          currentPage == 'Invoice Management',
-                      onTap: () => _navigateTo(
-                        context,
-                        const InvoiceManagementPage(),
-                      ),
-                      scale: scale,
-                      baseFontScale: baseFontScale,
-                    ),
-                    _buildMenuItem(
-                      context: context,
-                      icon: Icons.shopping_cart_outlined,
-                      title: 'Orders',
-                      isSelected: currentPage == 'Orders',
-                      onTap: () =>
-                          _navigateTo(context, OrdersPage()),
-                      scale: scale,
-                      baseFontScale: baseFontScale,
-                    ),
-                    _buildMenuItem(
-                      context: context,
-                      icon: Icons.local_shipping_outlined,
-                      title: 'Shipping',
-                      isSelected: currentPage == 'Shipping',
-                      onTap: () => _navigateTo(
-                        context,
-                        const ShippingPage(),
-                      ),
-                      scale: scale,
-                      baseFontScale: baseFontScale,
-                    ),
-                    _buildMenuItem(
-                      context: context,
-                      icon: Icons.account_balance_outlined,
-                      title: 'Settlements',
-                      isSelected: currentPage == 'Settlements',
-                      onTap: () =>
-                          _navigateTo(context, SettlementsPage()),
-                      scale: scale,
-                      baseFontScale: baseFontScale,
-                    ),
-                    _buildMenuItem(
-                      context: context,
-                      icon: Icons.account_balance_wallet_outlined,
-                      title: 'Expenses',
-                      isSelected: currentPage == 'Expenses',
-                      onTap: () => _navigateTo(
-                        context,
-                        const ExpensesPage(),
-                      ),
-                      scale: scale,
-                      baseFontScale: baseFontScale,
-                    ),
-                    _buildMenuItem(
-                      context: context,
-                      icon: Icons.local_offer_outlined,
-                      title: 'Offers & Coupons',
-                      isSelected:
-                          currentPage == 'Offers & Coupons',
-                      onTap: () =>
-                          _navigateTo(context, OffersCouponsPage()),
-                      scale: scale,
-                      baseFontScale: baseFontScale,
-                    ),
-                    _buildMenuItem(
-                      context: context,
-                      icon: Icons.card_giftcard_outlined,
-                      title: 'Referrals',
-                      isSelected: currentPage == 'Referrals',
-                      onTap: () =>
-                          _navigateTo(context, const ReferralProg()),
-                      scale: scale,
-                      baseFontScale: baseFontScale,
-                    ),
-                    _buildMenuItem(
-                      context: context,
-                      icon: Icons.campaign_outlined,
-                      title: 'Marketing',
-                      isSelected: currentPage == 'Marketing',
-                      onTap: () {},
-                      scale: scale,
-                      baseFontScale: baseFontScale,
-                    ),
-                    _buildMenuItem(
-                      context: context,
-                      icon: Icons.notifications_outlined,
-                      title: 'Notifications',
-                      isSelected:
-                          currentPage == 'Notifications',
-                      onTap: () => _navigateTo(
-                        context,
-                        const NotificationPage(),
-                      ),
-                      scale: scale,
-                      baseFontScale: baseFontScale,
-                    ),
-                    _buildMenuItem(
-                      context: context,
-                      icon: Icons.bar_chart_outlined,
-                      title: 'Reports',
-                      isSelected: currentPage == 'Reports',
-                      onTap: () =>
-                          _navigateTo(context, const ReportsPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
