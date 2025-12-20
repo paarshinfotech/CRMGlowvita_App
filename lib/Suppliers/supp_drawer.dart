@@ -2,21 +2,9 @@ import 'package:flutter/material.dart';
 import '../../login.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../dashboard.dart';
-
 import 'supp_products.dart';
-import '../orders.dart';
-import '../referral.dart';
-import '../reports.dart';
-import '../Notification.dart';
-import '../shipping.dart';
-import '../Settlements.dart';
-import '../Offer&Coupons.dart';
-import '../reviews.dart';
 import 'supp_product_questions.dart';
-import '../marketplace.dart';
-import '../invoice_management.dart';
-import '../expenses.dart';
-import '../sales.dart';
+import 'supp_reviews.dart';
 
 // Drawer implementation for the app
 class SupplierDrawer extends StatelessWidget {
@@ -251,7 +239,6 @@ class SupplierDrawer extends StatelessWidget {
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
-                    
                     _buildMenuItem(
                       context: context,
                       icon: Icons.inventory_2_outlined,
@@ -420,7 +407,7 @@ class SupplierDrawer extends StatelessWidget {
                       title: 'Reviews',
                       isSelected: currentPage == 'Reviews',
                       onTap: () =>
-                          _navigateTo(context, const ReviewsPage()),
+                          _navigateTo(context, const SuppReviewsPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
