@@ -5,6 +5,11 @@ import '../dashboard.dart';
 import 'supp_products.dart';
 import 'supp_product_questions.dart';
 import 'supp_reviews.dart';
+import 'supp_orders.dart';
+import 'supp_sales.dart';
+import 'supp_invoice_management.dart';
+import 'supp_shipping.dart';
+import 'supp_expenses.dart';
 
 // Drawer implementation for the app
 class SupplierDrawer extends StatelessWidget {
@@ -29,7 +34,6 @@ class SupplierDrawer extends StatelessWidget {
     // Font scale for text
     final double baseFontScale = (width / 375).clamp(0.85, 1.0);
 
-    // Clamp text scaling from system so drawer doesn't break on huge fonts or tiny fonts
     final clampedTextScaler = mediaQuery.textScaler.clamp(
       minScaleFactor: 0.9,
       maxScaleFactor: 1.1,
@@ -408,6 +412,56 @@ class SupplierDrawer extends StatelessWidget {
                       isSelected: currentPage == 'Reviews',
                       onTap: () =>
                           _navigateTo(context, const SuppReviewsPage()),
+                      scale: scale,
+                      baseFontScale: baseFontScale,
+                    ),
+                    _buildMenuItem(
+                      context: context,
+                      icon: Icons.star_outlined,
+                      title: 'Orders',
+                      isSelected: currentPage == 'Orders',
+                      onTap: () =>
+                          _navigateTo(context, const SuppOrdersPage()),
+                      scale: scale,
+                      baseFontScale: baseFontScale,
+                    ),
+                    _buildMenuItem(
+                      context: context,
+                      icon: Icons.star_outlined,
+                      title: 'Sales',
+                      isSelected: currentPage == 'Sales',
+                      onTap: () =>
+                          _navigateTo(context, const SuppSalesPage()),
+                      scale: scale,
+                      baseFontScale: baseFontScale,
+                    ),
+                    _buildMenuItem(
+                      context: context,
+                      icon: Icons.star_outlined,
+                      title: 'Invoice Management',
+                      isSelected: currentPage == 'Invoice Management',
+                      onTap: () =>
+                          _navigateTo(context, const SuppInvoiceManagementPage()),
+                      scale: scale,
+                      baseFontScale: baseFontScale,
+                    ),
+                    _buildMenuItem(
+                      context: context,
+                      icon: Icons.star_outlined,
+                      title: 'Shipping',
+                      isSelected: currentPage == 'Shipping',
+                      onTap: () =>
+                          _navigateTo(context, const SuppShippingPage()),
+                      scale: scale,
+                      baseFontScale: baseFontScale,
+                    ),
+                    _buildMenuItem(
+                      context: context,
+                      icon: Icons.star_outlined,
+                      title: 'Expenses',
+                      isSelected: currentPage == 'Shipping',
+                      onTap: () =>
+                          _navigateTo(context, const SuppExpensesPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
