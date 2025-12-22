@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'dart:ui';
-import 'get_started.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'calender.dart';
-import 'Suppliers/supp_dashboard.dart'; // Import supplier dashboard
+import 'register.dart';
+import 'Suppliers/supp_dashboard.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -18,53 +20,85 @@ class _LoginPageState extends State<Login> {
   final TextEditingController passwordController = TextEditingController();
   bool _obscurePassword = true;
   final _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
 
-  // Dummy credentials
-  final Map<String, Map<String, String>> dummyCredentials = {
-    'vendor': {
-      'email': 'vendor@example.com',
-      'password': 'vendor123'
-    },
-    'supplier': {
-      'email': 'supplier@example.com',
-      'password': 'supplier123'
-    }
-  };
+  Future<void> _handleLogin() async {
+    if (!_formKey.currentState!.validate()) return;
 
-  void _fillCredentials(String userType) {
-    if (dummyCredentials.containsKey(userType)) {
-      setState(() {
-        emailController.text = dummyCredentials[userType]!['email']!;
-        passwordController.text = dummyCredentials[userType]!['password']!;
-      });
-    }
-  }
+    setState(() => _isLoading = true);
 
-  void _handleLogin() {
-    if (_formKey.currentState!.validate()) {
-      // Check if credentials match either vendor or supplier
-      String email = emailController.text.trim();
-      String password = passwordController.text.trim();
-      
-      if (email == dummyCredentials['vendor']!['email'] && 
-          password == dummyCredentials['vendor']!['password']) {
-        // Vendor login - go to calendar
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const Calendar()),
-        );
-      } else if (email == dummyCredentials['supplier']!['email'] && 
-                 password == dummyCredentials['supplier']!['password']) {
-        // Supplier login - go to supplier dashboard
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const Supp_DashboardPage()),
-        );
-      } else {
-        // Invalid credentials
+    try {
+      final response = await http.post(
+        Uri.parse("https://partners.v2winonline.com/api/crm/auth/login"),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: jsonEncode({
+          "email": emailController.text.trim(),
+          "password": passwordController.text,
+        }),
+      ).timeout(const Duration(seconds: 20));
+
+      final Map<String, dynamic> data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        // Save user data and tokens
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('access_token', data['access_token'] ?? '');
+        await prefs.setString('refresh_token', data['refresh_token'] ?? '');
+        await prefs.setString('user_role', data['role'] ?? 'vendor');
+        await prefs.setString('user_id', data['user']['_id'] ?? '');
+        await prefs.setString('user_data', jsonEncode(data['user']));
+
+        // Success message
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid credentials. Please try again.')),
+          SnackBar(
+            content: Text(data['message'] ?? "Login Successful"),
+            backgroundColor: Colors.green,
+          ),
         );
+
+        // Navigate based on role
+        final String role = data['role'];
+        if (role == 'vendor') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const Calendar()),
+          );
+        } else if (role == 'supplier') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const Supp_DashboardPage()),
+          );
+        } else {
+          // Default fallback to vendor dashboard
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const Calendar()),
+          );
+        }
+      } else {
+        // API returned error (e.g. wrong password)
+        String errorMessage = data['message'] ?? "Invalid email or password";
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
+        );
+      }
+    } catch (e) {
+      String errorMsg = "Network error. Please check your connection.";
+
+      if (e.toString().contains('TimeoutException')) {
+        errorMsg = "Request timed out. Try again.";
+      } else if (e.toString().contains('FormatException')) {
+        errorMsg = "Server response error. Try again later.";
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -85,10 +119,7 @@ class _LoginPageState extends State<Login> {
             ),
           ),
 
-          // Blur Layer with Blue Tint
-          
-
-          // Content
+          // Main Content
           SafeArea(
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 20.w),
@@ -99,27 +130,26 @@ class _LoginPageState extends State<Login> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Title
                         Text(
                           'Let’s Get Started',
                           style: GoogleFonts.poppins(
-                            fontSize: 18.sp,
+                            fontSize: 16.sp,
                             fontWeight: FontWeight.bold,
                             color: Colors.blue.shade700,
                             shadows: [
-                          Shadow(
-                            blurRadius: 3.0,
-                            color: Colors.black.withOpacity(0.25),
-                            offset: Offset(1.5, 1.5),
-                          ),
-                        ],
+                              Shadow(
+                                blurRadius: 3.0,
+                                color: Colors.black.withOpacity(0.25),
+                                offset: const Offset(1.5, 1.5),
+                              ),
+                            ],
                           ),
                         ),
-                        SizedBox(height: 10.h),
+                        SizedBox(height: 8.h),
                         Text(
                           'Sign in to continue your GlowVita journey',
                           style: GoogleFonts.poppins(
-                            fontSize: 14.sp,
+                            fontSize: 12.sp,
                             fontWeight: FontWeight.w500,
                             color: Colors.black,
                           ),
@@ -137,12 +167,12 @@ class _LoginPageState extends State<Login> {
                             }
                             if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
                                 .hasMatch(value)) {
-                              return 'Please enter a valid email';
+                              return 'Enter a valid email address';
                             }
                             return null;
                           },
                         ),
-                        SizedBox(height: 12.h),
+                        SizedBox(height: 16.h),
 
                         // Password Field
                         _buildTextField(
@@ -174,101 +204,79 @@ class _LoginPageState extends State<Login> {
                           ),
                         ),
 
-                        // Dummy Credentials Buttons
-                        SizedBox(height: 12.h),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            ElevatedButton(
-                              onPressed: () => _fillCredentials('vendor'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue.shade100,
-                                foregroundColor: Colors.blue.shade700,
-                                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(6.r),
-                                ),
-                                textStyle: GoogleFonts.poppins(
-                                  fontSize: 10.sp,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              child: Text('Vendor Demo'),
-                            ),
-                            ElevatedButton(
-                              onPressed: () => _fillCredentials('supplier'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue.shade100,
-                                foregroundColor: Colors.blue.shade700,
-                                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(6.r),
-                                ),
-                                textStyle: GoogleFonts.poppins(
-                                  fontSize: 10.sp,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              child: Text('Supplier Demo'),
-                            ),
-                          ],
-                        ),
-
                         // Forgot Password
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton(
                             onPressed: () {
+                              // TODO: Implement forgot password flow
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Forgot Password clicked')),
+                                const SnackBar(content: Text('Forgot password feature coming soon')),
                               );
                             },
                             child: Text(
                               'Forgot Password?',
                               style: GoogleFonts.poppins(
-                                fontSize: 10.sp,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue.shade100,
-                                shadows: [
-                          Shadow(
-                            blurRadius: 3.0,
-                            color: Colors.black.withOpacity(0.20),
-                            offset: Offset(1.5, 1.5),
-                          ),
-                        ],
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
                               ),
                             ),
                           ),
                         ),
-                        SizedBox(height: 16.h),
+                        SizedBox(height: 24.h),
 
                         // Login Button
                         SizedBox(
-                          width: 250.w,
+                          width: 240.w,
                           child: ElevatedButton(
-                            onPressed: _handleLogin,
+                            onPressed: _isLoading ? null : _handleLogin,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.blue.shade700,
                               foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(vertical: 5.h),
+                              padding: EdgeInsets.symmetric(vertical: 8.h),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10.r),
+                                borderRadius: BorderRadius.circular(8.r),
                               ),
-                              elevation: 1,
+                              elevation: 2,
                               textStyle: GoogleFonts.poppins(
                                 fontSize: 12.sp,
                                 fontWeight: FontWeight.bold,
                               ),
-                              minimumSize: Size(double.infinity, 40.h),
                             ),
-                            child: Text('Log In'),
+                            child: _isLoading
+                                ? SizedBox(
+                                    height: 18.h,
+                                    width: 18.w,
+                                    child: const CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2.5,
+                                    ),
+                                  )
+                                : const Text('Log In'),
                           ),
                         ),
 
-                        SizedBox(height: 16.h),
+                        SizedBox(height: 24.h),
 
-                        // Bottom Links
-                        _buildBottomLinks(context),
+                        // New to GlowVita? Join our platform
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const OnboardingRegisterPage()),
+                            );
+                          },
+                          child: Text(
+                            'New to GlowVita Salon? Join our platform',
+                            style: GoogleFonts.poppins(
+                              fontSize: 13.sp,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -281,7 +289,6 @@ class _LoginPageState extends State<Login> {
     );
   }
 
-  // Reusable TextField Widget
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
@@ -295,9 +302,9 @@ class _LoginPageState extends State<Login> {
         borderRadius: BorderRadius.circular(10.r),
         boxShadow: [
           BoxShadow(
-            color: Colors.blue.shade100.withOpacity(0.2),
-            blurRadius: 4,
-            offset: Offset(0, 1),
+            color: Colors.blue.shade100.withOpacity(0.3),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -305,18 +312,19 @@ class _LoginPageState extends State<Login> {
         controller: controller,
         obscureText: obscureText,
         validator: validator,
+        style: GoogleFonts.poppins(fontSize: 12.sp),
         decoration: InputDecoration(
           label: Container(
-            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
             decoration: BoxDecoration(
-              color: Colors.blue.shade100, // Background color for label
+              color: Colors.blue.shade100,
               borderRadius: BorderRadius.circular(6.r),
             ),
             child: Text(
               label,
               style: GoogleFonts.poppins(
                 color: Colors.blue.shade700,
-                fontSize:10.sp,
+                fontSize: 10.sp,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -330,72 +338,7 @@ class _LoginPageState extends State<Login> {
           contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
           suffixIcon: suffixIcon,
         ),
-        style: GoogleFonts.poppins(fontSize: 10.sp),
       ),
-    );
-  }
-
-  // Improved Bottom Links Row
-  Widget _buildBottomLinks(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        bool isNarrow = constraints.maxWidth < 600;
-
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Login with Mobile clicked')),
-                  );
-                },
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.blue.shade600,
-                  side: BorderSide(color: Colors.blue.shade600, width: 1),
-                  padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 12.w),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6.r),
-                  ),
-                  minimumSize: Size(100.w, 36.h),
-                  textStyle: GoogleFonts.poppins(
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                child: Text('Login with Mobile'),
-              ),
-            ),
-            SizedBox(width: isNarrow ? 8.w : 12.w),
-            Expanded(
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const GetStarted()),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue.shade700,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 12.w),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6.r),
-                  ),
-                  minimumSize: Size(100.w, 36.h),
-                  elevation: 1,
-                  textStyle: GoogleFonts.poppins(
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                child: Text(isNarrow ? 'Register Business' : 'Register as Business'),
-              ),
-            ),
-          ],
-        );
-      },
     );
   }
 }
