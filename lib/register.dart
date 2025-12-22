@@ -1,369 +1,647 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:glowvita/calender.dart';
-import 'package:glowvita/login.dart';
 import 'package:latlong2/latlong.dart';
-import 'dart:ui';
-import 'package:flutter/services.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'dart:async';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
+class RegisterPage extends StatefulWidget {
+  final String? initialRole;
 
-class Signup extends StatefulWidget {
-  const Signup({super.key});
+  const RegisterPage({super.key, this.initialRole});
 
   @override
-  State<Signup> createState() => _Signup();
+  State<RegisterPage> createState() => _RegisterPageState();
 }
 
-class _Signup extends State<Signup> {
-  final TextEditingController firstNameController = TextEditingController();
-  final TextEditingController lastNameController = TextEditingController();
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController mobileController = TextEditingController();
-  final TextEditingController salonNameController = TextEditingController();
-  final TextEditingController pinController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
-  final TextEditingController confirmPasswordController = TextEditingController();
+class _RegisterPageState extends State<RegisterPage> {
+  final _formKey = GlobalKey<FormState>();
+  final PageController _pageController = PageController();
+  int currentStep = 0;
 
-  String selectedCountry = 'India';
-  String selectedState = 'Select State';
-  String selectedCity = 'Select City';
-  List<String> getCitiesForState(String state) {
-    return stateCityMap[state] ?? [];
+  // Controllers
+  final TextEditingController firstNameCtrl = TextEditingController();
+  final TextEditingController lastNameCtrl = TextEditingController();
+  final TextEditingController businessNameCtrl = TextEditingController();
+  final TextEditingController businessDescCtrl = TextEditingController();
+  final TextEditingController websiteCtrl = TextEditingController();
+  final TextEditingController referralCtrl = TextEditingController();
+  final TextEditingController phoneCtrl = TextEditingController();
+  final TextEditingController emailCtrl = TextEditingController();
+  final TextEditingController passwordCtrl = TextEditingController();
+  final TextEditingController addressCtrl = TextEditingController();
+  final TextEditingController stateCtrl = TextEditingController();
+  final TextEditingController cityCtrl = TextEditingController();
+  final TextEditingController pincodeCtrl = TextEditingController();
+
+  String selectedCategory = 'unisex'; // default
+  List<String> subCategories = []; // Shop, Shop At Home, Onsite
+
+  double? selectedLat;
+  double? selectedLng;
+
+  bool isLoading = false;
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
-  List<String> cityList = ['Select City'];
+  Future<void> _registerUser() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (selectedLat == null || selectedLng == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please select a location.")),
+      );
+      return;
+    }
 
-  final Map<String, List<String>> stateCityMap = {
-    'Andhra Pradesh': ['Visakhapatnam', 'Vijayawada', 'Guntur', 'Nellore'],
-    'Arunachal Pradesh': ['Itanagar', 'Tawang', 'Ziro', 'Pasighat'],
-    'Assam': ['Guwahati', 'Silchar', 'Dibrugarh', 'Jorhat'],
-    'Bihar': ['Patna', 'Gaya', 'Bhagalpur', 'Muzaffarpur'],
-    'Chhattisgarh': ['Raipur', 'Bilaspur', 'Durg', 'Korba'],
-    'Goa': ['Panaji', 'Margao', 'Vasco da Gama', 'Mapusa'],
-    'Gujarat': ['Ahmedabad', 'Surat', 'Vadodara', 'Rajkot'],
-    'Haryana': ['Chandigarh', 'Faridabad', 'Gurugram', 'Hisar'],
-    'Himachal Pradesh': ['Shimla', 'Manali', 'Dharamshala', 'Kullu'],
-    'Jharkhand': ['Ranchi', 'Jamshedpur', 'Dhanbad', 'Bokaro'],
-    'Karnataka': ['Bengaluru', 'Mysuru', 'Hubli', 'Mangalore'],
-    'Kerala': ['Thiruvananthapuram', 'Kochi', 'Kozhikode', 'Thrissur'],
-    'Madhya Pradesh': ['Bhopal', 'Indore', 'Jabalpur', 'Gwalior'],
-    'Maharashtra': ['Mumbai', 'Pune', 'Nagpur', 'Nashik'],
-    'Manipur': ['Imphal', 'Thoubal', 'Churachandpur', 'Bishnupur'],
-    'Meghalaya': ['Shillong', 'Tura', 'Nongpoh', 'Jowai'],
-    'Mizoram': ['Aizawl', 'Lunglei', 'Champhai', 'Serchhip'],
-    'Nagaland': ['Kohima', 'Dimapur', 'Mokokchung', 'Tuensang'],
-    'Odisha': ['Bhubaneswar', 'Cuttack', 'Rourkela', 'Puri'],
-    'Punjab': ['Amritsar', 'Ludhiana', 'Jalandhar', 'Patiala'],
-    'Rajasthan': ['Jaipur', 'Jodhpur', 'Udaipur', 'Kota'],
-    'Sikkim': ['Gangtok', 'Namchi', 'Geyzing', 'Mangan'],
-    'Tamil Nadu': ['Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli'],
-    'Telangana': ['Hyderabad', 'Warangal', 'Nizamabad', 'Khammam'],
-    'Tripura': ['Agartala', 'Udaipur', 'Dharmanagar', 'Kailashahar'],
-    'Uttar Pradesh': ['Lucknow', 'Kanpur', 'Agra', 'Varanasi'],
-    'Uttarakhand': ['Dehradun', 'Haridwar', 'Nainital', 'Roorkee'],
-    'West Bengal': ['Kolkata', 'Asansol', 'Siliguri', 'Durgapur'],
-    'Delhi': ['New Delhi', 'Dwarka', 'Rohini', 'Saket'],
-  };
+    setState(() => isLoading = true);
 
-  double selectedLatitude = 0.0;
-  double selectedLongitude = 0.0;
-  String selectedAddress = '';
+    try {
+      final payload = {
+        "firstName": firstNameCtrl.text.trim(),
+        "lastName": lastNameCtrl.text.trim(),
+        "businessName": businessNameCtrl.text.trim(),
+        "email": emailCtrl.text.trim(),
+        "phone": phoneCtrl.text.trim(),
+        "password": passwordCtrl.text,
+        "state": stateCtrl.text.trim(),
+        "city": cityCtrl.text.trim(),
+        "pincode": pincodeCtrl.text.trim(),
+        "address": addressCtrl.text.trim(),
+        "category": selectedCategory,
+        "location": {"lat": selectedLat, "lng": selectedLng},
+        "baseLocation": {"lat": selectedLat, "lng": selectedLng},
+      };
 
-  bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true;
+      // Add optional fields if not empty
+      if (businessDescCtrl.text.trim().isNotEmpty) {
+        payload["description"] = businessDescCtrl.text.trim();
+      }
+      if (websiteCtrl.text.trim().isNotEmpty) {
+        payload["website"] = websiteCtrl.text.trim();
+      }
+      if (referralCtrl.text.trim().isNotEmpty) {
+        payload["referralCode"] = referralCtrl.text.trim();
+      }
+
+      // Map subCategories based on checkboxes (adjust strings to match API expectation)
+      if (subCategories.isNotEmpty) {
+        payload["subCategories"] = subCategories.map((cat) {
+          if (cat == "home") return "shop at home";
+          if (cat == "onsite") return "onsite";
+          return "shop";
+        }).toList();
+      } else {
+        payload["subCategories"] = ["shop"]; // Default as per response example
+      }
+
+      final response = await http.post(
+        Uri.parse("https://partners.v2winonline.com/api/crm/auth/register"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(payload),
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        if (data["message"] == "Account created successfully. Proceed to onboarding.") {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(data["message"])),
+          );
+          // Navigate to onboarding or dashboard
+          // Example: Navigator.pushReplacementNamed(context, '/onboarding');
+          Navigator.pop(context); // Or handle navigation as needed
+        } else {
+          throw Exception(data["message"] ?? "Registration failed");
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData["message"] ?? "Server error: ${response.statusCode}");
+      }
+    } catch (e) {
+      debugPrint("Registration error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: ${e.toString()}")),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
-          Stack(
-            children: [
-              // Background Image
-              Container(
-                decoration: const BoxDecoration(
-                  image: DecorationImage(
-                    image: AssetImage('assets/images/splash.png'),
-                    fit: BoxFit.cover,
+          // Background Image
+          Container(
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/images/splash.png'),
+                fit: BoxFit.cover,
+                opacity: 0.8,
+              ),
+            ),
+          ),
+          // Content
+          SafeArea(
+            child: Column(
+              children: [
+                // Progress bar
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: LinearProgressIndicator(
+                          value: (currentStep + 1) / 2,
+                          backgroundColor: Colors.grey.shade300,
+                          valueColor:
+                              const AlwaysStoppedAnimation<Color>(Colors.blue),
+                          minHeight: 6,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-
-              // Blur Layer
-              Positioned.fill(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 2.0, sigmaY: 2.0), // Adjust blur intensity
-                  child: Container(
-                    color: Colors.black.withOpacity(0), // Transparent color for blur effect
+                Expanded(
+                  child: PageView(
+                    controller: _pageController,
+                    physics: const NeverScrollableScrollPhysics(),
+                    onPageChanged: (index) => setState(() => currentStep = index),
+                    children: [
+                      _buildBusinessSetupPage(),
+                      _buildLocationSetupPage(),
+                    ],
                   ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBusinessSetupPage() {
+    return SingleChildScrollView(
+      padding: EdgeInsets.symmetric(horizontal: 32.w),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(height: 20.h),
+          // Back button for first step
+          if (currentStep == 0) ...[
+            Align(
+              alignment: Alignment.centerLeft,
+              child: IconButton(
+                icon: Icon(Icons.arrow_back, color: Colors.blue.shade700, size: 24.sp),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+              ),
+            ),
+            SizedBox(height: 10.h),
+          ],
+          Text(
+            "Tell us about your business",
+            style: GoogleFonts.poppins(
+              fontSize: 16.sp,
+              fontWeight: FontWeight.bold,
+              color: Colors.blue.shade700,
+              shadows: [
+                Shadow(
+                  blurRadius: 3.0,
+                  color: Colors.black.withOpacity(0.25),
+                  offset: Offset(1.5, 1.5),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 6.h),
+          Text(
+            "Provide your business information and services.",
+            style: GoogleFonts.poppins(
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w500,
+              color: Colors.black,
+            ),
+          ),
+          SizedBox(height: 30.h),
+
+          // Business Name & Description
+          Row(
+            children: [
+              Expanded(
+                child: _buildOutlinedField(
+                  label: "Enter business name",
+                  controller: businessNameCtrl,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Business name is required';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildOutlinedField(
+                  label: "Enter business description",
+                  controller: businessDescCtrl,
+                  maxLines: 3,
                 ),
               ),
             ],
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: Center(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    Text(
-                      'Let’s Get Started',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color:Colors.blue, // Your highlight text color
-                        shadows: [
-                          Shadow(
-                            offset: Offset(1.5, 1.5),
-                            blurRadius: 1.5,
-                            color: Colors.black,
-                          ),
-                        ],
-                      ),
-                    ),
+          const SizedBox(height: 24),
 
-                    const SizedBox(height: 10),
-                    Text(
-                      'Create your account by filling the form below',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFFF5F5F5), // Your highlight text color
-                        shadows: [
-                          Shadow(
-                            offset: Offset(3.0, 3.0),
-                            blurRadius: 3.0,
-                            color: Colors.black.withOpacity(0.6),
-                          ),
-                        ],
+          // Category dropdown
+          _buildOutlinedField(
+            label: "Select salon category",
+            controller: TextEditingController(text: selectedCategory),
+            readOnly: true,
+            suffixIcon: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: selectedCategory,
+                icon: Icon(Icons.arrow_drop_down, size: 18.sp),
+                onChanged: (val) => setState(() => selectedCategory = val!),
+                items: ['unisex', 'male', 'female']
+                    .map((e) => DropdownMenuItem(
+                      value: e, 
+                      child: Text(
+                        e,
+                        style: GoogleFonts.poppins(fontSize: 9.sp),
                       ),
-                    ),
-                    const SizedBox(height: 30),
-                    Row(
-                      children: [
-                        Expanded(child: _buildTextField(controller: firstNameController, label: 'First Name')),
-                        const SizedBox(width: 16),
-                        Expanded(child: _buildTextField(controller: lastNameController, label: 'Last Name')),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    _buildTextField(controller: emailController, label: 'Email Address'),
-                    const SizedBox(height: 16),
-                    _buildTextField(controller: mobileController, label: 'Mobile Number', type: TextInputType.number),
-                    const SizedBox(height: 16),
-                    _buildTextField(controller: salonNameController, label: 'Salon Name'),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildDropdown(
-                            label: 'Country',
-                            value: selectedCountry,
-                            items: ['India'],
-                            onChanged: (val) => setState(() => selectedCountry = val!),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _buildDropdown(
-                            label: 'State',
-                            value: selectedState,
-                            items: ['Select State', ...stateCityMap.keys.toSet().toList()],
-                            onChanged: (val) {
-                              setState(() {
-                                selectedState = val!;
-                                selectedCity = 'Select City';
-                                cityList = ['Select City', ...getCitiesForState(selectedState)];
-                              });
-                            },
+                    ))
+                    .toList(),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
 
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildDropdown(
-                            label: 'City',
-                            value: cityList.contains(selectedCity) ? selectedCity : cityList[0],
-                            items: cityList,
-                            onChanged: (val) => setState(() => selectedCity = val!),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(child: _buildTextField(controller: pinController, label: 'PIN Code', type: TextInputType.number)),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.blue.shade100.withOpacity(0.2),
-                            blurRadius: 4,
-                            offset: const Offset(0, 1),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.shade100,
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(10),
-                                topRight: Radius.circular(10),
-                              ),
-                            ),
-                            child: Text(
-                              'Location',
-                              style: TextStyle(
-                                color: Colors.blue.shade700,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: () async {
-                              final location = await showDialog<Map<String, dynamic>>(
-                                context: context,
-                                builder: (context) => const LocationPickerDialog(),
-                              );
-                              if (location != null) {
-                                setState(() {
-                                  selectedLatitude = location['lat'];
-                                  selectedLongitude = location['lng'];
-                                  selectedAddress = location['address'];
-                                });
-                              }
-                            },
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.only(
-                                  bottomLeft: Radius.circular(10),
-                                  bottomRight: Radius.circular(10),
-                                ),
-                              ),
-                              child: Text(
-                                selectedAddress.isNotEmpty ? selectedAddress : "Select Location on Map",
-                                style: const TextStyle(
-                                  color: Colors.black54,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildPasswordField(controller: passwordController, label: 'Password', obscure: _obscurePassword, toggleVisibility: () {
-                      setState(() => _obscurePassword = !_obscurePassword);
-                    }),
-                    const SizedBox(height: 16),
-                    _buildPasswordField(controller: confirmPasswordController, label: 'Confirm Password', obscure: _obscureConfirmPassword, toggleVisibility: () {
-                      setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
-                    }),
-                    const SizedBox(height: 28),
-                    SizedBox(
-                      width: 200,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const Calendar(),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: const Text('Sign Up', style: TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.bold,
-                        )),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Already have an account ? ',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFFF5F5F5), // Your highlight text color
-                            shadows: [
-                              Shadow(
-                                offset: Offset(3.0, 3.0),
-                                blurRadius: 3.0,
-                                color: Colors.black.withOpacity(0.4),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        GestureDetector(
-                          onTap: ()
-                          {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const Login()),
-                            );
+          // Service type checkboxes
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10.r),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.blue.shade100.withOpacity(0.2),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+            ),
+            padding: EdgeInsets.all(12.w),
+            child: Wrap(
+              spacing: 16.w,
+              runSpacing: 8.h,
+              children: [
+                _buildCheckbox("Shop", "shop"),
+                _buildCheckbox("Shop At Home", "home"),
+                _buildCheckbox("Onsite", "onsite"),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+
+          // Personal info
+          Row(
+            children: [
+              Expanded(
+                child: _buildOutlinedField(
+                  label: "First Name", 
+                  controller: firstNameCtrl,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'First name is required';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildOutlinedField(
+                  label: "Last Name", 
+                  controller: lastNameCtrl,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Last name is required';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildOutlinedField(
+                          label: "Phone", 
+                          controller: phoneCtrl, 
+                          keyboardType: TextInputType.phone,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Phone number is required';
+                            }
+                            if (!RegExp(r'^[0-9]{10,15}$').hasMatch(value)) {
+                              return 'Enter a valid phone number';
+                            }
+                            return null;
                           },
-                          child:  Text("Log in", style: TextStyle(
-                            fontSize: 19,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue, // Your highlight text color
-                            shadows: [
-                          Shadow(
-                            blurRadius: 3.0,
-                            color: Colors.black.withOpacity(0.50),
-                            offset: Offset(1.5, 1.5),
-                          ),
-                        ],
-                          ),
-                          ),
                         ),
-                      ],
+          const SizedBox(height: 16),
+          _buildOutlinedField(
+                          label: "Email", 
+                          controller: emailCtrl, 
+                          keyboardType: TextInputType.emailAddress,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Email is required';
+                            }
+                            if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                              return 'Enter a valid email address';
+                            }
+                            return null;
+                          },
+                        ),
+                          const SizedBox(height: 16),
+                          _buildOutlinedField(
+                          label: "Password", 
+                          controller: passwordCtrl, 
+                          obscureText: true,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Password is required';
+                            }
+                            if (value.length < 6) {
+                              return 'Password must be at least 6 characters';
+                            }
+                            return null;
+                          },
+                        ),
+          const SizedBox(height: 32),
+
+          // Optional fields
+          Row(
+            children: [
+              Expanded(
+                child: _buildOutlinedField(
+                  label: "https://example.com",
+                  controller: websiteCtrl,
+                  hint: "Website (optional)",
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildOutlinedField(
+                  label: "Enter referral code if any",
+                  controller: referralCtrl,
+                  hint: "Referral code (optional)",
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 48),
+
+          // Next button
+          Center(
+            child: ElevatedButton(
+              onPressed: () {
+                _pageController.nextPage(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.ease,
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue.shade700,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(vertical: 5.h),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10.r),
+                ),
+                elevation: 1,
+                textStyle: GoogleFonts.poppins(
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+                minimumSize: Size(200.w, 35.h),
+              ),
+              child: Text('Continue'),
+            ),
+          ),
+          SizedBox(height: 30.h),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLocationSetupPage() {
+    return SingleChildScrollView(
+      padding: EdgeInsets.symmetric(horizontal: 32.w),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(height: 20.h),
+            // Back button for second step
+            Align(
+              alignment: Alignment.centerLeft,
+              child: IconButton(
+                icon: Icon(Icons.arrow_back, color: Colors.blue.shade700, size: 24.sp),
+                onPressed: () {
+                  _pageController.previousPage(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.ease,
+                  );
+                },
+              ),
+            ),
+            SizedBox(height: 10.h),
+            Text(
+              "Where is your business located?",
+              style: GoogleFonts.poppins(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.bold,
+                color: Colors.blue.shade700,
+                shadows: [
+                  Shadow(
+                    blurRadius: 3.0,
+                    color: Colors.black.withOpacity(0.25),
+                    offset: Offset(1.5, 1.5),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 6.h),
+            Text(
+              "Set your business location and address details.",
+              style: GoogleFonts.poppins(
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w500,
+                color: Colors.black,
+              ),
+            ),
+            SizedBox(height: 30.h),
+            // Map picker
+            const Text("Location", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: () async {
+                final result = await showDialog<Map<String, dynamic>>(
+                  context: context,
+                  builder: (_) => const LocationPickerDialog(),
+                );
+                if (result != null) {
+                  setState(() {
+                    selectedLat = result['lat'];
+                    selectedLng = result['lng'];
+                    addressCtrl.text = result['address'];
+                  });
+                }
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.location_on, color: Colors.purple),
+                    const SizedBox(width: 12),
+                    Text(
+                      addressCtrl.text.isEmpty ? "Choose from Map" : addressCtrl.text,
+                      style: TextStyle(color: addressCtrl.text.isEmpty ? Colors.grey.shade600 : Colors.black),
                     ),
-                    const SizedBox(height: 30),
                   ],
                 ),
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 32),
+            // Full Address
+            _buildOutlinedField(
+              label: "Full Address", 
+              controller: addressCtrl,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Full address is required';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 24),
+            // State, City, Pincode
+            Row(
+              children: [
+                Expanded(
+                  child: _buildOutlinedField(
+                    label: "State", 
+                    controller: stateCtrl,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'State is required';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildOutlinedField(
+                    label: "City", 
+                    controller: cityCtrl,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'City is required';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  flex: 1,
+                  child: _buildOutlinedField(
+                    label: "Pincode", 
+                    controller: pincodeCtrl,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Pincode is required';
+                      }
+                      if (!RegExp(r'^[0-9]{6}$').hasMatch(value)) {
+                        return 'Enter a valid 6-digit pincode';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 60),
+            // Submit button
+            Center(
+              child: ElevatedButton(
+                onPressed: isLoading ? null : _registerUser,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue.shade700,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(vertical: 5.h),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10.r),
+                  ),
+                  elevation: 1,
+                  textStyle: GoogleFonts.poppins(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  minimumSize: Size(200.w, 35.h),
+                ),
+                child: isLoading
+                    ? SizedBox(
+                        height: 18.h,
+                        width: 18.w,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.w,
+                        ),
+                      )
+                    : const Text('Complete Registration'),
+              ),
+            ),
+            SizedBox(height: 30.h),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildTextField({
-    required TextEditingController controller,
+  Widget _buildOutlinedField({
     required String label,
-    TextInputType type = TextInputType.text,
+    required TextEditingController controller,
+    TextInputType keyboardType = TextInputType.text,
     bool obscureText = false,
+    bool readOnly = false,
+    int maxLines = 1,
+    String? hint,
     Widget? suffixIcon,
+    String? Function(String?)? validator,
   }) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(10.r),
         boxShadow: [
           BoxShadow(
             color: Colors.blue.shade100.withOpacity(0.2),
@@ -372,118 +650,91 @@ class _Signup extends State<Signup> {
           ),
         ],
       ),
-      child: TextField(
+      child: TextFormField(
         controller: controller,
+        keyboardType: keyboardType,
         obscureText: obscureText,
-        keyboardType: type,
-        style: const TextStyle(fontSize: 14, color: Colors.black87),
+        readOnly: readOnly,
+        maxLines: maxLines,
+        validator: validator,
+        style: GoogleFonts.poppins(fontSize: 10.sp),
         decoration: InputDecoration(
           label: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 1.h),
             decoration: BoxDecoration(
               color: Colors.blue.shade100,
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(5.r),
             ),
             child: Text(
               label,
-              style: TextStyle(
+              style: GoogleFonts.poppins(
                 color: Colors.blue.shade700,
-                fontSize: 10,
+                fontSize: 9.sp,
                 fontWeight: FontWeight.w600,
               ),
             ),
           ),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(10.r),
             borderSide: BorderSide.none,
           ),
           filled: true,
           fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          contentPadding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
           suffixIcon: suffixIcon,
+          hintText: hint,
         ),
       ),
     );
   }
 
-  Widget _buildPasswordField({required TextEditingController controller, required String label, required bool obscure, required VoidCallback toggleVisibility}) {
-    return _buildTextField(
-      controller: controller,
-      label: label,
-      obscureText: obscure,
-      suffixIcon: IconButton(
-        icon: Icon(
-          obscure ? Icons.visibility : Icons.visibility_off,
-          color: Colors.blue.shade700,
-          size: 18,
+  Widget _buildCheckbox(String title, String value) {
+    bool checked = subCategories.contains(value);
+    return GestureDetector(
+      onTap: () => setState(() {
+        if (checked) {
+          subCategories.remove(value);
+        } else {
+          subCategories.add(value);
+        }
+      }),
+      child: Container(
+        decoration: BoxDecoration(
+          color: checked ? Colors.blue.shade100 : Colors.transparent,
+          borderRadius: BorderRadius.circular(6.r),
         ),
-        onPressed: toggleVisibility,
-      ),
-    );
-  }
-
-  Widget _buildDropdown({required String label, required String value, required List<String> items, required ValueChanged<String?> onChanged}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.blue.shade100.withOpacity(0.2),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: DropdownButtonFormField<String>(
-        value: items.contains(value) ? value : items.first,
-        items: items.map((item) => DropdownMenuItem<String>(
-          value: item,
-          child: Text(
-            item,
-            style: const TextStyle(fontSize: 14, color: Colors.black87),
-            overflow: TextOverflow.ellipsis,
-          ),
-        )).toList(),
-        onChanged: onChanged,
-        style: const TextStyle(fontSize: 14, color: Colors.black87),
-        decoration: InputDecoration(
-          label: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.blue.shade100,
-              borderRadius: BorderRadius.circular(6),
+        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Checkbox(
+              value: checked,
+              onChanged: (val) => setState(() {
+                if (val == true) {
+                  subCategories.add(value);
+                } else {
+                  subCategories.remove(value);
+                }
+              }),
+              activeColor: Colors.blue.shade700,
             ),
-            child: Text(
-              label,
-              style: TextStyle(
-                color: Colors.blue.shade700,
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
+            Text(
+              title, 
+              style: GoogleFonts.poppins(
+                fontSize: 10.sp,
+                fontWeight: FontWeight.w500,
               ),
             ),
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide.none,
-          ),
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-          isDense: true,
+          ],
         ),
-        icon: Icon(Icons.arrow_drop_down, color: Colors.blue[700]),
-        dropdownColor: Colors.white,
-        isExpanded: true,
       ),
     );
   }
-
 }
 
+// Keep your existing LocationPickerDialog (unchanged)
 class LocationPickerDialog extends StatefulWidget {
   const LocationPickerDialog({super.key});
-
   @override
   State<LocationPickerDialog> createState() => _LocationPickerDialogState();
 }
@@ -677,47 +928,71 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
       ),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      insetPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 24.h),
       elevation: 4,
       child: SingleChildScrollView(
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16.w),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
+              Text(
                 'Select Your Location',
-                style: TextStyle(
-                  fontSize: 18,
+                style: GoogleFonts.poppins(
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.bold,
-                  color: Colors.blue,
+                  color: Colors.blue.shade700,
+                  shadows: [
+                    Shadow(
+                      blurRadius: 3.0,
+                      color: Colors.black.withOpacity(0.25),
+                      offset: Offset(1.5, 1.5),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Search for a location',
-                  prefixIcon: const Icon(Icons.search),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() {});
-                          },
-                        )
-                      : null,
+              SizedBox(height: 12.h),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10.r),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.blue.shade100.withOpacity(0.2),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
                 ),
-                onSubmitted: (value) async {
-                  if (value.isEmpty) return;
+                child: TextField(
+                  controller: _searchController,
+                  style: GoogleFonts.poppins(fontSize: 10.sp),
+                  decoration: InputDecoration(
+                    hintText: 'Search for a location',
+                    hintStyle: GoogleFonts.poppins(fontSize: 10.sp),
+                    prefixIcon: Icon(Icons.search, size: 18.sp, color: Colors.blue.shade700),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.r),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: Icon(Icons.clear, size: 18.sp, color: Colors.blue.shade700),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {});
+                            },
+                          )
+                        : null,
+                  ),
+                  onSubmitted: (value) async {
+                    if (value.isEmpty) return;
                   
                   setState(() => _isLoading = true);
                   
@@ -777,27 +1052,32 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                   }
                 },
               ),
+            ),
               const SizedBox(height: 12),
               ElevatedButton.icon(
                 onPressed: _isLoading ? null : _getCurrentLocation,
                 icon: _isLoading 
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
+                    ? SizedBox(
+                        width: 20.w,
+                        height: 20.h,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
-                    : const Icon(Icons.my_location, size: 20),
-                label: const Text('Use Current Location'),
+                    : Icon(Icons.my_location, size: 20.sp),
+                label: Text('Use Current Location', style: GoogleFonts.poppins()),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
+                  backgroundColor: Colors.blue.shade700,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  textStyle: GoogleFonts.poppins(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16.h),
               Container(
                 height: 300,
                 decoration: BoxDecoration(
@@ -852,19 +1132,28 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Selected Location:',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.bold, 
+                        fontSize: 12.sp,
+                      ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4.h),
                     Text(
                       address.isNotEmpty ? address : 'Tap on the map to select a location',
-                      style: const TextStyle(fontSize: 13, color: Colors.black87),
+                      style: GoogleFonts.poppins(
+                        fontSize: 11.sp, 
+                        color: Colors.black87,
+                      ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4.h),
                     Text(
                       '${selectedLocation.latitude.toStringAsFixed(6)}, ${selectedLocation.longitude.toStringAsFixed(6)}',
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                      style: GoogleFonts.poppins(
+                        fontSize: 10.sp, 
+                        color: Colors.grey.shade700,
+                      ),
                     ),
                   ],
                 ),
@@ -875,16 +1164,32 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                 children: [
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text("CANCEL"),
+                    style: TextButton.styleFrom(
+                      textStyle: GoogleFonts.poppins(
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    child: Text(
+                      "CANCEL",
+                      style: GoogleFonts.poppins(
+                        color: Colors.blue.shade700,
+                      ),
+                    ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8.w),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
+                      backgroundColor: Colors.blue.shade700,
+                      foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(8.r),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                      textStyle: GoogleFonts.poppins(
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     onPressed: () {
                       Navigator.pop(context, {
@@ -893,7 +1198,12 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                         'address': address.isNotEmpty ? address : '${selectedLocation.latitude.toStringAsFixed(6)}, ${selectedLocation.longitude.toStringAsFixed(6)}',
                       });
                     },
-                    child: const Text("CONFIRM LOCATION", style: TextStyle(color: Colors.white)),
+                    child: Text(
+                      "CONFIRM LOCATION",
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -902,5 +1212,5 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
         ),
       ),
     );
-  }
+}
 }
