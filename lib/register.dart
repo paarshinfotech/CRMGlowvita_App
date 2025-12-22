@@ -1212,5 +1212,5 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
         ),
       ),
     );
-}
+  }
 }
