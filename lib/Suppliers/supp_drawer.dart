@@ -10,6 +10,7 @@ import 'supp_sales.dart';
 import 'supp_invoice_management.dart';
 import 'supp_shipping.dart';
 import 'supp_expenses.dart';
+import 'supp_settlement.dart';
 
 // Drawer implementation for the app
 class SupplierDrawer extends StatelessWidget {
@@ -462,6 +463,16 @@ class SupplierDrawer extends StatelessWidget {
                       isSelected: currentPage == 'Shipping',
                       onTap: () =>
                           _navigateTo(context, const SuppExpensesPage()),
+                      scale: scale,
+                      baseFontScale: baseFontScale,
+                    ),
+                    _buildMenuItem(
+                      context: context,
+                      icon: Icons.star_outlined,
+                      title: 'Settlement',
+                      isSelected: currentPage == 'Settlement',
+                      onTap: () =>
+                          _navigateTo(context, const SuppSettlementsPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),

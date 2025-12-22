@@ -259,23 +259,84 @@ class _LoginPageState extends State<Login> {
 
                         SizedBox(height: 24.h),
 
-                        // New to GlowVita? Join our platform
-                        TextButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const OnboardingRegisterPage()),
-                            );
-                          },
-                          child: Text(
-                            'New to GlowVita Salon? Join our platform',
-                            style: GoogleFonts.poppins(
-                              fontSize: 13.sp,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                              decoration: TextDecoration.underline,
-                            ),
+                        // Registration Options
+                        Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16.h),
+                          child: Row(
+                            children: [
+                              Expanded(child: Divider(color: Colors.white.withOpacity(0.5), thickness: 1)),
+                              Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 8.w),
+                                child: Text(
+                                  'Join our platform',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 12.sp,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                              Expanded(child: Divider(color: Colors.white.withOpacity(0.5), thickness: 1)),
+                            ],
                           ),
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 110.w,
+                              height: 35.h,
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => const RegisterPage(initialRole: 'vendor')),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom( 
+                                  backgroundColor: Colors.blue.shade700,
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.symmetric(vertical: 4.h, horizontal: 8.w),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(6.r),
+                                  ),
+                                  elevation: 2,
+                                  textStyle: GoogleFonts.poppins(
+                                    fontSize: 10.sp,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                child: const Text('Vendor', style: TextStyle(fontSize: 10)),
+                              ),
+                            ),
+                            SizedBox(width: 16.w),
+                            SizedBox(
+                              width: 110.w,
+                              height: 35.h,
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => const RegisterPage(initialRole: 'supplier')),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.purple.shade700,
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.symmetric(vertical: 4.h, horizontal: 8.w),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(6.r),
+                                  ),
+                                  elevation: 2,
+                                  textStyle: GoogleFonts.poppins(
+                                    fontSize: 10.sp,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                child: const Text('Supplier', style: TextStyle(fontSize: 10)),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
