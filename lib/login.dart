@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'calender.dart';
 import 'register.dart';
 import 'Suppliers/supp_dashboard.dart';
+import 'Suppliers/supp_register.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -50,6 +51,8 @@ class _LoginPageState extends State<Login> {
         await prefs.setString('user_id', data['user']['_id'] ?? '');
         await prefs.setString('user_data', jsonEncode(data['user']));
 
+        print('Access Token: ${data['access_token']}');
+        
         // Success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -317,7 +320,7 @@ class _LoginPageState extends State<Login> {
                                 onPressed: () {
                                   Navigator.push(
                                     context,
-                                    MaterialPageRoute(builder: (_) => const RegisterPage(initialRole: 'supplier')),
+                                    MaterialPageRoute(builder: (_) => const SupplierRegisterPage()),
                                   );
                                 },
                                 style: ElevatedButton.styleFrom(
