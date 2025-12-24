@@ -1,11 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
 import 'package:intl/intl.dart';
 
-class AddStaffDialog extends StatefulWidget {
-  final Map<String, dynamic>? existing;
+class AddStaffDialog extends StatefulWidget { 
+  final Map? existing; // raw API staff object for edit
 
   const AddStaffDialog({Key? key, this.existing}) : super(key: key);
 
@@ -13,7 +13,8 @@ class AddStaffDialog extends StatefulWidget {
   State<AddStaffDialog> createState() => _AddStaffDialogState();
 }
 
-class _AddStaffDialogState extends State<AddStaffDialog> {
+class _AddStaffDialogState extends State<AddStaffDialog>
+    with SingleTickerProviderStateMixin {
   // Personal
   final _firstName = TextEditingController();
   final _lastName = TextEditingController();
@@ -39,8 +40,8 @@ class _AddStaffDialogState extends State<AddStaffDialog> {
   final _ifsc = TextEditingController();
   final _upi = TextEditingController();
 
-  // Permissions
-  final Map<String, bool> _permissions = const {
+  // Permissions (display name -> checked)
+  final Map<String, bool> _permissions = {
     'Dashboard': false,
     'Staff': false,
     'Products': false,
@@ -58,9 +59,9 @@ class _AddStaffDialogState extends State<AddStaffDialog> {
     'Sales': false,
     'Settlements': false,
     'Marketing': false,
-  }.map((k, v) => MapEntry(k, v));
+  };
 
-  // Timing
+  // Timing controllers
   final Map<String, TextEditingController> _weeklyTiming = {
     'Mon': TextEditingController(),
     'Tue': TextEditingController(),
@@ -77,38 +78,150 @@ class _AddStaffDialogState extends State<AddStaffDialog> {
   TimeOfDay? _blockEnd;
   final _blockReason = TextEditingController();
 
-  String? _imagePath; // avatar
+  // Photo (either http url or local file path)
+  String? _imagePath;
 
+  // Form keys per tab
   final _personalFormKey = GlobalKey<FormState>();
   final _employmentFormKey = GlobalKey<FormState>();
   final _bankFormKey = GlobalKey<FormState>();
+  final _blockFormKey = GlobalKey<FormState>();
+
+  late final TabController _tabController;
+
+  // Mapping: Display permission -> API permission string
+  static const Map<String, String> displayToPerm = {
+    'Dashboard': 'DashboardPage',
+    'Calendar': 'CalendarPage',
+    'Appointments': 'AppointmentsPage',
+    'Staff': 'StaffPage',
+    'Products': 'ProductsPage',
+    'Orders': 'OrdersPage',
+    'Offers & Coupons': 'OffersAndCouponsPage',
+    'Notifications': 'NotificationsPage',
+    'Clients': 'ClientsPage',
+    'Marketplace': 'MarketplacePage',
+    'Shipping': 'ShippingPage',
+    'Referrals': 'ReferralsPage',
+    'Reports': 'ReportsPage',
+    'Services': 'ServicesPage',
+    'Sales': 'SalesPage',
+    'Settlements': 'SettlementsPage',
+    'Marketing': 'MarketingPage',
+  };
+
+  static const Map<String, String> dayAbbrToFull = {
+    'Mon': 'monday',
+    'Tue': 'tuesday',
+    'Wed': 'wednesday',
+    'Thu': 'thursday',
+    'Fri': 'friday',
+    'Sat': 'saturday',
+    'Sun': 'sunday',
+  };
+
+  static const Map<String, String> dayFullToAbbr = {
+    'monday': 'Mon',
+    'tuesday': 'Tue',
+    'wednesday': 'Wed',
+    'thursday': 'Thu',
+    'friday': 'Fri',
+    'saturday': 'Sat',
+    'sunday': 'Sun',
+  };
+
+  String _formatTime(TimeOfDay? time) {
+    if (time == null) return '';
+    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+  }
 
   @override
   void initState() {
     super.initState();
-    final m = widget.existing;
-    if (m != null) {
-      _firstName.text = m['firstName'] ?? '';
-      _lastName.text = m['lastName'] ?? '';
-      _position.text = m['position'] ?? m['role'] ?? '';
-      _mobile.text = m['mobile'] ?? m['phone'] ?? '';
-      _email.text = m['email'] ?? '';
-      _description.text = m['notes'] ?? '';
-      _accHolder.text = m['accountHolder'] ?? '';
-      _accNumber.text = m['accountNumber'] ?? '';
-      _bankName.text = m['bankName'] ?? '';
-      _ifsc.text = m['ifsc'] ?? '';
-      _upi.text = m['upi'] ?? '';
+    _tabController = TabController(length: 6, vsync: this);
+
+    if (widget.existing != null) {
+      final m = widget.existing!;
+
+      // Personal
+      final fullName = m['fullName'] ?? '';
+      final parts = fullName.toString().split(RegExp(r'\s+'));
+      _firstName.text = parts.isNotEmpty ? parts.first : '';
+      _lastName.text = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+      _position.text = m['position'] ?? '';
+      _mobile.text = m['mobileNo'] ?? '';
+      _email.text = m['emailAddress'] ?? '';
+      _description.text = m['description'] ?? '';
+
+      // Employment
       _salary.text = (m['salary'] ?? '').toString();
-      _experience.text = (m['experience'] ?? '').toString();
-      _clients.text = (m['clients'] ?? '').toString();
-      final img = (m['image'] ?? '').toString();
-      _imagePath = img.isNotEmpty ? img : null;
+      _experience.text = (m['yearOfExperience'] ?? '').toString();
+      _clients.text = (m['clientsServed'] ?? '').toString();
+      _commissionEnabled = m['commission'] == true;
+
+      if (m['startDate'] != null) _startDate = DateTime.tryParse(m['startDate'].toString());
+      if (m['endDate'] != null) _endDate = DateTime.tryParse(m['endDate'].toString());
+
+      // Bank
+      final bank = (m['bankDetails'] as Map?) ?? {};
+      _accHolder.text = (bank['accountHolderName'] ?? '').toString();
+      _accNumber.text = (bank['accountNumber'] ?? '').toString();
+      _bankName.text = (bank['bankName'] ?? '').toString();
+      _ifsc.text = (bank['ifscCode'] ?? '').toString();
+      _upi.text = (bank['upiId'] ?? '').toString();
+
+      // Permissions
+      final permList = (m['permissions'] as List?) ?? [];
+      final inverse = displayToPerm.map((k, v) => MapEntry(v, k));
+      for (final perm in permList) {
+        final displayName = inverse[perm];
+        if (displayName != null) _permissions[displayName] = true;
+      }
+
+      // Availability
+      for (final fullDay in dayFullToAbbr.keys) {
+        final abbr = dayFullToAbbr[fullDay]!;
+        final available = m['${fullDay}Available'] == true;
+        final slots = (m['${fullDay}Slots'] as List?) ?? [];
+        if (available && slots.isNotEmpty) {
+          final slot = (slots.first as Map?) ?? {};
+          final start = (slot['startTime'] ?? '10:00').toString();
+          final end = (slot['endTime'] ?? '19:00').toString();
+          _weeklyTiming[abbr]!.text = '$start - $end';
+        }
+      }
+
+      // Blocked Times
+      final blocked = (m['blockedTimes'] as List?) ?? [];
+      if (blocked.isNotEmpty) {
+        final b = (blocked.first as Map?) ?? {};
+        _blockDate = DateTime.tryParse((b['startDate'] ?? '').toString());
+
+        final startStr = b['startTime']?.toString();
+        final endStr = b['endTime']?.toString();
+        if (startStr != null && startStr.contains(':')) {
+          final sp = startStr.split(':');
+          _blockStart = TimeOfDay(hour: int.parse(sp[0]), minute: int.parse(sp[1]));
+        }
+        if (endStr != null && endStr.contains(':')) {
+          final ep = endStr.split(':');
+          _blockEnd = TimeOfDay(hour: int.parse(ep[0]), minute: int.parse(ep[1]));
+        }
+
+        _blockReason.text = (b['reason'] ?? '').toString();
+      }
+
+      // Photo
+      if (m['photo'] != null && m['photo'].toString().isNotEmpty) {
+        _imagePath = m['photo'].toString();
+      }
     }
   }
 
   @override
   void dispose() {
+    _tabController.dispose();
+
     _firstName.dispose();
     _lastName.dispose();
     _position.dispose();
@@ -117,845 +230,837 @@ class _AddStaffDialogState extends State<AddStaffDialog> {
     _password.dispose();
     _confirmPassword.dispose();
     _description.dispose();
+
     _salary.dispose();
     _experience.dispose();
     _clients.dispose();
+
     _accHolder.dispose();
     _accNumber.dispose();
     _bankName.dispose();
     _ifsc.dispose();
     _upi.dispose();
+
     _blockReason.dispose();
-    for (final c in _weeklyTiming.values) {
-      c.dispose();
-    }
+    _weeklyTiming.values.forEach((c) => c.dispose());
+
     super.dispose();
   }
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final XFile? file = await picker.pickImage(source: ImageSource.gallery);
-    if (file != null) {
-      setState(() => _imagePath = file.path);
-    }
+    if (file != null) setState(() => _imagePath = file.path);
   }
 
   Future<void> _pickDate({required bool start}) async {
-    final now = DateTime.now();
-    final d = await showDatePicker(
+    final picked = await showDatePicker(
       context: context,
-      initialDate: start ? (_startDate ?? now) : (_endDate ?? now),
+      initialDate: DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            datePickerTheme: DatePickerThemeData(
-              backgroundColor: Colors.white,
-              headerBackgroundColor: Colors.blue,
-              headerForegroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: Colors.grey.shade300, width: 1),
-              ),
-              dayStyle: GoogleFonts.poppins(fontSize: 14),
-              yearStyle: GoogleFonts.poppins(fontSize: 16),
-            ),
-            colorScheme: const ColorScheme.light(
-              primary: Colors.blue,
-              onPrimary: Colors.white,
-              surface: Colors.white,
-              onSurface: Colors.black,
-            ),
-          ),
-          child: child!,
-        );
-      },
     );
-    if (d != null) {
+    if (picked != null) {
       setState(() {
-        if (start) {
-          _startDate = d;
-        } else {
-          _endDate = d;
-        }
+        if (start) _startDate = picked;
+        else _endDate = picked;
       });
     }
   }
 
   Future<void> _pickBlockDate() async {
-    final d = await showDatePicker(
+    final picked = await showDatePicker(
       context: context,
       initialDate: _blockDate ?? DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            datePickerTheme: DatePickerThemeData(
-              backgroundColor: Colors.white,
-              headerBackgroundColor: Colors.blue,
-              headerForegroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: Colors.grey.shade300, width: 1),
-              ),
-              dayStyle: GoogleFonts.poppins(fontSize: 14),
-              yearStyle: GoogleFonts.poppins(fontSize: 16),
-            ),
-            colorScheme: const ColorScheme.light(
-              primary: Colors.blue,
-              onPrimary: Colors.white,
-              surface: Colors.white,
-              onSurface: Colors.black,
-            ),
-          ),
-          child: child!,
-        );
-      },
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
     );
-    if (d != null) setState(() => _blockDate = d);
+    if (picked != null) setState(() => _blockDate = picked);
   }
 
-  Future<void> _pickBlockTime(bool start) async {
-    final t = await showTimePicker(context: context, initialTime: TimeOfDay.now());
-    if (t != null) {
+  Future<void> _pickBlockTime(bool isStart) async {
+    final picked = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+    if (picked != null) {
       setState(() {
-        if (start) {
-          _blockStart = t;
-        } else {
-          _blockEnd = t;
-        }
+        if (isStart) _blockStart = picked;
+        else _blockEnd = picked;
       });
     }
   }
 
-  void _nextTab(BuildContext context) {
-    final tabController = DefaultTabController.of(context);
-    if (tabController.index < 5) {
-      tabController.animateTo(tabController.index + 1);
+  void _nextTab() {
+    if (_tabController.index < _tabController.length - 1) {
+      _tabController.animateTo(_tabController.index + 1);
     }
   }
 
-  void _prevTab(BuildContext context) {
-    final tabController = DefaultTabController.of(context);
-    if (tabController.index > 0) {
-      tabController.animateTo(tabController.index - 1);
+  void _prevTab() {
+    if (_tabController.index > 0) {
+      _tabController.animateTo(_tabController.index - 1);
     }
+  }
+
+  bool _validateAll() {
+    final personalOk = _personalFormKey.currentState?.validate() ?? true;
+    final employmentOk = _employmentFormKey.currentState?.validate() ?? true;
+    final bankOk = _bankFormKey.currentState?.validate() ?? true;
+    final blockOk = _blockFormKey.currentState?.validate() ?? true;
+
+    if (!personalOk) {
+      _tabController.animateTo(0);
+      return false;
+    }
+    if (!employmentOk) {
+      _tabController.animateTo(1);
+      return false;
+    }
+    if (!bankOk) {
+      _tabController.animateTo(2);
+      return false;
+    }
+    if (!blockOk) {
+      _tabController.animateTo(5);
+      return false;
+    }
+
+    // Extra password checks for new staff
+    if (widget.existing == null) {
+      if (_password.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Password is required for new staff'), backgroundColor: Colors.red),
+        );
+        _tabController.animateTo(0);
+        return false;
+      }
+      if (_password.text.trim().length < 6) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Password must be at least 6 characters'), backgroundColor: Colors.red),
+        );
+        _tabController.animateTo(0);
+        return false;
+      }
+      if (_confirmPassword.text != _password.text) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Passwords do not match'), backgroundColor: Colors.red),
+        );
+        _tabController.animateTo(0);
+        return false;
+      }
+    } else {
+      // On edit, password is optional; if user enters it, validate it
+      if (_password.text.trim().isNotEmpty) {
+        if (_password.text.trim().length < 6) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Password must be at least 6 characters'), backgroundColor: Colors.red),
+          );
+          _tabController.animateTo(0);
+          return false;
+        }
+        if (_confirmPassword.text != _password.text) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Passwords do not match'), backgroundColor: Colors.red),
+          );
+          _tabController.animateTo(0);
+          return false;
+        }
+      }
+    }
+
+    return true;
   }
 
   void _save() {
-    if (!_personalFormKey.currentState!.validate()) {
-      // Navigate to Personal tab if validation fails
-      final tabController = DefaultTabController.maybeOf(context);
-      if (tabController != null) {
-        tabController.animateTo(0);
-      }
-      return;
+    if (!_validateAll()) return;
+
+    final fullName = '${_firstName.text.trim()} ${_lastName.text.trim()}'.trim();
+
+    // Permissions -> API list
+    final List<String> permissions = _permissions.entries
+    .where((e) => e.value)
+    .map((e) => displayToPerm[e.key]!)
+    .toList();
+    
+
+    // Availability format
+    final Map<String, dynamic> availability = {};
+    _weeklyTiming.forEach((abbr, controller) {
+      final text = controller.text.trim();
+      if (text.isEmpty) return;
+      final parts = text.split(' - ');
+      if (parts.length != 2) return;
+
+      final fullDay = dayAbbrToFull[abbr]!;
+      availability[fullDay] = {
+        "available": true,
+        "slots": [
+          {"startTime": parts[0].trim(), "endTime": parts[1].trim()}
+        ]
+      };
+    });
+
+    // Blocked times
+    final List<Map<String, dynamic>> blockedTimes = [];
+    if (_blockDate != null &&
+        _blockStart != null &&
+        _blockEnd != null &&
+        _blockReason.text.trim().isNotEmpty) {
+      blockedTimes.add({
+        'startDate': DateFormat('yyyy-MM-dd').format(_blockDate!),
+        'endDate': DateFormat('yyyy-MM-dd').format(_blockDate!),
+        'startTime': _formatTime(_blockStart),
+        'endTime': _formatTime(_blockEnd),
+        'reason': _blockReason.text.trim(),
+      });
     }
 
-    final id = widget.existing != null
-        ? (widget.existing!['id'] ?? DateTime.now().millisecondsSinceEpoch.toString())
-        : DateTime.now().millisecondsSinceEpoch.toString();
-
-    final result = <String, dynamic>{
-      'id': id,
-      'firstName': _firstName.text.trim(),
-      'lastName': _lastName.text.trim(),
-      'role': _position.text.trim(),
-      'position': _position.text.trim(),
-      'notes': _description.text.trim(),
-      'phone': _mobile.text.trim(),
-      'mobile': _mobile.text.trim(),
-      'email': _email.text.trim(),
-      'accountHolder': _accHolder.text.trim(),
-      'accountNumber': _accNumber.text.trim(),
-      'bankName': _bankName.text.trim(),
-      'ifsc': _ifsc.text.trim(),
-      'upi': _upi.text.trim(),
-      'salary': _salary.text.trim(),
-      'joiningDate': _startDate != null ? DateFormat('dd/MM/yyyy').format(_startDate!) : '',
-      'commission': _commissionEnabled ? 'enabled' : 'disabled',
-      'experience': _experience.text.trim(),
-      'clients': _clients.text.trim(),
-      'image': _imagePath ?? '',
-      'status': widget.existing != null ? (widget.existing!['status'] ?? 'Active') : 'Active',
-      'permissions': Map<String, bool>.from(_permissions),
-      'timing': _weeklyTiming.map((k, v) => MapEntry(k, v.text)),
-      'blockTime': {
-        'date': _blockDate != null ? DateFormat('dd/MM/yyyy').format(_blockDate!) : '',
-        'start': _blockStart?.format(context) ?? '',
-        'end': _blockEnd?.format(context) ?? '',
-        'reason': _blockReason.text.trim(),
-      },
+    // Bank details
+    final Map<String, dynamic> bankDetails = {
+      "accountHolderName": _accHolder.text.trim(),
+      "accountNumber": _accNumber.text.trim(),
+      "bankName": _bankName.text.trim(),
+      "ifscCode": _ifsc.text.trim(),
+      "upiId": _upi.text.trim(),
     };
+
+    // Numeric fields
+    final int salary = int.tryParse(_salary.text.trim()) ?? 0;
+    final int yearOfExperience = int.tryParse(_experience.text.trim()) ?? 0;
+    final int clientsServed = int.tryParse(_clients.text.trim()) ?? 0;
+
+    // Dates
+    final String? startDate = _startDate != null ? DateFormat('yyyy-MM-dd').format(_startDate!) : null;
+    final String? endDate = _endDate != null ? DateFormat('yyyy-MM-dd').format(_endDate!) : null;
+
+    // Password (optional on edit)
+    String? password;
+    if (widget.existing == null) {
+      password = _password.text.trim();
+    } else {
+      if (_password.text.trim().isNotEmpty) password = _password.text.trim();
+    }
+
+    final Map<String, dynamic> result = { 
+      'fullName': fullName.isEmpty ? 'Unnamed Staff' : fullName,
+      'position': _position.text.trim(),
+      'mobileNo': _mobile.text.trim(),
+      'emailAddress': _email.text.trim(),
+      'description': _description.text.trim(),
+      'salary': salary,
+      if (startDate != null) 'startDate': startDate,
+      if (endDate != null) 'endDate': endDate,
+      'yearOfExperience': yearOfExperience,
+      'clientsServed': clientsServed,
+      'commission': _commissionEnabled,
+      'permissions': permissions,
+      'permission': permissions,
+      'availability': availability,
+      'blockedTimes': blockedTimes,
+      'bankDetails': bankDetails,
+      'userType': 'staff',
+      if (password != null) 'password': password,
+
+      // IMPORTANT: this is only useful if backend accepts string photo in JSON
+      // If imagePath is local file path, backend won't understand unless you upload it separately.
+      if (_imagePath != null) 'photo': _imagePath,
+    };
+
+    // keep id for edit
+    if (widget.existing != null) {
+      result['id'] = widget.existing!['_id'];
+    }
 
     Navigator.of(context).pop(result);
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context).copyWith(
-      dialogBackgroundColor: Colors.white,
-      inputDecorationTheme: const InputDecorationTheme(
-        isDense: true,
-        border: OutlineInputBorder(),
-        contentPadding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
-      ),
-      textTheme: GoogleFonts.poppinsTextTheme(Theme.of(context).textTheme).apply(fontSizeFactor: 0.95),
-    );
-
     final screenW = MediaQuery.of(context).size.width;
-    final screenH = MediaQuery.of(context).size.height;
-    final dialogW = screenW < 960.0 ? screenW - 32.0 : 920.0;
-    final dialogH = screenH < 700.0 ? screenH - 48.0 : 680.0;
+    final dialogW = screenW < 960 ? screenW - 32 : 920.0;
+    final dialogH = MediaQuery.of(context).size.height * 0.85;
 
-    return Theme(
-      data: theme,
-      child: Dialog(
-        insetPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
-        child: SizedBox(
-          width: dialogW,
-          height: dialogH,
-          child: DefaultTabController(
-            length: 6,
-            initialIndex: 0,
-            child: Column(
-              children: [
-                // Header
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[50],
-                    border: Border(bottom: BorderSide(color: Colors.grey.shade200, width: 1.0)),
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      child: SizedBox(
+        width: dialogW,
+        height: dialogH,
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    widget.existing == null ? 'Add New Staff' : 'Edit Staff',
+                    style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600),
                   ),
-                  child: Row(
-                    children: [
-                      Text(
-                        widget.existing == null ? 'Add New Staff Member' : 'Edit Staff Member',
-                        style: GoogleFonts.poppins(fontSize: 16.0, fontWeight: FontWeight.w600),
-                      ),
-                      const Spacer(),
-                      IconButton(onPressed: () => Navigator.of(context).pop(), icon: const Icon(Icons.close)),
-                    ],
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
                   ),
-                ),
+                ],
+              ),
+            ),
 
-                // Tabs
-                Material(
-                  color: Colors.white,
-                  child: const TabBar(
-                    isScrollable: true,
-                    tabs: [
-                      Tab(text: 'Personal'),
-                      Tab(text: 'Employment'),
-                      Tab(text: 'Bank Details'),
-                      Tab(text: 'Permissions'),
-                      Tab(text: 'Timing'),
-                      Tab(text: 'Block Time'),
-                    ],
-                  ),
-                ),
-
-                // Content with white background
-                Expanded(
-                  child: Container(
-                    color: Colors.white,
-                    child: TabBarView(
-                      physics: const NeverScrollableScrollPhysics(),
-                      children: [
-                        // Personal Tab
-                        _buildPersonalTab(),
-                        // Employment Tab
-                        _buildEmploymentTab(),
-                        // Bank Details Tab
-                        _buildBankTab(),
-                        // Permissions Tab
-                        _buildPermissionsTab(),
-                        // Timing Tab
-                        _buildTimingTab(),
-                        // Block Time Tab
-                        _buildBlockTimeTab(),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // Footer
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[50],
-                    border: Border(top: BorderSide(color: Colors.grey.shade200, width: 1.0)),
-                  ),
-                  child: Builder(
-                    builder: (BuildContext footerContext) {
-                      return Row(
-                        children: [
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            child: const Text('Cancel'),
-                          ),
-                          const Spacer(),
-                          TextButton(
-                            onPressed: () => _prevTab(footerContext),
-                            child: const Text('Previous'),
-                          ),
-                          const SizedBox(width: 8.0),
-                          TextButton(
-                            onPressed: () => _nextTab(footerContext),
-                            child: const Text('Next'),
-                          ),
-                          const SizedBox(width: 16.0),
-                          ElevatedButton(
-                            onPressed: _save,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                            ),
-                            child: const Text('Save'),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
+            // Tabs
+            TabBar(
+              controller: _tabController,
+              isScrollable: true,
+              tabs: const [
+                Tab(text: 'Personal'),
+                Tab(text: 'Employment'),
+                Tab(text: 'Bank Details'),
+                Tab(text: 'Permissions'),
+                Tab(text: 'Timing'),
+                Tab(text: 'Block Time'),
               ],
             ),
-          ),
+
+            // Content
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildPersonalTab(),
+                  _buildEmploymentTab(),
+                  _buildBankTab(),
+                  _buildPermissionsTab(),
+                  _buildTimingTab(),
+                  _buildBlockTimeTab(),
+                ],
+              ),
+            ),
+
+            // Footer
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                border: Border(top: BorderSide(color: Colors.grey.shade200)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                  Row(
+                    children: [
+                      TextButton(onPressed: _prevTab, child: const Text('Previous')),
+                      const SizedBox(width: 8),
+                      TextButton(onPressed: _nextTab, child: const Text('Next')),
+                      const SizedBox(width: 16),
+                      ElevatedButton(onPressed: _save, child: const Text('Save')),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildPersonalTab() {
-    return Container(
-      color: Colors.white,
+    return Form(
+      key: _personalFormKey,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _personalFormKey,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final fieldWidth = constraints.maxWidth > 900 ? 420.0 : (constraints.maxWidth - 32) / 2;
-              return Wrap(
-                spacing: 16.0,
-                runSpacing: 12.0,
-                children: [
-                  _Labeled(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: _labeled(
                     'First Name',
-                    field: TextFormField(
+                    TextFormField(
                       controller: _firstName,
-                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter first name' : null,
-                    ),
-                    width: fieldWidth,
-                  ),
-                  _Labeled('Last Name', field: TextFormField(controller: _lastName), width: fieldWidth),
-                  _Labeled('Position', field: TextFormField(controller: _position), width: fieldWidth),
-                  _Labeled(
-                    'Mobile Number',
-                    field: TextFormField(controller: _mobile, keyboardType: TextInputType.phone),
-                    width: fieldWidth,
-                  ),
-                  _Labeled(
-                    'Email Address',
-                    field: TextFormField(controller: _email, keyboardType: TextInputType.emailAddress),
-                    width: fieldWidth,
-                  ),
-                  _Labeled(
-                    'Password',
-                    field: TextFormField(controller: _password, obscureText: true),
-                    width: fieldWidth,
-                  ),
-                  _Labeled(
-                    'Confirm Password',
-                    field: TextFormField(
-                      controller: _confirmPassword,
-                      obscureText: true,
-                      validator: (v) {
-                        if (_password.text.isNotEmpty && v != _password.text) {
-                          return 'Passwords do not match';
-                        }
-                        return null;
-                      },
-                    ),
-                    width: fieldWidth,
-                  ),
-                  SizedBox(
-                    width: constraints.maxWidth,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Photo', style: GoogleFonts.poppins(fontSize: 12.0, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 8.0),
-                        Row(
-                          children: [
-                            _imagePath != null && _imagePath!.isNotEmpty
-                                ? CircleAvatar(radius: 28.0, backgroundImage: FileImage(File(_imagePath!)))
-                                : const CircleAvatar(radius: 28.0, child: Icon(Icons.person)),
-                            const SizedBox(width: 12.0),
-                            OutlinedButton.icon(
-                              onPressed: _pickImage,
-                              icon: const Icon(Icons.photo_library_outlined, size: 18.0),
-                              label: const Text('Choose Image'),
-                            ),
-                            if (_imagePath != null && _imagePath!.isNotEmpty) ...[
-                              const SizedBox(width: 8.0),
-                              TextButton.icon(
-                                onPressed: () => setState(() => _imagePath = null),
-                                icon: const Icon(Icons.close),
-                                label: const Text('Remove'),
-                              ),
-                            ],
-                          ],
-                        )
-                      ],
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'First name is required' : null,
                     ),
                   ),
-                  SizedBox(
-                    width: constraints.maxWidth,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Description', style: GoogleFonts.poppins(fontSize: 12.0, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 6.0),
-                        TextFormField(
-                          controller: _description,
-                          maxLines: 3,
-                          decoration: const InputDecoration(hintText: 'Enter staff description'),
-                        ),
-                      ],
+                ),
+                const SizedBox(width: 16),
+                Expanded(child: _labeled('Last Name', TextFormField(controller: _lastName))),
+              ],
+            ),
+            _labeled(
+              'Position',
+              TextFormField(
+                controller: _position,
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Position is required' : null,
+              ),
+            ),
+            _labeled(
+              'Mobile Number',
+              TextFormField(
+                controller: _mobile,
+                keyboardType: TextInputType.phone,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Mobile number is required';
+                  if (v.trim().length < 10) return 'Enter a valid mobile number';
+                  return null;
+                },
+              ),
+            ),
+            _labeled(
+              'Email Address',
+              TextFormField(
+                controller: _email,
+                keyboardType: TextInputType.emailAddress,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Email is required';
+                  final ok = RegExp(r'^[\w\-.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v.trim());
+                  if (!ok) return 'Enter a valid email address';
+                  return null;
+                },
+              ),
+            ),
+            // Password always shown; on edit it's optional
+            _labeled(
+              'Password ${widget.existing == null ? "(Required)" : "(Optional)"}',
+              TextFormField(
+                controller: _password,
+                obscureText: true,
+                validator: (v) {
+                  if (widget.existing == null) {
+                    if (v == null || v.trim().isEmpty) return 'Password is required';
+                    if (v.trim().length < 6) return 'Password must be at least 6 characters';
+                  } else {
+                    if (v != null && v.trim().isNotEmpty && v.trim().length < 6) {
+                      return 'Password must be at least 6 characters';
+                    }
+                  }
+                  return null;
+                },
+              ),
+            ),
+            _labeled(
+              'Confirm Password ${widget.existing == null ? "(Required)" : "(If changing password)"}',
+              TextFormField(
+                controller: _confirmPassword,
+                obscureText: true,
+                validator: (v) {
+                  if (widget.existing == null) {
+                    if (v == null || v.isEmpty) return 'Confirm password is required';
+                    if (v != _password.text) return 'Passwords do not match';
+                  } else {
+                    if (_password.text.trim().isNotEmpty) {
+                      if (v != _password.text) return 'Passwords do not match';
+                    }
+                  }
+                  return null;
+                },
+              ),
+            ),
+            _labeled('Description', TextFormField(controller: _description, maxLines: 3)),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 40,
+                  backgroundImage: _imagePath != null
+                      ? (_imagePath!.startsWith('http')
+                          ? NetworkImage(_imagePath!)
+                          : FileImage(File(_imagePath!)) as ImageProvider)
+                      : null,
+                  child: _imagePath == null ? const Icon(Icons.person, size: 40) : null,
+                ),
+                const SizedBox(width: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: _pickImage,
+                      icon: const Icon(Icons.photo),
+                      label: const Text('Upload Photo'),
                     ),
-                  ),
-                ],
-              );
-            },
-          ),
+                    if (_imagePath != null)
+                      TextButton.icon(
+                        onPressed: () => setState(() => _imagePath = null),
+                        icon: const Icon(Icons.delete),
+                        label: const Text('Remove'),
+                      ),
+                  ],
+                )
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildEmploymentTab() {
-    return Container(
-      color: Colors.white,
+    return Form(
+      key: _employmentFormKey,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _employmentFormKey,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final fieldWidth = constraints.maxWidth > 900 ? 420.0 : (constraints.maxWidth - 32) / 2;
-              return Wrap(
-                spacing: 16.0,
-                runSpacing: 12.0,
-                children: [
-                  _Labeled(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: _labeled(
                     'Salary',
-                    field: TextFormField(controller: _salary, keyboardType: TextInputType.number),
-                    width: fieldWidth,
+                    TextFormField(
+                      controller: _salary,
+                      keyboardType: TextInputType.number,
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return null; // optional
+                        if (double.tryParse(v.trim()) == null) return 'Enter a valid salary';
+                        return null;
+                      },
+                    ),
                   ),
-                  _Labeled(
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _labeled(
                     'Years of Experience',
-                    field: TextFormField(controller: _experience, keyboardType: TextInputType.number),
-                    width: fieldWidth,
-                  ),
-                  SizedBox(
-                    width: fieldWidth,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Start Date', style: GoogleFonts.poppins(fontSize: 12.0, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 6.0),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                _startDate == null ? 'Not selected' : DateFormat('dd/MM/yyyy').format(_startDate!),
-                              ),
-                            ),
-                            const SizedBox(width: 8.0),
-                            OutlinedButton(onPressed: () => _pickDate(start: true), child: const Text('Pick')),
-                          ],
-                        ),
-                      ],
+                    TextFormField(
+                      controller: _experience,
+                      keyboardType: TextInputType.number,
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return null; // optional
+                        if (int.tryParse(v.trim()) == null) return 'Enter a valid number';
+                        return null;
+                      },
                     ),
                   ),
-                  SizedBox(
-                    width: fieldWidth,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('End Date (optional)', style: GoogleFonts.poppins(fontSize: 12.0, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 6.0),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                _endDate == null ? 'Not selected' : DateFormat('dd/MM/yyyy').format(_endDate!),
-                              ),
-                            ),
-                            const SizedBox(width: 8.0),
-                            OutlinedButton(onPressed: () => _pickDate(start: false), child: const Text('Pick')),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  _Labeled(
+                ),
+              ],
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: _labeled(
                     'Clients Served',
-                    field: TextFormField(controller: _clients, keyboardType: TextInputType.number),
-                    width: fieldWidth,
-                  ),
-                  SizedBox(
-                    width: constraints.maxWidth,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Commission', style: GoogleFonts.poppins(fontSize: 12.0, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 6.0),
-                        Row(
-                          children: [
-                            const Text('Enable Staff Commission'),
-                            const SizedBox(width: 12.0),
-                            Switch(
-                              value: _commissionEnabled,
-                              onChanged: (v) => setState(() => _commissionEnabled = v),
-                            ),
-                          ],
-                        ),
-                      ],
+                    TextFormField(
+                      controller: _clients,
+                      keyboardType: TextInputType.number,
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return null; // optional
+                        if (int.tryParse(v.trim()) == null) return 'Enter a valid number';
+                        return null;
+                      },
                     ),
                   ),
-                ],
-              );
-            },
-          ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Commission', style: TextStyle(fontWeight: FontWeight.w600)),
+                      Switch(
+                        value: _commissionEnabled,
+                        onChanged: (v) => setState(() => _commissionEnabled = v),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            Row(
+              children: [
+                Expanded(child: _DateField(label: 'Start Date', date: _startDate, onTap: () => _pickDate(start: true))),
+                const SizedBox(width: 16),
+                Expanded(child: _DateField(label: 'End Date (Optional)', date: _endDate, onTap: () => _pickDate(start: false))),
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildBankTab() {
-    return Container(
-      color: Colors.white,
+    return Form(
+      key: _bankFormKey,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _bankFormKey,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final fieldWidth = constraints.maxWidth > 900 ? 420.0 : (constraints.maxWidth - 32) / 2;
-              return Wrap(
-                spacing: 16.0,
-                runSpacing: 12.0,
-                children: [
-                  _Labeled('Account Holder Name', field: TextFormField(controller: _accHolder), width: fieldWidth),
-                  _Labeled(
-                    'Account Number',
-                    field: TextFormField(controller: _accNumber, keyboardType: TextInputType.number),
-                    width: fieldWidth,
-                  ),
-                  _Labeled('Bank Name', field: TextFormField(controller: _bankName), width: fieldWidth),
-                  _Labeled('IFSC Code', field: TextFormField(controller: _ifsc), width: fieldWidth),
-                  _Labeled('UPI ID', field: TextFormField(controller: _upi), width: fieldWidth),
-                ],
-              );
-            },
-          ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            _labeled(
+              'Account Holder Name',
+              TextFormField(
+                controller: _accHolder,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Account holder name is required';
+                  return null;
+                },
+              ),
+            ),
+            _labeled(
+              'Account Number',
+              TextFormField(
+                controller: _accNumber,
+                keyboardType: TextInputType.number,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Account number is required';
+                  if (int.tryParse(v.trim()) == null) return 'Enter a valid account number';
+                  return null;
+                },
+              ),
+            ),
+            _labeled(
+              'Bank Name',
+              TextFormField(
+                controller: _bankName,
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Bank name is required' : null,
+              ),
+            ),
+            _labeled(
+              'IFSC Code',
+              TextFormField(
+                controller: _ifsc,
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'IFSC code is required' : null,
+              ),
+            ),
+            _labeled(
+              'UPI ID',
+              TextFormField(
+                controller: _upi,
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'UPI ID is required' : null,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildPermissionsTab() {
-    return Container(
-      color: Colors.white,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Permissions', style: GoogleFonts.poppins(fontSize: 14.0, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 12.0),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final crossAxisCount = constraints.maxWidth > 800 ? 4 : (constraints.maxWidth > 600 ? 3 : 2);
-                return GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: crossAxisCount,
-                    childAspectRatio: 4.5,
-                    crossAxisSpacing: 12.0,
-                    mainAxisSpacing: 8.0,
-                  ),
-                  itemCount: _permissions.length,
-                  itemBuilder: (context, index) {
-                    final key = _permissions.keys.elementAt(index);
-                    return CheckboxListTile(
-                      value: _permissions[key],
-                      onChanged: (v) => setState(() => _permissions[key] = v ?? false),
-                      title: Text(key, style: GoogleFonts.poppins(fontSize: 11)),
-                      controlAffinity: ListTileControlAffinity.leading,
-                      contentPadding: EdgeInsets.zero,
-                      dense: true,
-                    );
-                  },
-                );
-              },
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Wrap(
+        spacing: 16,
+        runSpacing: 8,
+        children: _permissions.keys.map((key) {
+          return SizedBox(
+            width: 200,
+            child: CheckboxListTile(
+              title: Text(key),
+              value: _permissions[key],
+              onChanged: (v) => setState(() => _permissions[key] = v ?? false),
+              dense: true,
             ),
-          ],
-        ),
+          );
+        }).toList(),
       ),
     );
   }
 
   Widget _buildTimingTab() {
-    return Container(
-      color: Colors.white,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Weekly Working Hours', style: GoogleFonts.poppins(fontSize: 14.0, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 12.0),
-            Column(
-              children: _weeklyTiming.keys.map((day) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6.0),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 80.0,
-                        child: Text(day, style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500)),
-                      ),
-                      const SizedBox(width: 12.0),
-                      Expanded(
-                        child: _TimeRangePicker(
-                          day: day,
-                          onTimeSelected: (start, end) {
-                            _weeklyTiming[day]!.text = start != null && end != null
-                                ? '${start.format(context)} - ${end.format(context)}'
-                                : '';
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: _weeklyTiming.keys.map((day) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              children: [
+                SizedBox(width: 80, child: Text(day, style: const TextStyle(fontWeight: FontWeight.w600))),
+                const SizedBox(width: 16),
+                Expanded(child: _TimeRangePicker(day: day, controller: _weeklyTiming[day]!)),
+              ],
             ),
-          ],
-        ),
+          );
+        }).toList(),
       ),
     );
   }
 
   Widget _buildBlockTimeTab() {
-    return Container(
-      color: Colors.white,
+    return Form(
+      key: _blockFormKey,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Block Time', style: GoogleFonts.poppins(fontSize: 14.0, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 12.0),
+            _DateField(label: 'Block Date', date: _blockDate, onTap: _pickBlockDate),
+            const SizedBox(height: 16),
             Row(
               children: [
-                Expanded(
-                  child: Text(
-                    _blockDate == null ? 'No date chosen' : DateFormat('dd/MM/yyyy').format(_blockDate!),
-                  ),
-                ),
-                const SizedBox(width: 8.0),
-                OutlinedButton(onPressed: _pickBlockDate, child: const Text('Pick Date')),
+                Expanded(child: _TimeField(label: 'Start Time', time: _blockStart, onTap: () => _pickBlockTime(true))),
+                const SizedBox(width: 16),
+                Expanded(child: _TimeField(label: 'End Time', time: _blockEnd, onTap: () => _pickBlockTime(false))),
               ],
             ),
-            const SizedBox(height: 12.0),
-            Row(
-              children: [
-                Expanded(child: Text(_blockStart == null ? 'Start time' : _blockStart!.format(context))),
-                const SizedBox(width: 8.0),
-                OutlinedButton(onPressed: () => _pickBlockTime(true), child: const Text('Pick Start')),
-                const SizedBox(width: 16.0),
-                Expanded(child: Text(_blockEnd == null ? 'End time' : _blockEnd!.format(context))),
-                const SizedBox(width: 8.0),
-                OutlinedButton(onPressed: () => _pickBlockTime(false), child: const Text('Pick End')),
-              ],
-            ),
-            const SizedBox(height: 12.0),
-            TextFormField(
-              controller: _blockReason,
-              decoration: const InputDecoration(labelText: 'Reason'),
+            const SizedBox(height: 16),
+            _labeled(
+              'Reason',
+              TextFormField(
+                controller: _blockReason,
+                // Optional; if user fills time/date then reason should be required (handled in _save by checking trim)
+              ),
             ),
           ],
         ),
       ),
     );
   }
+
+  Widget _labeled(String label, Widget field) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+            const SizedBox(height: 6),
+            field,
+          ],
+        ),
+      );
 }
 
-class _Labeled extends StatelessWidget {
+class _DateField extends StatelessWidget {
   final String label;
-  final Widget field;
-  final double? width;
+  final DateTime? date;
+  final VoidCallback onTap;
 
-  const _Labeled(this.label, {required this.field, this.width, Key? key}) : super(key: key);
+  const _DateField({required this.label, required this.date, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: width ?? 420.0,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: GoogleFonts.poppins(fontSize: 12.0, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 6.0),
-          field,
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 6),
+        InkWell(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            decoration: BoxDecoration(border: Border.all(color: Colors.grey), borderRadius: BorderRadius.circular(8)),
+            child: Row(
+              children: [
+                Expanded(child: Text(date == null ? 'Not set' : DateFormat('dd/MM/yyyy').format(date!))),
+                const Icon(Icons.calendar_today),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TimeField extends StatelessWidget {
+  final String label;
+  final TimeOfDay? time;
+  final VoidCallback onTap;
+
+  const _TimeField({required this.label, required this.time, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 6),
+        InkWell(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            decoration: BoxDecoration(border: Border.all(color: Colors.grey), borderRadius: BorderRadius.circular(8)),
+            child: Row(
+              children: [
+                Expanded(child: Text(time?.format(context) ?? 'Not set')),
+                const Icon(Icons.access_time),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
 
 class _TimeRangePicker extends StatefulWidget {
   final String day;
-  final Function(TimeOfDay?, TimeOfDay?) onTimeSelected;
+  final TextEditingController controller;
 
-  const _TimeRangePicker({required this.day, required this.onTimeSelected, Key? key}) : super(key: key);
+  const _TimeRangePicker({required this.day, required this.controller});
 
   @override
   State<_TimeRangePicker> createState() => _TimeRangePickerState();
 }
 
 class _TimeRangePickerState extends State<_TimeRangePicker> {
-  TimeOfDay? _startTime;
-  TimeOfDay? _endTime;
+  TimeOfDay? start;
+  TimeOfDay? end;
 
-  Future<void> _pickTime(bool isStart) async {
-    final time = await showTimePicker(
-      context: context,
-      initialTime: (isStart ? _startTime : _endTime) ?? TimeOfDay.now(),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            timePickerTheme: TimePickerThemeData(
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: Colors.grey.shade300, width: 1),
-              ),
-              hourMinuteShape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: Colors.blue.shade100, width: 1),
-              ),
-              dayPeriodShape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: Colors.blue.shade100, width: 1),
-              ),
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (time != null) {
+  void _updateText() {
+    if (start != null && end != null) {
+      widget.controller.text = '${start!.format(context)} - ${end!.format(context)}';
+    } else {
+      widget.controller.text = '';
+    }
+  }
+
+  Future<void> _pick(bool isStart) async {
+    final picked = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+    if (picked != null) {
       setState(() {
-        if (isStart) {
-          _startTime = time;
-        } else {
-          _endTime = time;
-        }
+        if (isStart) start = picked;
+        else end = picked;
       });
-      widget.onTimeSelected(_startTime, _endTime);
+      _updateText();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: InkWell(
-              onTap: () => _pickTime(true),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.blue.shade200),
-                  borderRadius: BorderRadius.circular(6),
-                  color: Colors.blue.shade50,
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.access_time, size: 16, color: Colors.blue.shade700),
-                    const SizedBox(width: 8),
-                    Text(
-                      _startTime?.format(context) ?? 'Start',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        color: _startTime != null ? Colors.black87 : Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
-                ),
+    return Row(
+      children: [
+        Expanded(
+          child: InkWell(
+            onTap: () => _pick(true),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                border: Border.all(),
+                borderRadius: BorderRadius.circular(8),
+                color: Colors.blue.shade50,
               ),
+              child: Text(start?.format(context) ?? 'Start', textAlign: TextAlign.center),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Icon(Icons.arrow_forward, size: 16, color: Colors.grey.shade600),
-          ),
-          Expanded(
-            child: InkWell(
-              onTap: () => _pickTime(false),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.blue.shade200),
-                  borderRadius: BorderRadius.circular(6),
-                  color: Colors.blue.shade50,
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.access_time, size: 16, color: Colors.blue.shade700),
-                    const SizedBox(width: 8),
-                    Text(
-                      _endTime?.format(context) ?? 'End',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        color: _endTime != null ? Colors.black87 : Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
-                ),
+        ),
+        const Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text('-')),
+        Expanded(
+          child: InkWell(
+            onTap: () => _pick(false),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                border: Border.all(),
+                borderRadius: BorderRadius.circular(8),
+                color: Colors.blue.shade50,
               ),
+              child: Text(end?.format(context) ?? 'End', textAlign: TextAlign.center),
             ),
           ),
-          if (_startTime != null || _endTime != null)
-            IconButton(
-              icon: const Icon(Icons.clear, size: 18),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              onPressed: () {
-                setState(() {
-                  _startTime = null;
-                  _endTime = null;
-                });
-                widget.onTimeSelected(null, null);
-              },
-            ),
-        ],
-      ),
+        ),
+        if (start != null || end != null)
+          IconButton(
+            icon: const Icon(Icons.clear),
+            onPressed: () {
+              setState(() {
+                start = null;
+                end = null;
+              });
+              widget.controller.clear();
+            },
+          ),
+      ],
     );
   }
 }
