@@ -116,23 +116,24 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
         "city": cityCtrl.text.trim(),
         "pincode": pincodeCtrl.text.trim(),
         "address": addressCtrl.text.trim(),
-        "category": categoryCtrl.text.trim(),
+        "category": categoryCtrl.text.trim(), 
+        "role": "supplier",  // Explicitly set role as supplier
         // REQUIRED – same as vendor
         "location": {
           "lat": selectedLat,
           "lng": selectedLng,
         },
-        // REQUIRED – same as vendor
+        // REQUIRED – same as vendor 
         "baseLocation": {
           "lat": selectedLat,
           "lng": selectedLng,
         },
         // REQUIRED DEFAULT – backend expects this
         "subCategories": ["shop"],
-      };
+      }; 
 
       // Optional fields (kept as requested)
-      payload["registrationNumber"] = registrationNumberCtrl.text.trim();
+      payload["registrationNumber"] = registrationNumberCtrl.text.trim();                 
       if (referralCtrl.text.trim().isNotEmpty) {
         payload["referralCode"] = referralCtrl.text.trim();
       }

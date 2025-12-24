@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../login.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../dashboard.dart';
 import 'supp_products.dart';
 import 'supp_product_questions.dart';
@@ -642,8 +643,18 @@ class SupplierDrawer extends StatelessWidget {
               ),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.pop(context);
+                
+                // Clear the auth token on logout
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.remove('auth_token');
+                await prefs.remove('access_token');
+                await prefs.remove('refresh_token');
+                await prefs.remove('user_role');
+                await prefs.remove('user_id');
+                await prefs.remove('user_data');
+                
                 Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(builder: (context) => const Login()),

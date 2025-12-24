@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:convert';
+import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'calender.dart';
@@ -24,87 +26,91 @@ class _LoginPageState extends State<Login> {
   bool _isLoading = false;
 
   Future<void> _handleLogin() async {
-    if (!_formKey.currentState!.validate()) return;
+     final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('token');
+  if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
+  setState(() => _isLoading = true);
 
-    try {
-      final response = await http.post(
-        Uri.parse("https://partners.v2winonline.com/api/crm/auth/login"),
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: jsonEncode({
-          "email": emailController.text.trim(),
-          "password": passwordController.text,
-        }),
-      ).timeout(const Duration(seconds: 20));
+  try {
+    final response = await http
+        .post(
+          Uri.parse("https://partners.v2winonline.com/api/crm/auth/login"),
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+          },
+          body: jsonEncode({
+            "email": emailController.text.trim(),
+            "password": passwordController.text,
+          }),
+        )
+        .timeout(const Duration(seconds: 20));
 
-      final Map<String, dynamic> data = jsonDecode(response.body);
+    final Map<String, dynamic> data = jsonDecode(response.body);
 
-      if (response.statusCode == 200 && data['success'] == true) {
-        // Save user data and tokens
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('access_token', data['access_token'] ?? '');
-        await prefs.setString('refresh_token', data['refresh_token'] ?? '');
-        await prefs.setString('user_role', data['role'] ?? 'vendor');
-        await prefs.setString('user_id', data['user']['_id'] ?? '');
-        await prefs.setString('user_data', jsonEncode(data['user']));
+    if (response.statusCode == 200 && data['success'] == true) {
+      final prefs = await SharedPreferences.getInstance();
+      final String token = data['access_token'];
 
-        print('Access Token: ${data['access_token']}');
-        
-        // Success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(data['message'] ?? "Login Successful"),
-            backgroundColor: Colors.green,
-          ),
-        );
-
-        // Navigate based on role
-        final String role = data['role'];
-        if (role == 'vendor') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const Calendar()),
-          );
-        } else if (role == 'supplier') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const Supp_DashboardPage()),
-          );
-        } else {
-          // Default fallback to vendor dashboard
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const Calendar()),
-          );
-        }
-      } else {
-        // API returned error (e.g. wrong password)
-        String errorMessage = data['message'] ?? "Invalid email or password";
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
-        );
+      if (token.isEmpty) {
+        throw Exception('Token not received from server');
       }
-    } catch (e) {
-      String errorMsg = "Network error. Please check your connection.";
 
-      if (e.toString().contains('TimeoutException')) {
-        errorMsg = "Request timed out. Try again.";
-      } else if (e.toString().contains('FormatException')) {
-        errorMsg = "Server response error. Try again later.";
-      }
+      // Save token
+      await prefs.setString('token', token);
+
+      debugPrint('LOGIN TOKEN SAVED');
+      debugPrint('Token: $token');
+
+      await prefs.setString('user_role', data['role'] ?? 'vendor');
+      await prefs.setString('user_id', data['user']['_id'] ?? '');
+      await prefs.setString('user_data', jsonEncode(data['user']));
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text(data['message'] ?? "Login Successful"),
+          backgroundColor: Colors.green,
+        ),
       );
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
+
+      // Navigate
+      final String role = data['role'];
+      if (role == 'vendor') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const Calendar()),
+        );
+      } else if (role == 'supplier') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const Supp_DashboardPage()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const Calendar()),
+        );
       }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(data['message'] ?? "Invalid email or password"),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Network error. Please try again."),
+        backgroundColor: Colors.red,
+      ),
+    );
+  } finally {
+    if (mounted) setState(() => _isLoading = false);
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -309,7 +315,10 @@ class _LoginPageState extends State<Login> {
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                child: const Text('Vendor', style: TextStyle(fontSize: 10)),
+                                child: Text(
+                                  'Vendor',
+                                  style: GoogleFonts.poppins(fontSize: 10.sp),
+                                ),
                               ),
                             ),
                             SizedBox(width: 16.w),
@@ -336,7 +345,10 @@ class _LoginPageState extends State<Login> {
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                child: const Text('Supplier', style: TextStyle(fontSize: 10)),
+                                child: Text(
+                                  'Supplier',
+                                  style: GoogleFonts.poppins(fontSize: 10.sp),
+                                ),
                               ),
                             ),
                           ],

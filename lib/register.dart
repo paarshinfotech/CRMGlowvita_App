@@ -76,6 +76,7 @@ class _RegisterPageState extends State<RegisterPage> {
         "pincode": pincodeCtrl.text.trim(),
         "address": addressCtrl.text.trim(),
         "category": selectedCategory,
+        "role": "vendor",  // Explicitly set role as vendor
         "location": {"lat": selectedLat, "lng": selectedLng},
         "baseLocation": {"lat": selectedLat, "lng": selectedLng},
       };
