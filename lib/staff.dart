@@ -187,7 +187,7 @@ class _StaffState extends State<Staff> {
       );
       client.close();
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 ) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: Colors.green,
@@ -204,6 +204,72 @@ class _StaffState extends State<Staff> {
         SnackBar(
           backgroundColor: Colors.red,
           content: Text('Error updating staff: $e', style: GoogleFonts.poppins(fontSize: 12, color: Colors.white)),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _deleteStaff(String staffId, String staffName) async {
+    // Show confirmation dialog before deletion
+    bool confirmDelete = await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Confirm Delete', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+          content: Text('Are you sure you want to delete staff member "$staffName"? This action cannot be undone.', style: GoogleFonts.poppins(fontSize: 12)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text('Cancel', style: GoogleFonts.poppins(color: Colors.grey[600])),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text('Delete', style: GoogleFonts.poppins(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    ) ?? false;
+
+    if (!confirmDelete) return; // If user cancels, do nothing
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token') ?? '';
+      if (token.isEmpty) throw Exception('Auth token missing. Please login again.');
+
+      final client = _cookieClient();
+      final response = await client.delete(
+        Uri.parse('https://partners.v2winonline.com/api/crm/staff?id=$staffId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          "Cookie": "crm_access_token=$token",
+        },
+      );
+      client.close();
+
+      if (response.statusCode == 200) {
+        final responseJson = json.decode(response.body);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(responseJson['message'] ?? 'Staff member deleted successfully'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        // Refresh the staff list after successful deletion
+        await fetchStaff();
+      } else {
+        final errorData = json.decode(response.body);
+        throw Exception(errorData['message'] ?? 'Failed to delete staff: ${response.statusCode}');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error deleting staff: $e'),
+          backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -361,7 +427,7 @@ class _StaffState extends State<Staff> {
                                 child: SingleChildScrollView(
                                   scrollDirection: Axis.horizontal,
                                   child: SizedBox(
-                                    width: 730,
+                                    width: 760,
                                     child: Column(
                                       children: [
                                         // header row
@@ -420,7 +486,7 @@ class _StaffState extends State<Staff> {
                                                 ),
                                               ),
                                               const SizedBox(width: 10),
-                                              SizedBox(width: 70, child: Text('Actions', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 11))),
+                                              SizedBox(width: 100, child: Text('Actions', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 11))),
                                             ],
                                           ),
                                         ),
@@ -461,10 +527,17 @@ class _StaffState extends State<Staff> {
                                                             child: Column(
                                                               crossAxisAlignment: CrossAxisAlignment.start,
                                                               children: [
-                                                                Text(
-                                                                  s['fullName'],
-                                                                  style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 11),
-                                                                  overflow: TextOverflow.ellipsis,
+                                                                Builder(
+                                                                  builder: (context) {
+                                                                    // Adding debug print for staff ID and name
+                                                                    // This will be executed when the widget is built
+                                                                    debugPrint('Staff ID: ${s['id']}, Staff Name: ${s['fullName']}');
+                                                                    return Text(
+                                                                      s['fullName'],
+                                                                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 11),
+                                                                      overflow: TextOverflow.ellipsis,
+                                                                    );
+                                                                  },
                                                                 ),
                                                                 const SizedBox(height: 1),
                                                                 Text(
@@ -506,7 +579,7 @@ class _StaffState extends State<Staff> {
                                                     ),
                                                     const SizedBox(width: 10),
                                                     SizedBox(
-                                                      width: 70,
+                                                      width: 100,
                                                       child: Row(
                                                         children: [
                                                           IconButton(
@@ -515,6 +588,14 @@ class _StaffState extends State<Staff> {
                                                             padding: EdgeInsets.zero,
                                                             constraints: const BoxConstraints.tightFor(),
                                                             onPressed: () => _openAddStaff(existing: s, editIndex: actualIndex),
+                                                          ),
+                                                          IconButton(
+                                                            icon: const Icon(Icons.delete_outline),
+                                                            iconSize: 16,
+                                                            padding: EdgeInsets.zero,
+                                                            constraints: const BoxConstraints.tightFor(),
+                                                            onPressed: () => _deleteStaff(s['id'], s['fullName']),
+                                                            color: Colors.red,
                                                           ),
                                                         ],
                                                       ),
