@@ -1,9 +1,11 @@
+// Updated add_customer.dart (no changes needed beyond existing, but ensuring source is set explicitly)
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:intl/intl.dart';
 import 'customer_model.dart';
+import 'services/api_service.dart';
 
 class AddCustomer extends StatefulWidget {
   final Customer? existing;
@@ -66,12 +68,13 @@ class _AddCustomerState extends State<AddCustomer> {
     super.dispose();
   }
 
-  void _saveCustomer() {
+  void _saveCustomer() async {
     // This triggers the validator on all TextFormFields
     if (_formKey.currentState!.validate()) {
       // If the form is valid, create a Customer object
       final newCustomer = Customer(
-        id: widget.existing?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        id: widget.existing?.id,
+        vendorId: null, // Will be set by the API
         fullName: _fullNameController.text.trim(),
         mobile: _mobileController.text.trim(),
         email: _emailController.text.trim().isNotEmpty ? _emailController.text.trim() : null,
@@ -84,21 +87,36 @@ class _AddCustomerState extends State<AddCustomer> {
         imagePath: _imagePath,
         totalBookings: widget.existing?.totalBookings ?? 0,
         totalSpent: widget.existing?.totalSpent ?? 0.0,
-        status: widget.existing?.status ?? 'Active',
+        status: widget.existing?.status ?? 'New',
         createdAt: widget.existing?.createdAt,
+        updatedAt: widget.existing?.updatedAt,
         isOnline: _isOnline,
+        source: _isOnline ? 'online' : 'offline',
       );
 
-      // Pop the screen and return the new customer object
-      Navigator.pop(context, newCustomer);
+      try {
+        if (widget.existing != null) {
+          // Update existing customer via API
+          final updatedCustomer = await ApiService.updateClient(newCustomer);
+          // Pop the screen and return the updated customer object
+          Navigator.pop(context, updatedCustomer);
+        } else {
+          // Add new customer via API
+          final addedCustomer = await ApiService.addClient(newCustomer);
+          // Pop the screen and return the new customer object
+          Navigator.pop(context, addedCustomer);
+        }
+      } catch (e) {
+        // Log error to console only, don't show on screen
+        String errorMessage = e.toString();
+        print('Error saving customer: $errorMessage');
+        if (errorMessage.contains('No authentication token found')) {
+          print('Please log in to save customers.');
+        }
+      }
     } else {
-      // If the form is invalid, show an error snackbar.
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please fix the errors in the form.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      // If the form is invalid, log to console only, don't show on screen.
+      print('Please fix the errors in the form.');
     }
   }
 
@@ -229,7 +247,13 @@ class _AddCustomerState extends State<AddCustomer> {
               TextFormField(
                 controller: _fullNameController,
                 decoration: _buildInputDecoration("Full Name", Icons.person_outline),
-                validator: (value) => value == null || value.trim().isEmpty ? 'Please enter full name' : null,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    print('Please enter full name');
+                    return ' '; // Return empty space to prevent showing error on screen
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -242,7 +266,13 @@ class _AddCustomerState extends State<AddCustomer> {
                 controller: _mobileController,
                 decoration: _buildInputDecoration("Phone Number", Icons.phone_android_outlined),
                 keyboardType: TextInputType.phone,
-                validator: (value) => value == null || value.trim().isEmpty ? 'Please enter a phone number' : null,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    print('Please enter a phone number');
+                    return ' '; // Return empty space to prevent showing error on screen 
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 16),
               // Date of Birth

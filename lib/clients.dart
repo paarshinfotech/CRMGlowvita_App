@@ -9,6 +9,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'dart:io';
 import 'package:intl/intl.dart';
 import 'widgets/custom_drawer.dart';
+import 'services/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Client extends StatefulWidget {
   const Client({super.key});
@@ -19,7 +21,7 @@ class Client extends StatefulWidget {
 
 class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
   // The list now holds Customer objects, providing type safety.
-  final List<Customer> customers = [];
+  List<Customer> customers = [];
   int _selectedIndex = 0;
   String _searchQuery = '';
   
@@ -36,6 +38,9 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   int _currentTabIndex = 0;
 
+  bool _isLoading = false;
+  String? _errorMessage;
+
   @override
   void initState() {
     super.initState();
@@ -46,117 +51,36 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
       });
     });
     
-    // Add sample data
-    _addSampleData();
+    // Load customers from API
+    _loadCustomers();
   }
 
-  void _addSampleData() {
-    final now = DateTime.now();
-    customers.addAll([
-      Customer(
-        id: '1',
-        fullName: 'John Smith',
-        mobile: '+1 234-567-8901',
-        email: 'john.smith@email.com',
-        dateOfBirth: '15/03/1985',
-        gender: 'Male',
-        country: 'United States',
-        occupation: 'Software Engineer',
-        address: '123 Main St, New York, NY 10001',
-        note: 'Prefers morning appointments',
-        lastVisit: DateFormat('dd/MM/yyyy').format(now.subtract(const Duration(days: 5))),
-        totalBookings: 12,
-        totalSpent: 1250.50,
-        status: 'Active',
-        createdAt: DateTime(2024, 8, 15),
-        isOnline: true,
-      ),
-      Customer(
-        id: '2',
-        fullName: 'Sarah Johnson',
-        mobile: '+1 234-567-8902',
-        email: 'sarah.j@email.com',
-        dateOfBirth: '22/07/1990',
-        gender: 'Female',
-        country: 'Canada',
-        occupation: 'Marketing Manager',
-        address: '456 Oak Ave, Toronto, ON M5H 2N2',
-        note: 'Allergic to certain products',
-        lastVisit: DateFormat('dd/MM/yyyy').format(now.subtract(const Duration(days: 15))),
-        totalBookings: 8,
-        totalSpent: 890.00,
-        status: 'Active',
-        createdAt: DateTime(2024, 9, 10),
-        isOnline: false,
-      ),
-      Customer(
-        id: '3',
-        fullName: 'Michael Brown',
-        mobile: '+1 234-567-8903',
-        email: 'mbrown@email.com',
-        dateOfBirth: '10/11/1988',
-        gender: 'Male',
-        country: 'United States',
-        occupation: 'Doctor',
-        address: '789 Pine Rd, Los Angeles, CA 90001',
-        lastVisit: DateFormat('dd/MM/yyyy').format(now.subtract(const Duration(days: 45))),
-        totalBookings: 5,
-        totalSpent: 625.75,
-        status: 'Active',
-        createdAt: DateTime(2024, 10, 1),
-        isOnline: true,
-      ),
-      Customer(
-        id: '4',
-        fullName: 'Emily Davis',
-        mobile: '+1 234-567-8904',
-        email: 'emily.davis@email.com',
-        dateOfBirth: '05/01/1995',
-        gender: 'Female',
-        country: 'United Kingdom',
-        occupation: 'Teacher',
-        address: '321 Elm St, London, SW1A 1AA',
-        note: 'VIP customer',
-        lastVisit: DateFormat('dd/MM/yyyy').format(now.subtract(const Duration(days: 2))),
-        totalBookings: 20,
-        totalSpent: 2150.00,
-        status: 'Active',
-        createdAt: DateTime(2024, 7, 20),
-        isOnline: false,
-      ),
-      Customer(
-        id: '5',
-        fullName: 'David Wilson',
-        mobile: '+1 234-567-8905',
-        dateOfBirth: '18/09/1982',
-        gender: 'Male',
-        country: 'Australia',
-        occupation: 'Business Owner',
-        address: '555 Beach Rd, Sydney, NSW 2000',
-        totalBookings: 3,
-        totalSpent: 345.00,
-        status: 'Active',
-        createdAt: DateTime(2024, 10, 25),
-        isOnline: true,
-      ),
-      Customer(
-        id: '6',
-        fullName: 'Lisa Anderson',
-        mobile: '+1 234-567-8906',
-        email: 'lisa.anderson@email.com',
-        dateOfBirth: '30/04/1992',
-        gender: 'Female',
-        country: 'United States',
-        occupation: 'Nurse',
-        address: '987 Maple Dr, Chicago, IL 60601',
-        note: 'Referred by Emily Davis',
-        totalBookings: 0,
-        totalSpent: 0.00,
-        status: 'Active',
-        createdAt: now,
-        isOnline: false,
-      ),
-    ]);
+  Future<void> _loadCustomers() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final loadedCustomers = await ApiService.getClients();
+      setState(() {
+        customers = loadedCustomers;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        
+        // Check if it's an auth token error
+        if (e.toString().contains('No authentication token found')) {
+          print('Please log in to access customer data.');
+        } else {
+          print('Error loading customers: ${e.toString()}');
+        }
+      });
+      // Log error to console only, don't show on screen
+      print('Error loading customers: ${e.toString()}');
+    }
   }
 
   @override
@@ -199,16 +123,22 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
     // If the user saved a customer (and didn't just press back),
     // add it to the list and refresh the UI.
     if (newCustomer != null) {
-      setState(() {
-        customers.add(newCustomer);
-      });
-      // Optional: Show a success message on this page
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${newCustomer.fullName} has been added.'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      try {
+        // Add to API
+        final addedCustomer = await ApiService.addClient(newCustomer);
+        setState(() {
+          customers.add(addedCustomer);
+        });
+        // Log success to console only, don't show on screen
+        print('${addedCustomer.fullName} has been added.');
+      } catch (e) {
+        // Log error to console only, don't show on screen
+        String errorMessage = e.toString();
+        print('Error adding customer: $errorMessage');
+        if (errorMessage.contains('No authentication token found')) {
+          print('Please log in to add customers.');
+        }
+      }
     }
   }
 
@@ -221,15 +151,22 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
     );
 
     if (editedCustomer != null) {
-      setState(() {
-        customers[index] = editedCustomer;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${editedCustomer.fullName} has been updated.'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      try {
+        // Update via API
+        final updatedCustomer = await ApiService.updateClient(editedCustomer);
+        setState(() {
+          customers[index] = updatedCustomer;
+        });
+        // Log success to console only, don't show on screen
+        print('${updatedCustomer.fullName} has been updated.');
+      } catch (e) {
+        // Log error to console only, don't show on screen
+        String errorMessage = e.toString();
+        print('Error updating customer: $errorMessage');
+        if (errorMessage.contains('No authentication token found')) {
+          print('Please log in to update customers.');
+        }
+      }
     }
   }
 
@@ -247,9 +184,29 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel', style: GoogleFonts.poppins(fontSize: 12))),
             TextButton(
-              onPressed: () {
-                setState(() => customers.removeAt(index));
-                Navigator.pop(ctx);
+              onPressed: () async {
+                try {
+                  // Store the customer name before deletion
+                  final customerName = customers[index].fullName;
+                  // Delete from API
+                  final success = await ApiService.deleteClient(customers[index].id!);
+                  if (success) {
+                    setState(() {
+                      customers.removeAt(index);
+                    });
+                    Navigator.pop(ctx);
+                    // Log success to console only, don't show on screen
+                    print('$customerName has been deleted.');
+                  }
+                } catch (e) {
+                  // Log error to console only, don't show on screen
+                  Navigator.pop(ctx);
+                  String errorMessage = e.toString();
+                  print('Error deleting customer: $errorMessage');
+                  if (errorMessage.contains('No authentication token found')) {
+                    print('Please log in to delete customers.');
+                  }
+                }
               },
               child: Text('Delete', style: GoogleFonts.poppins(color: Colors.red, fontSize: 12)),
             ),
@@ -334,9 +291,13 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
     final thisMonth = DateTime(now.year, now.month, 1);
     final thirtyDaysAgo = now.subtract(const Duration(days: 30));
     
-    final totalClientsLastMonth = customers.where((c) => c.createdAt.isBefore(lastMonth)).length;
-    final newClientsThisMonth = customers.where((c) => c.createdAt.isAfter(thisMonth)).length;
+    final totalClientsLastMonth = customers.where((c) => c.createdAt != null && c.createdAt!.isBefore(lastMonth)).length;
+    final newClientsThisMonth = customers.where((c) => c.createdAt != null && c.createdAt!.isAfter(thisMonth)).length;
     final totalBookings = customers.fold<int>(0, (sum, c) => sum + c.totalBookings);
+    final totalSpent = customers.fold<double>(0.0, (sum, c) => sum + c.totalSpent);
+    
+    // Count new clients based on status
+    final newClients = customers.where((c) => c.status == 'New').length;
     
     // Calculate change from last month for Total Clients
     final changeFromLastMonth = total - totalClientsLastMonth;
@@ -485,8 +446,8 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                     Expanded(
                       child: _InfoCard(
                         title: 'New Clients',
-                        value: '$newClientsThisMonth',
-                        subtitle: 'New clients this month',
+                        value: '$newClients',
+                        subtitle: 'New clients with status New',
                       ),
                     ),
                   ],
@@ -497,9 +458,9 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                   children: [
                     Expanded(
                       child: _InfoCard(
-                        title: 'Total Bookings',
-                        value: '$totalBookings',
-                        subtitle: 'All client bookings',
+                        title: 'Total Spent',
+                        value: '₹${totalSpent.toStringAsFixed(2)}',
+                        subtitle: 'Total amount spent',
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -551,6 +512,18 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                       onPressed: () => _navigateAndAddCustomer(context),
                       icon: const Icon(Icons.add, size: 18, color: Colors.blue),
                       label: Text('Add Customer', style: GoogleFonts.poppins(color: Colors.blue, fontSize: 12)),
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        side: const BorderSide(color: Colors.black, width: 1),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        minimumSize: const Size(0, 36),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    OutlinedButton.icon(
+                      onPressed: _isLoading ? null : _loadCustomers,
+                      icon: const Icon(Icons.refresh, size: 18, color: Colors.blue),
+                      label: Text('Refresh', style: GoogleFonts.poppins(color: Colors.blue, fontSize: 12)),
                       style: OutlinedButton.styleFrom(
                         backgroundColor: Colors.white,
                         side: const BorderSide(color: Colors.black, width: 1),
@@ -712,178 +685,211 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                   ),
                 ),
 
-                // Table rows with synchronized scrolling
-                SizedBox(
-                  height: 400,
-                  child: rows.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.people_outline, size: 80, color: Colors.grey[400]),
-                              const SizedBox(height: 16),
-                              Text(
-                                'No Customers Yet',
-                                style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w600, color: Colors.grey[600]),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                "Click 'Add Customer' to create one.",
-                                textAlign: TextAlign.center,
-                                style: TextStyle(fontSize: 16, color: Colors.grey[500]),
-                              ),
-                            ],
-                          ),
-                        )
-                      : ListView.separated(
-                          itemCount: rows.length,
-                          separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFEFEFEF)),
-                          itemBuilder: (context, idx) {
-                            final c = rows[idx];
-                            final actualIndex = customers.indexOf(c);
-                            return SingleChildScrollView(
-                              controller: _rowScrollControllers[idx],
-                              scrollDirection: Axis.horizontal,
-                              physics: const ClampingScrollPhysics(),
-                              child: Container(
-                                color: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                child: Row(
-                                  children: [
-                                    // Name + email
-                                    SizedBox(
-                                      width: 200,
-                                      child: Row(
-                                        children: [
-                                          c.imagePath != null && c.imagePath!.isNotEmpty
-                                              ? CircleAvatar(
-                                                  radius: 16,
-                                                  backgroundImage: FileImage(File(c.imagePath!)),
-                                                )
-                                              : CircleAvatar(
-                                                  radius: 16,
-                                                  backgroundColor: Colors.blue[100],
-                                                  child: Text(
-                                                    c.fullName.isNotEmpty ? c.fullName[0].toUpperCase() : '?',
-                                                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 11, color: Colors.blue[900]),
-                                                  ),
-                                                ),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              c.fullName,
-                                              style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 12),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    // Contact - Email and Phone
-                                    SizedBox(
-                                      width: 140,
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          if (c.email != null && c.email!.isNotEmpty) ...[
-                                            Text(
-                                              c.email!,
-                                              style: GoogleFonts.poppins(fontSize: 11),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            const SizedBox(height: 2),
-                                          ],
-                                          Text(
-                                            c.mobile,
-                                            style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w500),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    // Last Visit
-                                    SizedBox(
-                                      width: 120,
-                                      child: Text(
-                                        c.lastVisit ?? 'Never',
-                                        style: GoogleFonts.poppins(fontSize: 11),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    // Total Booking
-                                    SizedBox(
-                                      width: 130,
-                                      child: Text(
-                                        c.totalBookings.toString(),
-                                        style: GoogleFonts.poppins(fontSize: 11),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    // Total Spent
-                                    SizedBox(
-                                      width: 110,
-                                      child: Text(
-                                        '₹${c.totalSpent.toStringAsFixed(2)}',
-                                        style: GoogleFonts.poppins(fontSize: 11),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    // Status
-                                    SizedBox(
-                                      width: 100,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: c.status == 'Active' ? Colors.green[50] : Colors.grey[200],
-                                          borderRadius: BorderRadius.circular(16),
-                                        ),
-                                        child: Text(
-                                          c.status,
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w600,
-                                            color: c.status == 'Active' ? Colors.green[800] : Colors.grey[800],
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    // Actions
-                                    SizedBox(
-                                      width: 100,
-                                      child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.start,
-                                        children: [
-                                          IconButton(
-                                            icon: const Icon(Icons.edit_outlined, size: 18),
-                                            padding: const EdgeInsets.all(8),
-                                            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                                            onPressed: () => _editCustomer(actualIndex),
-                                            tooltip: 'Edit',
-                                          ),
-                                          const SizedBox(width: 4),
-                                          IconButton(
-                                            icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
-                                            padding: const EdgeInsets.all(8),
-                                            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                                            onPressed: () => _deleteCustomer(actualIndex),
-                                            tooltip: 'Delete',
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
+                // Loading indicator
+                if (_isLoading)
+                  const Center(
+                    child: CircularProgressIndicator(),
+                  )
+                else if (_errorMessage != null)
+                  Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.error_outline, size: 80, color: Colors.red[400]),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Error loading customers',
+                          style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w600, color: Colors.grey[600]),
                         ),
-                ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _errorMessage!,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 16, color: Colors.grey[500]),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _loadCustomers,
+                          child: Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  )
+                // Table rows with synchronized scrolling
+                else
+                  SizedBox(
+                    height: 400,
+                    child: rows.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.people_outline, size: 80, color: Colors.grey[400]),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No Customers Yet',
+                                  style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w600, color: Colors.grey[600]),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  "Click 'Add Customer' to create one.",
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(fontSize: 16, color: Colors.grey[500]),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.separated(
+                            itemCount: rows.length,
+                            separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFEFEFEF)),
+                            itemBuilder: (context, idx) {
+                              final c = rows[idx];
+                              final actualIndex = customers.indexOf(c);
+                              return SingleChildScrollView(
+                                controller: _rowScrollControllers[idx],
+                                scrollDirection: Axis.horizontal,
+                                physics: const ClampingScrollPhysics(),
+                                child: Container(
+                                  color: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                  child: Row(
+                                    children: [
+                                      // Name + email
+                                      SizedBox(
+                                        width: 200,
+                                        child: Row(
+                                          children: [
+                                            c.imagePath != null && c.imagePath!.isNotEmpty
+                                                ? CircleAvatar(
+                                                    radius: 16,
+                                                    backgroundImage: c.imagePath!.startsWith('http') 
+                                                        ? NetworkImage(c.imagePath!) as ImageProvider
+                                                        : FileImage(File(c.imagePath!)),
+                                                  )
+                                                : CircleAvatar(
+                                                    radius: 16,
+                                                    backgroundColor: Colors.blue[100],
+                                                    child: Text(
+                                                      c.fullName.isNotEmpty ? c.fullName[0].toUpperCase() : '?',
+                                                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 11, color: Colors.blue[900]),
+                                                    ),
+                                                  ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                c.fullName,
+                                                style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 12),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      // Contact - Email and Phone
+                                      SizedBox(
+                                        width: 140,
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            if (c.email != null && c.email!.isNotEmpty) ...[
+                                              Text(
+                                                c.email!,
+                                                style: GoogleFonts.poppins(fontSize: 11),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              const SizedBox(height: 2),
+                                            ],
+                                            Text(
+                                              c.mobile,
+                                              style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w500),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      // Last Visit
+                                      SizedBox(
+                                        width: 120,
+                                        child: Text(
+                                          c.lastVisit ?? 'Never',
+                                          style: GoogleFonts.poppins(fontSize: 11),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      // Total Booking
+                                      SizedBox(
+                                        width: 130,
+                                        child: Text(
+                                          c.totalBookings.toString(),
+                                          style: GoogleFonts.poppins(fontSize: 11),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      // Total Spent
+                                      SizedBox(
+                                        width: 110,
+                                        child: Text(
+                                          '₹${c.totalSpent.toStringAsFixed(2)}',
+                                          style: GoogleFonts.poppins(fontSize: 11),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      // Status
+                                      SizedBox(
+                                        width: 100,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: c.status == 'Active' ? Colors.green[50] : Colors.grey[200],
+                                            borderRadius: BorderRadius.circular(16),
+                                          ),
+                                          child: Text(
+                                            c.status,
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w600,
+                                              color: c.status == 'Active' ? Colors.green[800] : Colors.grey[800],
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      // Actions
+                                      SizedBox(
+                                        width: 100,
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.start,
+                                          children: [
+                                            IconButton(
+                                              icon: const Icon(Icons.edit_outlined, size: 18),
+                                              padding: const EdgeInsets.all(8),
+                                              constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                                              onPressed: () => _editCustomer(actualIndex),
+                                              tooltip: 'Edit',
+                                            ),
+                                            const SizedBox(width: 4),
+                                            IconButton(
+                                              icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                                              padding: const EdgeInsets.all(8),
+                                              constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                                              onPressed: () => _deleteCustomer(actualIndex),
+                                              tooltip: 'Delete',
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
               ],
             ),
           ),
