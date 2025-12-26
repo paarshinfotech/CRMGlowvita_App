@@ -72,6 +72,17 @@ class _AddStaffDialogState extends State<AddStaffDialog>
     'Sun': TextEditingController(),
   };
 
+  // Weekly availability (day -> isAvailable)
+  final Map<String, bool> _weeklyAvailability = {
+    'monday': true,
+    'tuesday': true,
+    'wednesday': true,
+    'thursday': true,
+    'friday': true,
+    'saturday': true,
+    'sunday': true,
+  };
+
   // Block time
   DateTime? _blockDate;
   TimeOfDay? _blockStart;
@@ -91,23 +102,23 @@ class _AddStaffDialogState extends State<AddStaffDialog>
 
   // Mapping: Display permission -> API permission string
   static const Map<String, String> displayToPerm = {
-    'Dashboard': 'DashboardPage',
-    'Calendar': 'CalendarPage',
-    'Appointments': 'AppointmentsPage',
-    'Staff': 'StaffPage',
-    'Products': 'ProductsPage',
-    'Orders': 'OrdersPage',
-    'Offers & Coupons': 'OffersAndCouponsPage',
-    'Notifications': 'NotificationsPage',
-    'Clients': 'ClientsPage',
-    'Marketplace': 'MarketplacePage',
-    'Shipping': 'ShippingPage',
-    'Referrals': 'ReferralsPage',
-    'Reports': 'ReportsPage',
-    'Services': 'ServicesPage',
-    'Sales': 'SalesPage',
-    'Settlements': 'SettlementsPage',
-    'Marketing': 'MarketingPage',
+    'Dashboard': 'dashboard_view',
+    'Calendar': 'calendar_view',
+    'Appointments': 'appointments_view',
+    'Staff': 'staff_view',
+    'Products': 'products_view',
+    'Orders': 'orders_view',
+    'Offers & Coupons': 'offers_coupons_view',
+    'Notifications': 'notifications_view',
+    'Clients': 'clients_view',
+    'Marketplace': 'marketplace_view',
+    'Shipping': 'shipping_view',
+    'Referrals': 'referrals_view',
+    'Reports': 'reports_view',
+    'Services': 'services_view',
+    'Sales': 'sales_view',
+    'Settlements': 'settlements_view',
+    'Marketing': 'marketing_view',
   };
 
   static const Map<String, String> dayAbbrToFull = {
@@ -139,6 +150,15 @@ class _AddStaffDialogState extends State<AddStaffDialog>
   void initState() {
     super.initState();
     _tabController = TabController(length: 6, vsync: this);
+
+    // Initialize default availability to true for all days
+    _weeklyAvailability['monday'] = true;
+    _weeklyAvailability['tuesday'] = true;
+    _weeklyAvailability['wednesday'] = true;
+    _weeklyAvailability['thursday'] = true;
+    _weeklyAvailability['friday'] = true;
+    _weeklyAvailability['saturday'] = true;
+    _weeklyAvailability['sunday'] = true;
 
     if (widget.existing != null) {
       final m = widget.existing!;
@@ -181,13 +201,33 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       // Availability
       for (final fullDay in dayFullToAbbr.keys) {
         final abbr = dayFullToAbbr[fullDay]!;
-        final available = m['${fullDay}Available'] == true;
-        final slots = (m['${fullDay}Slots'] as List?) ?? [];
-        if (available && slots.isNotEmpty) {
-          final slot = (slots.first as Map?) ?? {};
-          final start = (slot['startTime'] ?? '10:00').toString();
-          final end = (slot['endTime'] ?? '19:00').toString();
-          _weeklyTiming[abbr]!.text = '$start - $end';
+        
+        // Check if availability is defined in the staff object
+        final availabilityData = m['availability'] as Map<String, dynamic>?;
+        if (availabilityData != null && availabilityData.containsKey(fullDay)) {
+          final dayData = availabilityData[fullDay] as Map<String, dynamic>?;
+          if (dayData != null) {
+            final available = dayData['available'] == true;
+            final slots = (dayData['slots'] as List?) ?? [];
+            
+            if (available && slots.isNotEmpty) {
+              final slot = (slots.first as Map?) ?? {};
+              final start = (slot['startTime'] ?? '10:00').toString();
+              final end = (slot['endTime'] ?? '19:00').toString();
+              _weeklyTiming[abbr]!.text = '$start - $end';
+              // Set the day as available by default
+              _weeklyAvailability[fullDay] = true;
+            } else {
+              // If not available, set to false
+              _weeklyAvailability[fullDay] = false;
+            }
+          } else {
+            // If dayData is null, default to available (true)
+            _weeklyAvailability[fullDay] = true;
+          }
+        } else {
+          // If no availability data for this day, default to available (true)
+          _weeklyAvailability[fullDay] = true;
         }
       }
 
@@ -195,7 +235,11 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       final blocked = (m['blockedTimes'] as List?) ?? [];
       if (blocked.isNotEmpty) {
         final b = (blocked.first as Map?) ?? {};
-        _blockDate = DateTime.tryParse((b['startDate'] ?? '').toString());
+        // Try both 'date' and 'startDate' to handle different API responses
+        String? dateStr = (b['date'] ?? b['startDate'] ?? '').toString();
+        if (dateStr.isNotEmpty) {
+          _blockDate = DateTime.tryParse(dateStr);
+        }
 
         final startStr = b['startTime']?.toString();
         final endStr = b['endTime']?.toString();
@@ -289,7 +333,65 @@ class _AddStaffDialogState extends State<AddStaffDialog>
   }
 
   void _nextTab() {
-    if (_tabController.index < _tabController.length - 1) {
+    // Validate current tab before moving to next
+    bool isValid = true;
+    switch (_tabController.index) {
+      case 0: // Personal tab
+        isValid = _personalFormKey.currentState?.validate() ?? true;
+        break;
+      case 1: // Employment tab
+        isValid = _employmentFormKey.currentState?.validate() ?? true;
+        break;
+      case 2: // Bank tab
+        isValid = _bankFormKey.currentState?.validate() ?? true;
+        break;
+      case 5: // Block time tab
+        isValid = _blockFormKey.currentState?.validate() ?? true;
+        // Additional validation for block time fields
+        if (isValid) {
+          if ((_blockDate != null || _blockStart != null || _blockEnd != null || _blockReason.text.trim().isNotEmpty)) {
+            if (_blockDate == null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Block date is required'), backgroundColor: Colors.red),
+              );
+              isValid = false;
+            }
+            if (_blockStart == null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Block start time is required'), backgroundColor: Colors.red),
+              );
+              isValid = false;
+            }
+            if (_blockEnd == null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Block end time is required'), backgroundColor: Colors.red),
+              );
+              isValid = false;
+            }
+            if (_blockReason.text.trim().isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Block reason is required'), backgroundColor: Colors.red),
+              );
+              isValid = false;
+            }
+            
+            // Additional check: ensure start time is before end time
+            if (_blockStart != null && _blockEnd != null) {
+              int startMinutes = _blockStart!.hour * 60 + _blockStart!.minute;
+              int endMinutes = _blockEnd!.hour * 60 + _blockEnd!.minute;
+              if (startMinutes >= endMinutes) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Start time must be before end time'), backgroundColor: Colors.red),
+                );
+                isValid = false;
+              }
+            }
+          }
+        }
+        break;
+    }
+    
+    if (isValid && _tabController.index < _tabController.length - 1) {
       _tabController.animateTo(_tabController.index + 1);
     }
   }
@@ -318,7 +420,50 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       _tabController.animateTo(2);
       return false;
     }
-    if (!blockOk) {
+    
+    // Additional validation for block time tab
+    bool blockTimeValid = true;
+    // Validate that if any block time field is filled, all required ones are filled
+    if ((_blockDate != null || _blockStart != null || _blockEnd != null || _blockReason.text.trim().isNotEmpty)) {
+      if (_blockDate == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Block date is required'), backgroundColor: Colors.red),
+        );
+        blockTimeValid = false;
+      }
+      if (_blockStart == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Block start time is required'), backgroundColor: Colors.red),
+        );
+        blockTimeValid = false;
+      }
+      if (_blockEnd == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Block end time is required'), backgroundColor: Colors.red),
+        );
+        blockTimeValid = false;
+      }
+      if (_blockReason.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Block reason is required'), backgroundColor: Colors.red),
+        );
+        blockTimeValid = false;
+      }
+      
+      // Additional check: ensure start time is before end time
+      if (_blockStart != null && _blockEnd != null) {
+        int startMinutes = _blockStart!.hour * 60 + _blockStart!.minute;
+        int endMinutes = _blockEnd!.hour * 60 + _blockEnd!.minute;
+        if (startMinutes >= endMinutes) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Start time must be before end time'), backgroundColor: Colors.red),
+          );
+          blockTimeValid = false;
+        }
+      }
+    }
+    
+    if (!blockOk || !blockTimeValid) {
       _tabController.animateTo(5);
       return false;
     }
@@ -370,15 +515,25 @@ class _AddStaffDialogState extends State<AddStaffDialog>
   }
 
   void _save() {
-    if (!_validateAll()) return;
+    debugPrint('=== Staff Save Process Started ===');
+    debugPrint('Status: Validating form data');
+    
+    if (!_validateAll()) {
+      debugPrint('Status: Validation failed, cannot proceed with save');
+      return;
+    }
+    
+    debugPrint('Status: Validation passed, processing staff data');
 
     final fullName = '${_firstName.text.trim()} ${_lastName.text.trim()}'.trim();
+    debugPrint('Activities: Full name constructed: $fullName');
 
     // Permissions -> API list
     final List<String> permissions = _permissions.entries
     .where((e) => e.value)
     .map((e) => displayToPerm[e.key]!)
     .toList();
+    debugPrint('Activities: Permissions selected: $permissions');
     
 
     // Availability format
@@ -397,20 +552,44 @@ class _AddStaffDialogState extends State<AddStaffDialog>
         ]
       };
     });
+    debugPrint('Activities: Availability set: $availability');
 
     // Blocked times
     final List<Map<String, dynamic>> blockedTimes = [];
+    debugPrint('Activities: Processing blocked times - Date: $_blockDate, Start: $_blockStart, End: $_blockEnd, Reason: ${_blockReason.text.trim()}');
+    
     if (_blockDate != null &&
         _blockStart != null &&
         _blockEnd != null &&
         _blockReason.text.trim().isNotEmpty) {
-      blockedTimes.add({
-        'startDate': DateFormat('yyyy-MM-dd').format(_blockDate!),
-        'endDate': DateFormat('yyyy-MM-dd').format(_blockDate!),
-        'startTime': _formatTime(_blockStart),
-        'endTime': _formatTime(_blockEnd),
-        'reason': _blockReason.text.trim(),
-      });
+      try {
+        // Verify that start time is before end time before saving
+        int startMinutes = _blockStart!.hour * 60 + _blockStart!.minute;
+        int endMinutes = _blockEnd!.hour * 60 + _blockEnd!.minute;
+        if (startMinutes < endMinutes) { // Only proceed if start time is before end time
+          blockedTimes.add({
+            'date': DateFormat('yyyy-MM-dd').format(_blockDate!),
+            'startTime': _formatTime(_blockStart),
+            'endTime': _formatTime(_blockEnd),
+            'reason': _blockReason.text.trim(),
+          });
+          debugPrint('Activities: Blocked time added: ${blockedTimes.last}');
+        } else {
+          debugPrint('Exception in blocked times: Start time must be before end time');
+          // Show error to user
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Start time must be before end time'), backgroundColor: Colors.red),
+            );
+          }
+        }
+      } catch (e) {
+        debugPrint('Exception in blocked times: $e');
+        // Handle potential date format errors
+        debugPrint('Status: Error formatting blocked times, continuing without blocked times');
+      }
+    } else {
+      debugPrint('Activities: Blocked times not provided or incomplete, skipping');
     }
 
     // Bank details
@@ -421,22 +600,31 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       "ifscCode": _ifsc.text.trim(),
       "upiId": _upi.text.trim(),
     };
+    debugPrint('Activities: Bank details set: $bankDetails');
 
     // Numeric fields
     final int salary = int.tryParse(_salary.text.trim()) ?? 0;
     final int yearOfExperience = int.tryParse(_experience.text.trim()) ?? 0;
     final int clientsServed = int.tryParse(_clients.text.trim()) ?? 0;
+    debugPrint('Activities: Numeric values - Salary: $salary, Experience: $yearOfExperience, Clients: $clientsServed');
 
     // Dates
     final String? startDate = _startDate != null ? DateFormat('yyyy-MM-dd').format(_startDate!) : null;
     final String? endDate = _endDate != null ? DateFormat('yyyy-MM-dd').format(_endDate!) : null;
+    debugPrint('Activities: Employment dates - Start: $startDate, End: $endDate');
 
     // Password (optional on edit)
     String? password;
     if (widget.existing == null) {
       password = _password.text.trim();
+      debugPrint('Activities: Creating new staff, password provided');
     } else {
-      if (_password.text.trim().isNotEmpty) password = _password.text.trim();
+      if (_password.text.trim().isNotEmpty) {
+        password = _password.text.trim();
+        debugPrint('Activities: Updating staff, password changed');
+      } else {
+        debugPrint('Activities: Updating staff, password unchanged');
+      }
     }
 
     final Map<String, dynamic> result = { 
@@ -463,10 +651,15 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       // If imagePath is local file path, backend won't understand unless you upload it separately.
       if (_imagePath != null) 'photo': _imagePath,
     };
+    
+    debugPrint('Activities: Staff data prepared for API: ${result.keys}');
+    debugPrint('Status: Staff data preparation complete, ready to save');
+    debugPrint('=== Staff Save Process Completed ===');
 
     // keep id for edit
     if (widget.existing != null) {
       result['id'] = widget.existing!['_id'];
+      debugPrint('Activities: Editing existing staff with ID: ${result['id']}');
     }
 
     Navigator.of(context).pop(result);
@@ -551,9 +744,10 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                     children: [
                       TextButton(onPressed: _prevTab, child: const Text('Previous')),
                       const SizedBox(width: 8),
-                      TextButton(onPressed: _nextTab, child: const Text('Next')),
-                      const SizedBox(width: 16),
-                      ElevatedButton(onPressed: _save, child: const Text('Save')),
+                      if (_tabController.index < _tabController.length - 1)
+                        TextButton(onPressed: _nextTab, child: const Text('Next')),
+                      if (_tabController.index == _tabController.length - 1)
+                        ElevatedButton(onPressed: _save, child: const Text('Save')),
                     ],
                   ),
                 ],
@@ -986,8 +1180,9 @@ class _TimeField extends StatelessWidget {
 class _TimeRangePicker extends StatefulWidget {
   final String day;
   final TextEditingController controller;
+  final bool initialAvailability;
 
-  const _TimeRangePicker({required this.day, required this.controller});
+  const _TimeRangePicker({required this.day, required this.controller, this.initialAvailability = true});
 
   @override
   State<_TimeRangePicker> createState() => _TimeRangePickerState();

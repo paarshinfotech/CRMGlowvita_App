@@ -45,6 +45,9 @@ class _StaffState extends State<Staff> {
   }
 
   Future<void> fetchStaff() async {
+    debugPrint('=== Fetch Staff Process Started ===');
+    debugPrint('Status: Starting to fetch staff data');
+    
     setState(() {
       isLoading = true;
       errorMessage = null;
@@ -54,8 +57,10 @@ class _StaffState extends State<Staff> {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token') ?? '';
       if (token.isEmpty) throw Exception('Auth token missing. Please login again.');
+      debugPrint('Activities: Auth token retrieved successfully');
 
       final client = _cookieClient();
+      debugPrint('Status: Sending GET request to fetch staff');
       final response = await client.get(
         Uri.parse('https://partners.v2winonline.com/api/crm/staff'),
         headers: {
@@ -65,9 +70,14 @@ class _StaffState extends State<Staff> {
         },
       );
       client.close();
+      
+      debugPrint('Activities: API Response status: ${response.statusCode}');
+      debugPrint('Activities: API Response body length: ${response.body.length}');
 
       if (response.statusCode == 200) {
         final List data = json.decode(response.body);
+        debugPrint('Activities: Received ${data.length} staff members');
+        
         setState(() {
           staffList = data.map<Map<String, dynamic>>((item) {
             final fullName = (item['fullName'] ?? '').toString();
@@ -87,16 +97,20 @@ class _StaffState extends State<Staff> {
           }).toList();
           isLoading = false;
         });
+        debugPrint('Status: Staff data loaded successfully');
       } else {
         final errorData = json.decode(response.body);
+        debugPrint('Exception: API returned error status ${response.statusCode}');
         throw Exception(errorData['message'] ?? 'Failed: ${response.statusCode}');
       }
     } catch (e) {
+      debugPrint('Exception: Error fetching staff: $e');
       setState(() {
         errorMessage = e.toString();
         isLoading = false;
       });
     }
+    debugPrint('=== Fetch Staff Process Completed ===');
   }
 
   Future<void> _openAddStaff({Map<String, dynamic>? existing, int? editIndex}) async {
@@ -125,15 +139,73 @@ class _StaffState extends State<Staff> {
   }
 
   Future<void> _createStaff(Map<String, dynamic> staffData) async {
+    debugPrint('=== Staff Creation Process Started ===');
+    debugPrint('Status: Preparing to create staff');
+    debugPrint('Activities: Staff data keys: ${staffData.keys}');
+    
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token') ?? ''; 
       if (token.isEmpty) throw Exception('Authentication token missing.');
+      debugPrint('Activities: Auth token retrieved successfully');
 
       final vendorId = prefs.getString('user_id') ?? '';
       if (vendorId.isEmpty) throw Exception('Vendor ID not found. Please login again.');
+      debugPrint('Activities: Vendor ID retrieved: $vendorId');
 
       staffData['vendorId'] = vendorId;
+
+      // Ensure permissions are included in the staff data
+      if (!staffData.containsKey('permissions')) {
+        staffData['permissions'] = staffData['permission'] ?? [];
+      }
+      debugPrint('Activities: Permissions: ${staffData['permissions']}');
+      
+      // Process availability data to match backend format
+      if (staffData.containsKey('availability')) {
+        final availability = staffData['availability'] as Map<String, dynamic>?;
+        if (availability != null) {
+          // Convert availability object to individual day fields
+          for (final day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']) {
+            if (availability.containsKey(day)) {
+              final dayData = availability[day] as Map<String, dynamic>?;
+              if (dayData != null) {
+                final available = dayData['available'] == true;
+                final slots = (dayData['slots'] as List?) ?? [];
+                
+                staffData['${day}Available'] = available;
+                staffData['${day}Slots'] = slots;
+                
+                debugPrint('Activities: Processed $day - Available: $available, Slots: $slots');
+              } else {
+                // Set default values if dayData is null
+                staffData['${day}Available'] = false;
+                staffData['${day}Slots'] = [];
+              }
+            } else {
+              // Set default values if day is not in availability
+              staffData['${day}Available'] = false;
+              staffData['${day}Slots'] = [];
+            }
+          }
+        }
+        // Remove the original availability object since we've converted it
+        staffData.remove('availability');
+      }
+      
+      // Remove photo from data if it's a local file path (not URL)
+      // The backend likely handles photo upload separately
+      if (staffData.containsKey('photo') && staffData['photo'] != null) {
+        if (!staffData['photo'].toString().startsWith('http')) {
+          debugPrint('Activities: Removing local photo path from request: ${staffData['photo']}');
+          staffData.remove('photo');
+        } else {
+          debugPrint('Activities: Keeping photo URL in request: ${staffData['photo']}');
+        }
+      }
+      
+      debugPrint('Activities: Blocked times data: ${staffData['blockedTimes']}');
+      debugPrint('Status: Sending staff creation request to API');
 
       final response = await http.post(
         Uri.parse('https://partners.v2winonline.com/api/crm/staff'),
@@ -144,9 +216,14 @@ class _StaffState extends State<Staff> {
         },
         body: jsonEncode(staffData),
       );
+      
+      debugPrint('Activities: API Response status: ${response.statusCode}');
+      debugPrint('Activities: API Response body: ${response.body}');
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final responseJson = json.decode(response.body);
+        debugPrint('Status: Staff created successfully');
+        debugPrint('Activities: Server response: ${responseJson['message']}');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(responseJson['message'] ?? 'Staff created successfully'),
@@ -156,9 +233,11 @@ class _StaffState extends State<Staff> {
         );
       } else {
         final error = json.decode(response.body);
+        debugPrint('Exception: API returned error status ${response.statusCode}');
         throw Exception(error['message'] ?? 'Failed to create staff');
       }
     } catch (e) {
+      debugPrint('Exception: Error creating staff: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: $e'),
@@ -167,48 +246,95 @@ class _StaffState extends State<Staff> {
         ),
       );
     }
+    debugPrint('=== Staff Creation Process Completed ===');
   }
 
-  Future<void> _updateStaff(String staffId, Map<String, dynamic> staffData) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token') ?? '';
-      if (token.isEmpty) throw Exception('Auth token missing. Please login again.');
+Future<void> _updateStaff(String staffId, Map<String, dynamic> staffData) async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token') ?? '';
 
-      final client = _cookieClient();
-      final response = await client.put(
-        Uri.parse('https://partners.v2winonline.com/api/crm/staff/update/$staffId'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          "Cookie": "crm_access_token=$token",
-        },
-        body: jsonEncode(staffData),
-      );
-      client.close();
+    if (token.isEmpty) {
+      throw Exception('Auth token missing. Please login again.');
+    }
 
-      if (response.statusCode == 200 ) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: Colors.green,
-            content: Text('Staff member updated successfully', style: GoogleFonts.poppins(fontSize: 12, color: Colors.white)),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      } else {
-        final errorData = json.decode(response.body);
-        throw Exception(errorData['message'] ?? 'Failed to update staff: ${response.statusCode}');
-      }
-    } catch (e) {
+    // Remove 'id' from body if present (not needed in body)
+    staffData.remove('id');
+
+    // Ensure _id is included (required by backend)
+    staffData['_id'] = staffId;
+
+    debugPrint('UPDATE STAFF PAYLOAD: ${jsonEncode(staffData)}');
+
+    final response = await http.put(
+      Uri.parse('https://partners.v2winonline.com/api/crm/staff?id=$staffId'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        "Cookie": "crm_access_token=$token",
+
+      },
+      body: jsonEncode(staffData),
+    );
+
+    debugPrint('UPDATE STATUS: ${response.statusCode}');
+    debugPrint('UPDATE BODY: ${response.body}');
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final updatedStaff = json.decode(response.body);
+
+      final fullName = updatedStaff['fullName'] ?? '';
+      final parts = fullName.split(' ');
+
+      final formattedStaff = {
+        'id': updatedStaff['_id'],
+        'firstName': parts.isNotEmpty ? parts.first : '',
+        'lastName': parts.length > 1 ? parts.sublist(1).join(' ') : '',
+        'fullName': fullName,
+        'email': updatedStaff['emailAddress'] ?? '',
+        'mobile': updatedStaff['mobileNo'] ?? '',
+        'position': updatedStaff['position'] ?? '',
+        'status': updatedStaff['status'] ?? 'Active',
+        'image': updatedStaff['photo'],
+        'raw': updatedStaff,
+      };
+
+      setState(() {
+        final index = staffList.indexWhere((s) => s['id'] == staffId);
+        if (index != -1) {
+          staffList[index] = formattedStaff;
+        }
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          backgroundColor: Colors.red,
-          content: Text('Error updating staff: $e', style: GoogleFonts.poppins(fontSize: 12, color: Colors.white)),
+          backgroundColor: Colors.green,
+          content: Text(
+            'Staff member updated successfully',
+            style: GoogleFonts.poppins(fontSize: 12, color: Colors.white),
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
+    } else {
+      final errorData = json.decode(response.body);
+      final errorMessage = errorData['message'] ?? 'Failed to update staff: ${response.statusCode}';
+      throw Exception(errorMessage);
     }
+  } catch (e) {
+    debugPrint('UPDATE STAFF ERROR: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.red,
+        content: Text(
+          'Error updating staff: $e',
+          style: GoogleFonts.poppins(fontSize: 12, color: Colors.white),
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
+}
 
   Future<void> _deleteStaff(String staffId, String staffName) async {
     // Show confirmation dialog before deletion
@@ -512,15 +638,48 @@ class _StaffState extends State<Staff> {
                                                         children: [
                                                           CircleAvatar(
                                                             radius: 14,
-                                                            backgroundImage: (s['image'] != null && s['image'].toString().isNotEmpty)
-                                                                ? NetworkImage(s['image'])
-                                                                : const AssetImage('assets/images/default_avatar.png') as ImageProvider,
-                                                            child: (s['image'] == null || s['image'].toString().isEmpty)
-                                                                ? Text(
-                                                                    s['firstName'].toString().isNotEmpty ? s['firstName'][0].toUpperCase() : '',
-                                                                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 10),
-                                                                  )
-                                                                : null,
+                                                            backgroundColor: Colors.grey[300],
+                                                            child: (s['image'] != null && s['image'].toString().isNotEmpty)
+                                                                ? (s['image'].toString().startsWith('http')
+                                                                    ? ClipRRect(
+                                                                        borderRadius: BorderRadius.circular(14),
+                                                                        child: Image.network(
+                                                                          s['image'],
+                                                                          width: 28,
+                                                                          height: 28,
+                                                                          fit: BoxFit.cover,
+                                                                          errorBuilder: (context, error, stackTrace) {
+                                                                            // If network image fails, show initial
+                                                                            return Container(
+                                                                              color: Colors.grey[300],
+                                                                              child: Center(
+                                                                                child: Text(
+                                                                                  s['firstName'].toString().isNotEmpty ? s['firstName'][0].toUpperCase() : '',
+                                                                                  style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 10),
+                                                                                ),
+                                                                              ),
+                                                                            );
+                                                                          },
+                                                                        ),
+                                                                      )
+                                                                    : Container(
+                                                                        decoration: BoxDecoration(
+                                                                          color: Colors.grey[300],
+                                                                          borderRadius: BorderRadius.circular(14),
+                                                                        ),
+                                                                        child: Center(
+                                                                          child: Text(
+                                                                            s['firstName'].toString().isNotEmpty ? s['firstName'][0].toUpperCase() : '',
+                                                                            style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 10),
+                                                                          ),
+                                                                        ),
+                                                                      ))
+                                                                : Center(
+                                                                    child: Text(
+                                                                      s['firstName'].toString().isNotEmpty ? s['firstName'][0].toUpperCase() : '',
+                                                                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 10),
+                                                                    ),
+                                                                  ),
                                                           ),
                                                           const SizedBox(width: 6),
                                                           Expanded(
