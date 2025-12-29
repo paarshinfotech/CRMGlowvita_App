@@ -7,16 +7,19 @@ import '../add_customer.dart';
 import '../add_services.dart';
 import '../customer_model.dart';
 import '../calender.dart';
+import '../services/api_service.dart'; // Add this import
 
 class Client {
   final String name;
   final String email;
   final String mobile;
+  final Customer customer; // Add reference to the full customer object
 
   const Client({
     required this.name,
     required this.email,
     required this.mobile,
+    required this.customer, // Add customer parameter
   });
 
   @override
@@ -38,15 +41,6 @@ class ServiceItem {
 
   @override
   String toString() => '$name  ₹${price.toStringAsFixed(2)}';
-}
-
-class StaffMember {
-  final String name;
-
-  const StaffMember({required this.name});
-
-  @override
-  String toString() => name;
 }
 
 class CreateAppointmentForm extends StatefulWidget {
@@ -82,12 +76,9 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
   TimeOfDay _startTime = TimeOfDay.now();
   TimeOfDay? _endTime;
 
-  // Sample data
-  final List<Client> _clients = [
-    const Client(name: 'Rahul Sharma', email: 'rahul@gmail.com', mobile: '9999999999'),
-    const Client(name: 'Priya Patel', email: 'priya@gmail.com', mobile: '8888888888'),
-    const Client(name: 'Anjali Verma', email: 'anjali@gmail.com', mobile: '7777777777'),
-  ];
+  // Initialize as empty lists
+  List<Client> _clients = [];
+  List<StaffMember> _staff = [];
 
   final List<ServiceItem> _services = const [
     ServiceItem(name: 'Soldier Cut', price: 150, durationMinutes: 25, taxPercent: 18),
@@ -96,18 +87,95 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
     ServiceItem(name: 'Keratin Treatment', price: 2500, durationMinutes: 90, taxPercent: 18),
   ];
 
-  final List<StaffMember> _staff = const [
-    StaffMember(name: 'HarshalSpa PRO'),
-    StaffMember(name: 'Shivani Deshmukh'),
-    StaffMember(name: 'Siddhi Shinde'),
-    StaffMember(name: 'Juili Ware'),
-  ];
-
   @override
   void initState() {
     super.initState();
     _recalculatePricingAndTimes();
     _discountCtrl.addListener(_recalculatePricingAndTimes);
+    _loadClients(); // Load clients from API on initialization
+    _loadStaff(); // Load staff from API on initialization
+  }
+
+  // Add method to load clients from API
+  Future<void> _loadClients() async {
+    try {
+      final apiCustomers = await ApiService.getClients();
+      setState(() {
+        _clients = apiCustomers.map((customer) => Client(
+          name: customer.fullName,
+          email: customer.email ?? '',
+          mobile: customer.mobile,
+          customer: customer,
+        )).toList();
+      });
+    } catch (e) {
+      print('Error loading clients: $e');
+      // Show error message to user
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading clients: $e')),
+        );
+      }
+    }
+  }
+
+  // Add method to load staff from API
+  Future<void> _loadStaff() async {
+    try {
+      final apiStaff = await ApiService.getStaff();
+      setState(() {
+        _staff = apiStaff;
+      });
+    } catch (e) {
+      print('Error loading staff: $e');
+      // Show error message to user
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading staff: $e')),
+        );
+      }
+    }
+  }
+
+  // Add method to refresh staff after adding a new one
+  Future<void> _refreshStaff() async {
+    try {
+      final apiStaff = await ApiService.getStaff();
+      setState(() {
+        _staff = apiStaff;
+      });
+    } catch (e) {
+      print('Error refreshing staff: $e');
+      // Show error message to user
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error refreshing staff: $e')),
+        );
+      }
+    }
+  }
+
+  // Add method to refresh clients after adding a new one
+  Future<void> _refreshClients() async {
+    try {
+      final apiCustomers = await ApiService.getClients();
+      setState(() {
+        _clients = apiCustomers.map((customer) => Client(
+          name: customer.fullName,
+          email: customer.email ?? '',
+          mobile: customer.mobile,
+          customer: customer,
+        )).toList();
+      });
+    } catch (e) {
+      print('Error refreshing clients: $e');
+      // Show error message to user
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error refreshing clients: $e')),
+        );
+      }
+    }
   }
 
   @override
@@ -273,6 +341,18 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
     );
   }
 
+  // -------- Staff Add Dialog --------
+  Future<void> _openAddStaffDialog() async {
+    // Since we don't have an AddStaffPage, we'll just show a snackbar for now
+    // In a real implementation, you would navigate to the AddStaffPage
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Add Staff functionality not implemented yet')),
+    );
+    
+    // Refresh the staff list after adding a new staff member
+    await _refreshStaff();
+  }
+
   // -------- Client Add Dialog --------
 
   Future<void> _openAddClientDialog() async {
@@ -285,15 +365,21 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
 
     if (result == null) return;
 
-    // Convert Customer to Client for our form
-    final newClient = Client(
-      name: result.fullName,
-      email: result.email ?? '',
-      mobile: result.mobile,
+    // Refresh the client list after adding a new client
+    await _refreshClients();
+    
+    // Find the newly added client and select it
+    final newClient = _clients.firstWhere(
+      (client) => client.customer.id == result.id,
+      orElse: () => Client(
+        name: result.fullName,
+        email: result.email ?? '',
+        mobile: result.mobile,
+        customer: result,
+      ),
     );
-
+    
     setState(() {
-      _clients.insert(0, newClient);
       _selectedClient = newClient;
       _clientSearchCtrl.text = newClient.name;
     });
@@ -353,7 +439,7 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
       duration: Duration(minutes: _selectedService!.durationMinutes),
       clientName: _selectedClient!.name,
       serviceName: _selectedService!.name,
-      staffName: _selectedStaff!.name,
+      staffName: _selectedStaff!.fullName ?? _selectedStaff!.id ?? 'Unknown Staff',
       status: 'Confirmed', // Default status
       isWebBooking: false, // Default to in-person booking
     );
@@ -432,10 +518,50 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                       child: Autocomplete<Client>(
                         optionsBuilder: (value) {
                           final q = value.text.trim().toLowerCase();
-                          if (q.isEmpty) return const Iterable<Client>.empty();
-                          return _clients.where((c) => c.name.toLowerCase().contains(q));
+                          if (q.isEmpty) return _clients;
+                          return _clients.where((c) => 
+                            c.name.toLowerCase().contains(q) || 
+                            c.email.toLowerCase().contains(q) || 
+                            c.mobile.toLowerCase().contains(q)
+                          );
                         },
                         displayStringForOption: (c) => c.name,
+                        optionsViewBuilder: (context, onSelected, options) {
+                          return Align(
+                            alignment: Alignment.topLeft,
+                            child: Material(
+                              color: Colors.white, // White background for dropdown
+                              child: Container(
+                                width: 300.w,
+                                decoration: BoxDecoration(
+                                  color: Colors.white, // Ensure white background
+                                  border: Border.all(color: Colors.grey[300]!),
+                                  borderRadius: BorderRadius.circular(8.r),
+                                ),
+                                child: ListView.builder(
+                                  padding: EdgeInsets.zero,
+                                  shrinkWrap: true,
+                                  itemCount: options.length,
+                                  itemBuilder: (context, index) {
+                                    final client = options.elementAt(index);
+                                    return ListTile(
+                                      title: Text(client.name, style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.bold, color: Colors.black)),
+                                      subtitle: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(client.email, style: TextStyle(fontSize: 8.sp, color: Colors.grey[600])),
+                                          Text(client.mobile, style: TextStyle(fontSize: 8.sp, color: Colors.grey[600])),
+                                        ],
+                                      ),
+                                      onTap: () => onSelected(client),
+                                      tileColor: Colors.white, // White background for each tile
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          );
+                        },
                         fieldViewBuilder: (context, textCtrl, focusNode, onSubmit) {
                           // Keep the same controller instance in the widget state
                           if (_clientSearchCtrl.text != textCtrl.text) {
@@ -571,10 +697,25 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                         value: _selectedStaff,
                         isExpanded: true,
                         decoration: _inputDecoration(label: 'Staff *'),
+                        dropdownColor: Colors.white, // White background for dropdown
+                        style: TextStyle(fontSize: 10.sp, color: Colors.black), // Black text
                         items: _staff
                             .map((s) => DropdownMenuItem<StaffMember>(
                                   value: s,
-                                  child: Text(s.name, style: TextStyle(fontSize: 10.sp), overflow: TextOverflow.ellipsis),
+                                  child: Container(
+                                    color: Colors.white, // White background for dropdown item
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(s.fullName ?? s.id ?? 'Unknown Staff', 
+                                            style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.bold, color: Colors.black)),
+                                        if (s.email != null && s.email!.isNotEmpty)
+                                          Text(s.email!, style: TextStyle(fontSize: 8.sp, color: Colors.grey[600])),
+                                        if (s.mobile != null && s.mobile!.isNotEmpty)
+                                          Text(s.mobile!, style: TextStyle(fontSize: 8.sp, color: Colors.grey[600])),
+                                      ],
+                                    ),
+                                  ),
                                 ))
                             .toList(),
                         onChanged: (s) {
@@ -582,11 +723,70 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                           _recalculatePricingAndTimes();
                         },
                         validator: (v) => v == null ? 'Select staff' : null,
-                        style: TextStyle(fontSize: 10.sp),
+                      ),
+                    ),
+                    SizedBox(width: 8.w),
+                    Expanded(
+                      flex: 1,
+                      child: SizedBox(
+                        height: 40.h,
+                        child: OutlinedButton(
+                          onPressed: _openAddStaffDialog,
+                          style: OutlinedButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+                          ),
+                          child: const Icon(Icons.add, size: 18),
+                        ),
                       ),
                     ),
                   ],
                 ),
+
+                SizedBox(height: 12.h),
+
+                // Display selected client details if selected
+                if (_selectedClient != null)
+                  Container(
+                    padding: EdgeInsets.all(8.w),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[300]!),
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Selected Client:', style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w600)),
+                        SizedBox(height: 4.h),
+                        Text('Name: ${_selectedClient!.name}', style: TextStyle(fontSize: 10.sp)),
+                        Text('Email: ${_selectedClient!.email}', style: TextStyle(fontSize: 10.sp)),
+                        Text('Mobile: ${_selectedClient!.mobile}', style: TextStyle(fontSize: 10.sp)),
+                      ],
+                    ),
+                  ),
+
+                // Display selected staff details if selected
+                if (_selectedStaff != null)
+                  Container(
+                    padding: EdgeInsets.all(8.w),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[300]!),
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Selected Staff:', style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w600)),
+                        SizedBox(height: 4.h),
+                        if (_selectedStaff!.fullName != null)
+                          Text('Name: ${_selectedStaff!.fullName}', style: TextStyle(fontSize: 10.sp)),
+                        if (_selectedStaff!.email != null)
+                          Text('Email: ${_selectedStaff!.email}', style: TextStyle(fontSize: 10.sp)),
+                        if (_selectedStaff!.mobile != null)
+                          Text('Mobile: ${_selectedStaff!.mobile}', style: TextStyle(fontSize: 10.sp)),
+                      ],
+                    ),
+                  ),
 
                 SizedBox(height: 12.h),
 

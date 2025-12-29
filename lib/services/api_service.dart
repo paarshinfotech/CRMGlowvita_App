@@ -3,9 +3,78 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../customer_model.dart';
 
+class StaffMember {
+  final String? id;
+  final String? vendorId;
+  final String? fullName;
+  final String? email;
+  final String? mobile;
+  final String? position;
+  final String? photo;
+  final String? status;
+  final List<dynamic>? permissions;
+  final Map<String, dynamic>? availability;
+  final List<dynamic>? blockedTimes;
+  final Map<String, dynamic>? bankDetails;
+  final int? salary;
+  final int? yearOfExperience;
+  final int? clientsServed;
+  final bool? commission;
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final String? description;
+
+  StaffMember({
+    this.id,
+    this.vendorId,
+    this.fullName,
+    this.email,
+    this.mobile,
+    this.position,
+    this.photo,
+    this.status,
+    this.permissions,
+    this.availability,
+    this.blockedTimes,
+    this.bankDetails,
+    this.salary,
+    this.yearOfExperience,
+    this.clientsServed,
+    this.commission,
+    this.startDate,
+    this.endDate,
+    this.description,
+  });
+
+  factory StaffMember.fromJson(Map<String, dynamic> json) {
+    return StaffMember(
+      id: json['_id'],
+      vendorId: json['vendorId'],
+      fullName: json['fullName'] ?? json['name'],
+      email: json['emailAddress'] ?? json['email'],
+      mobile: json['mobileNo'] ?? json['mobile'],
+      position: json['position'],
+      photo: json['photo'],
+      status: json['status'] ?? 'Active',
+      permissions: json['permissions']?.cast<dynamic>() ?? [],
+      availability: json['availability'] != null ? Map<String, dynamic>.from(json['availability']) : null,
+      blockedTimes: json['blockedTimes']?.cast<dynamic>() ?? [],
+      bankDetails: json['bankDetails'] != null ? Map<String, dynamic>.from(json['bankDetails']) : null,
+      salary: json['salary'],
+      yearOfExperience: json['yearOfExperience'],
+      clientsServed: json['clientsServed'],
+      commission: json['commission'] ?? false,
+      startDate: json['startDate'] != null ? DateTime.parse(json['startDate']) : null,
+      endDate: json['endDate'] != null ? DateTime.parse(json['endDate']) : null,
+      description: json['description'],
+    );
+  }
+}
+
 class ApiService {
   static const String baseUrl = 'https://partners.v2winonline.com/api'; 
   static const String clientsEndpoint = '/crm/clients';
+  static const String staffEndpoint = '/crm/staff'; // Add staff endpoint
 
   // Get auth token from shared preferences
   static Future<String?> _getAuthToken() async {
@@ -50,6 +119,39 @@ class ApiService {
     } catch (e) {
       print('Error fetching clients: $e');
       throw Exception('Error fetching clients: $e');
+    }
+  }
+
+  // Get all staff members
+  static Future<List<StaffMember>> getStaff() async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('No authentication token found'); 
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl$staffEndpoint'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': 'crm_access_token=$token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          List<dynamic> staffData = data['data'];
+          return staffData.map((json) => StaffMember.fromJson(json)).toList();
+        } else {
+          throw Exception('Failed to load staff: ${data['message'] ?? 'Unknown error'}');
+        }
+      } else {
+        throw Exception('Failed to load staff: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching staff: $e');
+      throw Exception('Error fetching staff: $e');
     }
   }
 

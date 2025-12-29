@@ -474,7 +474,7 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                   ],
                 ),
                 const SizedBox(height: 20),
-            
+         
                 // Search Bar
                 TextField(
                   decoration: InputDecoration(
