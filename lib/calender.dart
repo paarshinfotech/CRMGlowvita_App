@@ -293,98 +293,120 @@ class _CalendarState extends State<Calendar> {
     );
   }
 
- void _showStaffSelection() async {
-  // Refresh latest staff before showing selector
-  await _loadStaff();
+ void _showStaffSelection() {
+    final tempSelectedStaff = Map<String, bool>.from(selectedStaff);
 
-  final tempSelectedStaff = Map<String, bool>.from(selectedStaff);
-
-  if (!mounted) return;
-
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    builder: (BuildContext context) {
-      return StatefulBuilder(
-        builder: (BuildContext context, StateSetter setModalState) {
-          return SizedBox(
-            height: 500.h,
-            child: Column(
-              children: [
-                // ... header
-                Text(
-                  'Select Staff (${staffList.length})',
-                  style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 20.h),
-                Expanded(
-                  child: staffList.isEmpty
-                      ? Center(child: Text('No staff found'))
-                      : ListView.builder(
-                          itemCount: staffList.length,
-                          itemBuilder: (context, index) {
-                            final staff = staffList[index];
-                            final String name = staff['fullName'];
-                            final String role = staff['position'];
-                            final String status = staff['status'];
-                            final String? photo = staff['photo'];
-
-                            return CheckboxListTile(
-                              secondary: CircleAvatar(
-                                radius: 18.r,
-                                backgroundImage: photo != null && photo.startsWith('http')
-                                    ? NetworkImage(photo)
-                                    : null,
-                                child: photo == null || !photo.startsWith('http')
-                                    ? Text(name.isNotEmpty ? name[0].toUpperCase() : '?')
-                                    : null,
-                              ),
-                              title: Text(name, style: TextStyle(fontSize: 14.sp)),
-                              subtitle: Text('$role • $status', style: TextStyle(fontSize: 12.sp)),
-                              value: tempSelectedStaff[name] ?? false,
-                              onChanged: (val) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white, // White background for the dialog
+      shape: RoundedRectangleBorder( // Add rounded corners
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
+      ),
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            return SizedBox(
+              height: 300.h,
+              child: Column(
+                children: [
+                  Container(
+                    margin: EdgeInsets.all(8.h),
+                    width: 40.w,
+                    height: 4.h,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2.r),
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Select Staff', style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold)),
+                        Text('${staffList.length} available', style: TextStyle(fontSize: 12.sp, color: Colors.grey[600])),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      padding: EdgeInsets.symmetric(horizontal: 16.w),
+                      itemCount: staffList.length,
+                      itemBuilder: (context, index) {
+                        final staff = staffList[index]['fullName'];
+                        return Container(
+                          margin: EdgeInsets.only(bottom: 4.h),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[50],
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
+                          child: ListTile(
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+                            title: Text(staff, style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w500)),
+                            trailing: Checkbox(
+                              value: tempSelectedStaff[staff] ?? false,
+                              onChanged: (value) {
                                 setModalState(() {
-                                  tempSelectedStaff[name] = val ?? false;
+                                  tempSelectedStaff[staff] = value ?? false;
                                 });
                               },
-                            );
-                          },
-                        ),
-                ),
-                // ... buttons
-                Padding(
-                  padding: EdgeInsets.all(16.w),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => setModalState(() => tempSelectedStaff.clear()),
-                          child: Text('Clear All'),
-                        ),
-                      ),
-                      SizedBox(width: 12.w),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            setState(() {
-                              selectedStaff = tempSelectedStaff;
-                            });
-                            Navigator.pop(context);
-                          },
-                          child: Text('Apply (${tempSelectedStaff.values.where((v) => v).length})'),
-                        ),
-                      ),
-                    ],
+                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                ),
-              ],
-            ),
-          );
-        },
-      );
-    },
-  );
-}
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () {
+                              setModalState(() {
+                                tempSelectedStaff.updateAll((key, value) => false);
+                              });
+                            },
+                            style: OutlinedButton.styleFrom(
+                              padding: EdgeInsets.symmetric(vertical: 12.h),
+                              side: BorderSide(color: Colors.grey[300]!),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+                            ),
+                            child: Text('Clear All', style: TextStyle(fontSize: 14.sp)),
+                          ),
+                        ),
+                        SizedBox(width: 10.w),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              setState(() {
+                                selectedStaff
+                                  ..clear()
+                                  ..addAll(tempSelectedStaff);
+                              });
+                              Navigator.of(context).pop();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.black,
+                              padding: EdgeInsets.symmetric(vertical: 12.h),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+                            ),
+                            child: Text('Apply', style: TextStyle(color: Colors.white, fontSize: 14.sp)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
   void _showCreateAppointmentForm() {
     showModalBottomSheet(

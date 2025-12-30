@@ -7,19 +7,24 @@ import '../add_customer.dart';
 import '../add_services.dart';
 import '../customer_model.dart';
 import '../calender.dart';
-import '../services/api_service.dart'; // Add this import
+import '../services/api_service.dart'; 
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io' show HttpClient, X509Certificate;
+import 'package:http/io_client.dart' as http_io;
 
 class Client {
   final String name;
   final String email;
   final String mobile;
-  final Customer customer; // Add reference to the full customer object
+  final Customer customer; 
 
   const Client({
     required this.name,
     required this.email,
     required this.mobile,
-    required this.customer, // Add customer parameter
+    required this.customer, 
   });
 
   @override
@@ -41,6 +46,20 @@ class ServiceItem {
 
   @override
   String toString() => '$name  ₹${price.toStringAsFixed(2)}';
+}
+
+ class StaffMember {
+  final String id;
+  final String? fullName;
+  final String? email;
+  final String? mobile;
+
+  StaffMember({
+    required this.id,
+    this.fullName,
+    this.email,
+    this.mobile,
+  });
 }
 
 class CreateAppointmentForm extends StatefulWidget {
@@ -69,17 +88,18 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
   final TextEditingController _durationCtrl = TextEditingController();
 
   Client? _selectedClient;
-  ServiceItem? _selectedService;
   StaffMember? _selectedStaff;
-
+  List<StaffMember> _staff = [];
+  bool _isLoadingStaff = true;
+  ServiceItem? _selectedService;
+ 
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _startTime = TimeOfDay.now();
   TimeOfDay? _endTime;
 
   // Initialize as empty lists
   List<Client> _clients = [];
-  List<StaffMember> _staff = [];
-
+ 
   final List<ServiceItem> _services = const [
     ServiceItem(name: 'Soldier Cut', price: 150, durationMinutes: 25, taxPercent: 18),
     ServiceItem(name: 'Haircut', price: 250, durationMinutes: 30, taxPercent: 18),
@@ -92,8 +112,8 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
     super.initState();
     _recalculatePricingAndTimes();
     _discountCtrl.addListener(_recalculatePricingAndTimes);
-    _loadClients(); // Load clients from API on initialization
-    _loadStaff(); // Load staff from API on initialization
+    _loadClients();  
+    _loadStaff();
   }
 
   // Add method to load clients from API
@@ -119,64 +139,63 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
     }
   }
 
-  // Add method to load staff from API
+http_io.IOClient _cookieClient() {
+    final ioClient = HttpClient();
+    ioClient.badCertificateCallback = (X509Certificate cert, String host, int port) => true;
+    return http_io.IOClient(ioClient);
+  }
+
   Future<void> _loadStaff() async {
+    setState(() => _isLoadingStaff = true);
+
     try {
-      final apiStaff = await ApiService.getStaff();
-      setState(() {
-        _staff = apiStaff;
-      });
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token') ?? '';
+      if (token.isEmpty) throw Exception('No login token');
+
+      final client = _cookieClient();
+      final response = await client.get(
+        Uri.parse('https://partners.v2winonline.com/api/crm/staff'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          "Cookie": "crm_access_token=$token",
+        },
+      );
+      client.close();
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        setState(() {
+          _staff = data.map<StaffMember>((item) {
+            final map = item as Map<String, dynamic>;
+            return StaffMember(
+              id: map['_id']?.toString() ?? 'unknown',
+              fullName: (map['fullName'] ?? 'Unknown Staff').toString().trim(),
+              email: map['emailAddress']?.toString(),
+              mobile: map['mobileNo']?.toString(),
+            );
+          }).toList();
+        });
+      } else {
+        throw Exception('Failed to load staff');
+      }
     } catch (e) {
-      print('Error loading staff: $e');
-      // Show error message to user
+      debugPrint('Staff load error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading staff: $e')),
+          SnackBar(content: Text('Failed to load staff'), backgroundColor: Colors.red),
         );
       }
+      setState(() => _staff = []);
+    } finally {
+      setState(() => _isLoadingStaff = false);
     }
   }
 
-  // Add method to refresh staff after adding a new one
-  Future<void> _refreshStaff() async {
-    try {
-      final apiStaff = await ApiService.getStaff();
-      setState(() {
-        _staff = apiStaff;
-      });
-    } catch (e) {
-      print('Error refreshing staff: $e');
-      // Show error message to user
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error refreshing staff: $e')),
-        );
-      }
-    }
-  }
+  Future<void> _refreshStaff() async => await _loadStaff();
+  Future<void> _refreshClients() async => await _loadClients();
 
-  // Add method to refresh clients after adding a new one
-  Future<void> _refreshClients() async {
-    try {
-      final apiCustomers = await ApiService.getClients();
-      setState(() {
-        _clients = apiCustomers.map((customer) => Client(
-          name: customer.fullName,
-          email: customer.email ?? '',
-          mobile: customer.mobile,
-          customer: customer,
-        )).toList();
-      });
-    } catch (e) {
-      print('Error refreshing clients: $e');
-      // Show error message to user
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error refreshing clients: $e')),
-        );
-      }
-    }
-  }
 
   @override
   void dispose() {
@@ -424,9 +443,7 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
       return;
     }
     if (_selectedStaff == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a staff member')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a staff member')));
       return;
     }
      
@@ -651,98 +668,56 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
 
                 SizedBox(height: 12.h),
 
-                // Service / Staff
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: DropdownButtonFormField<ServiceItem>(
-                        value: _selectedService,
-                        isExpanded: true,
-                        decoration: _inputDecoration(label: 'Service *'),
-                        items: _services
-                            .map((s) => DropdownMenuItem<ServiceItem>(
-                                  value: s,
-                                  child: Text('${s.name}  ₹${s.price.toStringAsFixed(2)}',
-                                      style: TextStyle(fontSize: 10.sp), overflow: TextOverflow.ellipsis),
-                                ))
-                            .toList(),
-                        onChanged: (s) {
-                          setState(() => _selectedService = s);
-                          _recalculatePricingAndTimes();
-                        },
-                        validator: (v) => v == null ? 'Select service' : null,
-                        style: TextStyle(fontSize: 10.sp),
-                      ),
-                    ),
-                    SizedBox(width: 8.w),
-                    Expanded(
-                      flex: 1,
-                      child: SizedBox(
-                        height: 40.h,
-                        child: OutlinedButton(
-                          onPressed: _openAddServiceDialog,
-                          style: OutlinedButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
-                          ),
-                          child: const Icon(Icons.add, size: 18),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 8.w),
-                    Expanded(
-                      flex: 3,
-                      child: DropdownButtonFormField<StaffMember>(
-                        value: _selectedStaff,
-                        isExpanded: true,
-                        decoration: _inputDecoration(label: 'Staff *'),
-                        dropdownColor: Colors.white, // White background for dropdown
-                        style: TextStyle(fontSize: 10.sp, color: Colors.black), // Black text
-                        items: _staff
-                            .map((s) => DropdownMenuItem<StaffMember>(
-                                  value: s,
-                                  child: Container(
-                                    color: Colors.white, // White background for dropdown item
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(s.fullName ?? s.id ?? 'Unknown Staff', 
-                                            style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.bold, color: Colors.black)),
-                                        if (s.email != null && s.email!.isNotEmpty)
-                                          Text(s.email!, style: TextStyle(fontSize: 8.sp, color: Colors.grey[600])),
-                                        if (s.mobile != null && s.mobile!.isNotEmpty)
-                                          Text(s.mobile!, style: TextStyle(fontSize: 8.sp, color: Colors.grey[600])),
-                                      ],
-                                    ),
-                                  ),
-                                ))
-                            .toList(),
-                        onChanged: (s) {
-                          setState(() => _selectedStaff = s);
-                          _recalculatePricingAndTimes();
-                        },
-                        validator: (v) => v == null ? 'Select staff' : null,
-                      ),
-                    ),
-                    SizedBox(width: 8.w),
-                    Expanded(
-                      flex: 1,
-                      child: SizedBox(
-                        height: 40.h,
-                        child: OutlinedButton(
-                          onPressed: _openAddStaffDialog,
-                          style: OutlinedButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
-                          ),
-                          child: const Icon(Icons.add, size: 18),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+Row(children: [
+                  Expanded(flex: 3, child: DropdownButtonFormField<ServiceItem>(
+                    value: _selectedService,
+                    isExpanded: true,
+                    decoration: _inputDecoration(label: 'Service *'),
+                    items: _services.map((s) => DropdownMenuItem(value: s, child: Text('${s.name}  ₹${s.price.toStringAsFixed(2)}', style: TextStyle(fontSize: 10.sp), overflow: TextOverflow.ellipsis))).toList(),
+                    onChanged: (s) { setState(() => _selectedService = s); _recalculatePricingAndTimes(); },
+                    validator: (v) => v == null ? 'Select service' : null,
+                  )),
+                  SizedBox(width: 8.w),
+                  SizedBox(height: 40.h, child: OutlinedButton(onPressed: _openAddServiceDialog, style: OutlinedButton.styleFrom(padding: EdgeInsets.zero, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r))), child: const Icon(Icons.add, size: 18))),
+                  SizedBox(width: 8.w),
 
+                  // STAFF DROPDOWN ONLY — NO + BUTTON
+                  Expanded(
+                    flex: 4, // Takes more space since no add button
+                    child: DropdownButtonFormField<StaffMember>(
+                      value: _selectedStaff,
+                      isExpanded: true,
+                      decoration: _inputDecoration(label: 'Staff *'),
+                      dropdownColor: Colors.white,
+                      hint: _isLoadingStaff
+                          ? Text('Loading staff...', style: TextStyle(fontSize: 10.sp, color: Colors.grey))
+                          : Text('Select staff', style: TextStyle(fontSize: 10.sp)),
+                      items: _staff.map((staff) => DropdownMenuItem<StaffMember>(
+                        value: staff,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 4.h),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                staff.fullName ?? 'Unknown Staff',
+                                style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.bold, color: Colors.black),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (staff.email != null && staff.email!.isNotEmpty)
+                                Text(staff.email!, style: TextStyle(fontSize: 9.sp, color: Colors.grey[700])),
+                              if (staff.mobile != null && staff.mobile!.isNotEmpty)
+                                Text(staff.mobile!, style: TextStyle(fontSize: 9.sp, color: Colors.grey[700])),
+                            ],
+                          ),
+                        ),
+                      )).toList(),
+                      onChanged: _isLoadingStaff ? null : (value) => setState(() => _selectedStaff = value),
+                      validator: (v) => v == null ? 'Select staff' : null,
+                    ),
+                  ),
+                ]),
                 SizedBox(height: 12.h),
 
                 // Display selected client details if selected
@@ -765,27 +740,19 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                     ),
                   ),
 
-                // Display selected staff details if selected
+                // Selected Staff Info
                 if (_selectedStaff != null)
                   Container(
+                    margin: EdgeInsets.only(top: 12.h),
                     padding: EdgeInsets.all(8.w),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey[300]!),
-                      borderRadius: BorderRadius.circular(8.r),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Selected Staff:', style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w600)),
-                        SizedBox(height: 4.h),
-                        if (_selectedStaff!.fullName != null)
-                          Text('Name: ${_selectedStaff!.fullName}', style: TextStyle(fontSize: 10.sp)),
-                        if (_selectedStaff!.email != null)
-                          Text('Email: ${_selectedStaff!.email}', style: TextStyle(fontSize: 10.sp)),
-                        if (_selectedStaff!.mobile != null)
-                          Text('Mobile: ${_selectedStaff!.mobile}', style: TextStyle(fontSize: 10.sp)),
-                      ],
-                    ),
+                    decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8.r)),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('Selected Staff:', style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w600)),
+                      SizedBox(height: 4.h),
+                      Text('Name: ${_selectedStaff!.fullName ?? 'Unknown'}', style: TextStyle(fontSize: 10.sp)),
+                      if (_selectedStaff!.email != null) Text('Email: ${_selectedStaff!.email}', style: TextStyle(fontSize: 10.sp)),
+                      if (_selectedStaff!.mobile != null) Text('Mobile: ${_selectedStaff!.mobile}', style: TextStyle(fontSize: 10.sp)),
+                    ]),
                   ),
 
                 SizedBox(height: 12.h),
