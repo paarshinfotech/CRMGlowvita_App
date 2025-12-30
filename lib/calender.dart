@@ -4,7 +4,12 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-
+import 'services/api_service.dart'; 
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io' show HttpClient, X509Certificate;
+import 'package:http/io_client.dart' as http_io;
 import 'widgets/create_appointment_form.dart';
 import 'widgets/custom_drawer.dart';
 import 'Notification.dart';
@@ -55,6 +60,12 @@ class _CalendarState extends State<Calendar> {
   static const double staffColumnBaseWidth = 160.0;
   double get staffColumnWidth => staffColumnBaseWidth.w;
 
+  // DYNAMIC STAFF DATA - fetched from API
+  List<Map<String, dynamic>> staffList = [];
+  bool isStaffLoading = false;
+  Map<String, bool> selectedStaff = {};
+  List<Appointments> _appointments = [];
+
   DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
   double _timeToOffset(DateTime time) {
@@ -63,17 +74,12 @@ class _CalendarState extends State<Calendar> {
     return (minutes / 15) * quarterSlot;
   }
 
-  // Using shared data service
-  final List<String> staffName = sharedDataService.staffMembers.map((staff) => staff.name).toList();
-
-  // Using shared data service
-  final Map<String, Map<String, String>> staffInfo = {
-    for (var staff in sharedDataService.staffMembers)
-      staff.name: {'role': staff.role, 'availability': staff.availability}
-  };
-
-  final Map<String, bool> selectedStaff = {};
-  late final List<Appointments> _appointments;
+//  helper to bypass SSL (same as in staff.dart)
+  http_io.IOClient _cookieClient() {
+    final ioClient = HttpClient();
+    ioClient.badCertificateCallback = (X509Certificate cert, String host, int port) => true;
+    return http_io.IOClient(ioClient);
+  }
 
   void _setSelectedDate(DateTime newDate) {
     final d = _dateOnly(newDate);
@@ -84,33 +90,28 @@ class _CalendarState extends State<Calendar> {
   @override
   void initState() {
     super.initState();
-
     _selectedDate = _dateOnly(DateTime.now());
 
+    // Controllers...
     _verticalScrollController = ScrollController();
     _horizontalScrollController = ScrollController();
     _staffHeaderScrollController = ScrollController();
 
-    for (var i = 0; i < staffName.length; i++) {
-      selectedStaff[staffName[i]] = i < 2;
-    }
+    // This will now actually fetch real staff
+    _loadStaff();
 
-    final today = _dateOnly(DateTime.now());
-    final tomorrow = today.add(const Duration(days: 1));
-    final yesterday = today.subtract(const Duration(days: 1));
-
-    // Using shared data service
-    _appointments = sharedDataService.appointments.map((sharedAppt) => Appointments(
-      startTime: sharedAppt.startTime,
-      duration: sharedAppt.duration,
-      clientName: sharedAppt.clientName,
-      serviceName: sharedAppt.serviceName,
-      staffName: sharedAppt.staffName,
-      status: sharedAppt.status,
-      isWebBooking: sharedAppt.isWebBooking,
+    // Rest of initState...
+    _appointments = sharedDataService.appointments.map((a) => Appointments(
+      startTime: a.startTime,
+      duration: a.duration,
+      clientName: a.clientName,
+      serviceName: a.serviceName,
+      staffName: a.staffName,
+      status: a.status,
+      isWebBooking: a.isWebBooking,
     )).toList();
 
-    // Sync header with body scroll (clamp to header max)
+    // Timer and scroll sync...
     _horizontalScrollController.addListener(() {
       if (!_horizontalScrollController.hasClients || !_staffHeaderScrollController.hasClients) return;
       final target = _horizontalScrollController.offset;
@@ -121,6 +122,101 @@ class _CalendarState extends State<Calendar> {
     _timer = Timer.periodic(const Duration(minutes: 1), (_) {
       _timerNotifier.value = DateTime.now().millisecondsSinceEpoch;
     });
+  }
+  
+  Future<void> _loadStaff() async {
+    setState(() {
+      isStaffLoading = true;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token') ?? '';
+      if (token.isEmpty) {
+        throw Exception('No auth token found. Please login again.');
+      }
+
+      final client = _cookieClient();
+      final response = await client.get(
+        Uri.parse('https://partners.v2winonline.com/api/crm/staff'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          "Cookie": "crm_access_token=$token",
+        },
+      );
+      client.close();
+
+      debugPrint('Staff API Status: ${response.statusCode}');
+      debugPrint('Staff API Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> rawList = json.decode(response.body);
+
+        setState(() {
+          staffList = rawList.map<Map<String, dynamic>>((item) {
+            final map = item as Map<String, dynamic>;
+            final fullName = (map['fullName'] ?? 'Unknown Staff').toString().trim();
+            return {
+              'id': map['_id']?.toString() ?? 'unknown',
+              'fullName': fullName.isEmpty ? 'No Name' : fullName,
+              'position': (map['position'] ?? 'Staff').toString(),
+              'status': (map['status'] ?? 'Active').toString(),
+              'photo': map['photo']?.toString(),
+            };
+          }).toList();
+
+          // Auto-select first 2 staff
+          selectedStaff.clear();
+          for (int i = 0; i < staffList.length && i < 2; i++) {
+            final name = staffList[i]['fullName'] as String;
+            selectedStaff[name] = true;
+          }
+          // Ensure others are false
+          for (int i = 2; i < staffList.length; i++) {
+            final name = staffList[i]['fullName'] as String;
+            selectedStaff[name] = false;
+          }
+
+          debugPrint('Loaded ${staffList.length} staff members');
+          debugPrint('Selected: ${selectedStaff.keys.where((k) => selectedStaff[k]!).toList()}');
+        });
+      } else {
+        throw Exception('Failed to load staff: ${response.statusCode}');
+      }
+    } catch (e, stack) {
+      debugPrint('ERROR loading staff: $e');
+      debugPrint(stack.toString());
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load staff: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+
+      // Fallback to shared data
+      setState(() {
+        staffList = sharedDataService.staffMembers.map((s) => {
+          'id': s.name,
+          'fullName': s.name,
+          'position': s.role,
+          'status': s.availability,
+          'photo': null,
+        }).toList();
+
+        selectedStaff.clear();
+        for (int i = 0; i < staffList.length && i < 2; i++) {
+          selectedStaff[staffList[i]['fullName']] = true;
+        }
+      });
+    } finally {
+      if (mounted) {
+        setState(() => isStaffLoading = false);
+      }
+    }
   }
 
   @override
@@ -146,7 +242,6 @@ class _CalendarState extends State<Calendar> {
     }
   }
 
-  // Date picker copied from your first code (Cupertino bottom sheet)
   void _showMonthYearPicker() {
     showModalBottomSheet(
       context: context,
@@ -198,92 +293,98 @@ class _CalendarState extends State<Calendar> {
     );
   }
 
-  void _showStaffSelection() {
-    final tempSelectedStaff = Map<String, bool>.from(selectedStaff);
+ void _showStaffSelection() async {
+  // Refresh latest staff before showing selector
+  await _loadStaff();
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setModalState) {
-            return SizedBox(
-              height: 300.h,
-              child: Column(
-                children: [
-                  Container(
-                    margin: EdgeInsets.all(12.h),
-                    width: 40.w,
-                    height: 5.h,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(3.r),
-                    ),
-                  ),
-                  Text('Select Staff', style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold)),
-                  SizedBox(height: 20.h),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: staffName.length,
-                      itemBuilder: (context, index) {
-                        final staff = staffName[index];
-                        return ListTile(
-                          title: Text(staff),
-                          trailing: Checkbox(
-                            value: tempSelectedStaff[staff] ?? false,
-                            onChanged: (value) {
-                              setModalState(() {
-                                tempSelectedStaff[staff] = value ?? false;
-                              });
-                            },
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.all(16.w),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () {
-                              setModalState(() {
-                                tempSelectedStaff.updateAll((key, value) => false);
-                              });
-                            },
-                            child: const Text('Clear All'),
-                          ),
+  final tempSelectedStaff = Map<String, bool>.from(selectedStaff);
+
+  if (!mounted) return;
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    builder: (BuildContext context) {
+      return StatefulBuilder(
+        builder: (BuildContext context, StateSetter setModalState) {
+          return SizedBox(
+            height: 500.h,
+            child: Column(
+              children: [
+                // ... header
+                Text(
+                  'Select Staff (${staffList.length})',
+                  style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 20.h),
+                Expanded(
+                  child: staffList.isEmpty
+                      ? Center(child: Text('No staff found'))
+                      : ListView.builder(
+                          itemCount: staffList.length,
+                          itemBuilder: (context, index) {
+                            final staff = staffList[index];
+                            final String name = staff['fullName'];
+                            final String role = staff['position'];
+                            final String status = staff['status'];
+                            final String? photo = staff['photo'];
+
+                            return CheckboxListTile(
+                              secondary: CircleAvatar(
+                                radius: 18.r,
+                                backgroundImage: photo != null && photo.startsWith('http')
+                                    ? NetworkImage(photo)
+                                    : null,
+                                child: photo == null || !photo.startsWith('http')
+                                    ? Text(name.isNotEmpty ? name[0].toUpperCase() : '?')
+                                    : null,
+                              ),
+                              title: Text(name, style: TextStyle(fontSize: 14.sp)),
+                              subtitle: Text('$role • $status', style: TextStyle(fontSize: 12.sp)),
+                              value: tempSelectedStaff[name] ?? false,
+                              onChanged: (val) {
+                                setModalState(() {
+                                  tempSelectedStaff[name] = val ?? false;
+                                });
+                              },
+                            );
+                          },
                         ),
-                        SizedBox(width: 10.w),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () {
-                              setState(() {
-                                selectedStaff
-                                  ..clear()
-                                  ..addAll(tempSelectedStaff);
-                              });
-                              Navigator.of(context).pop();
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.black,
-                              minimumSize: Size(double.infinity, 40.h),
-                            ),
-                            child: Text('Apply', style: TextStyle(color: Colors.white, fontSize: 14.sp)),
-                          ),
+                ),
+                // ... buttons
+                Padding(
+                  padding: EdgeInsets.all(16.w),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => setModalState(() => tempSelectedStaff.clear()),
+                          child: Text('Clear All'),
                         ),
-                      ],
-                    ),
+                      ),
+                      SizedBox(width: 12.w),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              selectedStaff = tempSelectedStaff;
+                            });
+                            Navigator.pop(context);
+                          },
+                          child: Text('Apply (${tempSelectedStaff.values.where((v) => v).length})'),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    },
+  );
+}
 
   void _showCreateAppointmentForm() {
     showModalBottomSheet(
@@ -294,7 +395,6 @@ class _CalendarState extends State<Calendar> {
           height: MediaQuery.of(context).size.height * 0.8,
           child: CreateAppointmentForm(
             onAppointmentCreated: (appointment) {
-              // Add the new appointment to the list
               setState(() {
                 _appointments.add(appointment);
               });
@@ -308,9 +408,10 @@ class _CalendarState extends State<Calendar> {
   @override
   Widget build(BuildContext context) {
     final quarterSlot = slotHeight / 4;
-
-    final selectedStaffList =
-        selectedStaff.entries.where((e) => e.value).map((e) => e.key).toList();
+    final selectedStaffList = selectedStaff.entries
+        .where((e) => e.value)
+        .map((e) => e.key)
+        .toList();
 
     final Map<String, List<Appointments>> staffAppts = {};
     for (final staff in selectedStaffList) {
@@ -319,8 +420,9 @@ class _CalendarState extends State<Calendar> {
           .toList();
     }
 
-    final totalApptsForDay =
-        _appointments.where((a) => DateUtils.isSameDay(a.startTime, _selectedDate)).length;
+    final totalApptsForDay = _appointments
+        .where((a) => DateUtils.isSameDay(a.startTime, _selectedDate))
+        .length;
 
     return Scaffold(
       drawer: const CustomDrawer(currentPage: 'Calendar'),
@@ -336,6 +438,11 @@ class _CalendarState extends State<Calendar> {
         ),
         title: Text('Calendar', style: GoogleFonts.poppins(fontSize: 14.sp, fontWeight: FontWeight.w600)),
         actions: [
+          IconButton(
+            icon: Icon(Icons.refresh, size: 20.sp),
+            onPressed: _loadStaff, // Refresh staff + appointments
+            tooltip: 'Refresh Staff',
+          ),
           IconButton(
             icon: Icon(Icons.notifications, size: 20.sp),
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => NotificationPage())),
@@ -365,8 +472,6 @@ class _CalendarState extends State<Calendar> {
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
-
-                // Keep this layout, but use Cupertino picker on tap (from first code)
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -389,7 +494,6 @@ class _CalendarState extends State<Calendar> {
                     ),
                   ],
                 ),
-
                 IconButton(
                   icon: Icon(Icons.arrow_forward_ios, size: 16.sp),
                   onPressed: () => _setSelectedDate(_selectedDate.add(const Duration(days: 1))),
@@ -401,7 +505,7 @@ class _CalendarState extends State<Calendar> {
           ),
           Divider(height: 1, thickness: 1, color: Colors.grey[300]),
 
-          // Staff header
+          // Staff header - DYNAMIC with real staff data  
           Container(
             color: Colors.white,
             padding: EdgeInsets.symmetric(vertical: 8.h),
@@ -409,35 +513,54 @@ class _CalendarState extends State<Calendar> {
               controller: _staffHeaderScrollController,
               scrollDirection: Axis.horizontal,
               physics: const NeverScrollableScrollPhysics(),
-              child: Row(
-                children: [
-                  SizedBox(width: 60.w),
-                  ...selectedStaffList.map(
-                    (staff) => Container(
-                      width: staffColumnWidth,
-                      padding: EdgeInsets.symmetric(horizontal: 8.w),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+              child: isStaffLoading
+                  ? SizedBox(
+                      width: 60.w + (selectedStaffList.length * staffColumnWidth),
+                      child: Row(
                         children: [
-                          Text(
-                            staff,
-                            style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w600),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          SizedBox(height: 2.h),
-                          Text(staffInfo[staff]?['role'] ?? '', style: TextStyle(fontSize: 8.sp, color: Colors.grey[700])),
-                          SizedBox(height: 1.h),
-                          Text(
-                            staffInfo[staff]?['availability'] ?? '',
-                            style: TextStyle(fontSize: 7.sp, color: Colors.green[700]),
+                          SizedBox(width: 60.w),
+                          ...List.generate(selectedStaffList.length, (i) => 
+                            Container(width: staffColumnWidth, height: 40.h, child: Center(child: SizedBox(width: 20.w, height: 20.h, child: CircularProgressIndicator(strokeWidth: 2))))
                           ),
                         ],
                       ),
+                    )
+                  : Row(
+                      children: [
+                        SizedBox(width: 60.w),
+                        ...selectedStaffList.map((staffName) {
+                          final staff = staffList.firstWhere(
+                            (s) => s['fullName'] == staffName,
+                            orElse: () => <String, String?>{'position': 'Unknown', 'status': 'Active', 'fullName': staffName, 'id': ''},
+                          );
+                          return Container(
+                            width: staffColumnWidth,
+                            padding: EdgeInsets.symmetric(horizontal: 8.w),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  staffName,
+                                  style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w600),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                SizedBox(height: 2.h),
+                                Text(
+                                  staff['position'] ?? 'Staff',
+                                  style: TextStyle(fontSize: 8.sp, color: Colors.grey[700]),
+                                ),
+                                SizedBox(height: 1.h),
+                                Text(
+                                  staff['status'] ?? 'Active',
+                                  style: TextStyle(fontSize: 7.sp, color: Colors.green[700]),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
                     ),
-                  ),
-                ],
-              ),
             ),
           ),
           Divider(height: 1, thickness: 1, color: Colors.grey[300]),
@@ -477,7 +600,7 @@ class _CalendarState extends State<Calendar> {
                       ),
                     ),
 
-                    // Staff columns
+                    // Staff columns - DYNAMIC appointments per staff
                     Positioned(
                       left: 60.w,
                       right: 0,
@@ -488,130 +611,168 @@ class _CalendarState extends State<Calendar> {
                         scrollDirection: Axis.horizontal,
                         child: SizedBox(
                           height: 24 * slotHeight,
-                          child: Row(
-                            children: selectedStaffList.map((staff) {
-                              final appts = staffAppts[staff] ?? [];
-                              return SizedBox(
-                                width: staffColumnWidth,
-                                height: 24 * slotHeight,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    border: Border(left: BorderSide(color: Colors.grey[300]!, width: 1)),
-                                  ),
-                                  child: Stack(
-                                    fit: StackFit.expand,
-                                    children: [
-                                      const SizedBox.expand(),
+                          width: selectedStaffList.isEmpty ? 0 : (selectedStaffList.length * staffColumnWidth),
+                          child: selectedStaffList.isEmpty
+                              ? const SizedBox()
+                              : Row(
+                                  children: selectedStaffList.map((staffName) {
+                                    final appts = staffAppts[staffName] ?? [];
+                                    final staff = staffList.firstWhere(
+                                      (s) => s['fullName'] == staffName,
+                                      orElse: () => <String, String?>{'photo': null, 'fullName': staffName, 'id': '', 'position': '', 'status': ''},
+                                    );
+                                    return SizedBox(
+                                      width: staffColumnWidth,
+                                      height: 24 * slotHeight,
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          border: Border(left: BorderSide(color: Colors.grey[300]!, width: 1)),
+                                        ),
+                                        child: Stack(
+                                          fit: StackFit.expand,
+                                          children: [
+                                            const SizedBox.expand(),
+                                            // Grid lines
+                                            ...List.generate(97, (i) {
+                                              return Positioned(
+                                                top: i * quarterSlot,
+                                                left: 0,
+                                                right: 0,
+                                                child: Divider(
+                                                  thickness: i % 4 == 0 ? 1.0 : 0.4,
+                                                  color: i % 4 == 0 ? Colors.grey[400] : Colors.grey[200],
+                                                ),
+                                              );
+                                            }),
+                                            // Appointments for this staff
+                                            ...appts.map((appt) {
+                                              final startMin = appt.startTime.hour * 60 + appt.startTime.minute;
+                                              final top = (startMin / 15) * quarterSlot;
+                                              final height = (appt.duration.inMinutes / 15) * quarterSlot;
 
-                                      // grid lines
-                                      ...List.generate(97, (i) {
-                                        return Positioned(
-                                          top: i * quarterSlot,
-                                          left: 0,
-                                          right: 0,
-                                          child: Divider(
-                                            thickness: i % 4 == 0 ? 1.0 : 0.4,
-                                            color: i % 4 == 0 ? Colors.grey[400] : Colors.grey[200],
-                                          ),
-                                        );
-                                      }),
-
-                                      // appointments
-                                      ...appts.map((appt) {
-                                        final startMin = appt.startTime.hour * 60 + appt.startTime.minute;
-                                        final top = (startMin / 15) * quarterSlot;
-                                        final height = (appt.duration.inMinutes / 15) * quarterSlot;
-
-                                        return Positioned(
-                                          top: top,
-                                          left: 6.w,
-                                          right: 6.w,
-                                          height: height,
-                                          child: Container(
-                                            padding: EdgeInsets.all(4.w),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFE0F7FA),
-                                              borderRadius: BorderRadius.circular(4.r),
-                                              border: Border.all(color: Colors.cyan[200]!),
-                                            ),
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  '${DateFormat.Hm().format(appt.startTime)} - ${DateFormat.Hm().format(appt.endTime)}',
-                                                  style: TextStyle(fontSize: 8.sp, fontWeight: FontWeight.bold),
+                                              return Positioned(
+                                                top: top,
+                                                left: 6.w,
+                                                right: 6.w,
+                                                height: height.clamp(quarterSlot, slotHeight * 4), // Prevent overflow
+                                                child: Container(
+                                                  padding: EdgeInsets.all(4.w),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFFE0F7FA),
+                                                    borderRadius: BorderRadius.circular(4.r),
+                                                    border: Border.all(color: Colors.cyan[200]!),
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: Colors.black.withOpacity(0.1),
+                                                        blurRadius: 2,
+                                                        offset: Offset(0, 1),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      Text(
+                                                        '${DateFormat.Hm().format(appt.startTime)} - ${DateFormat.Hm().format(appt.endTime)}',
+                                                        style: TextStyle(fontSize: 8.sp, fontWeight: FontWeight.bold),
+                                                      ),
+                                                      SizedBox(height: 1.h),
+                                                      Text(
+                                                        appt.serviceName,
+                                                        style: TextStyle(fontSize: 7.sp, fontWeight: FontWeight.w600),
+                                                        maxLines: 2,
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
+                                                      SizedBox(height: 1.h),
+                                                      Text(
+                                                        appt.clientName,
+                                                        style: TextStyle(fontSize: 6.sp),
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
+                                                      SizedBox(height: 1.h),
+                                                      Row(
+                                                        children: [
+                                                          Icon(Icons.circle, size: 4.sp, color: _getStatusColor(appt.status)),
+                                                          SizedBox(width: 2.w),
+                                                          Text(
+                                                            appt.status,
+                                                            style: TextStyle(fontSize: 6.sp, color: _getStatusColor(appt.status)),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ),
-                                                SizedBox(height: 2.h),
-                                                Text(
-                                                  appt.serviceName,
-                                                  style: TextStyle(fontSize: 7.sp, fontWeight: FontWeight.w600),
-                                                  maxLines: 2,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                                SizedBox(height: 2.h),
-                                                Text(
-                                                  appt.clientName,
-                                                  style: TextStyle(fontSize: 6.sp),
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                                SizedBox(height: 2.h),
-                                                Row(
-                                                  children: [
-                                                    Icon(Icons.circle, size: 4.sp, color: _getStatusColor(appt.status)),
-                                                    SizedBox(width: 2.w),
-                                                    Text(
-                                                      appt.status,
-                                                      style: TextStyle(fontSize: 6.sp, color: _getStatusColor(appt.status)),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        );
-                                      }),
-                                    ],
-                                  ),
+                                              );
+                                            }),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
                                 ),
-                              );
-                            }).toList(),
-                          ),
                         ),
                       ),
                     ),
 
-                    // Time line (red on today, grey otherwise)
+                    // Current time indicator
                     ValueListenableBuilder(
                       valueListenable: _timerNotifier,
                       builder: (_, __, ___) {
                         final now = DateTime.now();
                         final top = _timeToOffset(now);
                         final isToday = DateUtils.isSameDay(now, _selectedDate);
-
                         return Positioned(
                           top: top - 1,
                           left: 60.w,
                           right: 0,
-                          child: Container(height: 2, color: isToday ? Colors.red : Colors.grey.shade400),
+                          child: Container(
+                            height: 3,
+                            decoration: BoxDecoration(
+                              color: isToday ? Colors.red : Colors.grey.shade400,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: (isToday ? Colors.red : Colors.grey).withOpacity(0.3),
+                                  blurRadius: 4,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                          ),
                         );
                       },
                     ),
-                    if (totalApptsForDay == 0)
+
+                    // Empty state
+                    if (totalApptsForDay == 0 && selectedStaffList.isNotEmpty)
                       Positioned(
-                        top: 12.h,
+                        top: 50.h,
                         left: 70.w,
-                        right: 12.w,
+                        right: 20.w,
                         child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
                           decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(8.r),
-                            border: Border.all(color: Colors.grey.shade300),
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(12.r),
+                            border: Border.all(color: Colors.grey.shade200),
                           ),
-                          child: Text(
-                            'No appointments for ${DateFormat('EEE, MMM d').format(_selectedDate)}',
-                            style: TextStyle(fontSize: 12.sp, color: Colors.grey.shade700),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.event_busy, size: 32.sp, color: Colors.grey[400]),
+                              SizedBox(height: 8.h),
+                              Text(
+                                'No appointments',
+                                style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: Colors.grey[700]),
+                              ),
+                              SizedBox(height: 4.h),
+                              Text(
+                                'for ${DateFormat('EEE, MMM d').format(_selectedDate)}',
+                                style: TextStyle(fontSize: 12.sp, color: Colors.grey[600]),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -622,26 +783,35 @@ class _CalendarState extends State<Calendar> {
           ),
         ],
       ),
-  
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          FloatingActionButton(
+          FloatingActionButton.extended(
             backgroundColor: Colors.black,
             onPressed: _showCreateAppointmentForm,
-            child: const Icon(Icons.add, color: Colors.white),
+            icon: const Icon(Icons.add, color: Colors.white),
+            label: Text('New Appointment', style: TextStyle(color: Colors.white, fontSize: 12.sp)),
           ),
-          SizedBox(height: 10.h),
-          SizedBox(
-            width: 45.w,
-            height: 45.w,
-            child: FloatingActionButton(
-              backgroundColor: Colors.white,
-              elevation: 6,
-              shape: CircleBorder(side: BorderSide(color: Colors.grey[300]!, width: 1)),
-              onPressed: _showStaffSelection,
-              child: const Icon(Icons.group, color: Colors.black, size: 20),
-            ),
+          SizedBox(height: 12.h),
+          Stack(
+            children: [
+              FloatingActionButton(
+                backgroundColor: Colors.blue,
+                elevation: 6,
+                heroTag: 'staff_select',
+                onPressed: _showStaffSelection,
+                tooltip: '${selectedStaffList.length} staff selected',
+                child: Text(
+                  '${selectedStaffList.length}',
+                  style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.bold),
+                ),
+              ),
+              Positioned(
+                right: 4.w,
+                bottom: 4.h,
+                child: Icon(Icons.group, color: Colors.white, size: 14.sp),
+              ),
+            ],
           ),
         ],
       ),

@@ -429,18 +429,18 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
       );
       return;
     }
-
+     
     final start = _combine(_selectedDate, _startTime);
     final end = _endTime == null ? null : _combine(_selectedDate, _endTime!);
     
-    // Create the appointment object
+    // Create the appointment object 
     final appointment = Appointments(
       startTime: start,
       duration: Duration(minutes: _selectedService!.durationMinutes),
       clientName: _selectedClient!.name,
       serviceName: _selectedService!.name,
       staffName: _selectedStaff!.fullName ?? _selectedStaff!.id ?? 'Unknown Staff',
-      status: 'Confirmed', // Default status
+      status: 'New', // Default status
       isWebBooking: false, // Default to in-person booking
     );
 
