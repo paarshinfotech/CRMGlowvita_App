@@ -299,14 +299,14 @@ class _CalendarState extends State<Calendar> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white, // White background for the dialog
-      shape: RoundedRectangleBorder( // Add rounded corners
+      backgroundColor: Colors.white,  
+      shape: RoundedRectangleBorder(  
         borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
       ),
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
-            return SizedBox(
+            return SizedBox( 
               height: 300.h,
               child: Column(
                 children: [
