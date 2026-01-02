@@ -5,6 +5,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter/animation.dart';
 import './supp_drawer.dart';
 import '../products.dart';
+import 'supp_profile.dart';
+
 
 class Supp_DashboardPage extends StatefulWidget {
   const Supp_DashboardPage({super.key});
@@ -186,10 +188,10 @@ class _DashboardPageState extends State<Supp_DashboardPage> with TickerProviderS
                       GestureDetector(
                         onTap: () {
                           print('Opening profile page');
-                         /* Navigator.push(
+                          Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => const ProfilePage()),
-                          );*/
+                            MaterialPageRoute(builder: (_) => const SuppProfilePage()),
+                          );
                         },
                         child: Padding(
                           padding: EdgeInsets.only(right: 12.w),
