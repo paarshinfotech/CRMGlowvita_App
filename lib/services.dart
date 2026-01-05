@@ -2,59 +2,58 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'add_services.dart';
 import 'widgets/custom_drawer.dart';
+import 'services/api_service.dart';
 
 class Services extends StatefulWidget {
   const Services({super.key});
 
   @override
-  State<Services> createState() => _Services();
+  State<Services> createState() => _ServicesState();
 }
 
-class _Services extends State<Services> {
-  List<Map<String, dynamic>> services = [
-    {
-      'name': 'Basic Haircut',
-      'category': 'Hair',
-      'duration': '30 min',
-      'price': 250.0,
-      'discounted_price': 200.0,
-      'is_active': true,
-      'home_service': true,
-      'event_service': false,
-    },
-    {
-      'name': 'Manicure',
-      'category': 'Nails',
-      'duration': '45 min',
-      'price': 350.0,
-      'discounted_price': 300.0,
-      'is_active': false,
-      'home_service': true,
-      'event_service': true,
-    },
-    {
-      'name': 'Hair Coloring',
-      'category': 'Hair',
-      'duration': '2 hours',
-      'price': 1200.0,
-      'discounted_price': 1000.0,
-      'is_active': true,
-      'home_service': true,
-      'event_service': true,
-    },
-  ];
-  String? selectedCategory;
-  String searchQuery = ''; // Add search query field
-  final TextEditingController _searchController = TextEditingController(); // Add search controller
+class _ServicesState extends State<Services> {
+  List<Service> services = [];
+  bool isLoading = true;
+  String? errorMessage;
 
-  final List<String> categories = [
-    'All',
-    'Hair',
-    'Skin',
-    'Nails',
-    'Makeup',
-    'Male Grooming',
-  ];
+  String? selectedCategory;
+  String searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
+  Set<String> get dynamicCategories {
+    final cats = services.map((s) => s.category).whereType<String>().toSet();
+    cats.add('All');
+    return cats;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    selectedCategory = 'All';
+    _fetchServices();
+  }
+
+  Future<void> _fetchServices() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      final fetchedServices = await ApiService.getServices();
+      setState(() {
+        services = fetchedServices;
+      });
+    } catch (e) {
+      setState(() {
+        errorMessage = e.toString().replaceFirst('Exception: ', '');
+      });
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -67,785 +66,515 @@ class _Services extends State<Services> {
       context,
       MaterialPageRoute(builder: (context) => const AddServicePage()),
     );
-
-    if (result != null && result is Map<String, dynamic>) {
-      setState(() {
-        services.add(result);
-      });
-    }
-  }
-
-  void _deleteService(int index) {
-    setState(() {
-      services.removeAt(index);
-    });
+    if (result != null) _fetchServices();
   }
 
   void _editService(int index) async {
+    final service = filteredServices[index];
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AddServicePage(serviceData: services[index]),
+        builder: (context) => AddServicePage(serviceData: service.toJson()),
       ),
     );
-
-    if (result != null && result is Map<String, dynamic>) {
-      setState(() {
-        services[index] = result;
-      });
-    }
+    if (result != null) _fetchServices();
   }
 
-  void _toggleSingleRadio(int idx, bool? newVal) {
-    setState(() {
-      final next = newVal == true;
-      services[idx]['is_active'] = next;
-    });
+  void _deleteService(int index) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Delete Service', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600)),
+        content: Text('Are you sure you want to delete this service?', style: GoogleFonts.poppins(fontSize: 15)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel', style: GoogleFonts.poppins(color: Colors.grey.shade700))),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              setState(() {
+                final originalIndex = services.indexOf(filteredServices[index]);
+                if (originalIndex != -1) services.removeAt(originalIndex);
+              });
+            },
+            child: Text('Delete', style: GoogleFonts.poppins(color: Colors.red.shade600)),
+          ),
+        ],
+      ),
+    );
   }
 
-  List<Map<String, dynamic>> get filteredServices {
+
+
+  void _showServiceDetails(Service service) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundImage: service.image?.isNotEmpty == true ? NetworkImage(service.image!) : null,
+              backgroundColor: Colors.grey.shade100,
+              child: service.image?.isNotEmpty != true ? Icon(Icons.spa, size: 24, color: Colors.grey.shade600) : null,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                service.name ?? 'Service Details',
+                style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (service.image?.isNotEmpty == true)
+                Center(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      service.image!,
+                      height: 180,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        height: 180,
+                        color: Colors.grey.shade200,
+                        child: Icon(Icons.image, size: 50, color: Colors.grey.shade400),
+                      ),
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 16),
+              _detailRow('Category', service.category ?? 'N/A'),
+              _detailRow('Price', '₹${service.price ?? 0}'),
+              if (service.discountedPrice != null && service.discountedPrice! < (service.price ?? 0))
+                _detailRow('Discounted Price', '₹${service.discountedPrice}', color: Colors.green.shade700),
+              _detailRow('Duration', service.duration != null ? '${service.duration} min' : 'N/A'),
+              _detailRow('Prep Time', service.prepTime != null ? '${service.prepTime} min' : 'N/A'),
+              _detailRow('Cleanup Time', service.setupCleanupTime != null ? '${service.setupCleanupTime} min' : 'N/A'),
+              _detailRow('Home Service', service.homeService == true ? 'Available' : 'Not Available'),
+              _detailRow('Event Service', service.eventService == true ? 'Available' : 'Not Available'),
+              _detailRow('Status', service.isActive == true ? 'Active' : 'Inactive'),
+              const SizedBox(height: 16),
+              Text('Description', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Text(
+                service.description?.isNotEmpty == true ? service.description! : 'No description provided.',
+                style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey.shade700),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close', style: GoogleFonts.poppins(fontSize: 15, color: Colors.blue.shade700)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value, {Color? color}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(label, style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey.shade700, fontWeight: FontWeight.w500)),
+          ),
+          Expanded(
+            child: Text(value, style: GoogleFonts.poppins(fontSize: 14, color: color ?? Colors.black87)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Service> get filteredServices {
     return services.where((service) {
-      final matchesSearch = service['name'].toString().toLowerCase().contains(searchQuery.toLowerCase()) ||
-          service['category'].toString().toLowerCase().contains(searchQuery.toLowerCase());
-      final matchesCategory = selectedCategory == null || selectedCategory == 'All' || 
-          service['category'].toString().toLowerCase() == selectedCategory!.toLowerCase();
+      final matchesSearch = (service.name ?? '').toLowerCase().contains(searchQuery.toLowerCase()) ||
+          (service.category ?? '').toLowerCase().contains(searchQuery.toLowerCase());
+      final matchesCategory = selectedCategory == 'All' || (service.category ?? '').toLowerCase() == selectedCategory!.toLowerCase();
       return matchesSearch && matchesCategory;
     }).toList();
   }
 
   int get totalServices => services.length;
-
-  int get totalCategories {
-    final categories = <String>{};
-    for (var service in services) {
-      if (service['category'] is String) {
-        categories.add(service['category']);
-      }
-    }
-    return categories.length;
-  }
+  int get totalCategories => services.map((s) => s.category).whereType<String>().toSet().length;
 
   double get averageServicePrice {
     if (services.isEmpty) return 0.0;
-    double total = 0;
-    for (var service in services) {
-      total += (service['discounted_price'] as num?)?.toDouble() ??
-          (service['price'] as num?)?.toDouble() ??
-          0;
-    }
-    return total / services.length;
+    return services.fold(0.0, (sum, s) => sum + (s.discountedPrice ?? s.price ?? 0)) / services.length;
   }
 
-  String get mostPopularService {
-    if (services.isEmpty) return 'N/A';
-    // For now, we'll just return the first service name
-    // In a real app, this would be based on sales data
-    return services.first['name'] ?? 'N/A';
-  }
-
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
-    return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      color: Colors.white,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final isMobile = constraints.maxWidth < 150;
-            
-            return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  padding: const EdgeInsets.all(10),
-                  child: Icon(icon, size: 22, color: color),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  value,
-                  style: GoogleFonts.poppins(
-                    fontSize: isMobile ? 16 : 20,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  title,
-                  style: GoogleFonts.poppins(
-                    fontSize: isMobile ? 10 : 12,
-                    color: Colors.grey[700],
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  Color getStatusColor(bool active) =>
-      active ? const Color(0xFF2E7D32) : const Color(0xFFC62828);
-
-  @override
-  void initState() {
-    super.initState();
-    selectedCategory = 'All';
-  }
+  String get mostPopularService => services.isEmpty ? 'N/A' : (services.first.name ?? 'N/A');
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white, // Pure white background
       drawer: const CustomDrawer(currentPage: 'Services'),
       appBar: AppBar(
-        title: Text(
-          'Services',
-          style: GoogleFonts.poppins(
-            color: Colors.black,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        title: Text('Services', style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.black87)),
         backgroundColor: Colors.white,
-        elevation: 0.5,
-        iconTheme: const IconThemeData(color: Colors.black),
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black87),
+        surfaceTintColor: Colors.transparent,
       ),
-      backgroundColor: const Color(0xFFF6F7FB),
       body: LayoutBuilder(
         builder: (context, constraints) {
           final isMobile = constraints.maxWidth < 600;
 
-          return Padding(
-            padding: EdgeInsets.all(isMobile ? 12 : 16),
-            child: Column(
-              children: [
-                // Search bar
-                TextField(
-                  controller: _searchController,
-                  onChanged: (v) => setState(() => searchQuery = v),
-                  textInputAction: TextInputAction.search,
-                  decoration: InputDecoration(
-                    hintText: 'Search Services...',
-                    hintStyle: GoogleFonts.poppins(fontSize: 13),
-                    prefixIcon: const Icon(Icons.search, color: Colors.grey, size: 20),
-                    suffixIcon: searchQuery.isEmpty
-                        ? null
-                        : IconButton(
-                            icon: const Icon(Icons.close, size: 18),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() => searchQuery = '');
-                            },
-                          ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  ),
-                ),
-                const SizedBox(height: 10),
+          if (isLoading) {
+            return const Center(child: CircularProgressIndicator(color: Colors.blue));
+          }
 
-                // Count cards in 2 lines
-                Column(
+          if (errorMessage != null) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // First line - Total Services and Most Popular Service
-                    SizedBox(
-                      height: 100,
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        children: [
-                          // Total Services Card
-                          Container(
-                            width: 220,
-                            margin: const EdgeInsets.only(right: 15),
-                            padding: const EdgeInsets.all(15),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey.shade200),
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: Colors.blue.shade50,
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: const Icon(Icons.miscellaneous_services, color: Colors.blue, size: 18),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Text(
-                                        'Total Services',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.grey.shade700,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  '$totalServices',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.black,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          ),
-                          // Most Popular Service Card
-                          Container(
-                            width: 230,
-                            margin: const EdgeInsets.only(right: 15),
-                            padding: const EdgeInsets.all(15),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey.shade200),
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: Colors.orange.shade50,
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: const Icon(Icons.star, color: Colors.orange, size: 18),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Text(
-                                        'Top Selling',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.grey.shade700,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  mostPopularService,
-                                  style: GoogleFonts.poppins(
-                                    fontSize:12,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.black,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 15),
-                    // Second line - Average Service Price and Total Categories
-                    SizedBox(
-                      height: 100,
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        children: [
-                          // Average Service Price Card
-                          Container(
-                            width: 220,
-                            margin: const EdgeInsets.only(right: 15),
-                            padding: const EdgeInsets.all(15),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey.shade200),
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: Colors.green.shade50,
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: const Icon(Icons.attach_money, color: Colors.green, size: 18),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Text(
-                                        'Avg. Price',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.grey.shade700,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  '₹${averageServicePrice.toStringAsFixed(0)}',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.black,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          ),
-                          // Total Categories Card
-                          Container(
-                            width: 220,
-                            margin: const EdgeInsets.only(right: 15),
-                            padding: const EdgeInsets.all(15),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey.shade200),
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: Colors.purple.shade50,
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: const Icon(Icons.category, color: Colors.purple, size: 18),
-                                    ),
-                                    const SizedBox(width: 5),
-                                    Expanded(
-                                      child: Text(
-                                        'Categories',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.grey.shade700,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  '$totalCategories',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.black,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                    Icon(Icons.error_outline, size: 70, color: Colors.grey.shade400),
+                    const SizedBox(height: 20),
+                    Text('Failed to load services', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 10),
+                    Text(errorMessage!, textAlign: TextAlign.center, style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey.shade600)),
+                    const SizedBox(height: 20),
+                    OutlinedButton(
+                      onPressed: _fetchServices,
+                      child: Text('Retry', style: GoogleFonts.poppins()),
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+              ),
+            );
+          }
 
-                // Category chips (filters)
+          return Padding(
+            padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 24, vertical: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Search Bar - Minimal
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (v) => setState(() => searchQuery = v),
+                    decoration: InputDecoration(
+                      hintText: 'Search services...',
+                      hintStyle: GoogleFonts.poppins(fontSize: 14, color: Colors.grey.shade500),
+                      prefixIcon: Icon(Icons.search, size: 20, color: Colors.grey.shade600),
+                      suffixIcon: searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: Icon(Icons.clear, size: 20, color: Colors.grey.shade600),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => searchQuery = '');
+                              },
+                            )
+                          : null,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Stats Grid - 2 cards per row
+                SizedBox(
+                  height: 200,
+                  child: GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      childAspectRatio: 2.5,
+                    ),
+                    itemCount: 4,
+                    itemBuilder: (context, index) {
+                      switch (index) {
+                        case 0:
+                          return _minimalStatCard('Total', '$totalServices', Colors.blue.shade600);
+                        case 1:
+                          return _minimalStatCard('Categories', '$totalCategories', Colors.purple.shade600);
+                        case 2:
+                          return _minimalStatCard('Avg Price', '₹${averageServicePrice.toStringAsFixed(0)}', Colors.green.shade600);
+                        case 3:
+                          return _minimalStatCard('Top', mostPopularService, Colors.orange.shade600);
+                        default:
+                          return Container();
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Category Chips - Clean
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
-                    children: categories.map((category) {
-                      final selected = selectedCategory == category;
+                    children: dynamicCategories.map((cat) {
+                      final selected = selectedCategory == cat;
                       return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: ChoiceChip(
-                          label: Text(category),
+                        padding: const EdgeInsets.only(right: 8),
+                        child: FilterChip(
+                          label: Text(cat, style: GoogleFonts.poppins(fontSize: 13)),
                           selected: selected,
-                          selectedColor: Colors.blue.shade600,
-                          backgroundColor: Colors.grey.shade200,
-                          labelStyle: GoogleFonts.poppins(
-                            color: selected ? Colors.white : Colors.black,
-                            fontSize: isMobile ? 13 : 14,
-                          ),
-                          onSelected: (_) {
-                            setState(() {
-                              selectedCategory = category;
-                            });
-                          },
+                          onSelected: (_) => setState(() => selectedCategory = cat),
+                          selectedColor: Colors.blue.shade50,
+                          backgroundColor: Colors.grey.shade100,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20),
-                            side: BorderSide(
-                              color: selected
-                                  ? Colors.blue.shade600
-                                  : Colors.grey.shade300,
-                            ),
-                          ),
-                          padding: EdgeInsets.symmetric(
-                            horizontal: isMobile ? 12 : 16,
-                            vertical: isMobile ? 8 : 10,
+                            side: BorderSide(color: selected ? Colors.blue.shade400 : Colors.transparent),
                           ),
                         ),
                       );
                     }).toList(),
                   ),
                 ),
+                const SizedBox(height: 20),
 
-                const SizedBox(height: 5),
-                
-                // Add Service Button (reduced size)
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: ElevatedButton.icon(
-                    onPressed: _navigateToAddService,
-                    icon: const Icon(Icons.add, color: Colors.white, size: 16),
-                    label: Text(
-                      "Add Service",
-                      style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.w500,
-                        fontSize: 12,
-                      ),
+                // Header + Add Button
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('All Services', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600)),
+                    TextButton.icon(
+                      onPressed: _navigateToAddService,
+                      icon: const Icon(Icons.add, size: 18),
+                      label: Text('Add Service', style: GoogleFonts.poppins(fontSize: 14)),
+                      style: TextButton.styleFrom(foregroundColor: Colors.blue.shade700),
                     ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue.shade700,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      elevation: 7,
-                    ),
-                  ),
+                  ],
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 12),
 
-                // Services grid
+                // Services Grid - Clean & Minimal Cards
                 Expanded(
                   child: filteredServices.isEmpty
                       ? Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.miscellaneous_services,
-                                  size: 80, color: Colors.grey.shade400),
+                              Icon(Icons.spa_outlined, size: 60, color: Colors.grey.shade400),
                               const SizedBox(height: 16),
                               Text(
-                                "No services available for this category.",
-                                style: GoogleFonts.poppins(
-                                    fontSize: 16, color: Colors.black54),
-                                textAlign: TextAlign.center,
+                                'No services found',
+                                style: GoogleFonts.poppins(fontSize: 16, color: Colors.grey.shade600),
                               ),
                             ],
                           ),
                         )
-                      : LayoutBuilder(
-                          builder: (context, constraints) {
-                            final crossAxisCount = constraints.maxWidth < 600
-                                ? 1
-                                : constraints.maxWidth < 900
-                                    ? 2
-                                    : 3;
+                      : GridView.builder(
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: isMobile ? 1 : (constraints.maxWidth < 1000 ? 2 : 3),
+                            childAspectRatio: isMobile ? 2.8 : 1.4,
+                            mainAxisSpacing: 16,
+                            crossAxisSpacing: 16,
+                          ),
+                          itemCount: filteredServices.length,
+                          itemBuilder: (context, index) {
+                            final service = filteredServices[index];
+                            final isOnlineBooking = service.onlineBooking ?? false;
+                            final origPrice = (service.price ?? 0).toDouble();
+                            final discPrice = (service.discountedPrice ?? origPrice).toDouble();
+                            final duration = service.duration != null ? '${service.duration} min' : '—';
 
-                            return GridView.builder(
-                              padding: const EdgeInsets.only(top: 8),
-                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: crossAxisCount,
-                                mainAxisSpacing: 14,
-                                crossAxisSpacing: 14,
-                                childAspectRatio: crossAxisCount == 1 ? 2.4 : 1.0,
+                            return Card(
+                              elevation: 0,
+                              color: Colors.grey.shade50,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                side: BorderSide(color: Colors.grey.shade200),
                               ),
-                              itemCount: filteredServices.length,
-                              itemBuilder: (context, index) {
-                                final service = filteredServices[index];
-                                final isActive = service['is_active'] == true;
-                                final origPrice = (service['price'] as num?)?.toDouble() ?? 0.0;
-                                final discPrice = (service['discounted_price'] as num?)?.toDouble() ?? origPrice;
-
-                                return Card(
-                                  elevation: 1,
-                                  color: Colors.white,
-                                  shadowColor: Colors.black.withOpacity(0.08),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                    side: BorderSide(
-                                      color: Colors.grey.shade100,
-                                      width: 0.5,
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Row(
+                                  children: [
+                                    // Small Circular Image
+                                    CircleAvatar(
+                                      radius: 28,
+                                      backgroundColor: Colors.grey.shade200,
+                                      backgroundImage: service.image?.isNotEmpty == true ? NetworkImage(service.image!) : null,
+                                      child: service.image?.isNotEmpty != true
+                                          ? Icon(Icons.spa, size: 24, color: Colors.grey.shade600)
+                                          : null,
                                     ),
-                                  ),
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(16),
-                                    onTap: () => _editService(index),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(16),
+                                    const SizedBox(width: 16),
+                                    Expanded(
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
-                                          // Header
+                                          // Service Name with Status
                                           Row(
-                                            crossAxisAlignment: CrossAxisAlignment.center,
                                             children: [
                                               Expanded(
                                                 child: Text(
-                                                  service['name'] ?? '',
-                                                  maxLines: crossAxisCount == 1 ? 2 : 1,
+                                                  service.name ?? 'Unnamed Service',
+                                                  style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600),
+                                                  maxLines: 1,
                                                   overflow: TextOverflow.ellipsis,
-                                                  style: GoogleFonts.poppins(
-                                                    fontSize: crossAxisCount == 1 ? 15 : 16,
-                                                    fontWeight: FontWeight.w700,
-                                                  ),
                                                 ),
                                               ),
                                               const SizedBox(width: 8),
-                                              Row(
-                                                children: [
-                                                  SizedBox(
-                                                    width: crossAxisCount == 1 ? 40 : 30,
-                                                    height: crossAxisCount == 1 ? 40 : 30,
-                                                    child: Radio<bool>(
-                                                      value: true,
-                                                      groupValue: isActive ? true : null,
-                                                      toggleable: true,
-                                                      fillColor: WidgetStateProperty.resolveWith<Color?>(
-                                                        (states) {
-                                                          final selected = states.contains(WidgetState.selected);
-                                                          return selected ? Colors.green.shade600 : Colors.grey.shade400;
-                                                        },
-                                                      ),
-                                                      onChanged: (val) => _toggleSingleRadio(index, val),
-                                                    ),
-                                                  ),
-                                                  Container(
-                                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                                    decoration: BoxDecoration(
-                                                      color: getStatusColor(isActive).withOpacity(0.12),
-                                                      borderRadius: BorderRadius.circular(20),
-                                                    ),
-                                                    child: Text(
-                                                      isActive ? 'Active' : 'Inactive',
-                                                      style: GoogleFonts.poppins(
-                                                        fontSize: 10,
-                                                        fontWeight: FontWeight.w600,
-                                                        color: getStatusColor(isActive),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-
-                                          const SizedBox(height: 5),
-
-                                          // Category, duration, and price in a single row
-                                          Row(
-                                            children: [
-                                              // Category
                                               Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                                 decoration: BoxDecoration(
-                                                  color: Colors.blue.withOpacity(0.1),
-                                                  borderRadius: BorderRadius.circular(16),
-                                                  border: Border.all(
-                                                    color: Colors.blue.withOpacity(0.3),
-                                                    width: 0.5,
-                                                  ),
+                                                  color: (service.status?.toLowerCase() == 'approved') ? Colors.green.shade100 : Colors.orange.shade100,
+                                                  borderRadius: BorderRadius.circular(10),
+                                                  border: Border.all(color: (service.status?.toLowerCase() == 'approved') ? Colors.green.shade300 : Colors.orange.shade300, width: 0.5),
                                                 ),
                                                 child: Text(
-                                                  service['category'] ?? '',
-                                                  style: GoogleFonts.poppins(
-                                                    fontSize: 11,
-                                                    color: Colors.blue.shade700,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
+                                                  service.status ?? 'Pending',
+                                                  style: GoogleFonts.poppins(fontSize: 10, color: (service.status?.toLowerCase() == 'approved') ? Colors.green.shade700 : Colors.orange.shade700),
                                                 ),
-                                              ),
-                                              const SizedBox(width: 10),
-                                              // Duration
-                                              Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Icon(Icons.schedule, size: 15, color: Colors.grey.shade700),
-                                                  const SizedBox(width: 4),
-                                                  Text(
-                                                    service['duration'] ?? 'N/A',
-                                                    style: GoogleFonts.poppins(
-                                                      fontSize: 12,
-                                                      color: Colors.grey.shade700,
-                                                      fontWeight: FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              const Spacer(),
-                                              // Price information aligned to the right
-                                              Column(
-                                                crossAxisAlignment: CrossAxisAlignment.end,
-                                                children: [
-                                                  Text(
-                                                    "₹${discPrice.toStringAsFixed(0)}",
-                                                    style: GoogleFonts.poppins(
-                                                      fontSize: crossAxisCount == 1 ? 16 : 14,
-                                                      fontWeight: FontWeight.w800,
-                                                      color: Colors.blue.shade700,
-                                                    ),
-                                                  ),
-                                                  if (discPrice < origPrice)
-                                                    Text(
-                                                      "₹${origPrice.toStringAsFixed(0)}",
-                                                      style: GoogleFonts.poppins(
-                                                        fontSize: 9,
-                                                        color: Colors.grey.shade500,
-                                                        decoration: TextDecoration.lineThrough,
-                                                        fontWeight: FontWeight.w500,
-                                                      ),
-                                                    ),
-                                                ],
                                               ),
                                             ],
                                           ),
-
-                                          const SizedBox(height: 5),
-                                          Divider(height: 1, color: Colors.grey.shade200),
-                                          const SizedBox(height: 5),
-                                          // Action buttons
-                                          if (crossAxisCount == 1)
-                                            Row(
-                                              children: [
-                                                Expanded(
-                                                  child: ElevatedButton.icon(
-                                                    onPressed: () => _editService(index),
-                                                    icon: Icon(Icons.edit, size: 18),
-                                                    label: Text('Edit'),
-                                                    style: ElevatedButton.styleFrom(
-                                                      backgroundColor: Colors.white,
-                                                      foregroundColor: Colors.blue.shade700,
-                                                      padding: EdgeInsets.symmetric(vertical: 4),
-                                                      shape: RoundedRectangleBorder(
-                                                        borderRadius: BorderRadius.circular(8),
-                                                      ),
-                                                    ),
-                                                  ),
+                                          const SizedBox(height: 4),
+                                          // Category and Duration
+                                          Row(
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.blue.shade50,
+                                                  borderRadius: BorderRadius.circular(10),
+                                                  border: Border.all(color: Colors.blue.shade200, width: 0.5),
                                                 ),
-                                                const SizedBox(width: 8),
-                                                Expanded(
-                                                  child: OutlinedButton.icon(
-                                                    onPressed: () => _deleteService(index),
-                                                    icon: Icon(Icons.delete, size: 18),
-                                                    label: Text('Delete'),
-                                                    style: OutlinedButton.styleFrom(
-                                                      foregroundColor: Colors.red.shade700,
-                                                      side: BorderSide(color: Colors.red.shade700),
-                                                      padding: EdgeInsets.symmetric(vertical: 4),
-                                                      shape: RoundedRectangleBorder(
-                                                        borderRadius: BorderRadius.circular(8),
-                                                      ),
-                                                    ),
-                                                  ),
+                                                child: Text(
+                                                  service.category ?? 'Category',
+                                                  style: GoogleFonts.poppins(fontSize: 11, color: Colors.blue.shade700),
                                                 ),
-                                              ],
-                                            )
-                                          else
-                                            Row(
-                                              mainAxisAlignment: MainAxisAlignment.end,
-                                              children: [
-                                                TextButton.icon(
-                                                  onPressed: () => _editService(index),
-                                                  icon: Icon(Icons.edit, size: 14, color: Colors.blue.shade700),
-                                                  label: Text(
-                                                    'Edit',
-                                                    style: GoogleFonts.poppins(
-                                                      fontSize: 9,
-                                                      color: Colors.blue.shade700,
-                                                    ),
-                                                  ),
-                                                  style: TextButton.styleFrom(
-                                                    padding: const EdgeInsets.symmetric(
-                                                      horizontal: 10,
-                                                      vertical: 6,
-                                                    ),
-                                                  ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey.shade100,
+                                                  borderRadius: BorderRadius.circular(10),
+                                                  border: Border.all(color: Colors.grey.shade300, width: 0.5),
                                                 ),
-                                                const SizedBox(width: 4),
-                                                TextButton.icon(
-                                                  onPressed: () => _deleteService(index),
-                                                  icon: Icon(Icons.delete, size: 14, color: Colors.red.shade700),
-                                                  label: Text(
-                                                    'Delete',
-                                                    style: GoogleFonts.poppins(
-                                                      fontSize: 8,
-                                                      color: Colors.red.shade700,
-                                                    ),
-                                                  ),
-                                                  style: TextButton.styleFrom(
-                                                    padding: const EdgeInsets.symmetric(
-                                                      horizontal: 10,
-                                                      vertical: 6,
-                                                    ),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Icon(Icons.access_time, size: 12, color: Colors.grey.shade700),
+                                                    const SizedBox(width: 2),
+                                                    Text(duration, style: GoogleFonts.poppins(fontSize: 10, color: Colors.grey.shade700)),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Row(
+                                            children: [
+                                              Text(
+                                                '₹${discPrice.toStringAsFixed(0)}',
+                                                style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.blue.shade700),
+                                              ),
+                                              if (discPrice < origPrice) ...[
+                                                const SizedBox(width: 6),
+                                                Text(
+                                                  '₹${origPrice.toStringAsFixed(0)}',
+                                                  style: GoogleFonts.poppins(
+                                                    fontSize: 11,
+                                                    color: Colors.grey.shade500,
+                                                    decoration: TextDecoration.lineThrough,
                                                   ),
                                                 ),
                                               ],
-                                            ),
+                                            ],
+                                          ),
                                         ],
                                       ),
                                     ),
-                                  ),
-                                );
-                              },
+                                    Column(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Switch(
+                                          value: isOnlineBooking,
+                                          onChanged: (val) {
+                                            setState(() {
+                                              final originalIndex = services.indexOf(filteredServices[index]);
+                                              if (originalIndex != -1) {
+                                                services[originalIndex].onlineBooking = val;
+                                              }
+                                            });
+                                          },
+                                          activeColor: Colors.green.shade600,
+                                          thumbColor: WidgetStateProperty.all(Colors.white),
+                                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        PopupMenuButton<String>(
+                                          color: Colors.white, // White background for menu
+                                          icon: Icon(Icons.more_vert, color: Colors.grey.shade600, size: 20),
+                                          onSelected: (String result) {
+                                            if (result == 'View') {
+                                              _showServiceDetails(service);
+                                            } else if (result == 'Edit') {
+                                              _editService(index);
+                                            } else if (result == 'Delete') {
+                                              _deleteService(index);
+                                            }
+                                          },
+                                          itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                                            PopupMenuItem<String>(
+                                              value: 'View',
+                                              child: Row(
+                                                children: [
+                                                  Icon(Icons.visibility, color: Colors.blue.shade600, size: 16),
+                                                  const SizedBox(width: 8),
+                                                  Text('View', style: GoogleFonts.poppins(fontSize: 12)),
+                                                ],
+                                              ),
+                                            ),
+                                            PopupMenuItem<String>(
+                                              value: 'Edit',
+                                              child: Row(
+                                                children: [
+                                                  Icon(Icons.edit, color: Colors.orange.shade600, size: 16),
+                                                  const SizedBox(width: 8),
+                                                  Text('Edit', style: GoogleFonts.poppins(fontSize: 12)),
+                                                ],
+                                              ),
+                                            ),
+                                            PopupMenuItem<String>(
+                                              value: 'Delete',
+                                              child: Row(
+                                                children: [
+                                                  Icon(Icons.delete, color: Colors.red.shade600, size: 16),
+                                                  const SizedBox(width: 8),
+                                                  Text('Delete', style: GoogleFonts.poppins(fontSize: 12)),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
                             );
                           },
                         ),
@@ -854,6 +583,25 @@ class _Services extends State<Services> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _minimalStatCard(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(value, style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.black87)),
+          const SizedBox(height: 6),
+          Text(label, style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade600)),
+        ],
       ),
     );
   }
