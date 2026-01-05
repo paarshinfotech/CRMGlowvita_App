@@ -305,7 +305,51 @@ class ApiService {
   }
   // ============================================================
 
-  // You can add addService, updateService, deleteService later
+  static Future<bool> deleteService(String serviceId) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null || token.isEmpty) {
+        throw Exception('Authentication token missing. Please login again.');
+      }
+
+      final response = await http.delete(
+        Uri.parse('$baseUrl$servicesEndpoint'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': 'crm_access_token=$token',
+        },
+        body: json.encode({'serviceId': serviceId}),
+      );
+
+      print('Delete Service Response [${response.statusCode}]: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['message']?.contains('successfully') == true) {
+          return true;
+        } else {
+          throw Exception(data['message'] ?? 'Failed to delete service');
+        }
+      } else if (response.statusCode == 401) {
+        throw Exception('Unauthorized. Your session may have expired. Please login again.');
+      } else if (response.statusCode == 403) {
+        throw Exception('Access denied. You do not have permission to delete this service.');
+      } else if (response.statusCode == 404) {
+        throw Exception('Service not found. It may have already been deleted.');
+      } else {
+        throw Exception('Server error ${response.statusCode}: ${response.body}');
+      }
+    } on FormatException catch (e) {
+      print('JSON parsing error: $e');
+      throw Exception('Invalid response from server. Please try again later.');
+    } on http.ClientException catch (e) {
+      print('Network error: $e');
+      throw Exception('Network error. Please check your internet connection.');
+    } catch (e) {
+      print('Unexpected error in deleteService: $e');
+      rethrow;
+    }
+  }
 }
 
 class Service {

@@ -81,21 +81,43 @@ class _ServicesState extends State<Services> {
   }
 
   void _deleteService(int index) {
+    final service = filteredServices[index];
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('Delete Service', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600)),
-        content: Text('Are you sure you want to delete this service?', style: GoogleFonts.poppins(fontSize: 15)),
+        content: Text('Are you sure you want to delete "${service.name}"?', style: GoogleFonts.poppins(fontSize: 15)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel', style: GoogleFonts.poppins(color: Colors.grey.shade700))),
           TextButton(
-            onPressed: () {
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel', style: GoogleFonts.poppins(color: Colors.grey.shade700)),
+          ),
+          TextButton(
+            onPressed: () async {
               Navigator.pop(ctx);
-              setState(() {
-                final originalIndex = services.indexOf(filteredServices[index]);
-                if (originalIndex != -1) services.removeAt(originalIndex);
-              });
+              try {
+                final success = await ApiService.deleteService(service.id!);
+                if (success) {
+                  setState(() {
+                    final originalIndex = services.indexOf(service);
+                    if (originalIndex != -1) services.removeAt(originalIndex);
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Service deleted successfully'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to delete service: ' + e.toString().replaceFirst('Exception: ', '')),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
             },
             child: Text('Delete', style: GoogleFonts.poppins(color: Colors.red.shade600)),
           ),
