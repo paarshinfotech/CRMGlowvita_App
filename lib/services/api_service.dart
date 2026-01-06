@@ -357,76 +357,93 @@ class ApiService {
   }
 
   static Future<bool> createService(Map<String, dynamic> serviceData) async {
-    try {
-      final token = await _getAuthToken();
-      if (token == null || token.isEmpty) {
-        throw Exception('Authentication token missing. Please login again.');
-      }
-
-      // Map the field names to match API expectations
-      final mappedServiceData = {
-        'name': serviceData['name'],
-        'category': serviceData['category'],
-        'price': serviceData['price'],
-        'discountedPrice': serviceData['discounted_price'],
-        'duration': _parseDuration(serviceData['duration']),
-        'description': serviceData['description'],
-        'gender': serviceData['gender'] ?? 'unisex',
-        'staff': serviceData['staff'] ?? [],
-        'commission': serviceData['allow_commission'] ?? false,
-        'homeService': {
-          'available': serviceData['home_service'] ?? false,
-          'charges': null
-        },
-        'weddingService': {
-          'available': serviceData['wedding_service'] ?? false,
-          'charges': null
-        },
-        'bookingInterval': int.tryParse(serviceData['booking_interval'] ?? '0'),
-        'tax': serviceData['tax_enabled'] == true 
-            ? (serviceData['tax_type'] == 'fixed' 
-                ? serviceData['tax_value']
-                : (serviceData['tax_value']?.toDouble() ?? 0))
-            : 0,
-        'onlineBooking': serviceData['online_booking'] ?? true,
-      };
-
-      final response = await http.post(
-        Uri.parse('$baseUrl$servicesEndpoint'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-        body: json.encode({'services': [mappedServiceData]}),
-      );
-
-      print('Create Service Response [${response.statusCode}]: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['message']?.contains('successfully') == true) {
-          return true;
-        } else {
-          throw Exception(data['message'] ?? 'Failed to create service');
-        }
-      } else if (response.statusCode == 401) {
-        throw Exception('Unauthorized. Your session may have expired. Please login again.');
-      } else if (response.statusCode == 403) {
-        throw Exception('Access denied. You do not have permission to create services.');
-      } else {
-        throw Exception('Server error ${response.statusCode}: ${response.body}');
-      }
-    } on FormatException catch (e) {
-      print('JSON parsing error: $e');
-      throw Exception('Invalid response from server. Please try again later.');
-    } on http.ClientException catch (e) {
-      print('Network error: $e');
-      throw Exception('Network error. Please check your internet connection.');
-    } catch (e) {
-      print('Unexpected error in createService: $e');
-      rethrow;
+  try {
+    final token = await _getAuthToken();
+    if (token == null || token.isEmpty) {
+      throw Exception('Authentication token missing. Please login again.');
     }
+
+    // IMPORTANT: category must be the MongoDB _id (String), not the name
+    final String? categoryId = serviceData['category_id']; // will be passed from UI
+    if (categoryId == null || categoryId.isEmpty) {
+      throw Exception('Category ID is required');
+    }
+
+    // Staff must be list of staff IDs (from StaffMember.id), not names
+    final List<String> staffIds = (serviceData['staff_ids'] as List<dynamic>?)
+            ?.whereType<String>()
+            .toList() ??
+        [];
+
+    // Parse duration string like "30 min" → minutes (int)
+    final int durationMinutes = _parseDuration(serviceData['duration']);
+
+    // Build the service object exactly as the API expects
+    final Map<String, dynamic> mappedServiceData = {
+      'name': serviceData['name']?.toString().trim(),
+      'category': categoryId,
+      'price': (serviceData['price'] as num).toDouble().toInt(),
+      if (serviceData['discounted_price'] != null)
+        'discountedPrice': (serviceData['discounted_price'] as num).toDouble().toInt(),
+      'duration': durationMinutes,
+      'description': serviceData['description']?.toString().trim() ?? '',
+      'gender': serviceData['gender'] ?? 'unisex',
+      'staff': staffIds,
+      'commission': serviceData['allow_commission'] ?? false,
+      'homeService': {
+        'available': serviceData['homeService']?['available'] ?? false,
+        'charges': serviceData['homeService']?['charges'],
+      },
+      'weddingService': {
+        'available': serviceData['weddingService']?['available'] ?? false,
+        'charges': serviceData['weddingService']?['charges'],
+      },
+      'bookingInterval': int.tryParse(serviceData['booking_interval'] ?? '0') ?? 0,
+      'tax': {
+        'enabled': serviceData['tax']?['enabled'] ?? false,
+        'type': serviceData['tax']?['type'],
+        'value': serviceData['tax']?['value'],
+      },
+      'onlineBooking': serviceData['online_booking'] ?? true,
+      if (serviceData['image'] != null) 'image': serviceData['image'], // base64 data URL
+    };
+
+    final response = await http.post(
+      Uri.parse('$baseUrl$servicesEndpoint'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': 'crm_access_token=$token',
+      },
+      body: json.encode({'services': [mappedServiceData]}),
+    );
+
+    print('Create Service Response [${response.statusCode}]: ${response.body}');
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final data = json.decode(response.body);
+      if (data['message'] != null && data['message'].toString().contains('successfully')) {
+        return true;
+      } else {
+        throw Exception(data['message'] ?? 'Unknown response from server');
+      }
+    } else if (response.statusCode == 401) {
+      throw Exception('Unauthorized. Your session may have expired. Please login again.');
+    } else if (response.statusCode == 403) {
+      throw Exception('Access denied. You do not have permission to create services.');
+    } else {
+      throw Exception('Server error ${response.statusCode}: ${response.body}');
+    }
+  } on FormatException catch (e) {
+    print('JSON parsing error: $e');
+    throw Exception('Invalid response from server. Please try again later.');
+  } on http.ClientException catch (e) {
+    print('Network error: $e');
+    throw Exception('Network error. Please check your internet connection.');
+  } catch (e) {
+    print('Unexpected error in createService: $e');
+    rethrow;
   }
+}
 
   // Helper method to parse duration string to minutes
   static int _parseDuration(String? durationStr) {

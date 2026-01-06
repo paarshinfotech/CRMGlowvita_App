@@ -35,10 +35,10 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
 
-  // Category ID tracking (REQUIRED for service API)
-  String? selectedCategoryId;
-  Map<String, String> categoryIdMap = {};  // Maps category name to MongoDB _id
-
+  // Category ID tracking  
+  String? selectedCategoryId; // Will store the actual MongoDB _id
+  List<String> selectedStaffIds = []; // List of selected staff IDs
+  Map<String, String> staffNameToId = {}; // Maps staff name to ID
   late TabController _tabController;
   String? selectedCategory;
   String? selectedServiceName;
@@ -57,7 +57,7 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
 
   List<String> categories = [];
   List<String> serviceNames = [];
-  Map<String, String> categoryMap = {}; // Maps category name to ID
+  Map<String, String> categoryIdMap = {}; // Maps category name to ID
   Map<String, List<String>> categoryServicesMap = {}; // Maps category name to its services
   bool _isCategoriesLoading = true; // Flag to track category loading state
   bool _isServicesLoading = false; // Flag to track service loading state
@@ -159,6 +159,7 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                     (val) {
                       setState(() {
                         selectedCategory = val;
+                        selectedCategoryId = categoryIdMap[val];
                         selectedServiceName = null;
                         if (val != null) {
                           _fetchServicesByCategory(val);
@@ -185,11 +186,11 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                   ),
                   const SizedBox(height: 16),
                   _dropdown(
-                    serviceNames,
+                    serviceNames.isEmpty && selectedCategory != null ? ['No service added'] : serviceNames,
                     selectedServiceName,
                     (val) => setState(() => selectedServiceName = val),
                     label: 'Existing Service (Optional)',
-                    hint: _isServicesLoading ? 'Loading...' : 'Select existing service',
+                    hint: _isServicesLoading ? 'Loading...' : (selectedCategory != null ? 'Select existing service' : 'Select a category first'),
                     enabled: selectedCategory != null, // Only enable when category is selected
                   ),
                   if (_isServicesLoading) ...[
@@ -234,7 +235,7 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                       Expanded(
                         child: _input(
                           _discountedPriceController,
-                          label: 'Discounted Price (Optional)',
+                          label: 'Discounted Price',
                           hint: 'e.g. 450',
                           keyboardType: TextInputType.number,
                         ),
@@ -568,13 +569,18 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () async {
-                if (!_formKey.currentState!.validate()) return;
-                
-                final serviceData = { 
+                if (_tabController.index < 2) {
+                  // Move to next tab if not on the last tab
+                  _tabController.animateTo(_tabController.index + 1);
+                } else {
+                  // On the last tab (Booking & Tax), save the service
+                  if (!_formKey.currentState!.validate()) return;
+                        
+                  final serviceData = { 
                   'name': _serviceNameController.text.trim().isNotEmpty
                       ? _serviceNameController.text.trim()
                       : (selectedServiceName ?? ''),
-                  'category': selectedCategory,
+                  'category_id': selectedCategoryId ?? categoryIdMap[selectedCategory],
                   'description': _descriptionController.text.trim(),
                   'price': double.tryParse(_priceController.text.trim()) ?? 0.0,
                   'discounted_price': _discountedPriceController.text.trim().isEmpty
@@ -604,43 +610,21 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                   },
                   'online_booking': enableOnlineBooking,
                 };
-                
-                // Add image to service data if available
+      
                 if (_selectedImage != null) {
                   final bytes = await _selectedImage!.readAsBytes();
                   final base64 = base64Encode(bytes);
-                  final mimeType = _selectedImage!.path.endsWith('.png')
-                      ? 'png'
-                      : 'jpeg';
+                  final mimeType = _selectedImage!.path.endsWith('.png') ? 'png' : 'jpeg';
                   serviceData['image'] = 'data:image/$mimeType;base64,$base64';
-                }
-                
-                try {
-                  if (widget.serviceData == null) {
-                    // Creating a new service
-                    final success = await ApiService.createService(serviceData);
-                    if (success) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Service created successfully'),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                      // Refresh the services for the current category
-                      if (selectedCategory != null) {
-                        await _fetchServicesByCategory(selectedCategory!);
-                      }
-                      Navigator.pop(context, serviceData);
-                    }
-                  } else {
-                    // Updating existing service
-                    final serviceId = widget.serviceData!['_id'];
-                    if (serviceId != null) {
-                      final success = await ApiService.updateService(serviceId, serviceData);
+                }                
+                  try {
+                    if (widget.serviceData == null) {
+                      // Creating a new service
+                      final success = await ApiService.createService(serviceData);
                       if (success) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Service updated successfully'),
+                            content: Text('Service created successfully'),
                             backgroundColor: Colors.green,
                           ),
                         );
@@ -651,16 +635,35 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                         Navigator.pop(context, serviceData);
                       }
                     } else {
-                      throw Exception('Service ID is missing for update operation');
+                      // Updating existing service
+                      final serviceId = widget.serviceData!['_id'];
+                      if (serviceId != null) {
+                        final success = await ApiService.updateService(serviceId, serviceData);
+                        if (success) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Service updated successfully'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                          // Refresh the services for the current category
+                          if (selectedCategory != null) {
+                            await _fetchServicesByCategory(selectedCategory!);
+                          }
+                          Navigator.pop(context, serviceData);
+                        }
+                      } else {
+                        throw Exception('Service ID is missing for update operation');
+                      }
                     }
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error: ' + e.toString().replaceFirst('Exception: ', '')),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
                   }
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Error: ' + e.toString().replaceFirst('Exception: ', '')),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -674,7 +677,7 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
               child: Text(
-                widget.serviceData == null ? "Add Service" : "Update Service",
+                _tabController.index < 2 ? "Next" : (widget.serviceData == null ? "Save Service" : "Update Service"),
                 style: GoogleFonts.poppins(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -718,9 +721,11 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
         List<String> staffNames = [];
         for (var staff in staffData) {
           String name = staff['fullName'] ?? 'Unknown Staff';
+          String id = staff['_id'] ?? '';
           staffNames.add(name);
+          staffNameToId[name] = id;        
         }
-
+        
         setState(() {
           allStaff = staffNames;
           staffMembers = ['All Staff', ...allStaff];
@@ -771,20 +776,17 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
           categoryData = decoded['data'] ?? [];
         }
         
-        setState(() {
-          categories = [];
-          categoryMap = {};
-          categoryIdMap = {};
-          
-          for (var cat in categoryData) {
-            String name = cat['name'] ?? 'Unknown Category';
-            String id = cat['_id'] ?? '';
-            print('Adding category: $name with ID: $id'); // Debug print
-            categories.add(name);
-            categoryMap[name] = id;
-            categoryIdMap[name] = id;
-          }
-        });
+       setState(() {
+  categories = [];
+  categoryIdMap = {}; // name → id
+
+  for (var cat in categoryData) {
+    String name = cat['name'] ?? 'Unknown Category';
+    String id = cat['_id'] ?? '';
+    categories.add(name);
+    categoryIdMap[name] = id; // ← important
+  }
+});
         print('Categories loaded: ${categories.length}');
       } else {
         print('Category API Error: ${response.body}'); // Debug print
@@ -837,6 +839,7 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
         
         // Filter services by selected category
         List<String> servicesInCategory = [];
+        Set<String> uniqueServiceNames = <String>{}; // Use a Set to ensure uniqueness
         for (var service in serviceData) {
           String serviceCategory = '';
           if (service['category'] is Map) {
@@ -847,7 +850,12 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
           
           print('Checking service: ' + (service['name']?.toString() ?? 'Unknown') + ' with category: ' + serviceCategory); // Debug print
           if (serviceCategory == categoryName) {
-            servicesInCategory.add(service['name'] ?? 'Unknown Service');
+            String serviceName = service['name'] ?? 'Unknown Service';
+            // Only add if not already in the set
+            if (!uniqueServiceNames.contains(serviceName)) {
+              uniqueServiceNames.add(serviceName);
+              servicesInCategory.add(serviceName);
+            }
           }
         }
         
@@ -961,12 +969,14 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
     bool enabled = true,
   }) {
     print('Dropdown created with ' + items.length.toString() + ' items'); // Debug print
+    // Check if this is the special case of "No service added"
+    bool isNoServiceAdded = items.length == 1 && items[0] == 'No service added';
     return DropdownButtonFormField<String>(
       value: selected,
       items: items.isNotEmpty 
         ? items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 13)))).toList()
         : <DropdownMenuItem<String>>[],
-      onChanged: enabled ? onChanged : null, // Only allow changes if enabled
+      onChanged: enabled && !isNoServiceAdded ? onChanged : null, // Only allow changes if enabled and not the "No service added" case
       validator: validator,
       autovalidateMode: AutovalidateMode.onUserInteraction,
       decoration: _dec(label: label, hint: hint, helper: helper),
@@ -1118,7 +1128,7 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                                 // Add the new category to the list using the name from response
                                 categories.add(responseData['name']);
                                 // Update the category map with the new category ID
-                                categoryMap[responseData['name']] = responseData['_id'];
+                                categoryIdMap[responseData['name']] = responseData['_id'];
                                 selectedCategory = responseData['name'];
                                 // After adding category, fetch services for the new category
                                 _fetchServicesByCategory(responseData['name']);
@@ -1277,7 +1287,7 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                           }
 
                           // Get the category ID from the map
-                          String? categoryId = categoryIdMap[selectedCategory] ?? categoryMap[selectedCategory];
+                          String? categoryId = categoryIdMap[selectedCategory];
                           if (categoryId == null || categoryId.isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('Please select a category first')),
