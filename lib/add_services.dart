@@ -688,16 +688,47 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
   }
 
   Future<void> _fetchStaff() async {
+    setState(() {
+      _isStaffLoading = true;
+    });
+
     try {
-      print('Fetching staff...');
-      final staffList = await ApiService.getStaff();
-      print('Staff list received: ${staffList.length} members');
-      setState(() {
-        allStaff = staffList.map((staff) => staff.fullName ?? staff.email ?? 'Unknown').toList();
-        staffMembers = ['All Staff', ...allStaff];
-        _isStaffLoading = false;
-      });
-      print('Staff list updated: ${allStaff.length} members');
+      final token = await ApiService.getAuthToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
+      final response = await http.get(
+        Uri.parse('https://partners.v2winonline.com/api/crm/staff'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': 'crm_access_token=$token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        List<dynamic> staffData;
+        if (decoded is List) {
+          staffData = decoded;
+        } else {
+          staffData = decoded['data'] ?? [];
+        }
+
+        List<String> staffNames = [];
+        for (var staff in staffData) {
+          String name = staff['fullName'] ?? 'Unknown Staff';
+          staffNames.add(name);
+        }
+
+        setState(() {
+          allStaff = staffNames;
+          staffMembers = ['All Staff', ...allStaff];
+          _isStaffLoading = false;
+        });
+      } else {
+        throw Exception('Failed to load staff: ${response.statusCode}');
+      }
     } catch (e) {
       print('Error fetching staff: $e');
       // Fallback to default values if API call fails
