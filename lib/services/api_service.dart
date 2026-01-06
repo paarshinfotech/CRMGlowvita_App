@@ -75,7 +75,7 @@ class ApiService {
   static const String baseUrl = 'https://partners.v2winonline.com/api';
   static const String clientsEndpoint = '/crm/clients';
   static const String staffEndpoint = '/crm/staff';
-  static const String servicesEndpoint = '/crm/services'; // Confirmed correct from your test data
+  static const String servicesEndpoint = '/crm/services'; 
 
   // Get auth token from shared preferences
   static Future<String?> _getAuthToken() async {
@@ -87,6 +87,11 @@ class ApiService {
     }
 
     return token.isEmpty ? null : token;
+  }
+  
+  // Public method to get auth token
+  static Future<String?> getAuthToken() async {
+    return await _getAuthToken();
   }
 
   // Get all clients
@@ -350,6 +355,198 @@ class ApiService {
       rethrow;
     }
   }
+
+  static Future<bool> createService(Map<String, dynamic> serviceData) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null || token.isEmpty) {
+        throw Exception('Authentication token missing. Please login again.');
+      }
+
+      // Map the field names to match API expectations
+      final mappedServiceData = {
+        'name': serviceData['name'],
+        'category': serviceData['category'],
+        'price': serviceData['price'],
+        'discountedPrice': serviceData['discounted_price'],
+        'duration': _parseDuration(serviceData['duration']),
+        'description': serviceData['description'],
+        'gender': serviceData['gender'] ?? 'unisex',
+        'staff': serviceData['staff'] ?? [],
+        'commission': serviceData['allow_commission'] ?? false,
+        'homeService': {
+          'available': serviceData['home_service'] ?? false,
+          'charges': null
+        },
+        'weddingService': {
+          'available': serviceData['wedding_service'] ?? false,
+          'charges': null
+        },
+        'bookingInterval': int.tryParse(serviceData['booking_interval'] ?? '0'),
+        'tax': serviceData['tax_enabled'] == true 
+            ? (serviceData['tax_type'] == 'fixed' 
+                ? serviceData['tax_value']
+                : (serviceData['tax_value']?.toDouble() ?? 0))
+            : 0,
+        'onlineBooking': serviceData['online_booking'] ?? true,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl$servicesEndpoint'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': 'crm_access_token=$token',
+        },
+        body: json.encode({'services': [mappedServiceData]}),
+      );
+
+      print('Create Service Response [${response.statusCode}]: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['message']?.contains('successfully') == true) {
+          return true;
+        } else {
+          throw Exception(data['message'] ?? 'Failed to create service');
+        }
+      } else if (response.statusCode == 401) {
+        throw Exception('Unauthorized. Your session may have expired. Please login again.');
+      } else if (response.statusCode == 403) {
+        throw Exception('Access denied. You do not have permission to create services.');
+      } else {
+        throw Exception('Server error ${response.statusCode}: ${response.body}');
+      }
+    } on FormatException catch (e) {
+      print('JSON parsing error: $e');
+      throw Exception('Invalid response from server. Please try again later.');
+    } on http.ClientException catch (e) {
+      print('Network error: $e');
+      throw Exception('Network error. Please check your internet connection.');
+    } catch (e) {
+      print('Unexpected error in createService: $e');
+      rethrow;
+    }
+  }
+
+  // Helper method to parse duration string to minutes
+  static int _parseDuration(String? durationStr) {
+    if (durationStr == null) return 0;
+    
+    // Handle format like "30 min", "1 hour", "1 hour 30 min"
+    if (durationStr.contains('hour')) {
+      final parts = durationStr.split(' ');
+      int hours = 0;
+      int minutes = 0;
+      
+      for (int i = 0; i < parts.length; i++) {
+        if (parts[i].contains(RegExp(r'[0-9]+'))) {
+          final value = int.tryParse(parts[i]);
+          if (value != null) {
+            if (i + 1 < parts.length && parts[i + 1].contains('hour')) {
+              hours = value;
+            } else if (i + 1 < parts.length && parts[i + 1].contains('min')) {
+              minutes = value;
+            }
+          }
+        }
+      }
+      
+      return hours * 60 + minutes;
+    } else {
+      // Handle format like "30 min"
+      final parts = durationStr.split(' ');
+      if (parts.isNotEmpty) {
+        final value = int.tryParse(parts[0]);
+        if (value != null) return value;
+      }
+    }
+    
+    return 0;
+  }
+
+  // Helper method to parse tax rate string to number
+  static double? _parseTaxRate(String? taxRateStr) {
+    if (taxRateStr == null || taxRateStr == 'Tax Free') return null;
+    
+    // Extract numeric part from strings like "18%"
+    final taxPercent = taxRateStr.replaceAll('%', '');
+    return double.tryParse(taxPercent);
+  }
+
+  static Future<bool> updateService(String serviceId, Map<String, dynamic> serviceData) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null || token.isEmpty) {
+        throw Exception('Authentication token missing. Please login again.');
+      }
+
+      // Map the field names to match API expectations
+      final mappedServiceData = {
+        '_id': serviceId, // Include the service ID for update
+        'name': serviceData['name'],
+        'category': serviceData['category'],
+        'price': serviceData['price'],
+        'discountedPrice': serviceData['discounted_price'],
+        'duration': _parseDuration(serviceData['duration']),
+        'description': serviceData['description'],
+        'gender': serviceData['gender'] ?? 'unisex',
+        'staff': serviceData['staff'] ?? [],
+        'commission': serviceData['allow_commission'] ?? false,
+        'homeService': {
+          'available': serviceData['home_service'] ?? false,
+          'charges': null
+        },
+        'weddingService': {
+          'available': serviceData['wedding_service'] ?? false,
+          'charges': null
+        },
+        'bookingInterval': int.tryParse(serviceData['booking_interval'] ?? '0'),
+        'tax': serviceData['tax_enabled'] == true 
+            ? (serviceData['tax_type'] == 'fixed' 
+                ? serviceData['tax_value']
+                : (serviceData['tax_value']?.toDouble() ?? 0))
+            : 0,
+        'onlineBooking': serviceData['online_booking'] ?? true,
+      };
+
+      final response = await http.put(
+        Uri.parse('$baseUrl$servicesEndpoint'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': 'crm_access_token=$token',
+        },
+        body: json.encode({'services': [mappedServiceData]}),
+      );
+
+      print('Update Service Response [${response.statusCode}]: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['message']?.contains('successfully') == true) {
+          return true;
+        } else {
+          throw Exception(data['message'] ?? 'Failed to update service');
+        }
+      } else if (response.statusCode == 401) {
+        throw Exception('Unauthorized. Your session may have expired. Please login again.');
+      } else if (response.statusCode == 403) {
+        throw Exception('Access denied. You do not have permission to update this service.');
+      } else {
+        throw Exception('Server error ${response.statusCode}: ${response.body}');
+      }
+    } on FormatException catch (e) {
+      print('JSON parsing error: $e');
+      throw Exception('Invalid response from server. Please try again later.');
+    } on http.ClientException catch (e) {
+      print('Network error: $e');
+      throw Exception('Network error. Please check your internet connection.');
+    } catch (e) {
+      print('Unexpected error in updateService: $e');
+      rethrow;
+    }
+  }
+
+  // End of ApiService class
 }
 
 class Service {
@@ -359,15 +556,21 @@ class Service {
   int? price;
   int? discountedPrice;
   int? duration;
-  int? prepTime;
-  int? setupCleanupTime;
-  String? description;
-  String? image;
+  String? gender;
+  int? bookingInterval;
+  bool? commission;
   bool? homeService;
   bool? eventService;
   bool? isActive;
   String? status;
   bool? onlineBooking;
+  dynamic tax;
+  String? createdAt;
+  String? updatedAt;
+  int? prepTime;
+  int? setupCleanupTime;
+  String? description;
+  String? image;
 
   Service({
     this.id,
@@ -376,6 +579,9 @@ class Service {
     this.price,
     this.discountedPrice,
     this.duration,
+    this.gender,
+    this.bookingInterval,
+    this.commission,
     this.prepTime,
     this.setupCleanupTime,
     this.description,
@@ -385,6 +591,9 @@ class Service {
     this.isActive,
     this.status,
     this.onlineBooking,
+    this.tax,
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory Service.fromJson(Map<String, dynamic> json) {
@@ -397,6 +606,9 @@ class Service {
       price: (json['price'] as num?)?.toInt(),
       discountedPrice: (json['discountedPrice'] as num?)?.toInt(),
       duration: (json['duration'] as num?)?.toInt(),
+      gender: json['gender'] ?? 'unisex',
+      bookingInterval: (json['bookingInterval'] as num?)?.toInt(),
+      commission: json['commission'] ?? false,
       prepTime: json['prepTime']?.toInt(),
       setupCleanupTime: json['setupCleanupTime']?.toInt(),
       description: json['description'],
@@ -406,6 +618,9 @@ class Service {
       isActive: json['status'] == 'approved',
       status: json['status'],
       onlineBooking: json['onlineBooking'] ?? false,
+      tax: json['tax'],
+      createdAt: json['createdAt'],
+      updatedAt: json['updatedAt'],
     );
   }
 
@@ -417,6 +632,9 @@ class Service {
       'price': price,
       'discountedPrice': discountedPrice,
       'duration': duration,
+      'gender': gender,
+      'bookingInterval': bookingInterval,
+      'commission': commission,
       'prepTime': prepTime,
       'setupCleanupTime': setupCleanupTime,
       'description': description,
@@ -425,6 +643,9 @@ class Service {
       'weddingService': {'available': eventService},
       'status': status,
       'onlineBooking': onlineBooking,
+      'tax': tax,
+      'createdAt': createdAt,
+      'updatedAt': updatedAt,
     };
   }
 }

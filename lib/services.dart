@@ -99,10 +99,8 @@ class _ServicesState extends State<Services> {
               try {
                 final success = await ApiService.deleteService(service.id!);
                 if (success) {
-                  setState(() {
-                    final originalIndex = services.indexOf(service);
-                    if (originalIndex != -1) services.removeAt(originalIndex);
-                  });
+                  // Refresh the services list from the API
+                  _fetchServices();
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Service deleted successfully'),
@@ -172,16 +170,24 @@ class _ServicesState extends State<Services> {
                   ),
                 ),
               const SizedBox(height: 16),
+              _detailRow('Service Name', service.name ?? 'N/A'),
               _detailRow('Category', service.category ?? 'N/A'),
               _detailRow('Price', '₹${service.price ?? 0}'),
               if (service.discountedPrice != null && service.discountedPrice! < (service.price ?? 0))
                 _detailRow('Discounted Price', '₹${service.discountedPrice}', color: Colors.green.shade700),
               _detailRow('Duration', service.duration != null ? '${service.duration} min' : 'N/A'),
+              _detailRow('Gender', service.gender ?? 'unisex'),
+              _detailRow('Booking Interval', service.bookingInterval != null ? '${service.bookingInterval} min' : 'N/A'),
+              _detailRow('Online Booking', service.onlineBooking == true ? 'Enabled' : 'Disabled'),
+              _detailRow('Commission', service.commission == true ? 'Enabled' : 'Disabled'),
+              _detailRow('Status', service.status ?? 'N/A'),
+              _detailRow('Home Service', service.homeService == true ? 'Available' : 'Not Available'),
+              _detailRow('Wedding Service', service.eventService == true ? 'Available' : 'Not Available'),
+              _detailRow('Tax', service.tax != null ? service.tax.toString() : 'N/A'),
+              _detailRow('Created At', service.createdAt != null ? service.createdAt.toString() : 'N/A'),
+              _detailRow('Updated At', service.updatedAt != null ? service.updatedAt.toString() : 'N/A'),
               _detailRow('Prep Time', service.prepTime != null ? '${service.prepTime} min' : 'N/A'),
               _detailRow('Cleanup Time', service.setupCleanupTime != null ? '${service.setupCleanupTime} min' : 'N/A'),
-              _detailRow('Home Service', service.homeService == true ? 'Available' : 'Not Available'),
-              _detailRow('Event Service', service.eventService == true ? 'Available' : 'Not Available'),
-              _detailRow('Status', service.isActive == true ? 'Active' : 'Inactive'),
               const SizedBox(height: 16),
               Text('Description', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
@@ -510,20 +516,9 @@ class _ServicesState extends State<Services> {
                                           Row(
                                             children: [
                                               Text(
-                                                '₹${discPrice.toStringAsFixed(0)}',
+                                                '₹${origPrice.toStringAsFixed(0)}',
                                                 style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.blue.shade700),
                                               ),
-                                              if (discPrice < origPrice) ...[
-                                                const SizedBox(width: 6),
-                                                Text(
-                                                  '₹${origPrice.toStringAsFixed(0)}',
-                                                  style: GoogleFonts.poppins(
-                                                    fontSize: 11,
-                                                    color: Colors.grey.shade500,
-                                                    decoration: TextDecoration.lineThrough,
-                                                  ),
-                                                ),
-                                              ],
                                             ],
                                           ),
                                         ],
