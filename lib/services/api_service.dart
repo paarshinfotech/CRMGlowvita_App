@@ -584,33 +584,51 @@ class Service {
     this.updatedAt,
   });
 
-  factory Service.fromJson(Map<String, dynamic> json) {
-    return Service(
-      id: json['_id'],
-      name: json['name'],
-      category: json['category'] is Map
-          ? (json['category']['name'] ?? json['categoryName'])
-          : json['categoryName'] ?? json['category'] ?? 'Uncategorized',
-      price: (json['price'] as num?)?.toInt(),
-      discountedPrice: (json['discountedPrice'] as num?)?.toInt(),
-      duration: (json['duration'] as num?)?.toInt(),
-      gender: json['gender'] ?? 'unisex',
-      bookingInterval: (json['bookingInterval'] as num?)?.toInt(),
-      commission: json['commission'] ?? false,
-      prepTime: json['prepTime']?.toInt(),
-      setupCleanupTime: json['setupCleanupTime']?.toInt(),
-      description: json['description'],
-      image: json['image'],
-      homeService: json['homeService']?['available'] ?? false,
-      eventService: json['weddingService']?['available'] ?? false,
-      isActive: json['status'] == 'approved',
-      status: json['status'],
-      onlineBooking: json['onlineBooking'] ?? false,
-      tax: json['tax'],
-      createdAt: json['createdAt'],
-      updatedAt: json['updatedAt'],
-    );
-  }
+factory Service.fromJson(Map<String, dynamic> json) {
+  return Service(
+    id: json['_id'],
+    name: json['name'],
+    category: json['category'] is Map
+        ? (json['category']['name'] ?? json['categoryName'])
+        : json['categoryName'] ?? json['category'] ?? 'Uncategorized',
+    price: (json['price'] as num?)?.toInt(),
+    discountedPrice: (json['discountedPrice'] as num?)?.toInt(),
+    duration: (json['duration'] as num?)?.toInt(),
+    gender: json['gender'] ?? 'unisex',
+    bookingInterval: (json['bookingInterval'] as num?)?.toInt(),
+    commission: json['commission'] ?? false,
+    prepTime: json['prepTime']?.toInt(),
+    setupCleanupTime: json['setupCleanupTime']?.toInt(),
+    description: json['description'],
+    image: json['image'],
+    
+    // === FIXED: Handle both {available: true} and plain true/false ===
+    homeService: () {
+      final hs = json['homeService'];
+      if (hs is Map<String, dynamic>) {
+        return hs['available'] as bool? ?? false;
+      }
+      return hs as bool? ?? false; // handles true/false directly
+    }(),
+    
+    eventService: () {
+      final ws = json['weddingService'];
+      if (ws is Map<String, dynamic>) {
+        return ws['available'] as bool? ?? false;
+      }
+      return ws as bool? ?? false;
+    }(),
+    
+    // === END FIX ===
+    
+    isActive: json['status'] == 'approved',
+    status: json['status'],
+    onlineBooking: json['onlineBooking'] ?? false,
+    tax: json['tax'],
+    createdAt: json['createdAt'],
+    updatedAt: json['updatedAt'],
+  );
+}
 
   Map<String, dynamic> toJson() {
     return {
