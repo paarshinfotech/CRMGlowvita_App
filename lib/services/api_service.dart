@@ -249,65 +249,36 @@ class ApiService {
     }
   }
 
-  // ==================== IMPROVED GET SERVICES ====================
+  // ==================== GET SERVICES ==================== //
   static Future<List<Service>> getServices() async {
-    try {
-      final token = await _getAuthToken();
-      if (token == null || token.isEmpty) {
-        throw Exception('Authentication token missing. Please login again.');
-      }
-
-      final response = await http.get(
-        Uri.parse('$baseUrl$servicesEndpoint'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-      );
-
-      // Critical debug log — check this in console!
-      print('Services API Response [${response.statusCode}]: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-
-        // Check if services exist in the response (regardless of success field)
-        if (data['services'] != null) {
-          final List<dynamic> servicesList = data['services'];
-          return servicesList.map((json) => Service.fromJson(json)).toList();
-        } else {
-          // If no services field, check for success field and message
-          if (data['success'] == false) {
-            final msg = data['message'] ??
-                data['error'] ??
-                data['msg'] ??
-                'No services found';
-            throw Exception(msg);
-          } else {
-            // If there's no services field and no explicit failure, return empty list
-            return [];
-          }
-        }
-      } else if (response.statusCode == 401) {
-        throw Exception('Unauthorized. Your session may have expired. Please login again.');
-      } else if (response.statusCode == 403) {
-        throw Exception('Access denied. You do not have permission to view services.');
-      } else if (response.statusCode == 404) {
-        throw Exception('Services endpoint not found. Check API version or permissions.');
-      } else {
-        throw Exception('Server error ${response.statusCode}: ${response.body}');
-      }
-    } on FormatException catch (e) {
-      print('JSON parsing error: $e');
-      throw Exception('Invalid response from server. Please try again later.');
-    } on http.ClientException catch (e) {
-      print('Network error: $e');
-      throw Exception('Network error. Please check your internet connection.');
-    } catch (e) {
-      print('Unexpected error in getServices: $e');
-      rethrow;
+  try {
+    final token = await _getAuthToken();
+    if (token == null || token.isEmpty) {
+      throw Exception('Authentication token missing. Please login again.');
     }
+
+    final response = await http.get(
+      Uri.parse('$baseUrl$servicesEndpoint'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': 'crm_access_token=$token',
+      },
+    );
+
+    print('Services API Response [${response.statusCode}]: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final List<dynamic> servicesData = data['services'] ?? [];
+      return servicesData.map((json) => Service.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to load services: ${response.statusCode} - ${response.body}');
+    }
+  } catch (e) {
+    print('Error fetching services: $e');
+    rethrow;
   }
+}
   // ============================================================
 
   static Future<bool> deleteService(String serviceId) async {
