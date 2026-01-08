@@ -7,7 +7,6 @@ import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 
-
 class AddServicePage extends StatefulWidget {
   final Map<String, dynamic>? serviceData;
   const AddServicePage({super.key, this.serviceData});
@@ -16,29 +15,38 @@ class AddServicePage extends StatefulWidget {
   State<AddServicePage> createState() => _AddServicePageState();
 }
 
-class _AddServicePageState extends State<AddServicePage> with SingleTickerProviderStateMixin {
+class _AddServicePageState extends State<AddServicePage>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
 
   final TextEditingController _serviceNameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
-  final TextEditingController _discountedPriceController = TextEditingController();
-  final TextEditingController _newCategoryNameController = TextEditingController();
-  final TextEditingController _newCategoryDescController = TextEditingController();
-  final TextEditingController _newServiceNameController = TextEditingController();
-  final TextEditingController _newServiceDescController = TextEditingController();
+  final TextEditingController _discountedPriceController =
+      TextEditingController();
+  final TextEditingController _newCategoryNameController =
+      TextEditingController();
+  final TextEditingController _newCategoryDescController =
+      TextEditingController();
+  final TextEditingController _newServiceNameController =
+      TextEditingController();
+  final TextEditingController _newServiceDescController =
+      TextEditingController();
   final TextEditingController _taxValueController = TextEditingController();
-  final TextEditingController _homeServiceChargesController = TextEditingController();
-  final TextEditingController _weddingServiceChargesController = TextEditingController();
+  final TextEditingController _homeServiceChargesController =
+      TextEditingController();
+  final TextEditingController _weddingServiceChargesController =
+      TextEditingController();
 
   // Image & Picker
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
 
-  // Category ID tracking  
+  // Category ID tracking
   String? selectedCategoryId; // Will store the actual MongoDB _id
   List<String> selectedStaffIds = []; // List of selected staff IDs
   Map<String, String> staffNameToId = {}; // Maps staff name to ID
+  Map<String, String> staffIdToName = {}; // Maps staff ID to name
   late TabController _tabController;
   String? selectedCategory;
   String? selectedServiceName;
@@ -58,20 +66,38 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
   List<String> categories = [];
   List<String> serviceNames = [];
   Map<String, String> categoryIdMap = {}; // Maps category name to ID
-  Map<String, List<String>> categoryServicesMap = {}; // Maps category name to its services
+  Map<String, List<String>> categoryServicesMap =
+      {}; // Maps category name to its services
   bool _isCategoriesLoading = true; // Flag to track category loading state
   bool _isServicesLoading = false; // Flag to track service loading state
 
   List<String> staffMembers = [
-    "Select All Staff",  
+    "Select All Staff",
   ];
 
   List<String> allStaff = []; // Dynamically fetched staff members
   bool _isStaffLoading = true; // Flag to track staff loading state
 
-  final List<String> durations = ["15 min", "20 min", "25 min", "30 min", "40 min"];
+  final List<String> durations = [
+    "15 min",
+    "20 min",
+    "25 min",
+    "30 min",
+    "40 min"
+  ];
 
-  final List<String> bookingIntervals = ["5", "10", "15", "20", "25", "30", "45", "60", "90", "120"];
+  final List<String> bookingIntervals = [
+    "5",
+    "10",
+    "15",
+    "20",
+    "25",
+    "30",
+    "45",
+    "60",
+    "90",
+    "120"
+  ];
   final List<String> taxTypes = ["percentage", "fixed"];
   final List<String> genders = ["male", "female", "unisex"];
 
@@ -83,42 +109,111 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
     // Initialize loading states
     _isCategoriesLoading = true;
     _isStaffLoading = true;
-    
+
     // Fetch data from APIs
     _fetchCategories();
     _fetchStaff();
 
     if (widget.serviceData != null) {
-      _serviceNameController.text = widget.serviceData!['name'] ?? '';
-      selectedCategory = widget.serviceData!['category'];
-      _descriptionController.text = widget.serviceData!['description'] ?? '';
-      _priceController.text = widget.serviceData!['price']?.toString() ?? '';
-      _discountedPriceController.text = widget.serviceData!['discounted_price']?.toString() ?? '';
-      _selectedDuration = widget.serviceData!['duration'];
-      homeService = widget.serviceData!['homeService']?['available'] ?? false;
-      _homeServiceChargesController.text = widget.serviceData!['homeService']?['charges']?.toString() ?? '';
-      weddingService = widget.serviceData!['weddingService']?['available'] ?? false;
-      _weddingServiceChargesController.text = widget.serviceData!['weddingService']?['charges']?.toString() ?? '';
-      allowCommission = widget.serviceData!['allow_commission'] ?? false;
-      var staffData = widget.serviceData!['staff'];
-      // Handle staff data - might be a list or single value
+      final data = widget.serviceData!;
+      _serviceNameController.text =
+          data['name'] ?? data['serviceName'] ?? data['service_name'] ?? '';
+      selectedCategory = data['category'];
+      selectedCategoryId =
+          data['categoryId'] ?? data['category_id'] ?? data['category_ID'];
+      _descriptionController.text = data['description'] ?? '';
+
+      var priceVal =
+          data['price'] ?? data['service_price'] ?? data['servicePrice'];
+      _priceController.text = priceVal?.toString() ?? '';
+
+      // Fix: Use correct key 'discountedPrice' and convert to String
+      var discPriceVal = data['discountedPrice'] ??
+          data['discounted_price'] ??
+          data['service_discounted_price'];
+      _discountedPriceController.text = discPriceVal?.toString() ?? '';
+
+      // Fix: Convert int duration to String and ensure it matches dropdown format e.g. "30 min"
+      var durationValue = data['duration'];
+      if (durationValue != null) {
+        String durStr = durationValue.toString();
+        if (durations.contains("$durStr min")) {
+          _selectedDuration = "$durStr min";
+        } else if (durations.contains(durStr)) {
+          _selectedDuration = durStr;
+        } else {
+          _selectedDuration =
+              durations.contains("30 min") ? "30 min" : durations.first;
+        }
+      }
+
+      homeService = data['homeService']?['available'] ?? false;
+      _homeServiceChargesController.text =
+          data['homeService']?['charges']?.toString() ?? '';
+
+      weddingService = data['weddingService']?['available'] ??
+          (data['eventService'] ?? false);
+      _weddingServiceChargesController.text =
+          data['weddingService']?['charges']?.toString() ?? '';
+
+      // Fix: Use correct key 'commission' or 'allow_commission'
+      allowCommission = data['commission'] ?? data['allow_commission'] ?? false;
+
+      var staffData = data['staff'];
       if (staffData is List) {
         selectedStaff = staffData.join(',');
       } else {
-        selectedStaff = staffData;
+        selectedStaff = staffData?.toString();
       }
-      _bookingInterval = widget.serviceData!['booking_interval'];
-      _selectedGender = widget.serviceData!['gender'];
-      enableTax = widget.serviceData!['tax']?['enabled'] ?? false;
-      _taxType = widget.serviceData!['tax']?['type'];
-      _taxValue = widget.serviceData!['tax']?['value']?.toDouble();
-      _taxValueController.text = _taxValue?.toString() ?? '';
-      enableOnlineBooking = widget.serviceData!['onlineBooking'] ?? true;
-      
+
+      // Fix: Convert int booking interval to String if needed
+      var interval = data['bookingInterval'] ?? data['booking_interval'];
+      if (interval != null) {
+        _bookingInterval = interval.toString();
+      }
+
+      // Fix: Normalize gender to match dropdown values
+      var genderVal = data['gender']?.toString().toLowerCase();
+      if (genderVal != null) {
+        if (genders.contains(genderVal)) {
+          _selectedGender = genderVal;
+        } else if (genderVal == 'men') {
+          _selectedGender = 'male';
+        } else if (genderVal == 'women') {
+          _selectedGender = 'female';
+        } else if (genderVal == 'others') {
+          _selectedGender = 'unisex';
+        } else {
+          // Fallback to first item if no match
+          _selectedGender = genders.first;
+        }
+      }
+
+      // Fix: Robust tax handling
+      var taxData = data['tax'];
+      if (taxData is Map) {
+        enableTax = taxData['enabled'] ?? false;
+        _taxType = taxData['type'];
+        _taxValue = (taxData['value'] as num?)?.toDouble();
+        _taxValueController.text = _taxValue?.toString() ?? '';
+      } else if (taxData is num) {
+        enableTax = true;
+        _taxValue = taxData.toDouble();
+        _taxValueController.text = _taxValue.toString();
+        _taxType = "percentage"; // Default to percentage if only num is given
+      }
+
+      enableOnlineBooking = data['onlineBooking'] ?? true;
+
+      // Fix: Pre-populate selectedServiceName and normalize category
+      selectedServiceName = data['name'];
+      if (selectedCategory == null || selectedCategory == 'Uncategorized') {
+        selectedCategory = 'Uncategorized';
+      }
+
       // If editing, fetch services for the selected category
-      // Delay this until after categories are loaded
       Future.delayed(Duration.zero, () {
-        if (selectedCategory != null) {
+        if (selectedCategory != null && selectedCategory != 'Uncategorized') {
           _fetchServicesByCategory(selectedCategory!);
         }
       });
@@ -153,6 +248,16 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  _header("Service Information"),
+                  _input(
+                    _serviceNameController,
+                    label: 'Service Name',
+                    hint: 'e.g. Master Haircut',
+                    validator: (value) => value == null || value.trim().isEmpty
+                        ? 'Service name is required'
+                        : null,
+                  ),
+                  const SizedBox(height: 16),
                   _dropdown(
                     categories,
                     selectedCategory,
@@ -168,7 +273,8 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                     },
                     label: 'Category',
                     hint: 'Select a category',
-                    validator: (value) => value == null ? 'Please select a category' : null,
+                    validator: (value) =>
+                        value == null ? 'Please select a category' : null,
                   ),
                   if (_isCategoriesLoading) ...[
                     const SizedBox(height: 8),
@@ -178,20 +284,29 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                   OutlinedButton.icon(
                     onPressed: _showAddCategoryForm,
                     icon: const Icon(Icons.add, size: 16),
-                    label: const Text('Add New Category', style: TextStyle(fontSize: 13)),
+                    label: const Text('Add New Category',
+                        style: TextStyle(fontSize: 13)),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
                     ),
                   ),
                   const SizedBox(height: 16),
                   _dropdown(
-                    serviceNames.isEmpty && selectedCategory != null ? ['No service added'] : serviceNames,
+                    serviceNames.isEmpty && selectedCategory != null
+                        ? ['No service added']
+                        : serviceNames,
                     selectedServiceName,
                     (val) => setState(() => selectedServiceName = val),
                     label: 'Existing Service (Optional)',
-                    hint: _isServicesLoading ? 'Loading...' : (selectedCategory != null ? 'Select existing service' : 'Select a category first'),
-                    enabled: selectedCategory != null, // Only enable when category is selected
+                    hint: _isServicesLoading
+                        ? 'Loading...'
+                        : (selectedCategory != null
+                            ? 'Select existing service'
+                            : 'Select a category first'),
+                    enabled: selectedCategory !=
+                        null, // Only enable when category is selected
                   ),
                   if (_isServicesLoading) ...[
                     const SizedBox(height: 8),
@@ -201,10 +316,12 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                   OutlinedButton.icon(
                     onPressed: _showAddServiceForm,
                     icon: const Icon(Icons.add, size: 16),
-                    label: const Text('Add New Service', style: TextStyle(fontSize: 13)),
+                    label: const Text('Add New Service',
+                        style: TextStyle(fontSize: 13)),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -224,9 +341,11 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                           hint: 'e.g. 500',
                           keyboardType: TextInputType.number,
                           validator: (value) {
-                            if (value?.isEmpty == true) return 'Price is required';
+                            if (value?.isEmpty == true)
+                              return 'Price is required';
                             final num = double.tryParse(value!);
-                            if (num == null || num <= 0) return 'Enter a valid price';
+                            if (num == null || num <= 0)
+                              return 'Enter a valid price';
                             return null;
                           },
                         ),
@@ -273,7 +392,9 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                     },
                     icon: const Icon(Icons.image_outlined, size: 18),
                     label: Text(
-                      _selectedImage == null ? "Upload Image" : "Image Selected ✓",
+                      _selectedImage == null
+                          ? "Upload Image"
+                          : "Image Selected ✓",
                       style: const TextStyle(fontSize: 12),
                     ),
                     style: OutlinedButton.styleFrom(
@@ -288,7 +409,8 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                     const SizedBox(height: 8),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.file(_selectedImage!, height: 100, fit: BoxFit.cover),
+                      child: Image.file(_selectedImage!,
+                          height: 100, fit: BoxFit.cover),
                     ),
                   ],
                 ],
@@ -316,7 +438,8 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                                 child: SizedBox(
                                   width: 20,
                                   height: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
                                 ),
                               ),
                             )
@@ -329,46 +452,68 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                                       value: selectedStaff == 'All Staff',
                                       onChanged: (bool? value) {
                                         setState(() {
-                                          selectedStaff = value == true ? 'All Staff' : null;
+                                          selectedStaff = value == true
+                                              ? 'All Staff'
+                                              : null;
                                         });
                                       },
                                     ),
-                                    const Text("All Staff", style: TextStyle(fontSize: 13)),
+                                    const Text("All Staff",
+                                        style: TextStyle(fontSize: 13)),
                                   ],
                                 ),
                                 const Divider(height: 16),
-                                ...allStaff.map((staffName) => 
-                                  Row(
-                                    children: [
-                                      Checkbox(
-                                        value: selectedStaff != 'All Staff' && (selectedStaff?.contains(staffName) ?? false),
-                                        onChanged: (bool? value) {
-                                          setState(() {
-                                            if (selectedStaff == 'All Staff') {
-                                              selectedStaff = staffName;
-                                            } else {
-                                              if (value == true) {
-                                                if (selectedStaff == null) {
+                                ...allStaff
+                                    .map(
+                                      (staffName) => Row(
+                                        children: [
+                                          Checkbox(
+                                            value: selectedStaff !=
+                                                    'All Staff' &&
+                                                (selectedStaff
+                                                        ?.split(',')
+                                                        .map((s) => s.trim())
+                                                        .contains(staffName) ??
+                                                    false),
+                                            onChanged: (bool? value) {
+                                              setState(() {
+                                                if (selectedStaff ==
+                                                    'All Staff') {
                                                   selectedStaff = staffName;
                                                 } else {
-                                                  selectedStaff = '$selectedStaff,$staffName';
+                                                  if (value == true) {
+                                                    if (selectedStaff == null) {
+                                                      selectedStaff = staffName;
+                                                    } else {
+                                                      selectedStaff =
+                                                          '$selectedStaff,$staffName';
+                                                    }
+                                                  } else {
+                                                    if (selectedStaff != null) {
+                                                      var staffList =
+                                                          selectedStaff!
+                                                              .split(',');
+                                                      staffList
+                                                          .remove(staffName);
+                                                      selectedStaff =
+                                                          staffList.join(',');
+                                                      if (selectedStaff!
+                                                          .isEmpty)
+                                                        selectedStaff = null;
+                                                    }
+                                                  }
                                                 }
-                                              } else {
-                                                if (selectedStaff != null) {
-                                                  var staffList = selectedStaff!.split(',');
-                                                  staffList.remove(staffName);
-                                                  selectedStaff = staffList.join(',');
-                                                  if (selectedStaff!.isEmpty) selectedStaff = null;
-                                                }
-                                              }
-                                            }
-                                          });
-                                        },
+                                              });
+                                            },
+                                          ),
+                                          Expanded(
+                                              child: Text(staffName,
+                                                  style: const TextStyle(
+                                                      fontSize: 13))),
+                                        ],
                                       ),
-                                      Expanded(child: Text(staffName, style: const TextStyle(fontSize: 13))),
-                                    ],
-                                  ),
-                                ).toList(),
+                                    )
+                                    .toList(),
                               ],
                             ),
                     ),
@@ -384,9 +529,13 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                       padding: const EdgeInsets.all(12),
                       child: SwitchListTile(
                         value: allowCommission,
-                        onChanged: (val) => setState(() => allowCommission = val),
-                        title: const Text("Enable Staff Commission", style: TextStyle(fontSize: 13)),
-                        subtitle: const Text("Calculate staff commission when service is sold", style: TextStyle(fontSize: 11)),
+                        onChanged: (val) =>
+                            setState(() => allowCommission = val),
+                        title: const Text("Enable Staff Commission",
+                            style: TextStyle(fontSize: 13)),
+                        subtitle: const Text(
+                            "Calculate staff commission when service is sold",
+                            style: TextStyle(fontSize: 11)),
                         activeColor: Colors.blue,
                         contentPadding: EdgeInsets.zero,
                         dense: true,
@@ -410,8 +559,10 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                               Expanded(
                                 child: SwitchListTile(
                                   value: homeService,
-                                  onChanged: (val) => setState(() => homeService = val),
-                                  title: const Text("Enable Home Service", style: TextStyle(fontSize: 13)),
+                                  onChanged: (val) =>
+                                      setState(() => homeService = val),
+                                  title: const Text("Enable Home Service",
+                                      style: TextStyle(fontSize: 13)),
                                   activeColor: Colors.blue,
                                   contentPadding: EdgeInsets.zero,
                                   dense: true,
@@ -436,8 +587,10 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                               Expanded(
                                 child: SwitchListTile(
                                   value: weddingService,
-                                  onChanged: (val) => setState(() => weddingService = val),
-                                  title: const Text("Enable Wedding Service", style: TextStyle(fontSize: 13)),
+                                  onChanged: (val) =>
+                                      setState(() => weddingService = val),
+                                  title: const Text("Enable Wedding Service",
+                                      style: TextStyle(fontSize: 13)),
                                   activeColor: Colors.blue,
                                   contentPadding: EdgeInsets.zero,
                                   dense: true,
@@ -511,7 +664,8 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                                 }
                               });
                             },
-                            title: const Text("Enable Tax", style: TextStyle(fontSize: 13)),
+                            title: const Text("Enable Tax",
+                                style: TextStyle(fontSize: 13)),
                             activeColor: Colors.blue,
                             contentPadding: EdgeInsets.zero,
                             dense: true,
@@ -532,7 +686,8 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                               hint: "Enter tax value",
                               keyboardType: TextInputType.number,
                               validator: (value) {
-                                if (enableTax && (value == null || value.isEmpty)) {
+                                if (enableTax &&
+                                    (value == null || value.isEmpty)) {
                                   return "Tax value is required when tax is enabled";
                                 }
                                 return null;
@@ -545,8 +700,10 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                           const Divider(height: 16),
                           SwitchListTile(
                             value: enableOnlineBooking,
-                            onChanged: (val) => setState(() => enableOnlineBooking = val),
-                            title: const Text("Enable Online Booking", style: TextStyle(fontSize: 13)),
+                            onChanged: (val) =>
+                                setState(() => enableOnlineBooking = val),
+                            title: const Text("Enable Online Booking",
+                                style: TextStyle(fontSize: 13)),
                             activeColor: Colors.blue,
                             contentPadding: EdgeInsets.zero,
                             dense: true,
@@ -575,52 +732,72 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                 } else {
                   // On the last tab (Booking & Tax), save the service
                   if (!_formKey.currentState!.validate()) return;
-                        
-                  final serviceData = { 
-                  'name': _serviceNameController.text.trim().isNotEmpty
-                      ? _serviceNameController.text.trim()
-                      : (selectedServiceName ?? ''),
-                  'category_id': selectedCategoryId ?? categoryIdMap[selectedCategory],
-                  'description': _descriptionController.text.trim(),
-                  'price': double.tryParse(_priceController.text.trim()) ?? 0.0,
-                  'discounted_price': _discountedPriceController.text.trim().isEmpty
-                      ? null
-                      : double.tryParse(_discountedPriceController.text.trim()),
-                  'duration': _selectedDuration,
-                  'gender': _selectedGender ?? 'unisex',
-                  'homeService': {
-                    'available': homeService,
-                    'charges': homeService ? double.tryParse(_homeServiceChargesController.text.trim()) : null,
-                  },
-                  'weddingService': {
-                    'available': weddingService,
-                    'charges': weddingService ? double.tryParse(_weddingServiceChargesController.text.trim()) : null,
-                  },
-                  'allow_commission': allowCommission,
-                  'staff': selectedStaff == 'All Staff' 
-                      ? allStaff // All staff selected
-                      : selectedStaff != null 
-                          ? selectedStaff!.split(',').where((s) => s.isNotEmpty).toList() // Selected specific staff
-                          : [], // No staff selected
-                  'booking_interval': _bookingInterval,
-                  'tax': {
-                    'enabled': enableTax,
-                    'type': _taxType,
-                    'value': _taxValue,
-                  },
-                  'online_booking': enableOnlineBooking,
-                };
-      
-                if (_selectedImage != null) {
-                  final bytes = await _selectedImage!.readAsBytes();
-                  final base64 = base64Encode(bytes);
-                  final mimeType = _selectedImage!.path.endsWith('.png') ? 'png' : 'jpeg';
-                  serviceData['image'] = 'data:image/$mimeType;base64,$base64';
-                }                
+
+                  final serviceData = {
+                    'name': _serviceNameController.text.trim().isNotEmpty
+                        ? _serviceNameController.text.trim()
+                        : (selectedServiceName ?? ''),
+                    'category_id':
+                        selectedCategoryId ?? categoryIdMap[selectedCategory],
+                    'description': _descriptionController.text.trim(),
+                    'price':
+                        double.tryParse(_priceController.text.trim()) ?? 0.0,
+                    'discounted_price':
+                        _discountedPriceController.text.trim().isEmpty
+                            ? null
+                            : double.tryParse(
+                                _discountedPriceController.text.trim()),
+                    'duration': _selectedDuration,
+                    'gender': _selectedGender ?? 'unisex',
+                    'homeService': {
+                      'available': homeService,
+                      'charges': homeService
+                          ? double.tryParse(
+                              _homeServiceChargesController.text.trim())
+                          : null,
+                    },
+                    'weddingService': {
+                      'available': weddingService,
+                      'charges': weddingService
+                          ? double.tryParse(
+                              _weddingServiceChargesController.text.trim())
+                          : null,
+                    },
+                    'allow_commission': allowCommission,
+                    'staff': selectedStaff == 'All Staff'
+                        ? allStaff
+                            .map((name) => staffNameToId[name] ?? name)
+                            .toList() // All staff IDs
+                        : selectedStaff != null
+                            ? selectedStaff!
+                                .split(',')
+                                .where((s) => s.trim().isNotEmpty)
+                                .map((name) =>
+                                    staffNameToId[name.trim()] ?? name.trim())
+                                .toList() // Selected specific staff IDs
+                            : [], // No staff selected
+                    'booking_interval': _bookingInterval,
+                    'tax': {
+                      'enabled': enableTax,
+                      'type': _taxType,
+                      'value': _taxValue,
+                    },
+                    'online_booking': enableOnlineBooking,
+                  };
+
+                  if (_selectedImage != null) {
+                    final bytes = await _selectedImage!.readAsBytes();
+                    final base64 = base64Encode(bytes);
+                    final mimeType =
+                        _selectedImage!.path.endsWith('.png') ? 'png' : 'jpeg';
+                    serviceData['image'] =
+                        'data:image/$mimeType;base64,$base64';
+                  }
                   try {
                     if (widget.serviceData == null) {
                       // Creating a new service
-                      final success = await ApiService.createService(serviceData);
+                      final success =
+                          await ApiService.createService(serviceData);
                       if (success) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -638,7 +815,8 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                       // Updating existing service
                       final serviceId = widget.serviceData!['_id'];
                       if (serviceId != null) {
-                        final success = await ApiService.updateService(serviceId, serviceData);
+                        final success = await ApiService.updateService(
+                            serviceId, serviceData);
                         if (success) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
@@ -653,13 +831,15 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                           Navigator.pop(context, serviceData);
                         }
                       } else {
-                        throw Exception('Service ID is missing for update operation');
+                        throw Exception(
+                            'Service ID is missing for update operation');
                       }
                     }
                   } catch (e) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Error: ' + e.toString().replaceFirst('Exception: ', '')),
+                        content: Text('Error: ' +
+                            e.toString().replaceFirst('Exception: ', '')),
                         backgroundColor: Colors.red,
                       ),
                     );
@@ -677,7 +857,11 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
               child: Text(
-                _tabController.index < 2 ? "Next" : (widget.serviceData == null ? "Save Service" : "Update Service"),
+                _tabController.index < 2
+                    ? "Next"
+                    : (widget.serviceData == null
+                        ? "Save Service"
+                        : "Update Service"),
                 style: GoogleFonts.poppins(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -719,17 +903,35 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
         }
 
         List<String> staffNames = [];
+        staffNameToId.clear();
+        staffIdToName.clear();
         for (var staff in staffData) {
           String name = staff['fullName'] ?? 'Unknown Staff';
           String id = staff['_id'] ?? '';
           staffNames.add(name);
-          staffNameToId[name] = id;        
+          staffNameToId[name] = id;
+          staffIdToName[id] = name;
         }
-        
+
         setState(() {
           allStaff = staffNames;
           staffMembers = ['All Staff', ...allStaff];
           _isStaffLoading = false;
+
+          // If we have selectedStaff that contains IDs, translate them to names
+          if (selectedStaff != null && selectedStaff != 'All Staff') {
+            List<String> currentParts = selectedStaff!.split(',');
+            List<String> names = [];
+            for (var part in currentParts) {
+              String trimmed = part.trim();
+              if (staffIdToName.containsKey(trimmed)) {
+                names.add(staffIdToName[trimmed]!);
+              } else {
+                names.add(trimmed);
+              }
+            }
+            selectedStaff = names.join(',');
+          }
         });
       } else {
         throw Exception('Failed to load staff: ${response.statusCode}');
@@ -748,7 +950,7 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
     setState(() {
       _isCategoriesLoading = true;
     });
-    
+
     try {
       print('Fetching categories...');
       final token = await ApiService.getAuthToken();
@@ -764,7 +966,8 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
           'Cookie': 'crm_access_token=$token',
         },
       );
-      print('Category API Response Status: ${response.statusCode}'); // Debug print
+      print(
+          'Category API Response Status: ${response.statusCode}'); // Debug print
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
@@ -775,18 +978,24 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
         } else {
           categoryData = decoded['data'] ?? [];
         }
-        
-       setState(() {
-  categories = [];
-  categoryIdMap = {}; // name → id
 
-  for (var cat in categoryData) {
-    String name = cat['name'] ?? 'Unknown Category';
-    String id = cat['_id'] ?? '';
-    categories.add(name);
-    categoryIdMap[name] = id; // ← important
-  }
-});
+        setState(() {
+          categories = [];
+          categoryIdMap = {}; // name → id
+
+          for (var cat in categoryData) {
+            String name = cat['name'] ?? 'Unknown Category';
+            String id = cat['_id'] ?? '';
+            categories.add(name);
+            categoryIdMap[name] = id; // ← important
+          }
+
+          // Fix: Ensure selectedCategory from data is in the list to avoid dropdown crash
+          if (selectedCategory != null &&
+              !categories.contains(selectedCategory)) {
+            categories.add(selectedCategory!);
+          }
+        });
         print('Categories loaded: ${categories.length}');
       } else {
         print('Category API Error: ${response.body}'); // Debug print
@@ -809,7 +1018,7 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
     setState(() {
       _isServicesLoading = true;
     });
-    
+
     try {
       print('Fetching services for category: $categoryName');
       final token = await ApiService.getAuthToken();
@@ -825,7 +1034,8 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
           'Cookie': 'crm_access_token=$token',
         },
       );
-      print('Service API Response Status: ${response.statusCode}'); // Debug print
+      print(
+          'Service API Response Status: ${response.statusCode}'); // Debug print
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
@@ -836,19 +1046,25 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
         } else {
           serviceData = decoded['data'] ?? [];
         }
-        
+
         // Filter services by selected category
         List<String> servicesInCategory = [];
-        Set<String> uniqueServiceNames = <String>{}; // Use a Set to ensure uniqueness
+        Set<String> uniqueServiceNames =
+            <String>{}; // Use a Set to ensure uniqueness
         for (var service in serviceData) {
           String serviceCategory = '';
           if (service['category'] is Map) {
-            serviceCategory = service['category']['name'] ?? service['category']['_id'] ?? '';
+            serviceCategory =
+                service['category']['name'] ?? service['category']['_id'] ?? '';
           } else {
-            serviceCategory = service['categoryName'] ?? service['category'] ?? '';
+            serviceCategory =
+                service['categoryName'] ?? service['category'] ?? '';
           }
-          
-          print('Checking service: ' + (service['name']?.toString() ?? 'Unknown') + ' with category: ' + serviceCategory); // Debug print
+
+          print('Checking service: ' +
+              (service['name']?.toString() ?? 'Unknown') +
+              ' with category: ' +
+              serviceCategory); // Debug print
           if (serviceCategory == categoryName) {
             String serviceName = service['name'] ?? 'Unknown Service';
             // Only add if not already in the set
@@ -858,12 +1074,13 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
             }
           }
         }
-        
+
         setState(() {
           categoryServicesMap[categoryName] = servicesInCategory;
           serviceNames = servicesInCategory;
         });
-        print('Services loaded for category $categoryName: ${servicesInCategory.length}');
+        print(
+            'Services loaded for category $categoryName: ${servicesInCategory.length}');
       } else {
         print('Service API Error: ${response.body}'); // Debug print
         throw Exception('Failed to load services: ${response.statusCode}');
@@ -897,8 +1114,8 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
     _weddingServiceChargesController.dispose();
     super.dispose();
   }
-  
-   // Enhanced input decoration with smaller font sizes
+
+  // Enhanced input decoration with smaller font sizes
   InputDecoration _dec({String? label, String? hint, String? helper}) {
     return InputDecoration(
       labelText: label,
@@ -968,15 +1185,27 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
     String? Function(String?)? validator,
     bool enabled = true,
   }) {
-    print('Dropdown created with ' + items.length.toString() + ' items'); // Debug print
+    print('Dropdown created with ' +
+        items.length.toString() +
+        ' items'); // Debug print
     // Check if this is the special case of "No service added"
     bool isNoServiceAdded = items.length == 1 && items[0] == 'No service added';
+    // Fix: Flutter crashes if 'value' is not in 'items'.
+    // We check if 'selected' is in 'items', otherwise we pass null.
+    String? effectiveValue = (items.contains(selected)) ? selected : null;
+
     return DropdownButtonFormField<String>(
-      value: selected,
-      items: items.isNotEmpty 
-        ? items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 13)))).toList()
-        : <DropdownMenuItem<String>>[],
-      onChanged: enabled && !isNoServiceAdded ? onChanged : null, // Only allow changes if enabled and not the "No service added" case
+      value: effectiveValue,
+      items: items.isNotEmpty
+          ? items
+              .map((e) => DropdownMenuItem(
+                  value: e,
+                  child: Text(e, style: const TextStyle(fontSize: 13))))
+              .toList()
+          : <DropdownMenuItem<String>>[],
+      onChanged: enabled && !isNoServiceAdded
+          ? onChanged
+          : null, // Only allow changes if enabled and not the "No service added" case
       validator: validator,
       autovalidateMode: AutovalidateMode.onUserInteraction,
       decoration: _dec(label: label, hint: hint, helper: helper),
@@ -988,12 +1217,12 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
   }
 
   Widget _header(String text) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Text(
-      text,
-      style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600),
-    ),
-  );
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Text(
+          text,
+          style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600),
+        ),
+      );
 
   Widget _spacer(double height) => SizedBox(height: height);
 
@@ -1002,7 +1231,8 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
       context: context,
       builder: (context) {
         return Dialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -1067,7 +1297,8 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                   const SizedBox(height: 8),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.file(_selectedImage!, height: 100, fit: BoxFit.cover),
+                    child: Image.file(_selectedImage!,
+                        height: 100, fit: BoxFit.cover),
                   ),
                 ],
                 const SizedBox(height: 16),
@@ -1076,7 +1307,8 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text("Cancel", style: TextStyle(fontSize: 12)),
+                        child: const Text("Cancel",
+                            style: TextStyle(fontSize: 12)),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
@@ -1098,22 +1330,25 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                           if (_selectedImage != null) {
                             final bytes = await _selectedImage!.readAsBytes();
                             final base64 = base64Encode(bytes);
-                            final mimeType = _selectedImage!.path.endsWith('.png')
-                                ? 'png'
-                                : 'jpeg'; // adjust if needed
+                            final mimeType =
+                                _selectedImage!.path.endsWith('.png')
+                                    ? 'png'
+                                    : 'jpeg'; // adjust if needed
                             imageBase64 = 'data:image/$mimeType;base64,$base64';
                           }
 
                           final payload = {
                             "name": name,
-                            "description": _newCategoryDescController.text.trim(),
+                            "description":
+                                _newCategoryDescController.text.trim(),
                             if (imageBase64 != null) "image": imageBase64,
                           };
 
                           try {
                             final token = await ApiService.getAuthToken();
                             final response = await http.post(
-                              Uri.parse('https://admin.v2winonline.com/api/admin/categories'),
+                              Uri.parse(
+                                  'https://admin.v2winonline.com/api/admin/categories'),
                               headers: {
                                 'Content-Type': 'application/json',
                                 'Cookie': 'crm_access_token=$token',
@@ -1121,14 +1356,16 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                               body: jsonEncode(payload),
                             );
 
-                            if (response.statusCode == 200 || response.statusCode == 201) {
+                            if (response.statusCode == 200 ||
+                                response.statusCode == 201) {
                               // Success - update local list with the response data
                               final responseData = json.decode(response.body);
                               setState(() {
                                 // Add the new category to the list using the name from response
                                 categories.add(responseData['name']);
                                 // Update the category map with the new category ID
-                                categoryIdMap[responseData['name']] = responseData['_id'];
+                                categoryIdMap[responseData['name']] =
+                                    responseData['_id'];
                                 selectedCategory = responseData['name'];
                                 // After adding category, fetch services for the new category
                                 _fetchServicesByCategory(responseData['name']);
@@ -1142,22 +1379,28 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                                 _fetchServicesByCategory(selectedCategory!);
                               }
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Category added successfully')),
+                                const SnackBar(
+                                    content:
+                                        Text('Category added successfully')),
                               );
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Failed to add category: ${response.body}')),
+                                SnackBar(
+                                    content: Text(
+                                        'Failed to add category: ${response.body}')),
                               );
                               Navigator.pop(context);
                             }
                           } catch (e) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Error adding category: $e')),
+                              SnackBar(
+                                  content: Text('Error adding category: $e')),
                             );
                             Navigator.pop(context);
                           }
                         },
-                        child: const Text("Add", style: TextStyle(fontSize: 12)),
+                        child:
+                            const Text("Add", style: TextStyle(fontSize: 12)),
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
@@ -1176,7 +1419,7 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
       },
     );
   }
-  
+
   void _showAddServiceForm() {
     // Reset image when opening dialog
     _selectedImage = null;
@@ -1186,7 +1429,8 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
       builder: (context) {
         return StatefulBuilder(builder: (context, setDialogState) {
           return Dialog(
-            insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+            insetPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -1264,7 +1508,8 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text("Cancel", style: TextStyle(fontSize: 12)),
+                        child: const Text("Cancel",
+                            style: TextStyle(fontSize: 12)),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
@@ -1281,7 +1526,8 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                           final name = _newServiceNameController.text.trim();
                           if (name.isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Service name is required')),
+                              const SnackBar(
+                                  content: Text('Service name is required')),
                             );
                             return;
                           }
@@ -1290,7 +1536,9 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                           String? categoryId = categoryIdMap[selectedCategory];
                           if (categoryId == null || categoryId.isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Please select a category first')),
+                              const SnackBar(
+                                  content:
+                                      Text('Please select a category first')),
                             );
                             return;
                           }
@@ -1299,16 +1547,19 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                           if (_selectedImage != null) {
                             final bytes = await _selectedImage!.readAsBytes();
                             final base64 = base64Encode(bytes);
-                            final mimeType = _selectedImage!.path.endsWith('.png')
-                                ? 'png'
-                                : 'jpeg';
+                            final mimeType =
+                                _selectedImage!.path.endsWith('.png')
+                                    ? 'png'
+                                    : 'jpeg';
                             imageBase64 = 'data:image/$mimeType;base64,$base64';
                           }
 
                           final payload = {
                             "name": name,
-                            "description": _newServiceDescController.text.trim(),
-                            "category": categoryId,  // This must be the ObjectId string
+                            "description":
+                                _newServiceDescController.text.trim(),
+                            "category":
+                                categoryId, // This must be the ObjectId string
                             if (imageBase64 != null) "image": imageBase64,
                           };
 
@@ -1317,9 +1568,10 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                             if (token == null) {
                               throw Exception('No authentication token found');
                             }
-                            
+
                             final response = await http.post(
-                              Uri.parse('https://admin.v2winonline.com/api/admin/services'),
+                              Uri.parse(
+                                  'https://admin.v2winonline.com/api/admin/services'),
                               headers: {
                                 'Content-Type': 'application/json',
                                 'Cookie': 'crm_access_token=$token',
@@ -1327,14 +1579,19 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                               body: jsonEncode(payload),
                             );
 
-                            if (response.statusCode == 200 || response.statusCode == 201) {
+                            if (response.statusCode == 200 ||
+                                response.statusCode == 201) {
                               final responseData = json.decode(response.body);
                               setState(() {
                                 // Add to current category services list
-                                if (categoryServicesMap[selectedCategory] != null) {
-                                  categoryServicesMap[selectedCategory]!.add(responseData['name']);
+                                if (categoryServicesMap[selectedCategory] !=
+                                    null) {
+                                  categoryServicesMap[selectedCategory]!
+                                      .add(responseData['name']);
                                 } else {
-                                  categoryServicesMap[selectedCategory!] = [responseData['name']];
+                                  categoryServicesMap[selectedCategory!] = [
+                                    responseData['name']
+                                  ];
                                 }
                                 serviceNames.add(responseData['name']);
                                 selectedServiceName = responseData['name'];
@@ -1349,11 +1606,14 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                                 _fetchServicesByCategory(selectedCategory!);
                               }
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Service added successfully')),
+                                const SnackBar(
+                                    content:
+                                        Text('Service added successfully')),
                               );
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Error: ${response.body}')),
+                                SnackBar(
+                                    content: Text('Error: ${response.body}')),
                               );
                             }
                           } catch (e) {
@@ -1362,7 +1622,8 @@ class _AddServicePageState extends State<AddServicePage> with SingleTickerProvid
                             );
                           }
                         },
-                        child: const Text("Save", style: TextStyle(fontSize: 12)),
+                        child:
+                            const Text("Save", style: TextStyle(fontSize: 12)),
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
