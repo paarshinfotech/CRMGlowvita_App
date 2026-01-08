@@ -3,7 +3,7 @@ import '../../login.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../dashboard.dart';
-import 'supp_products.dart';
+//import 'supp_products.dart';
 import 'supp_product_questions.dart';
 import 'supp_reviews.dart';
 import 'supp_orders.dart';
@@ -245,7 +245,7 @@ class SupplierDrawer extends StatelessWidget {
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
-                    _buildMenuItem(
+                   /* _buildMenuItem(
                       context: context,
                       icon: Icons.inventory_2_outlined,
                       title: 'Products',
@@ -386,14 +386,14 @@ class SupplierDrawer extends StatelessWidget {
                             'rating': 4.8,
                           },
                         ];
-                        _navigateTo(
+                     /*   _navigateTo(
                           context,
                           SuppProducts(products: productsList),
-                        );
+                        );*/
                       },
                       scale: scale,
                       baseFontScale: baseFontScale,
-                    ),
+                    ),*/
                     _buildMenuItem(
                       context: context,
                       icon: Icons.question_answer_outlined,

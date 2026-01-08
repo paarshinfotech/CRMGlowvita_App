@@ -327,12 +327,12 @@ class _DashboardPageState extends State<Supp_DashboardPage> with TickerProviderS
                           TextButton(
                             onPressed: () {
                               print('Navigating to Products page from Dashboard');
-                              Navigator.push(
+                             /* Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => Products(products: productsList),
+                                  builder: (_) => const Products(),
                                 ),
-                              );
+                              );*/
                             },
                             child: Text('View All', style: TextStyle(fontSize: 11.sp, color: Colors.blue)),
                           ),

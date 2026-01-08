@@ -4,11 +4,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'add_product.dart';
 import 'widgets/custom_drawer.dart';
+import 'services/api_service.dart';
 
 class Products extends StatefulWidget {
-  final List<Map<String, dynamic>> products;
-
-  const Products({super.key, required this.products});
+  const Products({super.key});
 
   @override
   State<Products> createState() => _ProductsPageState();
@@ -22,6 +21,8 @@ class _ProductsPageState extends State<Products> {
   String selectedStatus = 'All Status';
   bool isGridView = true;
   String searchQuery = '';
+  List<Map<String, dynamic>> products = [];
+  bool isLoading = true;
 
   final List<String> statusFilters = [
     'All Status',
@@ -31,27 +32,160 @@ class _ProductsPageState extends State<Products> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _loadProducts();
+  }
+
+  Future<void> _loadProducts() async {
+    try {
+      final apiProducts = await ApiService.getProducts();
+      setState(() {
+        products = apiProducts.map((product) => {
+          '_id': product.id,
+          'name': product.productName,
+          'category': product.category,
+          'description': product.description,
+          'price': product.price,
+          'sale_price': product.salePrice,
+          'stock_quantity': product.stock,
+          'images': product.productImages,
+          'status': product.status?.toLowerCase() == 'approved' ? 'Approved' : 
+                   product.status?.toLowerCase() == 'disapproved' ? 'Disapproved' : 'Pending',
+          'rating': 4.4, // default rating since not provided in API
+        }).toList();
+        isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading products: $e');
+      setState(() {
+        isLoading = false;
+      });
+      // Show error message to user
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load products: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
 
   void _editProduct(int index) async {
+    // For now, we'll pass the product data to AddProductPage
+    // In a real implementation, you'd want to call an API to update the product
     final editedProduct = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => AddProductPage(
-          existingProduct: widget.products[index],
+          existingProduct: products[index],
         ),
       ),
     );
     if (editedProduct != null && editedProduct is Map<String, dynamic>) {
-      setState(() => widget.products[index] = editedProduct);
+      setState(() => products[index] = editedProduct);
     }
   }
 
-  void _deleteProduct(int index) {
-    setState(() => widget.products.removeAt(index));
+  void _deleteProduct(int index) async {
+    final productId = products[index]['_id'];
+    final productName = products[index]['name'];
+    
+    // Confirm deletion with user
+    bool confirmDelete = await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Confirm Deletion"),
+          content: Text("Are you sure you want to delete '$productName'?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text("Delete"),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+            ),
+          ],
+        );
+      },
+    ) ?? false;
+
+    if (confirmDelete) {
+      try {
+        // Show loading indicator
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                SizedBox(width: 12),
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
+                ),
+                SizedBox(width: 12),
+                Text("Deleting product..."),
+              ],
+            ),
+            duration: Duration(seconds: 10),
+          ),
+        );
+
+        // Call the API to delete the product
+        bool success = await ApiService.deleteProduct(productId);
+        
+        if (success) {
+          // Remove from local list
+          setState(() {
+            products.removeAt(index);
+          });
+          
+          // Show success message
+          if (mounted) {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Product deleted successfully"),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        } else {
+          // Show error message
+          if (mounted) {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Failed to delete product"),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        // Show error message
+        if (mounted) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Error deleting product: $e"),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 
   Future<void> _navigateToAddProduct() async {
@@ -60,12 +194,12 @@ class _ProductsPageState extends State<Products> {
       MaterialPageRoute(builder: (context) => const AddProductPage()),
     );
     if (result != null && result is Map<String, dynamic>) {
-      setState(() => widget.products.add(result));
+      setState(() => products.add(result));
     }
   }
 
   List<Map<String, dynamic>> get filteredProducts {
-    return widget.products.where((product) {
+    return products.where((product) {
       final matchesSearch = product['name']
           .toString()
           .toLowerCase()
@@ -80,25 +214,23 @@ class _ProductsPageState extends State<Products> {
 
   static Widget _buildImageWidget(dynamic image) {
     try {
-      // Handle XFile objects
-      if (image is XFile) {
-        return Image.file(
-          File(image.path),
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            // Fallback to default asset image if file doesn't exist
-            return Image.asset(
-              'assets/images/logo.png',
-              fit: BoxFit.cover,
-            );
-          },
-        );
-      }
-      
-      // Handle file paths (Strings)
+      // Handle URL strings
       if (image is String) {
-        // Check if it's an asset path (starts with assets/)
-        if (image.startsWith('assets/')) {
+        if (image.startsWith('http')) {
+          // It's a URL, load from network
+          return Image.network(
+            image,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              // Fallback to default asset image if network fails
+              return Image.asset(
+                'assets/images/logo.png',
+                fit: BoxFit.cover,
+              );
+            },
+          );
+        } else if (image.startsWith('assets/')) {
+          // It's an asset path
           return Image.asset(
             image,
             fit: BoxFit.cover,
@@ -124,6 +256,21 @@ class _ProductsPageState extends State<Products> {
             },
           );
         }
+      }
+      
+      // Handle XFile objects
+      if (image is XFile) {
+        return Image.file(
+          File(image.path),
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            // Fallback to default asset image if file doesn't exist
+            return Image.asset(
+              'assets/images/logo.png',
+              fit: BoxFit.cover,
+            );
+          },
+        );
       }
       
       // Fallback for any other format
@@ -360,77 +507,79 @@ class _ProductsPageState extends State<Products> {
 
             // Content
             Expanded(
-              child: filteredProducts.isEmpty
-                  ? _EmptyState(onAdd: _navigateToAddProduct)
-                  : AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 180),
-                      child: isGridView
-                          ? GridView.builder(
-                              key: const ValueKey('grid'),
-                              padding: EdgeInsets.zero,
-                              gridDelegate:
-                                  const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                childAspectRatio: 0.60,
-                                crossAxisSpacing: 12,
-                                mainAxisSpacing: 16,
-                              ),
-                              itemCount: filteredProducts.length,
-                              itemBuilder: (context, index) {
-                                final product = filteredProducts[index];
-                                return _GridCard(
-                                  product: product,
-                                  accent: accent,
-                                  approved: approved,
-                                  disapproved: disapproved,
-                                  pending: pending,
-                                  onEdit: () => _editProduct(
-                                      widget.products.indexOf(product)),
-                                  onDelete: () => _deleteProduct(
-                                      widget.products.indexOf(product)),
-                                  onPreview: (images, i) => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => ImagePreviewPage(
-                                        images: images,
-                                        initialIndex: i,
-                                      ),
-                                    ),
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : filteredProducts.isEmpty
+                      ? _EmptyState(onAdd: _navigateToAddProduct)
+                      : AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 180),
+                          child: isGridView
+                              ? GridView.builder(
+                                  key: const ValueKey('grid'),
+                                  padding: EdgeInsets.zero,
+                                  gridDelegate:
+                                      const SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 2,
+                                    childAspectRatio: 0.60,
+                                    crossAxisSpacing: 12,
+                                    mainAxisSpacing: 16,
                                   ),
-                                );
-                              },
-                            )
-                          : ListView.separated(
-                              key: const ValueKey('list'),
-                              padding: EdgeInsets.zero,
-                              itemCount: filteredProducts.length,
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(height: 8),
-                              itemBuilder: (context, index) {
-                                final product = filteredProducts[index];
-                                return _ListTileCard(
-                                  product: product,
-                                  accent: accent,
-                                  approved: approved,
-                                  disapproved: disapproved,
-                                  pending: pending,
-                                  onEdit: () => _editProduct(
-                                      widget.products.indexOf(product)),
-                                  onDelete: () => _deleteProduct(
-                                      widget.products.indexOf(product)),
-                                  onPreview: (images, i) => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => ImagePreviewPage(
-                                        images: images,
-                                        initialIndex: i,
+                                  itemCount: filteredProducts.length,
+                                  itemBuilder: (context, index) {
+                                    final product = filteredProducts[index];
+                                    return _GridCard(
+                                      product: product,
+                                      accent: accent,
+                                      approved: approved,
+                                      disapproved: disapproved,
+                                      pending: pending,
+                                      onEdit: () => _editProduct(
+                                          products.indexOf(product)),
+                                      onDelete: () => _deleteProduct(
+                                          products.indexOf(product)),
+                                      onPreview: (images, i) => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => ImagePreviewPage(
+                                            images: images,
+                                            initialIndex: i,
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                    ),
+                                    );
+                                  },
+                                )
+                              : ListView.separated(
+                                  key: const ValueKey('list'),
+                                  padding: EdgeInsets.zero,
+                                  itemCount: filteredProducts.length,
+                                  separatorBuilder: (_, __) =>
+                                      const SizedBox(height: 8),
+                                  itemBuilder: (context, index) {
+                                    final product = filteredProducts[index];
+                                    return _ListTileCard(
+                                      product: product,
+                                      accent: accent,
+                                      approved: approved,
+                                      disapproved: disapproved,
+                                      pending: pending,
+                                      onEdit: () => _editProduct(
+                                          products.indexOf(product)),
+                                      onDelete: () => _deleteProduct(
+                                          products.indexOf(product)),
+                                      onPreview: (images, i) => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => ImagePreviewPage(
+                                            images: images,
+                                            initialIndex: i,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                        ),
             ),
           ],
         ),
@@ -601,103 +750,115 @@ class _GridCard extends StatelessWidget {
                 ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Category
-                  Text(
-                    product['category'] ?? '',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
-                      fontSize: 10,
-                      color: accent,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  
-                  // Name
-                  Text(
-                    product['name'] ?? '',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  
-                  // Price and rating
-                  Row(
-                    children: [
-                      Text(
-                        "₹${product['sale_price']}",
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: accent,
-                        ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Category
+                    Text(
+                      product['category'] ?? '',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(
+                        fontSize: 10,
+                        color: accent,
+                        fontWeight: FontWeight.w500,
                       ),
-                      const Spacer(),
-                      const Icon(Icons.star, color: Colors.amber, size: 14),
-                      const SizedBox(width: 4),
-                      Text(
-                        rating,
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
+                    ),
+                    const SizedBox(height: 4),
+                    
+                    // Name
+                    Text(
+                      product['name'] ?? '',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(
+                        fontSize: 11, // Reduced from 13
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  
-                  // Edit and Delete buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: onEdit,
-                          icon: const Icon(Icons.edit, size: 16),
-                          label: Text(
-                            'Edit',
-                            style: GoogleFonts.poppins(fontSize: 12),
+                    ),
+                    const SizedBox(height: 2),
+                    
+                    // Description
+                    Text(
+                      product['description'] ?? '',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(
+                        fontSize: 10,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    
+                    // Price and rating
+                    Row(
+                      children: [
+                        Text(
+                          "₹${product['sale_price']}",
+                          style: GoogleFonts.poppins(
+                            fontSize: 14, // Reduced from 16
+                            fontWeight: FontWeight.bold,
+                            color: accent,
                           ),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.black87,
-                            side: BorderSide(color: Colors.grey.shade300),
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6),
+                        ),
+                        const Spacer(),
+                        const Icon(Icons.star, color: Colors.amber, size: 14),
+                        const SizedBox(width: 4),
+                        Text(
+                          rating,
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Spacer(), // Push buttons to bottom
+                    const SizedBox(height: 8),
+                    
+                    // Edit and Delete buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: onEdit,
+                            icon: const Icon(Icons.edit, size: 16),
+                            label: Text(
+                              'Edit',
+                              style: GoogleFonts.poppins(fontSize: 12),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.black87,
+                              side: BorderSide(color: Colors.grey.shade300),
+                              padding: const EdgeInsets.symmetric(vertical: 8), // Reduced padding
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      OutlinedButton.icon(
-                        onPressed: onDelete,
-                        icon: const Icon(Icons.delete, size: 16),
-                        label: Text(
-                          ' ',
-                          style: GoogleFonts.poppins(fontSize: 12),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                          side: BorderSide(color: Colors.grey.shade300),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          onPressed: onDelete,
+                          icon: const Icon(Icons.delete, size: 16),
+                          label: Text(
+                            ' ',
+                            style: GoogleFonts.poppins(fontSize: 12),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.red,
+                            side: BorderSide(color: Colors.grey.shade300),
+                            padding: const EdgeInsets.symmetric(vertical: 8), // Reduced padding
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -763,8 +924,8 @@ class _ListTileCard extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(6),
               child: SizedBox(
-                width: 80,
-                height: 80,
+                width: 75,
+                height: 60,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
@@ -853,11 +1014,23 @@ class _ListTileCard extends StatelessWidget {
                   Text(
                     product['name'] ?? '',
                     style: GoogleFonts.poppins(
-                      fontSize: 13,
+                      fontSize: 12, // Reduced from 13
                       fontWeight: FontWeight.w600,
                       color: Colors.black,
                     ),
                     maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  // Description
+                  Text(
+                    product['description'] ?? '',
+                    style: GoogleFonts.poppins(
+                      fontSize: 10,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w400,
+                    ),
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
@@ -867,7 +1040,7 @@ class _ListTileCard extends StatelessWidget {
                       Text(
                         "₹${product['sale_price']}",
                         style: GoogleFonts.poppins(
-                          fontSize: 14,
+                          fontSize: 13, // Reduced from 14
                           fontWeight: FontWeight.bold,
                           color: Colors.green.shade700,
                         ),
@@ -899,7 +1072,7 @@ class _ListTileCard extends StatelessWidget {
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.black87,
                             side: BorderSide(color: Colors.grey.shade300),
-                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            padding: const EdgeInsets.symmetric(vertical: 6), // Reduced padding
                             visualDensity: VisualDensity.compact,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(6),
@@ -918,7 +1091,7 @@ class _ListTileCard extends StatelessWidget {
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.red,
                           side: BorderSide(color: Colors.grey.shade300),
-                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          padding: const EdgeInsets.symmetric(vertical: 6), // Reduced padding
                           visualDensity: VisualDensity.compact,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(6),

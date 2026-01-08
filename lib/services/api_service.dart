@@ -136,6 +136,76 @@ class ApiService {
   }
 
   // Get all staff members
+  // Get all products
+  static Future<List<Product>> getProducts() async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/crm/products'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': 'crm_access_token=$token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          List<dynamic> productsData = data['data'];
+          return productsData.map((json) => Product.fromJson(json)).toList();
+        } else {
+          throw Exception(
+              'Failed to load products: ${data['message'] ?? 'Unknown error'}');
+        }
+      } else {
+        throw Exception(
+            'Failed to load products: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching products: $e');
+      rethrow;
+    }
+  }
+
+  // Delete a product
+  static Future<bool> deleteProduct(String productId) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
+      final response = await http.delete(
+        Uri.parse('$baseUrl/crm/products'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': 'crm_access_token=$token',
+        },
+        body: json.encode({'id': productId}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          return true;
+        } else {
+          throw Exception(
+              'Failed to delete product: ${data['message'] ?? 'Unknown error'}');
+        }
+      } else {
+        throw Exception(
+            'Failed to delete product: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error deleting product: $e');
+      rethrow;
+    }
+  }
+
   static Future<List<StaffMember>> getStaff() async {
     try {
       final token = await _getAuthToken();
@@ -730,6 +800,123 @@ class Service {
       'createdAt': createdAt,
       'updatedAt': updatedAt,
       'staff': staff, // Include staff
+    };
+  }
+}
+
+// Product model class
+class Product {
+  String? id;
+  String? vendorId;
+  String? productName;
+  String? description;
+  String? category;
+  String? categoryDescription;
+  int? price;
+  int? salePrice;
+  int? stock;
+  List<String>? productImages;
+  String? size;
+  String? sizeMetric;
+  List<String>? keyIngredients;
+  String? forBodyPart;
+  String? bodyPartType;
+  String? productForm;
+  String? brand;
+  bool? isActive;
+  String? status;
+  String? origin;
+  String? createdBy;
+  String? updatedBy;
+  String? createdAt;
+  String? updatedAt;
+  int? v;
+
+  Product({
+    this.id,
+    this.vendorId,
+    this.productName,
+    this.description,
+    this.category,
+    this.categoryDescription,
+    this.price,
+    this.salePrice,
+    this.stock,
+    this.productImages,
+    this.size,
+    this.sizeMetric,
+    this.keyIngredients,
+    this.forBodyPart,
+    this.bodyPartType,
+    this.productForm,
+    this.brand,
+    this.isActive,
+    this.status,
+    this.origin,
+    this.createdBy,
+    this.updatedBy,
+    this.createdAt,
+    this.updatedAt,
+    this.v,
+  });
+
+  factory Product.fromJson(Map<String, dynamic> json) {
+    return Product(
+      id: json['_id'],
+      vendorId: json['vendorId'],
+      productName: json['productName'],
+      description: json['description'],
+      category: json['category'],
+      categoryDescription: json['categoryDescription'],
+      price: json['price'],
+      salePrice: json['salePrice'],
+      stock: json['stock'],
+      productImages: (json['productImages'] as List?)?.map((e) => e.toString()).toList(),
+      size: json['size'],
+      sizeMetric: json['sizeMetric'],
+      keyIngredients: (json['keyIngredients'] as List?)?.map((e) => e.toString()).toList(),
+      forBodyPart: json['forBodyPart'],
+      bodyPartType: json['bodyPartType'],
+      productForm: json['productForm'],
+      brand: json['brand'],
+      isActive: json['isActive'],
+      status: json['status'],
+      origin: json['origin'],
+      createdBy: json['createdBy'],
+      updatedBy: json['updatedBy'],
+      createdAt: json['createdAt'],
+      updatedAt: json['updatedAt'],
+      v: json['__v'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      '_id': id,
+      'vendorId': vendorId,
+      'productName': productName,
+      'description': description,
+      'category': category,
+      'categoryDescription': categoryDescription,
+      'price': price,
+      'salePrice': salePrice,
+      'stock': stock,
+      'productImages': productImages,
+      'size': size,
+      'sizeMetric': sizeMetric,
+      'keyIngredients': keyIngredients,
+      'forBodyPart': forBodyPart,
+      'bodyPartType': bodyPartType,
+      'productForm': productForm,
+      'brand': brand,
+      'isActive': isActive,
+      'status': status,
+      'origin': origin,
+      'createdBy': createdBy,
+      'updatedBy': updatedBy,
+      'createdAt': createdAt,
+      'updatedAt': updatedAt,
+      '__v': v,
     };
   }
 }
