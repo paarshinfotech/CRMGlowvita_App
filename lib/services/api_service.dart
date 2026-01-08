@@ -515,19 +515,22 @@ class ApiService {
         'gender': serviceData['gender'] ?? 'unisex',
         'staff': serviceData['staff'] ?? [],
         'commission': serviceData['allow_commission'] ?? false,
-        'homeService': serviceData['homeService'] != null
-            ? (serviceData['homeService']['available'] ?? false)
-            : false,
-        'weddingService': serviceData['weddingService'] != null
-            ? (serviceData['weddingService']['available'] ?? false)
-            : false,
-        'bookingInterval':
-            int.tryParse(serviceData['booking_interval']?.toString() ?? '0') ??
-                0,
-        'tax':
-            serviceData['tax'] != null && serviceData['tax']['enabled'] == true
-                ? (serviceData['tax']['value'] ?? 0)
-                : 0,
+        'homeService': {
+          'available': serviceData['homeService'] != null
+              ? (serviceData['homeService']['available'] ?? false)
+              : false,
+          'charges': (serviceData['homeService'] != null)
+              ? serviceData['homeService']['charges']
+              : 0,
+        },
+        'weddingService': {
+          'available': serviceData['weddingService'] != null
+              ? (serviceData['weddingService']['available'] ?? false)
+              : false,
+          'charges': (serviceData['weddingService'] != null)
+              ? serviceData['weddingService']['charges']
+              : 0,
+        },
         'onlineBooking': serviceData['online_booking'] ?? true,
       };
 
@@ -605,6 +608,8 @@ class Service {
   String? description;
   String? image;
   List<dynamic>? staff; // Added staff field
+  double? homeServiceCharges; // Added
+  double? weddingServiceCharges; // Added
 
   Service({
     this.id,
@@ -630,6 +635,8 @@ class Service {
     this.createdAt,
     this.updatedAt,
     this.staff, // Added staff
+    this.homeServiceCharges, // Added
+    this.weddingServiceCharges, // Added
   });
 
   factory Service.fromJson(Map<String, dynamic> json) {
@@ -659,16 +666,24 @@ class Service {
         if (hs is Map<String, dynamic>) {
           return hs['available'] as bool? ?? false;
         }
-        return hs as bool? ?? false; // handles true/false directly
+        return hs as bool? ?? false;
       }(),
+      homeServiceCharges: (json['homeService'] is Map)
+          ? (json['homeService']['charges'] as num?)?.toDouble()
+          : null,
 
       eventService: () {
-        final ws = json['weddingService'];
+        final ws = json['weddingService'] ?? json['eventService'];
         if (ws is Map<String, dynamic>) {
           return ws['available'] as bool? ?? false;
         }
         return ws as bool? ?? false;
       }(),
+      weddingServiceCharges: (json['weddingService'] is Map)
+          ? (json['weddingService']['charges'] as num?)?.toDouble()
+          : (json['eventService'] is Map
+              ? (json['eventService']['charges'] as num?)?.toDouble()
+              : null),
 
       // === END FIX ===
 
@@ -704,8 +719,11 @@ class Service {
       'setupCleanupTime': setupCleanupTime,
       'description': description,
       'image': image,
-      'homeService': {'available': homeService},
-      'weddingService': {'available': eventService},
+      'weddingService': {
+        'available': eventService,
+        'charges': weddingServiceCharges
+      },
+      'homeService': {'available': homeService, 'charges': homeServiceCharges},
       'status': status,
       'onlineBooking': onlineBooking,
       'tax': tax,

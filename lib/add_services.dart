@@ -149,12 +149,18 @@ class _AddServicePageState extends State<AddServicePage>
 
       homeService = data['homeService']?['available'] ?? false;
       _homeServiceChargesController.text =
-          data['homeService']?['charges']?.toString() ?? '';
+          (data['homeService']?['charges'] ?? data['homeServiceCharges'])
+                  ?.toString() ??
+              '';
 
       weddingService = data['weddingService']?['available'] ??
-          (data['eventService'] ?? false);
-      _weddingServiceChargesController.text =
-          data['weddingService']?['charges']?.toString() ?? '';
+          (data['eventService']?['available'] ?? data['eventService'] ?? false);
+      _weddingServiceChargesController.text = (data['weddingService']
+                      ?['charges'] ??
+                  data['weddingServiceCharges'] ??
+                  data['eventService']?['charges'])
+              ?.toString() ??
+          '';
 
       // Fix: Use correct key 'commission' or 'allow_commission'
       allowCommission = data['commission'] ?? data['allow_commission'] ?? false;
@@ -248,15 +254,6 @@ class _AddServicePageState extends State<AddServicePage>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _header("Service Information"),
-                  _input(
-                    _serviceNameController,
-                    label: 'Service Name',
-                    hint: 'e.g. Master Haircut',
-                    validator: (value) => value == null || value.trim().isEmpty
-                        ? 'Service name is required'
-                        : null,
-                  ),
                   const SizedBox(height: 16),
                   _dropdown(
                     categories,
@@ -299,11 +296,11 @@ class _AddServicePageState extends State<AddServicePage>
                         : serviceNames,
                     selectedServiceName,
                     (val) => setState(() => selectedServiceName = val),
-                    label: 'Existing Service (Optional)',
+                    label: 'Service Name',
                     hint: _isServicesLoading
                         ? 'Loading...'
                         : (selectedCategory != null
-                            ? 'Select existing service'
+                            ? 'Select service'
                             : 'Select a category first'),
                     enabled: selectedCategory !=
                         null, // Only enable when category is selected
@@ -1078,6 +1075,12 @@ class _AddServicePageState extends State<AddServicePage>
         setState(() {
           categoryServicesMap[categoryName] = servicesInCategory;
           serviceNames = servicesInCategory;
+
+          // Fix: Ensure selectedServiceName is in the list to avoid dropdown crash
+          if (selectedServiceName != null &&
+              !serviceNames.contains(selectedServiceName)) {
+            serviceNames.add(selectedServiceName!);
+          }
         });
         print(
             'Services loaded for category $categoryName: ${servicesInCategory.length}');
