@@ -4,7 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'services/api_service.dart'; 
+import 'services/api_service.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -77,7 +77,8 @@ class _CalendarState extends State<Calendar> {
 //  helper to bypass SSL (same as in staff.dart)
   http_io.IOClient _cookieClient() {
     final ioClient = HttpClient();
-    ioClient.badCertificateCallback = (X509Certificate cert, String host, int port) => true;
+    ioClient.badCertificateCallback =
+        (X509Certificate cert, String host, int port) => true;
     return http_io.IOClient(ioClient);
   }
 
@@ -101,19 +102,22 @@ class _CalendarState extends State<Calendar> {
     _loadStaff();
 
     // Rest of initState...
-    _appointments = sharedDataService.appointments.map((a) => Appointments(
-      startTime: a.startTime,
-      duration: a.duration,
-      clientName: a.clientName,
-      serviceName: a.serviceName,
-      staffName: a.staffName,
-      status: a.status,
-      isWebBooking: a.isWebBooking,
-    )).toList();
+    _appointments = sharedDataService.appointments
+        .map((a) => Appointments(
+              startTime: a.startTime,
+              duration: a.duration,
+              clientName: a.clientName,
+              serviceName: a.serviceName,
+              staffName: a.staffName,
+              status: a.status,
+              isWebBooking: a.isWebBooking,
+            ))
+        .toList();
 
     // Timer and scroll sync...
     _horizontalScrollController.addListener(() {
-      if (!_horizontalScrollController.hasClients || !_staffHeaderScrollController.hasClients) return;
+      if (!_horizontalScrollController.hasClients ||
+          !_staffHeaderScrollController.hasClients) return;
       final target = _horizontalScrollController.offset;
       final max = _staffHeaderScrollController.position.maxScrollExtent;
       _staffHeaderScrollController.jumpTo(target.clamp(0.0, max));
@@ -123,7 +127,7 @@ class _CalendarState extends State<Calendar> {
       _timerNotifier.value = DateTime.now().millisecondsSinceEpoch;
     });
   }
-  
+
   Future<void> _loadStaff() async {
     setState(() {
       isStaffLoading = true;
@@ -156,7 +160,8 @@ class _CalendarState extends State<Calendar> {
         setState(() {
           staffList = rawList.map<Map<String, dynamic>>((item) {
             final map = item as Map<String, dynamic>;
-            final fullName = (map['fullName'] ?? 'Unknown Staff').toString().trim();
+            final fullName =
+                (map['fullName'] ?? 'Unknown Staff').toString().trim();
             return {
               'id': map['_id']?.toString() ?? 'unknown',
               'fullName': fullName.isEmpty ? 'No Name' : fullName,
@@ -179,7 +184,8 @@ class _CalendarState extends State<Calendar> {
           }
 
           debugPrint('Loaded ${staffList.length} staff members');
-          debugPrint('Selected: ${selectedStaff.keys.where((k) => selectedStaff[k]!).toList()}');
+          debugPrint(
+              'Selected: ${selectedStaff.keys.where((k) => selectedStaff[k]!).toList()}');
         });
       } else {
         throw Exception('Failed to load staff: ${response.statusCode}');
@@ -199,13 +205,15 @@ class _CalendarState extends State<Calendar> {
 
       // Fallback to shared data
       setState(() {
-        staffList = sharedDataService.staffMembers.map((s) => {
-          'id': s.name,
-          'fullName': s.name,
-          'position': s.role,
-          'status': s.availability,
-          'photo': null,
-        }).toList();
+        staffList = sharedDataService.staffMembers
+            .map((s) => {
+                  'id': s.name,
+                  'fullName': s.name,
+                  'position': s.role,
+                  'status': s.availability,
+                  'photo': null,
+                })
+            .toList();
 
         selectedStaff.clear();
         for (int i = 0; i < staffList.length && i < 2; i++) {
@@ -283,7 +291,8 @@ class _CalendarState extends State<Calendar> {
                     backgroundColor: Colors.black,
                     minimumSize: Size(double.infinity, 30.h),
                   ),
-                  child: Text('Done', style: TextStyle(color: Colors.white, fontSize: 10.sp)),
+                  child: Text('Done',
+                      style: TextStyle(color: Colors.white, fontSize: 10.sp)),
                 ),
               ),
             ],
@@ -293,20 +302,20 @@ class _CalendarState extends State<Calendar> {
     );
   }
 
- void _showStaffSelection() {
+  void _showStaffSelection() {
     final tempSelectedStaff = Map<String, bool>.from(selectedStaff);
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,  
-      shape: RoundedRectangleBorder(  
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
       ),
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
-            return SizedBox( 
+            return SizedBox(
               height: 300.h,
               child: Column(
                 children: [
@@ -320,12 +329,17 @@ class _CalendarState extends State<Calendar> {
                     ),
                   ),
                   Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Select Staff', style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold)),
-                        Text('${staffList.length} available', style: TextStyle(fontSize: 12.sp, color: Colors.grey[600])),
+                        Text('Select Staff',
+                            style: TextStyle(
+                                fontSize: 16.sp, fontWeight: FontWeight.bold)),
+                        Text('${staffList.length} available',
+                            style: TextStyle(
+                                fontSize: 12.sp, color: Colors.grey[600])),
                       ],
                     ),
                   ),
@@ -342,8 +356,12 @@ class _CalendarState extends State<Calendar> {
                             borderRadius: BorderRadius.circular(8.r),
                           ),
                           child: ListTile(
-                            contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
-                            title: Text(staff, style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w500)),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12.w, vertical: 4.h),
+                            title: Text(staff,
+                                style: TextStyle(
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.w500)),
                             trailing: Checkbox(
                               value: tempSelectedStaff[staff] ?? false,
                               onChanged: (value) {
@@ -351,7 +369,8 @@ class _CalendarState extends State<Calendar> {
                                   tempSelectedStaff[staff] = value ?? false;
                                 });
                               },
-                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
                             ),
                           ),
                         );
@@ -359,22 +378,26 @@ class _CalendarState extends State<Calendar> {
                     ),
                   ),
                   Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
                     child: Row(
                       children: [
                         Expanded(
                           child: OutlinedButton(
                             onPressed: () {
                               setModalState(() {
-                                tempSelectedStaff.updateAll((key, value) => false);
+                                tempSelectedStaff
+                                    .updateAll((key, value) => false);
                               });
                             },
                             style: OutlinedButton.styleFrom(
                               padding: EdgeInsets.symmetric(vertical: 12.h),
                               side: BorderSide(color: Colors.grey[300]!),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8.r)),
                             ),
-                            child: Text('Clear All', style: TextStyle(fontSize: 14.sp)),
+                            child: Text('Clear All',
+                                style: TextStyle(fontSize: 14.sp)),
                           ),
                         ),
                         SizedBox(width: 10.w),
@@ -391,9 +414,12 @@ class _CalendarState extends State<Calendar> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.black,
                               padding: EdgeInsets.symmetric(vertical: 12.h),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8.r)),
                             ),
-                            child: Text('Apply', style: TextStyle(color: Colors.white, fontSize: 14.sp)),
+                            child: Text('Apply',
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: 14.sp)),
                           ),
                         ),
                       ],
@@ -416,9 +442,9 @@ class _CalendarState extends State<Calendar> {
         return SizedBox(
           height: MediaQuery.of(context).size.height * 0.8,
           child: CreateAppointmentForm(
-            onAppointmentCreated: (appointment) {
+            onAppointmentCreated: (appointments) {
               setState(() {
-                _appointments.add(appointment);
+                _appointments.addAll(appointments);
               });
             },
           ),
@@ -430,15 +456,15 @@ class _CalendarState extends State<Calendar> {
   @override
   Widget build(BuildContext context) {
     final quarterSlot = slotHeight / 4;
-    final selectedStaffList = selectedStaff.entries
-        .where((e) => e.value)
-        .map((e) => e.key)
-        .toList();
+    final selectedStaffList =
+        selectedStaff.entries.where((e) => e.value).map((e) => e.key).toList();
 
     final Map<String, List<Appointments>> staffAppts = {};
     for (final staff in selectedStaffList) {
       staffAppts[staff] = _appointments
-          .where((a) => a.staffName == staff && DateUtils.isSameDay(a.startTime, _selectedDate))
+          .where((a) =>
+              a.staffName == staff &&
+              DateUtils.isSameDay(a.startTime, _selectedDate))
           .toList();
     }
 
@@ -458,7 +484,9 @@ class _CalendarState extends State<Calendar> {
             onPressed: () => Scaffold.of(ctx).openDrawer(),
           ),
         ),
-        title: Text('Calendar', style: GoogleFonts.poppins(fontSize: 14.sp, fontWeight: FontWeight.w600)),
+        title: Text('Calendar',
+            style: GoogleFonts.poppins(
+                fontSize: 14.sp, fontWeight: FontWeight.w600)),
         actions: [
           IconButton(
             icon: Icon(Icons.refresh, size: 20.sp),
@@ -467,13 +495,18 @@ class _CalendarState extends State<Calendar> {
           ),
           IconButton(
             icon: Icon(Icons.notifications, size: 20.sp),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => NotificationPage())),
+            onPressed: () => Navigator.push(
+                context, MaterialPageRoute(builder: (_) => NotificationPage())),
           ),
           Padding(
             padding: EdgeInsets.only(right: 12.w),
             child: GestureDetector(
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfilePage())),
-              child: CircleAvatar(radius: 16.r, backgroundImage: const AssetImage('assets/images/profile.jpeg')),
+              onTap: () => Navigator.push(
+                  context, MaterialPageRoute(builder: (_) => ProfilePage())),
+              child: CircleAvatar(
+                  radius: 16.r,
+                  backgroundImage:
+                      const AssetImage('assets/images/profile.jpeg')),
             ),
           ),
         ],
@@ -490,7 +523,8 @@ class _CalendarState extends State<Calendar> {
               children: [
                 IconButton(
                   icon: Icon(Icons.arrow_back_ios, size: 16.sp),
-                  onPressed: () => _setSelectedDate(_selectedDate.subtract(const Duration(days: 1))),
+                  onPressed: () => _setSelectedDate(
+                      _selectedDate.subtract(const Duration(days: 1))),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
@@ -499,7 +533,8 @@ class _CalendarState extends State<Calendar> {
                   children: [
                     Text(
                       DateFormat('EEEE, d MMMM').format(_selectedDate),
-                      style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                          fontSize: 12.sp, fontWeight: FontWeight.w600),
                     ),
                     GestureDetector(
                       onTap: _showMonthYearPicker,
@@ -508,9 +543,13 @@ class _CalendarState extends State<Calendar> {
                         children: [
                           Text(
                             DateFormat('MMMM yyyy').format(_selectedDate),
-                            style: TextStyle(fontSize: 10.sp, color: Colors.blue, fontWeight: FontWeight.w500),
+                            style: TextStyle(
+                                fontSize: 10.sp,
+                                color: Colors.blue,
+                                fontWeight: FontWeight.w500),
                           ),
-                          Icon(Icons.arrow_drop_down, size: 16.sp, color: Colors.blue),
+                          Icon(Icons.arrow_drop_down,
+                              size: 16.sp, color: Colors.blue),
                         ],
                       ),
                     ),
@@ -518,7 +557,8 @@ class _CalendarState extends State<Calendar> {
                 ),
                 IconButton(
                   icon: Icon(Icons.arrow_forward_ios, size: 16.sp),
-                  onPressed: () => _setSelectedDate(_selectedDate.add(const Duration(days: 1))),
+                  onPressed: () => _setSelectedDate(
+                      _selectedDate.add(const Duration(days: 1))),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
@@ -527,7 +567,7 @@ class _CalendarState extends State<Calendar> {
           ),
           Divider(height: 1, thickness: 1, color: Colors.grey[300]),
 
-          // Staff header - DYNAMIC with real staff data  
+          // Staff header - DYNAMIC with real staff data
           Container(
             color: Colors.white,
             padding: EdgeInsets.symmetric(vertical: 8.h),
@@ -537,13 +577,22 @@ class _CalendarState extends State<Calendar> {
               physics: const NeverScrollableScrollPhysics(),
               child: isStaffLoading
                   ? SizedBox(
-                      width: 60.w + (selectedStaffList.length * staffColumnWidth),
+                      width:
+                          60.w + (selectedStaffList.length * staffColumnWidth),
                       child: Row(
                         children: [
                           SizedBox(width: 60.w),
-                          ...List.generate(selectedStaffList.length, (i) => 
-                            Container(width: staffColumnWidth, height: 40.h, child: Center(child: SizedBox(width: 20.w, height: 20.h, child: CircularProgressIndicator(strokeWidth: 2))))
-                          ),
+                          ...List.generate(
+                              selectedStaffList.length,
+                              (i) => Container(
+                                  width: staffColumnWidth,
+                                  height: 40.h,
+                                  child: Center(
+                                      child: SizedBox(
+                                          width: 20.w,
+                                          height: 20.h,
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 2))))),
                         ],
                       ),
                     )
@@ -553,7 +602,12 @@ class _CalendarState extends State<Calendar> {
                         ...selectedStaffList.map((staffName) {
                           final staff = staffList.firstWhere(
                             (s) => s['fullName'] == staffName,
-                            orElse: () => <String, String?>{'position': 'Unknown', 'status': 'Active', 'fullName': staffName, 'id': ''},
+                            orElse: () => <String, String?>{
+                              'position': 'Unknown',
+                              'status': 'Active',
+                              'fullName': staffName,
+                              'id': ''
+                            },
                           );
                           return Container(
                             width: staffColumnWidth,
@@ -563,19 +617,23 @@ class _CalendarState extends State<Calendar> {
                               children: [
                                 Text(
                                   staffName,
-                                  style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w600),
+                                  style: TextStyle(
+                                      fontSize: 10.sp,
+                                      fontWeight: FontWeight.w600),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 SizedBox(height: 2.h),
                                 Text(
                                   staff['position'] ?? 'Staff',
-                                  style: TextStyle(fontSize: 8.sp, color: Colors.grey[700]),
+                                  style: TextStyle(
+                                      fontSize: 8.sp, color: Colors.grey[700]),
                                 ),
                                 SizedBox(height: 1.h),
                                 Text(
                                   staff['status'] ?? 'Active',
-                                  style: TextStyle(fontSize: 7.sp, color: Colors.green[700]),
+                                  style: TextStyle(
+                                      fontSize: 7.sp, color: Colors.green[700]),
                                 ),
                               ],
                             ),
@@ -614,7 +672,9 @@ class _CalendarState extends State<Calendar> {
                               alignment: Alignment.topRight,
                               child: Padding(
                                 padding: EdgeInsets.only(right: 8.w, top: 4.h),
-                                child: Text('$hour:00 $period', style: TextStyle(fontSize: 8.sp, color: Colors.black87)),
+                                child: Text('$hour:00 $period',
+                                    style: TextStyle(
+                                        fontSize: 8.sp, color: Colors.black87)),
                               ),
                             ),
                           );
@@ -633,7 +693,9 @@ class _CalendarState extends State<Calendar> {
                         scrollDirection: Axis.horizontal,
                         child: SizedBox(
                           height: 24 * slotHeight,
-                          width: selectedStaffList.isEmpty ? 0 : (selectedStaffList.length * staffColumnWidth),
+                          width: selectedStaffList.isEmpty
+                              ? 0
+                              : (selectedStaffList.length * staffColumnWidth),
                           child: selectedStaffList.isEmpty
                               ? const SizedBox()
                               : Row(
@@ -641,14 +703,23 @@ class _CalendarState extends State<Calendar> {
                                     final appts = staffAppts[staffName] ?? [];
                                     final staff = staffList.firstWhere(
                                       (s) => s['fullName'] == staffName,
-                                      orElse: () => <String, String?>{'photo': null, 'fullName': staffName, 'id': '', 'position': '', 'status': ''},
+                                      orElse: () => <String, String?>{
+                                        'photo': null,
+                                        'fullName': staffName,
+                                        'id': '',
+                                        'position': '',
+                                        'status': ''
+                                      },
                                     );
                                     return SizedBox(
                                       width: staffColumnWidth,
                                       height: 24 * slotHeight,
                                       child: Container(
                                         decoration: BoxDecoration(
-                                          border: Border(left: BorderSide(color: Colors.grey[300]!, width: 1)),
+                                          border: Border(
+                                              left: BorderSide(
+                                                  color: Colors.grey[300]!,
+                                                  width: 1)),
                                         ),
                                         child: Stack(
                                           fit: StackFit.expand,
@@ -661,66 +732,104 @@ class _CalendarState extends State<Calendar> {
                                                 left: 0,
                                                 right: 0,
                                                 child: Divider(
-                                                  thickness: i % 4 == 0 ? 1.0 : 0.4,
-                                                  color: i % 4 == 0 ? Colors.grey[400] : Colors.grey[200],
+                                                  thickness:
+                                                      i % 4 == 0 ? 1.0 : 0.4,
+                                                  color: i % 4 == 0
+                                                      ? Colors.grey[400]
+                                                      : Colors.grey[200],
                                                 ),
                                               );
                                             }),
                                             // Appointments for this staff
                                             ...appts.map((appt) {
-                                              final startMin = appt.startTime.hour * 60 + appt.startTime.minute;
-                                              final top = (startMin / 15) * quarterSlot;
-                                              final height = (appt.duration.inMinutes / 15) * quarterSlot;
+                                              final startMin =
+                                                  appt.startTime.hour * 60 +
+                                                      appt.startTime.minute;
+                                              final top =
+                                                  (startMin / 15) * quarterSlot;
+                                              final height =
+                                                  (appt.duration.inMinutes /
+                                                          15) *
+                                                      quarterSlot;
 
                                               return Positioned(
                                                 top: top,
                                                 left: 6.w,
                                                 right: 6.w,
-                                                height: height.clamp(quarterSlot, slotHeight * 4), // Prevent overflow
+                                                height: height.clamp(
+                                                    quarterSlot,
+                                                    slotHeight *
+                                                        4), // Prevent overflow
                                                 child: Container(
                                                   padding: EdgeInsets.all(4.w),
                                                   decoration: BoxDecoration(
-                                                    color: const Color(0xFFE0F7FA),
-                                                    borderRadius: BorderRadius.circular(4.r),
-                                                    border: Border.all(color: Colors.cyan[200]!),
+                                                    color:
+                                                        const Color(0xFFE0F7FA),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            4.r),
+                                                    border: Border.all(
+                                                        color:
+                                                            Colors.cyan[200]!),
                                                     boxShadow: [
                                                       BoxShadow(
-                                                        color: Colors.black.withOpacity(0.1),
+                                                        color: Colors.black
+                                                            .withOpacity(0.1),
                                                         blurRadius: 2,
                                                         offset: Offset(0, 1),
                                                       ),
                                                     ],
                                                   ),
                                                   child: Column(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                                    mainAxisSize: MainAxisSize.min,
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
                                                     children: [
                                                       Text(
                                                         '${DateFormat.Hm().format(appt.startTime)} - ${DateFormat.Hm().format(appt.endTime)}',
-                                                        style: TextStyle(fontSize: 8.sp, fontWeight: FontWeight.bold),
+                                                        style: TextStyle(
+                                                            fontSize: 8.sp,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .bold),
                                                       ),
                                                       SizedBox(height: 1.h),
                                                       Text(
                                                         appt.serviceName,
-                                                        style: TextStyle(fontSize: 7.sp, fontWeight: FontWeight.w600),
+                                                        style: TextStyle(
+                                                            fontSize: 7.sp,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .w600),
                                                         maxLines: 2,
-                                                        overflow: TextOverflow.ellipsis,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
                                                       ),
                                                       SizedBox(height: 1.h),
                                                       Text(
                                                         appt.clientName,
-                                                        style: TextStyle(fontSize: 6.sp),
+                                                        style: TextStyle(
+                                                            fontSize: 6.sp),
                                                         maxLines: 1,
-                                                        overflow: TextOverflow.ellipsis,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
                                                       ),
                                                       SizedBox(height: 1.h),
                                                       Row(
                                                         children: [
-                                                          Icon(Icons.circle, size: 4.sp, color: _getStatusColor(appt.status)),
+                                                          Icon(Icons.circle,
+                                                              size: 4.sp,
+                                                              color: _getStatusColor(
+                                                                  appt.status)),
                                                           SizedBox(width: 2.w),
                                                           Text(
                                                             appt.status,
-                                                            style: TextStyle(fontSize: 6.sp, color: _getStatusColor(appt.status)),
+                                                            style: TextStyle(
+                                                                fontSize: 6.sp,
+                                                                color: _getStatusColor(
+                                                                    appt.status)),
                                                           ),
                                                         ],
                                                       ),
@@ -753,10 +862,12 @@ class _CalendarState extends State<Calendar> {
                           child: Container(
                             height: 3,
                             decoration: BoxDecoration(
-                              color: isToday ? Colors.red : Colors.grey.shade400,
+                              color:
+                                  isToday ? Colors.red : Colors.grey.shade400,
                               boxShadow: [
                                 BoxShadow(
-                                  color: (isToday ? Colors.red : Colors.grey).withOpacity(0.3),
+                                  color: (isToday ? Colors.red : Colors.grey)
+                                      .withOpacity(0.3),
                                   blurRadius: 4,
                                   offset: Offset(0, 2),
                                 ),
@@ -774,7 +885,8 @@ class _CalendarState extends State<Calendar> {
                         left: 70.w,
                         right: 20.w,
                         child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 16.w, vertical: 16.h),
                           decoration: BoxDecoration(
                             color: Colors.grey.shade50,
                             borderRadius: BorderRadius.circular(12.r),
@@ -783,16 +895,21 @@ class _CalendarState extends State<Calendar> {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.event_busy, size: 32.sp, color: Colors.grey[400]),
+                              Icon(Icons.event_busy,
+                                  size: 32.sp, color: Colors.grey[400]),
                               SizedBox(height: 8.h),
                               Text(
                                 'No appointments',
-                                style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: Colors.grey[700]),
+                                style: TextStyle(
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.grey[700]),
                               ),
                               SizedBox(height: 4.h),
                               Text(
                                 'for ${DateFormat('EEE, MMM d').format(_selectedDate)}',
-                                style: TextStyle(fontSize: 12.sp, color: Colors.grey[600]),
+                                style: TextStyle(
+                                    fontSize: 12.sp, color: Colors.grey[600]),
                               ),
                             ],
                           ),
@@ -812,7 +929,8 @@ class _CalendarState extends State<Calendar> {
             backgroundColor: Colors.black,
             onPressed: _showCreateAppointmentForm,
             icon: const Icon(Icons.add, color: Colors.white),
-            label: Text('New Appointment', style: TextStyle(color: Colors.white, fontSize: 12.sp)),
+            label: Text('New Appointment',
+                style: TextStyle(color: Colors.white, fontSize: 12.sp)),
           ),
           SizedBox(height: 12.h),
           Stack(
@@ -825,7 +943,10 @@ class _CalendarState extends State<Calendar> {
                 tooltip: '${selectedStaffList.length} staff selected',
                 child: Text(
                   '${selectedStaffList.length}',
-                  style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.bold),
                 ),
               ),
               Positioned(
