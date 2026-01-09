@@ -79,6 +79,7 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
   bool _isLoadingServices = true;
 
   List<QueuedService> _queuedServices = [];
+  bool _isSaving = false;
 
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _startTime = TimeOfDay.now();
@@ -493,7 +494,7 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
 
   // -------- Submit --------
 
-  void _saveAppointment() {
+  Future<void> _saveAppointment() async {
     if (_selectedClient == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select a client')),
@@ -509,25 +510,79 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
       return;
     }
 
-    final List<Appointments> createdAppointments = _queuedServices.map((qs) {
-      return Appointments(
-        startTime: qs.startTime,
-        duration: Duration(minutes: qs.service.duration ?? 0),
-        clientName: _selectedClient!.name,
-        serviceName: qs.service.name ?? 'Unknown',
-        staffName: (qs.staff.fullName ?? qs.staff.id) ?? 'Unknown',
-        status: 'New',
-        isWebBooking: false,
-      );
-    }).toList();
+    setState(() => _isSaving = true);
 
-    // Call the callback if provided
-    if (widget.onAppointmentCreated != null) {
-      widget.onAppointmentCreated!(createdAppointments);
+    try {
+      // Use the first service from the queue for the primary fields
+      final qs = _queuedServices.first;
+
+      final appointmentData = {
+        "client": _selectedClient!.customer.id,
+        "clientName": _selectedClient!.name,
+        "service": qs.service.id,
+        "serviceName": qs.service.name,
+        "staff": qs.staff.id,
+        "staffName": qs.staff.fullName,
+        "date": DateFormat('yyyy-MM-dd').format(_selectedDate),
+        "startTime": DateFormat('HH:mm').format(qs.startTime),
+        "endTime": DateFormat('HH:mm').format(qs.endTime),
+        "duration": qs.service.duration,
+        "amount": _calculateTotalAmount(),
+        "discount": _parseMoney(_discountCtrl.text),
+        "tax": _parseMoney(_taxCtrl.text),
+        "totalAmount": _calculateTotalAmount(),
+        "finalAmount": _parseMoney(_totalCtrl.text),
+        "paymentStatus": "pending",
+        "status": "scheduled",
+        "mode": "offline",
+        "isMultiService": _queuedServices.length > 1,
+        "notes": _notesCtrl.text,
+      };
+
+      await ApiService.createAppointment(appointmentData);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Appointment created successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        final List<Appointments> createdAppointments =
+            _queuedServices.map((qs) {
+          return Appointments(
+            startTime: qs.startTime,
+            duration: Duration(minutes: qs.service.duration ?? 0),
+            clientName: _selectedClient!.name,
+            serviceName: qs.service.name ?? 'Unknown',
+            staffName: (qs.staff.fullName ?? qs.staff.id) ?? 'Unknown',
+            status: 'scheduled',
+            isWebBooking: _queuedServices.length > 1,
+            mode: 'offline',
+          );
+        }).toList();
+
+        if (widget.onAppointmentCreated != null) {
+          widget.onAppointmentCreated!(createdAppointments);
+        }
+
+        Navigator.of(context).pop(createdAppointments);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error creating appointment: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
-
-    // Close the form
-    Navigator.of(context).pop(createdAppointments);
   }
 
   // -------- UI --------
@@ -1189,10 +1244,19 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                           backgroundColor: Colors.black,
                           padding: EdgeInsets.symmetric(vertical: 12.h),
                         ),
-                        onPressed: _saveAppointment,
-                        child: Text('Create',
-                            style: TextStyle(
-                                color: Colors.white, fontSize: 12.sp)),
+                        onPressed: _isSaving ? null : _saveAppointment,
+                        child: _isSaving
+                            ? SizedBox(
+                                height: 16.h,
+                                width: 16.h,
+                                child: const CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Text('Create',
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: 12.sp)),
                       ),
                     ),
                   ],

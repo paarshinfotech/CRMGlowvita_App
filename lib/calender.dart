@@ -273,14 +273,15 @@ class _CalendarState extends State<Calendar> {
     switch (status.toLowerCase()) {
       case 'confirmed':
       case 'completed':
-        return Colors.green;
+        return Colors.green[600]!;
       case 'pending':
+        return Colors.orange[700]!;
       case 'scheduled':
-        return Colors.orange;
+        return Colors.purple[400]!;
       case 'cancelled':
-        return Colors.red;
+        return Colors.red[600]!;
       default:
-        return Colors.grey;
+        return Colors.grey[600]!;
     }
   }
 
@@ -798,102 +799,203 @@ class _CalendarState extends State<Calendar> {
                                                     slotHeight *
                                                         4), // Prevent overflow
                                                 child: Container(
-                                                  padding: EdgeInsets.all(4.w),
                                                   decoration: BoxDecoration(
                                                     color: Colors.white,
                                                     borderRadius:
                                                         BorderRadius.circular(
-                                                            4.r),
+                                                            8.r),
                                                     border: Border.all(
                                                         color:
-                                                            Colors.grey[300]!),
+                                                            Colors.grey[200]!,
+                                                        width: 1),
                                                     boxShadow: [
                                                       BoxShadow(
                                                         color: Colors.black
-                                                            .withOpacity(0.05),
-                                                        blurRadius: 1,
-                                                        offset: Offset(0, 1),
+                                                            .withOpacity(0.04),
+                                                        blurRadius: 4,
+                                                        offset: Offset(0, 2),
                                                       ),
                                                     ],
                                                   ),
-                                                  child: Stack(
-                                                    children: [
-                                                      Column(
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .start,
-                                                        mainAxisSize:
-                                                            MainAxisSize.min,
-                                                        children: [
-                                                          Text(
-                                                            '${DateFormat.Hm().format(appt.startTime)} - ${DateFormat.Hm().format(appt.endTime)}',
-                                                            style: TextStyle(
-                                                                fontSize: 8.sp,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .bold),
+                                                  child: ClipRRect(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            8.r),
+                                                    child: Stack(
+                                                      children: [
+                                                        // Left Indicator Bar
+                                                        Positioned(
+                                                          left: 0,
+                                                          top: 0,
+                                                          bottom: 0,
+                                                          child: Container(
+                                                            width: 4.w,
+                                                            color: _getStatusColor(
+                                                                    appt.status)
+                                                                .withOpacity(
+                                                                    0.8),
                                                           ),
-                                                          SizedBox(height: 1.h),
-                                                          Text(
-                                                            appt.serviceName,
-                                                            style: TextStyle(
-                                                                fontSize: 7.sp,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600),
-                                                            maxLines: 2,
-                                                            overflow:
-                                                                TextOverflow
-                                                                    .ellipsis,
-                                                          ),
-                                                          SizedBox(height: 1.h),
-                                                          Text(
-                                                            appt.clientName,
-                                                            style: TextStyle(
-                                                                fontSize: 6.sp,
-                                                                color: Colors
-                                                                    .grey[700]),
-                                                            maxLines: 1,
-                                                            overflow:
-                                                                TextOverflow
-                                                                    .ellipsis,
-                                                          ),
-                                                          SizedBox(height: 1.h),
-                                                          Text(
-                                                            appt.mode.toLowerCase() ==
-                                                                    'online'
-                                                                ? 'Web Booking'
-                                                                : 'Offline Booking',
-                                                            style: TextStyle(
-                                                                fontSize: 6.sp,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w500,
-                                                                color: appt.mode
-                                                                            .toLowerCase() ==
-                                                                        'online'
-                                                                    ? Colors
-                                                                        .blue
-                                                                    : Colors
-                                                                        .orange),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                      Positioned(
-                                                        top: 0,
-                                                        right: 0,
-                                                        child: Text(
-                                                          appt.status,
-                                                          style: TextStyle(
-                                                              fontSize: 6.sp,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                              color: _getStatusColor(
-                                                                  appt.status)),
                                                         ),
-                                                      ),
-                                                    ],
+                                                        // Main Content
+                                                        Padding(
+                                                          padding: EdgeInsets
+                                                              .fromLTRB(
+                                                                  10.w,
+                                                                  8.h,
+                                                                  8.w,
+                                                                  4.h),
+                                                          child: Column(
+                                                            crossAxisAlignment:
+                                                                CrossAxisAlignment
+                                                                    .start,
+                                                            children: [
+                                                              // Client Name Row
+                                                              Row(
+                                                                mainAxisAlignment:
+                                                                    MainAxisAlignment
+                                                                        .spaceBetween,
+                                                                children: [
+                                                                  Expanded(
+                                                                    child: Text(
+                                                                      appt.clientName,
+                                                                      style: TextStyle(
+                                                                          fontSize: 10
+                                                                              .sp,
+                                                                          fontWeight: FontWeight
+                                                                              .bold,
+                                                                          color:
+                                                                              Colors.black),
+                                                                      maxLines:
+                                                                          1,
+                                                                      overflow:
+                                                                          TextOverflow
+                                                                              .ellipsis,
+                                                                    ),
+                                                                  ),
+                                                                  // Status Chip
+                                                                  Container(
+                                                                    padding: EdgeInsets.symmetric(
+                                                                        horizontal: 10
+                                                                            .w,
+                                                                        vertical:
+                                                                            2.h),
+                                                                    decoration:
+                                                                        BoxDecoration(
+                                                                      color: _getStatusColor(appt
+                                                                              .status)
+                                                                          .withOpacity(
+                                                                              0.12),
+                                                                      borderRadius:
+                                                                          BorderRadius.circular(
+                                                                              12.r),
+                                                                    ),
+                                                                    child: Text(
+                                                                      appt.status,
+                                                                      style: TextStyle(
+                                                                          fontSize: 7
+                                                                              .sp,
+                                                                          fontWeight: FontWeight
+                                                                              .bold,
+                                                                          color:
+                                                                              _getStatusColor(appt.status)),
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                              SizedBox(
+                                                                  height: 8.h),
+                                                              // Time Row
+                                                              Row(
+                                                                children: [
+                                                                  Icon(
+                                                                      Icons
+                                                                          .access_time,
+                                                                      size:
+                                                                          10.sp,
+                                                                      color: Colors
+                                                                              .blueGrey[
+                                                                          600]),
+                                                                  SizedBox(
+                                                                      width:
+                                                                          4.w),
+                                                                  Text(
+                                                                    '${DateFormat('hh:mma').format(appt.startTime)} - ${DateFormat('hh:mma').format(appt.endTime)}',
+                                                                    style: TextStyle(
+                                                                        fontSize: 8
+                                                                            .sp,
+                                                                        fontWeight:
+                                                                            FontWeight
+                                                                                .w600,
+                                                                        color: Colors
+                                                                            .blueGrey[800]),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                              SizedBox(
+                                                                  height: 8.h),
+                                                              // Booking Mode Chip
+                                                              Container(
+                                                                padding: EdgeInsets
+                                                                    .symmetric(
+                                                                        horizontal:
+                                                                            8.w,
+                                                                        vertical:
+                                                                            3.h),
+                                                                decoration:
+                                                                    BoxDecoration(
+                                                                  color: Colors
+                                                                      .blue[50],
+                                                                  borderRadius:
+                                                                      BorderRadius
+                                                                          .circular(
+                                                                              6.r),
+                                                                  border: Border.all(
+                                                                      color: Colors
+                                                                              .blue[
+                                                                          100]!),
+                                                                ),
+                                                                child: Row(
+                                                                  mainAxisSize:
+                                                                      MainAxisSize
+                                                                          .min,
+                                                                  children: [
+                                                                    Icon(
+                                                                      appt.mode.toLowerCase() ==
+                                                                              'online'
+                                                                          ? Icons
+                                                                              .language
+                                                                          : Icons
+                                                                              .store,
+                                                                      size:
+                                                                          9.sp,
+                                                                      color: Colors
+                                                                              .blue[
+                                                                          800],
+                                                                    ),
+                                                                    SizedBox(
+                                                                        width: 4
+                                                                            .w),
+                                                                    Text(
+                                                                      appt.mode.toLowerCase() ==
+                                                                              'online'
+                                                                          ? 'Web Booking'
+                                                                          : 'Offline Booking',
+                                                                      style: TextStyle(
+                                                                          fontSize: 7
+                                                                              .sp,
+                                                                          fontWeight: FontWeight
+                                                                              .bold,
+                                                                          color:
+                                                                              Colors.blue[800]),
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
                                                   ),
                                                 ),
                                               );

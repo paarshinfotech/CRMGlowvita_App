@@ -837,6 +837,36 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> createAppointment(
+      Map<String, dynamic> appointmentData) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/crm/appointments'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': 'crm_access_token=$token',
+        },
+        body: json.encode(appointmentData),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        return data;
+      } else {
+        throw Exception(
+            'Failed to create appointment: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error creating appointment: $e');
+      rethrow;
+    }
+  }
+
   // End of ApiService class
 }
 
