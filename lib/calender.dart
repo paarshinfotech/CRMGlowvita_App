@@ -287,54 +287,54 @@ class _CalendarState extends State<Calendar> {
 
   void _showMonthYearPicker() {
     showModalBottomSheet(
-      context: context,
-      builder: (BuildContext context) {
-        return SizedBox(
-          height: 300.h,
-          child: Column(
-            children: [
-              Container(
-                margin: EdgeInsets.all(12.h),
-                width: 40.w,
-                height: 5.h,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(3.r),
-                ),
-              ),
-              Text(
-                'Select Month & Year',
-                style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 20.h),
-              Expanded(
-                child: CupertinoDatePicker(
-                  mode: CupertinoDatePickerMode.date,
-                  initialDateTime: _selectedDate,
-                  onDateTimeChanged: (DateTime newDate) {
-                    _setSelectedDate(newDate);
-                  },
-                  minimumYear: 2020,
-                  maximumYear: 2030,
-                ),
-              ),
-              Padding(
-                padding: EdgeInsets.all(16.w),
-                child: ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                    minimumSize: Size(double.infinity, 30.h),
+        context: context,
+        builder: (BuildContext context) {
+          return SizedBox(
+            height: 300.h,
+            child: Column(
+              children: [
+                Container(
+                  margin: EdgeInsets.all(12.h),
+                  width: 40.w,
+                  height: 5.h,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(3.r),
                   ),
-                  child: Text('Done',
-                      style: TextStyle(color: Colors.white, fontSize: 10.sp)),
                 ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+                Text(
+                  'Select Month & Year',
+                  style:
+                      TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 20.h),
+                Expanded(
+                  child: CupertinoDatePicker(
+                    mode: CupertinoDatePickerMode.date,
+                    initialDateTime: _selectedDate,
+                    onDateTimeChanged: (DateTime newDate) {
+                      _setSelectedDate(newDate);
+                    },
+                    minimumYear: 2020,
+                    maximumYear: 2030,
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.all(16.w),
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black,
+                      minimumSize: Size(double.infinity, 30.h),
+                    ),
+                    child: Text('Done',
+                        style: TextStyle(color: Colors.white, fontSize: 10.sp)),
+                  ),
+                ),
+              ],
+            ),
+          );
+        });
   }
 
   void _showStaffSelection() {
@@ -349,122 +349,121 @@ class _CalendarState extends State<Calendar> {
       ),
       builder: (BuildContext context) {
         return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setModalState) {
-            return SizedBox(
-              height: 300.h,
-              child: Column(
-                children: [
-                  Container(
-                    margin: EdgeInsets.all(8.h),
-                    width: 40.w,
-                    height: 4.h,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(2.r),
-                    ),
+            builder: (BuildContext context, StateSetter setModalState) {
+          return SizedBox(
+            height: 300.h,
+            child: Column(
+              children: [
+                Container(
+                  margin: EdgeInsets.all(8.h),
+                  width: 40.w,
+                  height: 4.h,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2.r),
                   ),
-                  Padding(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Select Staff',
-                            style: TextStyle(
-                                fontSize: 16.sp, fontWeight: FontWeight.bold)),
-                        Text('${staffList.length} available',
-                            style: TextStyle(
-                                fontSize: 12.sp, color: Colors.grey[600])),
-                      ],
-                    ),
+                ),
+                Padding(
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Select Staff',
+                          style: TextStyle(
+                              fontSize: 16.sp, fontWeight: FontWeight.bold)),
+                      Text('${staffList.length} available',
+                          style: TextStyle(
+                              fontSize: 12.sp, color: Colors.grey[600])),
+                    ],
                   ),
-                  Expanded(
-                    child: ListView.builder(
-                      padding: EdgeInsets.symmetric(horizontal: 16.w),
-                      itemCount: staffList.length,
-                      itemBuilder: (context, index) {
-                        final staff = staffList[index]['fullName'];
-                        return Container(
-                          margin: EdgeInsets.only(bottom: 4.h),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[50],
-                            borderRadius: BorderRadius.circular(8.r),
-                          ),
-                          child: ListTile(
-                            contentPadding: EdgeInsets.symmetric(
-                                horizontal: 12.w, vertical: 4.h),
-                            title: Text(staff,
-                                style: TextStyle(
-                                    fontSize: 14.sp,
-                                    fontWeight: FontWeight.w500)),
-                            trailing: Checkbox(
-                              value: tempSelectedStaff[staff] ?? false,
-                              onChanged: (value) {
-                                setModalState(() {
-                                  tempSelectedStaff[staff] = value ?? false;
-                                });
-                              },
-                              materialTapTargetSize:
-                                  MaterialTapTargetSize.shrinkWrap,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  Padding(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () {
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    padding: EdgeInsets.symmetric(horizontal: 16.w),
+                    itemCount: staffList.length,
+                    itemBuilder: (context, index) {
+                      final staff = staffList[index]['fullName'];
+                      return Container(
+                        margin: EdgeInsets.only(bottom: 4.h),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(8.r),
+                        ),
+                        child: ListTile(
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12.w, vertical: 4.h),
+                          title: Text(staff,
+                              style: TextStyle(
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w500)),
+                          trailing: Checkbox(
+                            value: tempSelectedStaff[staff] ?? false,
+                            onChanged: (value) {
                               setModalState(() {
-                                tempSelectedStaff
-                                    .updateAll((key, value) => false);
+                                tempSelectedStaff[staff] = value ?? false;
                               });
                             },
-                            style: OutlinedButton.styleFrom(
-                              padding: EdgeInsets.symmetric(vertical: 12.h),
-                              side: BorderSide(color: Colors.grey[300]!),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8.r)),
-                            ),
-                            child: Text('Clear All',
-                                style: TextStyle(fontSize: 14.sp)),
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
                           ),
                         ),
-                        SizedBox(width: 10.w),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () {
-                              setState(() {
-                                selectedStaff
-                                  ..clear()
-                                  ..addAll(tempSelectedStaff);
-                              });
-                              Navigator.of(context).pop();
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.black,
-                              padding: EdgeInsets.symmetric(vertical: 12.h),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8.r)),
-                            ),
-                            child: Text('Apply',
-                                style: TextStyle(
-                                    color: Colors.white, fontSize: 14.sp)),
-                          ),
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
-                ],
-              ),
-            );
-          },
-        );
+                ),
+                Padding(
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            setModalState(() {
+                              tempSelectedStaff
+                                  .updateAll((key, value) => false);
+                            });
+                          },
+                          style: OutlinedButton.styleFrom(
+                            padding: EdgeInsets.symmetric(vertical: 12.h),
+                            side: BorderSide(color: Colors.grey[300]!),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8.r)),
+                          ),
+                          child: Text('Clear All',
+                              style: TextStyle(fontSize: 14.sp)),
+                        ),
+                      ),
+                      SizedBox(width: 10.w),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              selectedStaff
+                                ..clear()
+                                ..addAll(tempSelectedStaff);
+                            });
+                            Navigator.of(context).pop();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.black,
+                            padding: EdgeInsets.symmetric(vertical: 12.h),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8.r)),
+                          ),
+                          child: Text('Apply',
+                              style: TextStyle(
+                                  color: Colors.white, fontSize: 14.sp)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        });
       },
     );
   }
@@ -795,7 +794,7 @@ class _CalendarState extends State<Calendar> {
                                                 left: 6.w,
                                                 right: 6.w,
                                                 height: height.clamp(
-                                                    quarterSlot,
+                                                    60.h,
                                                     slotHeight *
                                                         4), // Prevent overflow
                                                 child: Container(
@@ -841,157 +840,151 @@ class _CalendarState extends State<Calendar> {
                                                           padding: EdgeInsets
                                                               .fromLTRB(
                                                                   10.w,
-                                                                  8.h,
+                                                                  4.h,
                                                                   8.w,
-                                                                  4.h),
-                                                          child: Column(
-                                                            crossAxisAlignment:
-                                                                CrossAxisAlignment
-                                                                    .start,
-                                                            children: [
-                                                              // Client Name Row
-                                                              Row(
-                                                                mainAxisAlignment:
-                                                                    MainAxisAlignment
-                                                                        .spaceBetween,
+                                                                  2.h),
+                                                          child:
+                                                              ScrollConfiguration(
+                                                            behavior: const ScrollBehavior()
+                                                                .copyWith(
+                                                                    scrollbars:
+                                                                        false),
+                                                            child:
+                                                                SingleChildScrollView(
+                                                              physics:
+                                                                  const NeverScrollableScrollPhysics(),
+                                                              child: Column(
+                                                                crossAxisAlignment:
+                                                                    CrossAxisAlignment
+                                                                        .start,
+                                                                mainAxisSize:
+                                                                    MainAxisSize
+                                                                        .min,
                                                                 children: [
-                                                                  Expanded(
-                                                                    child: Text(
-                                                                      appt.clientName,
-                                                                      style: TextStyle(
-                                                                          fontSize: 10
-                                                                              .sp,
-                                                                          fontWeight: FontWeight
-                                                                              .bold,
+                                                                  // Client Name Row
+                                                                  Row(
+                                                                    mainAxisAlignment:
+                                                                        MainAxisAlignment
+                                                                            .spaceBetween,
+                                                                    children: [
+                                                                      Expanded(
+                                                                        child:
+                                                                            Text(
+                                                                          appt.clientName,
+                                                                          style: TextStyle(
+                                                                              fontSize: 10.sp,
+                                                                              fontWeight: FontWeight.bold,
+                                                                              color: Colors.black),
+                                                                          maxLines:
+                                                                              1,
+                                                                          overflow:
+                                                                              TextOverflow.ellipsis,
+                                                                        ),
+                                                                      ),
+                                                                      // Status Chip
+                                                                      Container(
+                                                                        padding: EdgeInsets.symmetric(
+                                                                            horizontal:
+                                                                                10.w,
+                                                                            vertical: 2.h),
+                                                                        decoration:
+                                                                            BoxDecoration(
                                                                           color:
-                                                                              Colors.black),
-                                                                      maxLines:
-                                                                          1,
-                                                                      overflow:
-                                                                          TextOverflow
-                                                                              .ellipsis,
-                                                                    ),
+                                                                              _getStatusColor(appt.status).withOpacity(0.12),
+                                                                          borderRadius:
+                                                                              BorderRadius.circular(12.r),
+                                                                        ),
+                                                                        child:
+                                                                            Text(
+                                                                          appt.status,
+                                                                          style: TextStyle(
+                                                                              fontSize: 7.sp,
+                                                                              fontWeight: FontWeight.bold,
+                                                                              color: _getStatusColor(appt.status)),
+                                                                        ),
+                                                                      ),
+                                                                    ],
                                                                   ),
-                                                                  // Status Chip
+                                                                  SizedBox(
+                                                                      height:
+                                                                          4.h),
+                                                                  // Time Row
+                                                                  Row(
+                                                                    children: [
+                                                                      Icon(
+                                                                        Icons
+                                                                            .access_time,
+                                                                        size: 10
+                                                                            .sp,
+                                                                        color: Colors
+                                                                            .blueGrey[600],
+                                                                      ),
+                                                                      SizedBox(
+                                                                          width:
+                                                                              4.w),
+                                                                      Text(
+                                                                        '${DateFormat('hh:mma').format(appt.startTime)} - ${DateFormat('hh:mma').format(appt.endTime)}',
+                                                                        style: TextStyle(
+                                                                            fontSize:
+                                                                                8.sp,
+                                                                            fontWeight: FontWeight.w600,
+                                                                            color: Colors.blueGrey[800]),
+                                                                      ),
+                                                                    ],
+                                                                  ),
+                                                                  SizedBox(
+                                                                      height:
+                                                                          4.h),
+                                                                  // Booking Mode Chip
                                                                   Container(
                                                                     padding: EdgeInsets.symmetric(
-                                                                        horizontal: 10
-                                                                            .w,
-                                                                        vertical:
-                                                                            2.h),
-                                                                    decoration:
-                                                                        BoxDecoration(
-                                                                      color: _getStatusColor(appt
-                                                                              .status)
-                                                                          .withOpacity(
-                                                                              0.12),
-                                                                      borderRadius:
-                                                                          BorderRadius.circular(
-                                                                              12.r),
-                                                                    ),
-                                                                    child: Text(
-                                                                      appt.status,
-                                                                      style: TextStyle(
-                                                                          fontSize: 7
-                                                                              .sp,
-                                                                          fontWeight: FontWeight
-                                                                              .bold,
-                                                                          color:
-                                                                              _getStatusColor(appt.status)),
-                                                                    ),
-                                                                  ),
-                                                                ],
-                                                              ),
-                                                              SizedBox(
-                                                                  height: 8.h),
-                                                              // Time Row
-                                                              Row(
-                                                                children: [
-                                                                  Icon(
-                                                                      Icons
-                                                                          .access_time,
-                                                                      size:
-                                                                          10.sp,
-                                                                      color: Colors
-                                                                              .blueGrey[
-                                                                          600]),
-                                                                  SizedBox(
-                                                                      width:
-                                                                          4.w),
-                                                                  Text(
-                                                                    '${DateFormat('hh:mma').format(appt.startTime)} - ${DateFormat('hh:mma').format(appt.endTime)}',
-                                                                    style: TextStyle(
-                                                                        fontSize: 8
-                                                                            .sp,
-                                                                        fontWeight:
-                                                                            FontWeight
-                                                                                .w600,
-                                                                        color: Colors
-                                                                            .blueGrey[800]),
-                                                                  ),
-                                                                ],
-                                                              ),
-                                                              SizedBox(
-                                                                  height: 8.h),
-                                                              // Booking Mode Chip
-                                                              Container(
-                                                                padding: EdgeInsets
-                                                                    .symmetric(
                                                                         horizontal:
                                                                             8.w,
                                                                         vertical:
                                                                             3.h),
-                                                                decoration:
-                                                                    BoxDecoration(
-                                                                  color: Colors
-                                                                      .blue[50],
-                                                                  borderRadius:
-                                                                      BorderRadius
-                                                                          .circular(
+                                                                    decoration:
+                                                                        BoxDecoration(
+                                                                      color: Colors
+                                                                          .blue[50],
+                                                                      borderRadius:
+                                                                          BorderRadius.circular(
                                                                               6.r),
-                                                                  border: Border.all(
-                                                                      color: Colors
-                                                                              .blue[
-                                                                          100]!),
-                                                                ),
-                                                                child: Row(
-                                                                  mainAxisSize:
-                                                                      MainAxisSize
-                                                                          .min,
-                                                                  children: [
-                                                                    Icon(
-                                                                      appt.mode.toLowerCase() ==
-                                                                              'online'
-                                                                          ? Icons
-                                                                              .language
-                                                                          : Icons
-                                                                              .store,
-                                                                      size:
-                                                                          9.sp,
-                                                                      color: Colors
-                                                                              .blue[
-                                                                          800],
-                                                                    ),
-                                                                    SizedBox(
-                                                                        width: 4
-                                                                            .w),
-                                                                    Text(
-                                                                      appt.mode.toLowerCase() ==
-                                                                              'online'
-                                                                          ? 'Web Booking'
-                                                                          : 'Offline Booking',
-                                                                      style: TextStyle(
-                                                                          fontSize: 7
-                                                                              .sp,
-                                                                          fontWeight: FontWeight
-                                                                              .bold,
+                                                                      border: Border.all(
                                                                           color:
-                                                                              Colors.blue[800]),
+                                                                              Colors.blue[100]!),
                                                                     ),
-                                                                  ],
-                                                                ),
+                                                                    child: Row(
+                                                                      mainAxisSize:
+                                                                          MainAxisSize
+                                                                              .min,
+                                                                      children: [
+                                                                        Icon(
+                                                                          appt.mode.toLowerCase() == 'online'
+                                                                              ? Icons.language
+                                                                              : Icons.store,
+                                                                          size:
+                                                                              9.sp,
+                                                                          color:
+                                                                              Colors.blue[800],
+                                                                        ),
+                                                                        SizedBox(
+                                                                            width:
+                                                                                4.w),
+                                                                        Text(
+                                                                          appt.mode.toLowerCase() == 'online'
+                                                                              ? 'Web Booking'
+                                                                              : 'Offline Booking',
+                                                                          style: TextStyle(
+                                                                              fontSize: 7.sp,
+                                                                              fontWeight: FontWeight.bold,
+                                                                              color: Colors.blue[800]),
+                                                                        ),
+                                                                      ],
+                                                                    ),
+                                                                  ),
+                                                                ],
                                                               ),
-                                                            ],
+                                                            ),
                                                           ),
                                                         ),
                                                       ],
@@ -1066,12 +1059,14 @@ class _CalendarState extends State<Calendar> {
                                     fontSize: 14.sp,
                                     fontWeight: FontWeight.w600,
                                     color: Colors.grey[700]),
+                                textAlign: TextAlign.center,
                               ),
                               SizedBox(height: 4.h),
                               Text(
                                 'for ${DateFormat('EEE, MMM d').format(_selectedDate)}',
                                 style: TextStyle(
                                     fontSize: 12.sp, color: Colors.grey[600]),
+                                textAlign: TextAlign.center,
                               ),
                             ],
                           ),
