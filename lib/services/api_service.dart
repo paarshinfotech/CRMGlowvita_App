@@ -264,7 +264,11 @@ class ApiService {
               'Content-Type': 'application/json',
               'Cookie': 'crm_access_token=$token',
             },
-            body: json.encode(productData),
+            body: json.encode({
+              ...productData,
+              'id': productId,
+              '_id': productId, // Include both just in case
+            }),
           )
           .timeout(const Duration(seconds: 60));
 

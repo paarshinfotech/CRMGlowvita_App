@@ -32,7 +32,6 @@ class _AddProductPageState extends State<AddProductPage> {
   final TextEditingController _bodyPartTypeController = TextEditingController();
 
   String? selectedCategoryId;
-  String selectedStatus = 'Pending';
 
   bool isLoadingCategories = true;
   bool isSubmitting = false;
@@ -70,7 +69,6 @@ class _AddProductPageState extends State<AddProductPage> {
       }
 
       _categoryController.text = product['category'] ?? '';
-      selectedStatus = product['status'] ?? 'Pending';
       _productFormController.text = product['productForm'] ?? '';
       _sizeMetricController.text = product['sizeMetric'] ?? '';
       _bodyPartController.text = product['forBodyPart'] ?? '';
@@ -271,7 +269,6 @@ class _AddProductPageState extends State<AddProductPage> {
         'stock': stockQuantity,
         'productImages': base64Images,
         'isActive': true,
-        'status': selectedStatus.toLowerCase(),
         'size': _sizeController.text,
         'sizeMetric': _sizeMetricController.text,
         'keyIngredients': _ingredientsController.text,
@@ -279,6 +276,9 @@ class _AddProductPageState extends State<AddProductPage> {
         'bodyPartType': _bodyPartTypeController.text,
         'productForm': _productFormController.text,
         'brand': _brandController.text,
+        if (widget.existingProduct != null &&
+            widget.existingProduct!['status'] != null)
+          'status': widget.existingProduct!['status'].toString().toLowerCase(),
       };
 
       bool success;
@@ -416,12 +416,27 @@ class _AddProductPageState extends State<AddProductPage> {
                                   children: [
                                     ClipRRect(
                                       borderRadius: BorderRadius.circular(6),
-                                      child: Image.file(
-                                        File(img.path),
-                                        width: 75,
-                                        height: 75,
-                                        fit: BoxFit.cover,
-                                      ),
+                                      child: img.path.startsWith('http')
+                                          ? Image.network(
+                                              img.path,
+                                              width: 75,
+                                              height: 75,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (ctx, err, st) =>
+                                                  Container(
+                                                width: 75,
+                                                height: 75,
+                                                color: Colors.grey.shade200,
+                                                child: const Icon(
+                                                    Icons.broken_image),
+                                              ),
+                                            )
+                                          : Image.file(
+                                              File(img.path),
+                                              width: 75,
+                                              height: 75,
+                                              fit: BoxFit.cover,
+                                            ),
                                     ),
                                     Positioned(
                                       top: -5,
@@ -489,10 +504,48 @@ class _AddProductPageState extends State<AddProductPage> {
                 Row(
                   children: [
                     Expanded(
-                      child: _buildTextField(
-                        controller: _categoryController,
-                        hint: 'e.g. Skin Care',
-                        icon: Icons.category,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: categoryObjects.any((cat) =>
+                                    cat['name'] == _categoryController.text)
+                                ? _categoryController.text
+                                : null,
+                            hint: Text(
+                              isLoadingCategories
+                                  ? 'Loading...'
+                                  : 'Select Category',
+                              style: GoogleFonts.poppins(
+                                  color: Colors.grey.shade500, fontSize: 13),
+                            ),
+                            isExpanded: true,
+                            items: categoryObjects
+                                .map((cat) => DropdownMenuItem(
+                                      value: cat['name'].toString(),
+                                      child: Text(cat['name'].toString(),
+                                          style: GoogleFonts.poppins(
+                                              fontSize: 13)),
+                                    ))
+                                .toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _categoryController.text = value ?? '';
+                                final selectedCat = categoryObjects.firstWhere(
+                                  (cat) => cat['name'] == value,
+                                  orElse: () => {},
+                                );
+                                _categoryDescController.text =
+                                    selectedCat['description'] ?? '';
+                              });
+                            },
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -699,57 +752,6 @@ class _AddProductPageState extends State<AddProductPage> {
                   keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 16),
-
-                // Status
-                _buildSectionTitle('Status'),
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey.shade300),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: selectedStatus,
-                      isExpanded: true,
-                      items: ['Pending', 'Approved', 'Disapproved']
-                          .map((status) => DropdownMenuItem(
-                                value: status,
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      status == 'Approved'
-                                          ? Icons.check_circle
-                                          : status == 'Disapproved'
-                                              ? Icons.cancel
-                                              : Icons.pending,
-                                      color: status == 'Approved'
-                                          ? Colors.green
-                                          : status == 'Disapproved'
-                                              ? Colors.red
-                                              : Colors.orange,
-                                      size: 18,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      status,
-                                      style: GoogleFonts.poppins(fontSize: 13),
-                                    ),
-                                  ],
-                                ),
-                              ))
-                          .toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          selectedStatus = value!;
-                        });
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
 
                 // Save Button
                 SizedBox(

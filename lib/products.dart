@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -224,77 +225,88 @@ class _ProductsPageState extends State<Products> {
   int get productCount => filteredProducts.length;
 
   static Widget _buildImageWidget(dynamic image) {
+    if (image == null) {
+      return Image.asset('assets/images/logo.png', fit: BoxFit.cover);
+    }
+
     try {
-      // Handle URL strings
       if (image is String) {
+        if (image.isEmpty) {
+          return Image.asset('assets/images/logo.png', fit: BoxFit.cover);
+        }
+
+        // 1. Handle URL strings
         if (image.startsWith('http')) {
-          // It's a URL, load from network
           return Image.network(
             image,
             fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              // Fallback to default asset image if network fails
-              return Image.asset(
-                'assets/images/logo.png',
-                fit: BoxFit.cover,
-              );
-            },
+            errorBuilder: (context, error, stackTrace) =>
+                Image.asset('assets/images/logo.png', fit: BoxFit.cover),
           );
-        } else if (image.startsWith('assets/')) {
-          // It's an asset path
+        }
+
+        // 2. Handle Base64 strings
+        if (image.startsWith('data:image')) {
+          try {
+            final base64String = image.split(',').last;
+            return Image.memory(
+              base64Decode(base64String),
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) =>
+                  Image.asset('assets/images/logo.png', fit: BoxFit.cover),
+            );
+          } catch (e) {
+            return Image.asset('assets/images/logo.png', fit: BoxFit.cover);
+          }
+        }
+
+        // 3. Handle Asset paths
+        if (image.startsWith('assets/')) {
           return Image.asset(
             image,
             fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              // Fallback to default asset image if asset doesn't exist
-              return Image.asset(
-                'assets/images/logo.png',
-                fit: BoxFit.cover,
-              );
-            },
+            errorBuilder: (context, error, stackTrace) =>
+                Image.asset('assets/images/logo.png', fit: BoxFit.cover),
           );
-        } else {
-          // Regular file path
+        }
+
+        // 4. Handle Relative server paths (e.g. uploads/...)
+        // If it contains a slash and hasn't matched above, prepend domain
+        if (image.contains('/')) {
+          final cleanPath = image.startsWith('/') ? image.substring(1) : image;
+          final fullUrl = 'https://partners.v2winonline.com/$cleanPath';
+          return Image.network(
+            fullUrl,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) =>
+                Image.asset('assets/images/logo.png', fit: BoxFit.cover),
+          );
+        }
+
+        // 5. Regular file path
+        if (File(image).existsSync()) {
           return Image.file(
             File(image),
             fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              // Fallback to default asset image if file doesn't exist
-              return Image.asset(
-                'assets/images/logo.png',
-                fit: BoxFit.cover,
-              );
-            },
+            errorBuilder: (context, error, stackTrace) =>
+                Image.asset('assets/images/logo.png', fit: BoxFit.cover),
           );
         }
       }
 
-      // Handle XFile objects
+      // 6. Handle XFile objects
       if (image is XFile) {
         return Image.file(
           File(image.path),
           fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            // Fallback to default asset image if file doesn't exist
-            return Image.asset(
-              'assets/images/logo.png',
-              fit: BoxFit.cover,
-            );
-          },
+          errorBuilder: (context, error, stackTrace) =>
+              Image.asset('assets/images/logo.png', fit: BoxFit.cover),
         );
       }
 
-      // Fallback for any other format
-      return Image.asset(
-        'assets/images/logo.png',
-        fit: BoxFit.cover,
-      );
+      return Image.asset('assets/images/logo.png', fit: BoxFit.cover);
     } catch (e) {
-      // Fallback to default assets if the image loading fails
-      return Image.asset(
-        'assets/images/logo.png',
-        fit: BoxFit.cover,
-      );
+      return Image.asset('assets/images/logo.png', fit: BoxFit.cover);
     }
   }
 
