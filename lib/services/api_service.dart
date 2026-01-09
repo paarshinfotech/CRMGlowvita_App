@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../customer_model.dart';
+import '../appointment_model.dart';
 
 class StaffMember {
   final String? id;
@@ -793,6 +794,45 @@ class ApiService {
       throw Exception('Network error. Please check your internet connection.');
     } catch (e) {
       print('Unexpected error in updateService: $e');
+      rethrow;
+    }
+  }
+
+  static Future<List<AppointmentModel>> getAppointments() async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/crm/appointments'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': 'crm_access_token=$token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        // The user's sample shows a List directly, not wrapped in { success: true, data: [...] }
+        // but let's be careful. If it's a list, we parse it.
+        if (data is List) {
+          return data.map((json) => AppointmentModel.fromJson(json)).toList();
+        } else if (data is Map && data['data'] != null) {
+          List<dynamic> appointmentsData = data['data'];
+          return appointmentsData
+              .map((json) => AppointmentModel.fromJson(json))
+              .toList();
+        } else {
+          throw Exception('Unexpected response format from appointments API');
+        }
+      } else {
+        throw Exception(
+            'Failed to load appointments: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching appointments: $e');
       rethrow;
     }
   }

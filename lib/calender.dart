@@ -24,6 +24,7 @@ class Appointments {
   final String staffName;
   final String status;
   final bool isWebBooking;
+  final String mode;
 
   Appointments({
     required this.startTime,
@@ -33,6 +34,7 @@ class Appointments {
     required this.staffName,
     this.status = 'New',
     this.isWebBooking = false,
+    this.mode = 'offline',
   });
 
   DateTime get endTime => startTime.add(duration);
@@ -85,7 +87,49 @@ class _CalendarState extends State<Calendar> {
   void _setSelectedDate(DateTime newDate) {
     final d = _dateOnly(newDate);
     if (DateUtils.isSameDay(_selectedDate, d)) return;
-    setState(() => _selectedDate = d);
+    setState(() {
+      _selectedDate = d;
+    });
+    // Fetch appointments for the new date
+    _loadAppointments();
+  }
+
+  Future<void> _loadAppointments() async {
+    // We can show a loading indicator if needed, but let's keep it simple for now as it's partial data
+    try {
+      final models = await ApiService.getAppointments();
+      setState(() {
+        _appointments = models.map((m) {
+          // Combine date and startTime HH:mm
+          DateTime start = m.date ?? _selectedDate;
+          if (m.startTime != null && m.startTime!.contains(':')) {
+            final parts = m.startTime!.split(':');
+            start = DateTime(
+              start.year,
+              start.month,
+              start.day,
+              int.parse(parts[0]),
+              int.parse(parts[1]),
+            );
+          }
+
+          return Appointments(
+            startTime: start,
+            duration: Duration(minutes: m.duration ?? 30),
+            clientName: m.clientName ?? 'Unknown',
+            serviceName: m.serviceName ?? 'Unknown Service',
+            staffName: m.staffName ?? 'Unassigned',
+            status: m.status ?? 'New',
+            isWebBooking: m.isMultiService ?? false,
+            mode: m.mode ?? 'offline',
+          );
+        }).toList();
+      });
+      debugPrint('Loaded ${_appointments.length} appointments from API');
+    } catch (e) {
+      debugPrint('Error loading appointments: $e');
+      // If API fails, maybe keep current or show error
+    }
   }
 
   @override
@@ -98,21 +142,9 @@ class _CalendarState extends State<Calendar> {
     _horizontalScrollController = ScrollController();
     _staffHeaderScrollController = ScrollController();
 
-    // This will now actually fetch real staff
+    // This will now actually fetch real staff and appointments
     _loadStaff();
-
-    // Rest of initState...
-    _appointments = sharedDataService.appointments
-        .map((a) => Appointments(
-              startTime: a.startTime,
-              duration: a.duration,
-              clientName: a.clientName,
-              serviceName: a.serviceName,
-              staffName: a.staffName,
-              status: a.status,
-              isWebBooking: a.isWebBooking,
-            ))
-        .toList();
+    _loadAppointments();
 
     // Timer and scroll sync...
     _horizontalScrollController.addListener(() {
@@ -240,8 +272,10 @@ class _CalendarState extends State<Calendar> {
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'confirmed':
+      case 'completed':
         return Colors.green;
       case 'pending':
+      case 'scheduled':
         return Colors.orange;
       case 'cancelled':
         return Colors.red;
@@ -490,7 +524,10 @@ class _CalendarState extends State<Calendar> {
         actions: [
           IconButton(
             icon: Icon(Icons.refresh, size: 20.sp),
-            onPressed: _loadStaff, // Refresh staff + appointments
+            onPressed: () {
+              _loadStaff();
+              _loadAppointments();
+            }, // Refresh staff + appointments
             tooltip: 'Refresh Staff',
           ),
           IconButton(
@@ -763,75 +800,98 @@ class _CalendarState extends State<Calendar> {
                                                 child: Container(
                                                   padding: EdgeInsets.all(4.w),
                                                   decoration: BoxDecoration(
-                                                    color:
-                                                        const Color(0xFFE0F7FA),
+                                                    color: Colors.white,
                                                     borderRadius:
                                                         BorderRadius.circular(
                                                             4.r),
                                                     border: Border.all(
                                                         color:
-                                                            Colors.cyan[200]!),
+                                                            Colors.grey[300]!),
                                                     boxShadow: [
                                                       BoxShadow(
                                                         color: Colors.black
-                                                            .withOpacity(0.1),
-                                                        blurRadius: 2,
+                                                            .withOpacity(0.05),
+                                                        blurRadius: 1,
                                                         offset: Offset(0, 1),
                                                       ),
                                                     ],
                                                   ),
-                                                  child: Column(
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .start,
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
+                                                  child: Stack(
                                                     children: [
-                                                      Text(
-                                                        '${DateFormat.Hm().format(appt.startTime)} - ${DateFormat.Hm().format(appt.endTime)}',
-                                                        style: TextStyle(
-                                                            fontSize: 8.sp,
-                                                            fontWeight:
-                                                                FontWeight
-                                                                    .bold),
-                                                      ),
-                                                      SizedBox(height: 1.h),
-                                                      Text(
-                                                        appt.serviceName,
-                                                        style: TextStyle(
-                                                            fontSize: 7.sp,
-                                                            fontWeight:
-                                                                FontWeight
-                                                                    .w600),
-                                                        maxLines: 2,
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                      ),
-                                                      SizedBox(height: 1.h),
-                                                      Text(
-                                                        appt.clientName,
-                                                        style: TextStyle(
-                                                            fontSize: 6.sp),
-                                                        maxLines: 1,
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                      ),
-                                                      SizedBox(height: 1.h),
-                                                      Row(
+                                                      Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .start,
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
                                                         children: [
-                                                          Icon(Icons.circle,
-                                                              size: 4.sp,
-                                                              color: _getStatusColor(
-                                                                  appt.status)),
-                                                          SizedBox(width: 2.w),
                                                           Text(
-                                                            appt.status,
+                                                            '${DateFormat.Hm().format(appt.startTime)} - ${DateFormat.Hm().format(appt.endTime)}',
+                                                            style: TextStyle(
+                                                                fontSize: 8.sp,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold),
+                                                          ),
+                                                          SizedBox(height: 1.h),
+                                                          Text(
+                                                            appt.serviceName,
+                                                            style: TextStyle(
+                                                                fontSize: 7.sp,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w600),
+                                                            maxLines: 2,
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
+                                                          ),
+                                                          SizedBox(height: 1.h),
+                                                          Text(
+                                                            appt.clientName,
                                                             style: TextStyle(
                                                                 fontSize: 6.sp,
-                                                                color: _getStatusColor(
-                                                                    appt.status)),
+                                                                color: Colors
+                                                                    .grey[700]),
+                                                            maxLines: 1,
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
+                                                          ),
+                                                          SizedBox(height: 1.h),
+                                                          Text(
+                                                            appt.mode.toLowerCase() ==
+                                                                    'online'
+                                                                ? 'Web Booking'
+                                                                : 'Offline Booking',
+                                                            style: TextStyle(
+                                                                fontSize: 6.sp,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500,
+                                                                color: appt.mode
+                                                                            .toLowerCase() ==
+                                                                        'online'
+                                                                    ? Colors
+                                                                        .blue
+                                                                    : Colors
+                                                                        .orange),
                                                           ),
                                                         ],
+                                                      ),
+                                                      Positioned(
+                                                        top: 0,
+                                                        right: 0,
+                                                        child: Text(
+                                                          appt.status,
+                                                          style: TextStyle(
+                                                              fontSize: 6.sp,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              color: _getStatusColor(
+                                                                  appt.status)),
+                                                        ),
                                                       ),
                                                     ],
                                                   ),
