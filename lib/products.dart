@@ -41,19 +41,24 @@ class _ProductsPageState extends State<Products> {
     try {
       final apiProducts = await ApiService.getProducts();
       setState(() {
-        products = apiProducts.map((product) => {
-          '_id': product.id,
-          'name': product.productName,
-          'category': product.category,
-          'description': product.description,
-          'price': product.price,
-          'sale_price': product.salePrice,
-          'stock_quantity': product.stock,
-          'images': product.productImages,
-          'status': product.status?.toLowerCase() == 'approved' ? 'Approved' : 
-                   product.status?.toLowerCase() == 'disapproved' ? 'Disapproved' : 'Pending',
-          'rating': 4.4, // default rating since not provided in API
-        }).toList();
+        products = apiProducts
+            .map((product) => {
+                  '_id': product.id,
+                  'name': product.productName,
+                  'category': product.category,
+                  'description': product.description,
+                  'price': product.price,
+                  'sale_price': product.salePrice,
+                  'stock_quantity': product.stock,
+                  'images': product.productImages,
+                  'status': product.status?.toLowerCase() == 'approved'
+                      ? 'Approved'
+                      : product.status?.toLowerCase() == 'disapproved'
+                          ? 'Disapproved'
+                          : 'Pending',
+                  'rating': 4.4, // default rating since not provided in API
+                })
+            .toList();
         isLoading = false;
       });
     } catch (e) {
@@ -98,28 +103,29 @@ class _ProductsPageState extends State<Products> {
   void _deleteProduct(int index) async {
     final productId = products[index]['_id'];
     final productName = products[index]['name'];
-    
+
     // Confirm deletion with user
     bool confirmDelete = await showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text("Confirm Deletion"),
-          content: Text("Are you sure you want to delete '$productName'?"),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text("Cancel"),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text("Delete"),
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
-            ),
-          ],
-        );
-      },
-    ) ?? false;
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text("Confirm Deletion"),
+              content: Text("Are you sure you want to delete '$productName'?"),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text("Cancel"),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text("Delete"),
+                  style: TextButton.styleFrom(foregroundColor: Colors.red),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
 
     if (confirmDelete) {
       try {
@@ -132,7 +138,9 @@ class _ProductsPageState extends State<Products> {
                 SizedBox(
                   width: 16,
                   height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
                 ),
                 SizedBox(width: 12),
                 Text("Deleting product..."),
@@ -144,13 +152,13 @@ class _ProductsPageState extends State<Products> {
 
         // Call the API to delete the product
         bool success = await ApiService.deleteProduct(productId);
-        
+
         if (success) {
           // Remove from local list
           setState(() {
             products.removeAt(index);
           });
-          
+
           // Show success message
           if (mounted) {
             ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -191,10 +199,13 @@ class _ProductsPageState extends State<Products> {
   Future<void> _navigateToAddProduct() async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const AddProductPage()),
+      MaterialPageRoute(
+        builder: (context) => const AddProductPage(),
+      ),
     );
-    if (result != null && result is Map<String, dynamic>) {
-      setState(() => products.add(result));
+
+    if (result == true) {
+      _loadProducts();
     }
   }
 
@@ -257,7 +268,7 @@ class _ProductsPageState extends State<Products> {
           );
         }
       }
-      
+
       // Handle XFile objects
       if (image is XFile) {
         return Image.file(
@@ -272,7 +283,7 @@ class _ProductsPageState extends State<Products> {
           },
         );
       }
-      
+
       // Fallback for any other format
       return Image.asset(
         'assets/images/logo.png',
@@ -298,10 +309,10 @@ class _ProductsPageState extends State<Products> {
     const pending = Colors.orange;
 
     return Scaffold(
-      drawer: const CustomDrawer(currentPage: 'Products'),  
+      drawer: const CustomDrawer(currentPage: 'Products'),
       appBar: AppBar(
         title: Text(
-          "Product Catalog", 
+          "Product Catalog",
           style: GoogleFonts.poppins(
             fontWeight: FontWeight.w600,
             color: Colors.black,
@@ -325,7 +336,8 @@ class _ProductsPageState extends State<Products> {
               decoration: InputDecoration(
                 hintText: 'Search Products...',
                 hintStyle: GoogleFonts.poppins(fontSize: 13),
-                prefixIcon: const Icon(Icons.search, color: Colors.grey, size: 20),
+                prefixIcon:
+                    const Icon(Icons.search, color: Colors.grey, size: 20),
                 suffixIcon: searchQuery.isEmpty
                     ? null
                     : IconButton(
@@ -406,8 +418,7 @@ class _ProductsPageState extends State<Products> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    foregroundColor:
-                        WidgetStateProperty.resolveWith((states) {
+                    foregroundColor: WidgetStateProperty.resolveWith((states) {
                       return states.contains(WidgetState.selected)
                           ? Colors.blue
                           : Colors.grey;
@@ -450,8 +461,7 @@ class _ProductsPageState extends State<Products> {
             // Count card (unchanged colors)
             Container(
               width: double.infinity,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                 color: cardBg,
                 borderRadius: BorderRadius.circular(_radius),
@@ -465,8 +475,8 @@ class _ProductsPageState extends State<Products> {
                       color: Colors.blue.shade50,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child:
-                        const Icon(Icons.inventory_2, color: Colors.blue, size: 20),
+                    child: const Icon(Icons.inventory_2,
+                        color: Colors.blue, size: 20),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -747,6 +757,44 @@ class _GridCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                  // Three dots menu (top right, below stock badge)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert, color: Colors.black54),
+                      onSelected: (String value) {
+                        if (value == 'edit') {
+                          onEdit();
+                        } else if (value == 'delete') {
+                          onDelete();
+                        }
+                      },
+                      itemBuilder: (BuildContext context) =>
+                          <PopupMenuEntry<String>>[
+                        const PopupMenuItem<String>(
+                          value: 'edit',
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit, size: 16),
+                              SizedBox(width: 8),
+                              Text('Edit'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem<String>(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete, size: 16),
+                              SizedBox(width: 8),
+                              Text('Delete'),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -768,20 +816,20 @@ class _GridCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    
+
                     // Name
                     Text(
                       product['name'] ?? '',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.poppins(
-                        fontSize: 11, // Reduced from 13
+                        fontSize: 12, // Reduced from 13
                         fontWeight: FontWeight.w600,
                         color: Colors.black,
                       ),
                     ),
                     const SizedBox(height: 2),
-                    
+
                     // Description
                     Text(
                       product['description'] ?? '',
@@ -794,7 +842,7 @@ class _GridCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    
+
                     // Price and rating
                     Row(
                       children: [
@@ -818,45 +866,6 @@ class _GridCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const Spacer(), // Push buttons to bottom
-                    const SizedBox(height: 8),
-                    
-                    // Edit and Delete buttons
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: onEdit,
-                            icon: const Icon(Icons.edit, size: 16),
-                            label: Text(
-                              'Edit',
-                              style: GoogleFonts.poppins(fontSize: 12),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.black87,
-                              side: BorderSide(color: Colors.grey.shade300),
-                              padding: const EdgeInsets.symmetric(vertical: 8), // Reduced padding
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        OutlinedButton.icon(
-                          onPressed: onDelete,
-                          icon: const Icon(Icons.delete, size: 16),
-                          label: Text(
-                            ' ',
-                            style: GoogleFonts.poppins(fontSize: 12),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.red,
-                            side: BorderSide(color: Colors.grey.shade300),
-                            padding: const EdgeInsets.symmetric(vertical: 8), // Reduced padding
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                          ),
-                        ),
-                      ],
-                    ),
                   ],
                 ),
               ),
@@ -866,7 +875,6 @@ class _GridCard extends StatelessWidget {
       ),
     );
   }
-
 }
 
 class _ListTileCard extends StatelessWidget {
@@ -925,7 +933,7 @@ class _ListTileCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(6),
               child: SizedBox(
                 width: 75,
-                height: 60,
+                height: 70, // Increased from 50 to 70
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
@@ -1057,71 +1065,40 @@ class _ListTileCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  // Edit and Delete buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: onEdit,
-                          icon: const Icon(Icons.edit, size: 14),
-                          label: Text(
-                            'Edit',
-                            style: GoogleFonts.poppins(fontSize: 11),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.black87,
-                            side: BorderSide(color: Colors.grey.shade300),
-                            padding: const EdgeInsets.symmetric(vertical: 6), // Reduced padding
-                            visualDensity: VisualDensity.compact,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      OutlinedButton.icon(
-                        onPressed: onDelete,
-                        icon: const Icon(Icons.delete, size: 14),
-                        label: Text(
-                          'Delete',
-                          style: GoogleFonts.poppins(fontSize: 11),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                          side: BorderSide(color: Colors.grey.shade300),
-                          padding: const EdgeInsets.symmetric(vertical: 6), // Reduced padding
-                          visualDensity: VisualDensity.compact,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
                 ],
               ),
             ),
             const SizedBox(width: 8),
 
-            // Actions
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                InkWell(
-                  onTap: onEdit,
-                  child: const Padding(
-                    padding: EdgeInsets.all(6),
-                    child: Icon(Icons.edit, color: Colors.blue, size: 18),
+            // Three dots menu
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, color: Colors.black54),
+              onSelected: (String value) {
+                if (value == 'edit') {
+                  onEdit();
+                } else if (value == 'delete') {
+                  onDelete();
+                }
+              },
+              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                const PopupMenuItem<String>(
+                  value: 'edit',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit, size: 16),
+                      SizedBox(width: 8),
+                      Text('Edit'),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 6),
-                InkWell(
-                  onTap: onDelete,
-                  child: const Padding(
-                    padding: EdgeInsets.all(6),
-                    child: Icon(Icons.delete, color: Colors.red, size: 18),
+                const PopupMenuItem<String>(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete, size: 16),
+                      SizedBox(width: 8),
+                      Text('Delete'),
+                    ],
                   ),
                 ),
               ],

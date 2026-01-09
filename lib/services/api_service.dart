@@ -81,6 +81,8 @@ class ApiService {
   static const String clientsEndpoint = '/crm/clients';
   static const String staffEndpoint = '/crm/staff';
   static const String servicesEndpoint = '/crm/services';
+  static const String adminBaseUrl = 'https://admin.v2winonline.com/api';
+  static const String productCategoriesEndpoint = '/admin/product-categories';
 
   // Get auth token from shared preferences
   static Future<String?> _getAuthToken() async {
@@ -202,6 +204,146 @@ class ApiService {
       }
     } catch (e) {
       print('Error deleting product: $e');
+      rethrow;
+    }
+  }
+
+  // Create a new product
+  static Future<bool> createProduct(Map<String, dynamic> productData) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/crm/products'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Cookie': 'crm_access_token=$token',
+            },
+            body: json.encode(productData),
+          )
+          .timeout(const Duration(seconds: 60));
+
+      print(
+          'Create Product Response [${response.statusCode}]: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          return true;
+        } else {
+          throw Exception(
+              'Failed to create product: ${data['message'] ?? 'Unknown error'}');
+        }
+      } else {
+        throw Exception(
+            'Failed to create product: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error creating product: $e');
+      rethrow;
+    }
+  }
+
+  // Update an existing product
+  static Future<bool> updateProduct(
+      String productId, Map<String, dynamic> productData) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
+      final response = await http
+          .put(
+            Uri.parse('$baseUrl/crm/products?id=$productId'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Cookie': 'crm_access_token=$token',
+            },
+            body: json.encode(productData),
+          )
+          .timeout(const Duration(seconds: 60));
+
+      print(
+          'Update Product Response [${response.statusCode}]: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          return true;
+        } else {
+          throw Exception(
+              'Failed to update product: ${data['message'] ?? 'Unknown error'}');
+        }
+      } else {
+        throw Exception(
+            'Failed to update product: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error updating product: $e');
+      rethrow;
+    }
+  }
+
+  // Get all product categories
+  static Future<List<Map<String, dynamic>>> getProductCategories() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$adminBaseUrl$productCategoriesEndpoint'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return List<Map<String, dynamic>>.from(data['data']);
+        } else {
+          throw Exception(
+              'Failed to load categories: ${data['message'] ?? 'Unknown error'}');
+        }
+      } else {
+        throw Exception('Failed to load categories: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching categories: $e');
+      rethrow;
+    }
+  }
+
+  // Add a new product category
+  static Future<Map<String, dynamic>> addProductCategory(
+      String name, String description) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$adminBaseUrl$productCategoriesEndpoint'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({
+          'name': name,
+          'description': description,
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return Map<String, dynamic>.from(data['data']);
+        } else {
+          throw Exception(
+              'Failed to add category: ${data['message'] ?? 'Unknown error'}');
+        }
+      } else {
+        throw Exception('Failed to add category: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error adding category: $e');
       rethrow;
     }
   }
@@ -871,10 +1013,12 @@ class Product {
       price: json['price'],
       salePrice: json['salePrice'],
       stock: json['stock'],
-      productImages: (json['productImages'] as List?)?.map((e) => e.toString()).toList(),
+      productImages:
+          (json['productImages'] as List?)?.map((e) => e.toString()).toList(),
       size: json['size'],
       sizeMetric: json['sizeMetric'],
-      keyIngredients: (json['keyIngredients'] as List?)?.map((e) => e.toString()).toList(),
+      keyIngredients:
+          (json['keyIngredients'] as List?)?.map((e) => e.toString()).toList(),
       forBodyPart: json['forBodyPart'],
       bodyPartType: json['bodyPartType'],
       productForm: json['productForm'],
