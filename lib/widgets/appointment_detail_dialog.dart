@@ -22,10 +22,9 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
   bool _isLoading = true;
   bool _isUpdatingStatus = false;
   final List<String> _statusOptions = [
-    'mark as scheduled',
-    'confirm appointment',
-    'completed without payment'
-        'cancel appointment',
+    'Confirm Appointment',
+    'Complete without Payment',
+    'Cancel Appointment',
   ];
 
   @override
@@ -573,6 +572,11 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
     );
   }
 
+  String _formatStatus(String status) {
+    if (status == 'completed_without_payment') return 'Completed (No Pay)';
+    return status.replaceAll('_', ' ').capitalize();
+  }
+
   Widget _buildStatusDropdown(String currentStatus) {
     if (_isUpdatingStatus) {
       return Container(
@@ -588,13 +592,29 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
       );
     }
 
-    final color = currentStatus.toLowerCase() == 'scheduled'
-        ? Colors.green.shade700
-        : (currentStatus.toLowerCase() == 'confirmed'
-            ? Colors.blue.shade700
-            : (currentStatus.toLowerCase() == 'cancelled'
-                ? Colors.red.shade700
-                : Colors.orange.shade700));
+    Color color;
+    switch (currentStatus.toLowerCase()) {
+      case 'scheduled':
+        color = Colors.green.shade700;
+        break;
+      case 'confirmed':
+        color = Colors.blue.shade700;
+        break;
+      case 'cancelled':
+        color = Colors.red.shade700;
+        break;
+      case 'completed':
+        color = Colors.purple.shade700;
+        break;
+      case 'completed_without_payment':
+        color = Colors.purple.shade300;
+        break;
+      case 'in_progress':
+        color = Colors.orange.shade700;
+        break;
+      default:
+        color = Colors.grey.shade700;
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -608,7 +628,7 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
           return _statusOptions.map((status) {
             return PopupMenuItem(
               value: status,
-              child: Text(status.capitalize(), style: GoogleFonts.poppins()),
+              child: Text(status, style: GoogleFonts.poppins()),
             );
           }).toList();
         },
@@ -625,7 +645,7 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
               ),
               const SizedBox(width: 8),
               Text(
-                currentStatus.capitalize(),
+                _formatStatus(currentStatus),
                 style: GoogleFonts.poppins(
                     fontSize: 12.5, fontWeight: FontWeight.w500),
               ),
@@ -639,15 +659,27 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
     );
   }
 
-  Future<void> _handleStatusChange(String newStatus) async {
+  Future<void> _handleStatusChange(String selectedAction) async {
     if (_appointment == null) return;
-    if (newStatus.toLowerCase() ==
-        (_appointment!.status?.toLowerCase() ?? '')) {
+
+    // Map UI action strings to API status keys
+    String newStatusKey;
+    if (selectedAction == 'Confirm Appointment') {
+      newStatusKey = 'confirmed';
+    } else if (selectedAction == 'Complete without Payment') {
+      newStatusKey = 'completed';
+    } else if (selectedAction == 'Cancel Appointment') {
+      newStatusKey = 'cancelled';
+    } else {
+      return; // Unknown action
+    }
+
+    if (newStatusKey == (_appointment!.status?.toLowerCase() ?? '')) {
       return;
     }
 
     String? cancellationReason;
-    if (newStatus.toLowerCase() == 'cancelled') {
+    if (newStatusKey == 'cancelled') {
       final reasonController = TextEditingController();
       cancellationReason = await showDialog<String>(
         context: context,
@@ -666,8 +698,8 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                     hintText: 'Reason...',
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8)),
-                    contentPadding:
-                        EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8)),
                 maxLines: 3,
               ),
             ],
@@ -675,19 +707,19 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('Back'),
+              child: const Text('Back'),
             ),
             ElevatedButton(
               onPressed: () {
                 if (reasonController.text.trim().isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Reason is required')));
+                      const SnackBar(content: Text('Reason is required')));
                   return;
                 }
                 Navigator.pop(context, reasonController.text.trim());
               },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              child: Text('Cancel Appointment',
+              child: const Text('Cancel Appointment',
                   style: TextStyle(color: Colors.white)),
             ),
           ],
@@ -700,7 +732,7 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
     setState(() => _isUpdatingStatus = true);
     try {
       final res = await ApiService.updateAppointmentStatus(
-          _appointment!.id!, newStatus.toLowerCase(),
+          _appointment!.id!, newStatusKey,
           cancellationReason: cancellationReason);
 
       if (mounted) {

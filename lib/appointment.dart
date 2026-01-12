@@ -56,7 +56,9 @@ class _AppointmentState extends State<Appointment>
     'All',
     'scheduled',
     'confirmed',
+    'in_progress',
     'completed',
+    'completed_without_payment',
     'cancelled',
     'pending'
   ];
