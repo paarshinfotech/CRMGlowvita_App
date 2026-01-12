@@ -6,6 +6,8 @@ import 'book_Apointment.dart';
 import 'Notification.dart';
 import 'Profile.dart';
 import 'widgets/custom_drawer.dart';
+import 'services/api_service.dart';
+import 'appointment_model.dart';
 
 extension StringExtension on String {
   String capitalize() {
@@ -32,115 +34,38 @@ class Appointment extends StatefulWidget {
   const Appointment({super.key});
 
   @override
-  State<Appointment> createState() => _AppointmentState(); 
+  State<Appointment> createState() => _AppointmentState();
 }
 
-class _AppointmentState extends State<Appointment> with SingleTickerProviderStateMixin {
+class _AppointmentState extends State<Appointment>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   DateTimeRange? _selectedDateRange;
   String? _selectedClient, _selectedService, _selectedStaff;
-  String _selectedStatus = 'All'; // Single filter for status
-  final List<String> clients = ['Siya Deore', 'Anita Kumar'];
-  final List<String> services = ['Haircut', 'Facial'];
-  final List<String> staff = ['Komal', 'Shivani'];
-  final List<String> statuses = ['All', 'New', 'Confirmed', 'Completed', 'Cancelled'];
+  String _selectedStatus = 'All';
 
-  final List<Map<String, dynamic>> _appointments = [
-    {
-      'ref': 'REF001',
-      'client': 'Siya Deore',
-      'service': 'Haircut',
-      'staff': 'Komal',
-      'created': DateTime.now().subtract(Duration(days: 1)),
-      'scheduled': DateTime.now(),
-      'duration': '30 mins',
-      'price': '₹500',
-      'status': 'New',
-    },
-    {
-      'ref': 'REF002',
-      'client': 'Anita Kumar',
-      'service': 'Facial', 
-      'staff': 'Shivani',
-      'created': DateTime.now().subtract(Duration(days: 2)),
-      'scheduled': DateTime.now().add(Duration(hours: 2)),
-      'duration': '60 mins',
-      'price': '₹1000',
-      'status': 'Confirmed',
-    }, 
-    {
-      'ref': 'REF003',
-      'client': 'Pooja Patil',
-      'service': 'Manicure',
-      'staff': 'Aarti',
-      'created': DateTime.now().subtract(Duration(days: 5)), 
-      'scheduled': DateTime.now().add(Duration(days: 1)),
-      'duration': '45 mins',
-      'price': '₹800',
-      'status': 'Completed',
-    },
-    {
-      'ref': 'REF004',
-      'client': 'Neha Sharma',
-      'service': 'Hair Spa',
-      'staff': 'Meera',
-      'created': DateTime.now().subtract(Duration(days: 3)),
-      'scheduled': DateTime.now().add(Duration(days: 2)),
-      'duration': '90 mins',
-      'price': '₹1500',
-      'status': 'Cancelled',
-    },
-    {
-      'ref': 'REF005',
-      'client': 'Rohini Desai',
-      'service': 'Pedicure',
-      'staff': 'Komal',
-      'created': DateTime.now().subtract(Duration(days: 1)),
-      'scheduled': DateTime.now().add(Duration(hours: 5)),
-      'duration': '40 mins',
-      'price': '₹600',
-      'status': 'New',
-    },
-    {
-      'ref': 'REF006',
-      'client': 'Sneha Wagh',
-      'service': 'Bridal Makeup',
-      'staff': 'Shivani',
-      'created': DateTime.now().subtract(Duration(days: 10)),
-      'scheduled': DateTime.now().add(Duration(days: 7)),
-      'duration': '3 hrs',
-      'price': '₹5000',
-      'status': 'Confirmed',
-    },
-    {
-      'ref': 'REF007',
-      'client': 'Kavita More',
-      'service': 'Threading',
-      'staff': 'Aarti',
-      'created': DateTime.now().subtract(Duration(days: 6)),
-      'scheduled': DateTime.now().add(Duration(days: 3)),
-      'duration': '15 mins',
-      'price': '₹200',
-      'status': 'Completed',
-    },
-    {
-      'ref': 'REF008',
-      'client': 'Deepika Joshi',
-      'service': 'Hair Color',
-      'staff': 'Meera',
-      'created': DateTime.now().subtract(Duration(days: 4)),
-      'scheduled': DateTime.now().add(Duration(days: 1)),
-      'duration': '1 hr',
-      'price': '₹1200',
-      'status': 'Cancelled',
-    },
+  // Dynamic data from API
+  List<AppointmentModel> _apiAppointments = [];
+  bool _isLoading = true;
+  Set<String> _uniqueClients = {};
+  Set<String> _uniqueServices = {};
+  Set<String> _uniqueStaff = {};
+
+  final List<String> statuses = [
+    'All',
+    'scheduled',
+    'confirmed',
+    'completed',
+    'cancelled',
+    'pending'
   ];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _fetchAppointments();
   }
 
   @override
@@ -148,7 +73,51 @@ class _AppointmentState extends State<Appointment> with SingleTickerProviderStat
     _tabController.dispose();
     super.dispose();
   }
-  
+
+  Future<void> _fetchAppointments() async {
+    try {
+      print('📥 Fetching appointments from API...');
+      final appointments = await ApiService.getAppointments();
+
+      setState(() {
+        _apiAppointments = appointments;
+        _isLoading = false;
+
+        // Extract unique values for filters
+        _uniqueClients = appointments
+            .map((a) => a.clientName ?? 'Unknown')
+            .where((name) => name.isNotEmpty)
+            .toSet();
+
+        _uniqueServices = appointments
+            .map((a) => a.serviceName ?? 'Unknown')
+            .where((name) => name.isNotEmpty)
+            .toSet();
+
+        _uniqueStaff = appointments
+            .map((a) => a.staffName ?? 'Unassigned')
+            .where((name) => name.isNotEmpty)
+            .toSet();
+      });
+
+      print('✅ Loaded ${appointments.length} appointments');
+    } catch (e) {
+      print('❌ Error fetching appointments: $e');
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load appointments: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _selectDateRange() async {
     final picked = await showDateRangePicker(
       context: context,
@@ -163,17 +132,38 @@ class _AppointmentState extends State<Appointment> with SingleTickerProviderStat
     if (picked != null) setState(() => _selectedDateRange = picked);
   }
 
-  List<Map<String, dynamic>> get _filteredAppointments {
-    return _appointments.where((appt) {
-      final scheduled = appt['scheduled'] as DateTime; 
+  List<AppointmentModel> get _filteredAppointments {
+    return _apiAppointments.where((appt) {
+      // Date filtering
+      final scheduled = appt.date;
       final inRange = _selectedDateRange == null ||
-          (scheduled.isAfter(_selectedDateRange!.start.subtract(Duration(days: 1))) &&
-              scheduled.isBefore(_selectedDateRange!.end.add(Duration(days: 1))));
-      final clientMatch = _selectedClient == null || appt['client'] == _selectedClient;
-      final serviceMatch = _selectedService == null || appt['service'] == _selectedService;
-      final staffMatch   = _selectedStaff == null   || appt['staff'] == _selectedStaff;
-      final statusMatch  = _selectedStatus == 'All' || appt['status'] == _selectedStatus;
-      return inRange && clientMatch && serviceMatch && staffMatch && statusMatch;
+          scheduled == null ||
+          (scheduled.isAfter(
+                  _selectedDateRange!.start.subtract(Duration(days: 1))) &&
+              scheduled
+                  .isBefore(_selectedDateRange!.end.add(Duration(days: 1))));
+
+      // Client filtering
+      final clientMatch =
+          _selectedClient == null || appt.clientName == _selectedClient;
+
+      // Service filtering
+      final serviceMatch =
+          _selectedService == null || appt.serviceName == _selectedService;
+
+      // Staff filtering
+      final staffMatch =
+          _selectedStaff == null || appt.staffName == _selectedStaff;
+
+      // Status filtering
+      final statusMatch = _selectedStatus == 'All' ||
+          (appt.status?.toLowerCase() == _selectedStatus.toLowerCase());
+
+      return inRange &&
+          clientMatch &&
+          serviceMatch &&
+          staffMatch &&
+          statusMatch;
     }).toList();
   }
 
@@ -185,15 +175,19 @@ class _AppointmentState extends State<Appointment> with SingleTickerProviderStat
   }) =>
       DropdownButtonFormField<T>(
         decoration: InputDecoration(
-          contentPadding: const EdgeInsets.symmetric(horizontal:12, vertical:8),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         ),
         value: selectedValue,
         hint: Text(hint, style: GoogleFonts.poppins(fontSize: 12)),
-        items: items.map((e) => DropdownMenuItem(
-          value: e,
-          child: Text(e.toString(), style: GoogleFonts.poppins(fontSize: 12)),
-        )).toList(),
+        items: items
+            .map((e) => DropdownMenuItem(
+                  value: e,
+                  child: Text(e.toString(),
+                      style: GoogleFonts.poppins(fontSize: 12)),
+                ))
+            .toList(),
         onChanged: onChanged,
       );
 
@@ -211,40 +205,64 @@ class _AppointmentState extends State<Appointment> with SingleTickerProviderStat
             ),
             child: DropdownButton<QuickDateRange>(
               underline: SizedBox(),
-              hint: Text("Quick Ranges", style: GoogleFonts.poppins(color: Colors.black, fontSize: 11)),
+              hint: Text("Quick Ranges",
+                  style:
+                      GoogleFonts.poppins(color: Colors.black, fontSize: 11)),
               onChanged: (range) {
                 if (range == null) return;
                 final now = DateTime.now();
                 DateTime start, end;
                 switch (range) {
-                  case QuickDateRange.today:      start = end = now; break;
-                  case QuickDateRange.tomorrow:   start = end = now.add(Duration(days:1)); break;
-                  case QuickDateRange.yesterday:  start = end = now.subtract(Duration(days:1)); break;
-                  case QuickDateRange.next7Days:  start = now; end = now.add(Duration(days:7)); break;
-                  case QuickDateRange.last7Days:  start = now.subtract(Duration(days:7)); end = now; break;
-                  case QuickDateRange.next30Days: start = now; end = now.add(Duration(days:30)); break;
-                  case QuickDateRange.last30Days: start = now.subtract(Duration(days:30)); end = now; break;
-                  case QuickDateRange.last90Days: start = now.subtract(Duration(days:90)); end = now; break;
+                  case QuickDateRange.today:
+                    start = end = now;
+                    break;
+                  case QuickDateRange.tomorrow:
+                    start = end = now.add(Duration(days: 1));
+                    break;
+                  case QuickDateRange.yesterday:
+                    start = end = now.subtract(Duration(days: 1));
+                    break;
+                  case QuickDateRange.next7Days:
+                    start = now;
+                    end = now.add(Duration(days: 7));
+                    break;
+                  case QuickDateRange.last7Days:
+                    start = now.subtract(Duration(days: 7));
+                    end = now;
+                    break;
+                  case QuickDateRange.next30Days:
+                    start = now;
+                    end = now.add(Duration(days: 30));
+                    break;
+                  case QuickDateRange.last30Days:
+                    start = now.subtract(Duration(days: 30));
+                    end = now;
+                    break;
+                  case QuickDateRange.last90Days:
+                    start = now.subtract(Duration(days: 90));
+                    end = now;
+                    break;
                   case QuickDateRange.lastMonth:
-                    start = DateTime(now.year, now.month-1, 1);
-                    end   = DateTime(now.year, now.month, 0);
+                    start = DateTime(now.year, now.month - 1, 1);
+                    end = DateTime(now.year, now.month, 0);
                     break;
                   case QuickDateRange.lastYear:
-                    start = DateTime(now.year-1,1,1);
-                    end   = DateTime(now.year-1,12,31);
+                    start = DateTime(now.year - 1, 1, 1);
+                    end = DateTime(now.year - 1, 12, 31);
                     break;
                   case QuickDateRange.allTime:
                   default:
                     start = DateTime(2000);
-                    end   = DateTime(2100);
+                    end = DateTime(2100);
                 }
-                setState(() => _selectedDateRange = DateTimeRange(start: start, end: end));
+                setState(() =>
+                    _selectedDateRange = DateTimeRange(start: start, end: end));
               },
               items: QuickDateRange.values.map((e) {
-                final label = e.name.replaceAllMapped(
-                    RegExp(r'([a-z])([A-Z])'),
-                        (m) => "${m[1]} ${m[2]}"
-                ).capitalize();
+                final label = e.name
+                    .replaceAllMapped(
+                        RegExp(r'([a-z])([A-Z])'), (m) => "${m[1]} ${m[2]}")
+                    .capitalize();
                 return DropdownMenuItem(
                   value: e,
                   child: Text(label, style: GoogleFonts.poppins(fontSize: 11)),
@@ -263,14 +281,16 @@ class _AppointmentState extends State<Appointment> with SingleTickerProviderStat
               _selectedDateRange != null
                   ? "${DateFormat('dd MMM').format(_selectedDateRange!.start)} - ${DateFormat('dd MMM').format(_selectedDateRange!.end)}"
                   : "Pick Range",
-              style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 11),
+              style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w600, fontSize: 11),
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
               foregroundColor: Colors.black87,
               side: BorderSide(color: Colors.black54),
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
               elevation: 0,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               minimumSize: Size(0, 30),
@@ -362,7 +382,9 @@ class _AppointmentState extends State<Appointment> with SingleTickerProviderStat
             // Back Button removed since drawer provides navigation
             Text('All Appointment',
                 style: GoogleFonts.poppins(
-                    fontSize: 17, fontWeight: FontWeight.w600, color: Colors.black)),
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black)),
 
             Spacer(), // Pushes buttons to the right
 
@@ -373,7 +395,8 @@ class _AppointmentState extends State<Appointment> with SingleTickerProviderStat
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const NotificationPage()),
+                  MaterialPageRoute(
+                      builder: (context) => const NotificationPage()),
                 );
               },
             ),
@@ -417,19 +440,22 @@ class _AppointmentState extends State<Appointment> with SingleTickerProviderStat
             children: [
               // Search bar
               Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                margin:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 child: TextField(
                   decoration: InputDecoration(
                     hintText: 'Search appointments...',
                     hintStyle: GoogleFonts.poppins(fontSize: 12),
-                    prefixIcon: const Icon(Icons.search, color: Colors.grey, size: 18),
+                    prefixIcon:
+                        const Icon(Icons.search, color: Colors.grey, size: 18),
                     filled: true,
                     fillColor: Colors.white,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
                   ),
                 ),
               ),
@@ -572,7 +598,8 @@ class _AppointmentState extends State<Appointment> with SingleTickerProviderStat
               // Count card
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 margin: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -587,7 +614,8 @@ class _AppointmentState extends State<Appointment> with SingleTickerProviderStat
                         color: Colors.blue.shade50,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.event, color: Colors.blue, size: 18),
+                      child:
+                          const Icon(Icons.event, color: Colors.blue, size: 18),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -599,7 +627,8 @@ class _AppointmentState extends State<Appointment> with SingleTickerProviderStat
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                               )),
-                          Text('${_filteredAppointments.length} appointments in total',    
+                          Text(
+                              '${_filteredAppointments.length} appointments in total',
                               style: GoogleFonts.poppins(
                                 fontSize: 11,
                                 color: Colors.grey.shade600,
@@ -608,7 +637,8 @@ class _AppointmentState extends State<Appointment> with SingleTickerProviderStat
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.blue.shade50,
                         borderRadius: BorderRadius.circular(20),
@@ -625,13 +655,16 @@ class _AppointmentState extends State<Appointment> with SingleTickerProviderStat
               ),
               SizedBox(height: 12),
               // Filter tabs
-              SizedBox(height: 16,),
+              SizedBox(
+                height: 16,
+              ),
               TabBar(
                 controller: _tabController,
                 indicatorColor: Colors.blue,
                 labelColor: Colors.blue,
                 unselectedLabelColor: Colors.black54,
-                labelStyle: GoogleFonts.poppins(fontWeight:FontWeight.w600, fontSize: 12),
+                labelStyle: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w600, fontSize: 12),
                 unselectedLabelStyle: GoogleFonts.poppins(fontSize: 12),
                 tabs: const [
                   Tab(text: "Clients"),
@@ -640,32 +673,47 @@ class _AppointmentState extends State<Appointment> with SingleTickerProviderStat
                   Tab(text: "Date"),
                 ],
               ),
-              SizedBox(height: 8,),
+              SizedBox(
+                height: 8,
+              ),
               Container(
-                padding: EdgeInsets.symmetric(horizontal:16, vertical:6),
-                height:80,
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                height: 80,
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    _buildDropdown(hint:"Select Client",  items:clients,  selectedValue:_selectedClient,  onChanged:(v)=>setState(()=>_selectedClient=v)),
-                    _buildDropdown(hint:"Select Service", items:services, selectedValue:_selectedService,onChanged:(v)=>setState(()=>_selectedService=v)),
-                    _buildDropdown(hint:"Select Staff",   items:staff,    selectedValue:_selectedStaff,  onChanged:(v)=>setState(()=>_selectedStaff=v)),
+                    _buildDropdown(
+                        hint: "Select Client",
+                        items: _uniqueClients.toList(),
+                        selectedValue: _selectedClient,
+                        onChanged: (v) => setState(() => _selectedClient = v)),
+                    _buildDropdown(
+                        hint: "Select Service",
+                        items: _uniqueServices.toList(),
+                        selectedValue: _selectedService,
+                        onChanged: (v) => setState(() => _selectedService = v)),
+                    _buildDropdown(
+                        hint: "Select Staff",
+                        items: _uniqueStaff.toList(),
+                        selectedValue: _selectedStaff,
+                        onChanged: (v) => setState(() => _selectedStaff = v)),
                     _buildDateRangeSelector(),
                   ],
                 ),
               ),
 
               TextButton(
-                onPressed: (){
+                onPressed: () {
                   setState(() {
                     _selectedClient = null;
                     _selectedService = null;
-                    _selectedStaff = null;  
+                    _selectedStaff = null;
                     _selectedStatus = 'All';
                     _selectedDateRange = null;
                   });
                 },
-                child: Text("Clear All Filters", style: GoogleFonts.poppins(fontSize: 12)),
+                child: Text("Clear All Filters",
+                    style: GoogleFonts.poppins(fontSize: 12)),
               ),
 
               SizedBox(height: 8),
@@ -691,20 +739,28 @@ class _AppointmentState extends State<Appointment> with SingleTickerProviderStat
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _filteredAppointments.isEmpty
-                    ? Center(child: Text("No appointments found.", style: GoogleFonts.poppins(fontSize: 13)))
-                    : Column(
-                        children: _filteredAppointments.map((appointment) {
-                          return _buildAppointmentCard(appointment);
-                        }).toList(),
-                      ),
+                child: _isLoading
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(32),
+                          child: CircularProgressIndicator(),
+                        ),
+                      )
+                    : _filteredAppointments.isEmpty
+                        ? Center(
+                            child: Text("No appointments found.",
+                                style: GoogleFonts.poppins(fontSize: 13)))
+                        : Column(
+                            children: _filteredAppointments.map((appointment) {
+                              return _buildAppointmentCard(appointment);
+                            }).toList(),
+                          ),
               ),
               SizedBox(height: 20),
             ],
           ),
         ),
       ),
-
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.push(
@@ -717,23 +773,35 @@ class _AppointmentState extends State<Appointment> with SingleTickerProviderStat
         tooltip: 'Add Appointment',
       ),
     );
-  } 
+  }
 
   int _getTodayCount() {
     final today = DateTime.now();
-    return _appointments.where((appt) {
-      final scheduled = appt['scheduled'] as DateTime;
+    return _apiAppointments.where((appt) {
+      final scheduled = appt.date;
+      if (scheduled == null) return false;
       return scheduled.year == today.year &&
-             scheduled.month == today.month &&
-             scheduled.day == today.day;
+          scheduled.month == today.month &&
+          scheduled.day == today.day;
     }).length;
   }
 
   int _getPendingCount() {
-    return _appointments.where((appt) => appt['status'] == 'New').length;
+    return _apiAppointments
+        .where((appt) =>
+            appt.status?.toLowerCase() == 'pending' ||
+            appt.status?.toLowerCase() == 'scheduled')
+        .length;
   }
 
-  Widget _buildAppointmentCard(Map<String, dynamic> appointment) {
+  Widget _buildAppointmentCard(AppointmentModel appointment) {
+    // Format date and time
+    final scheduledDate = appointment.date != null
+        ? DateFormat('MMM d, yyyy').format(appointment.date!)
+        : 'No date';
+    final timeRange =
+        '${appointment.startTime ?? '--'}  - ${appointment.endTime ?? '--'}';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
@@ -745,18 +813,18 @@ class _AppointmentState extends State<Appointment> with SingleTickerProviderStat
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header with reference and status
+          // Header with ID and status
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                appointment['ref'],
+                appointment.id?.substring(0, 8) ?? 'REF000',
                 style: GoogleFonts.poppins(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              _buildStatusTag(appointment['status']),
+              _buildStatusTag(appointment.status ?? 'Unknown'),
             ],
           ),
           const SizedBox(height: 10),
@@ -768,7 +836,7 @@ class _AppointmentState extends State<Appointment> with SingleTickerProviderStat
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      appointment['client'],
+                      appointment.clientName ?? 'Unknown Client',
                       style: GoogleFonts.poppins(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -776,7 +844,7 @@ class _AppointmentState extends State<Appointment> with SingleTickerProviderStat
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      appointment['service'],
+                      appointment.serviceName ?? 'Unknown Service',
                       style: GoogleFonts.poppins(
                         fontSize: 12,
                         color: Colors.grey.shade700,
@@ -790,7 +858,7 @@ class _AppointmentState extends State<Appointment> with SingleTickerProviderStat
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    appointment['staff'],
+                    appointment.staffName ?? 'Unassigned',
                     style: GoogleFonts.poppins(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
@@ -798,7 +866,7 @@ class _AppointmentState extends State<Appointment> with SingleTickerProviderStat
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    appointment['price'],
+                    '\u20b9${appointment.amount?.toStringAsFixed(0) ?? '0'}',
                     style: GoogleFonts.poppins(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
@@ -823,11 +891,19 @@ class _AppointmentState extends State<Appointment> with SingleTickerProviderStat
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    '${DateFormat('dd MMM yyyy, hh:mm a').format(appointment['scheduled'])} • ${appointment['duration']}',
+                    '$scheduledDate • $timeRange',
                     style: GoogleFonts.poppins(
                       fontSize: 11,
-                      color: Colors.blue,
+                      color: Colors.blue.shade700,
                     ),
+                  ),
+                ),
+                Text(
+                  '${appointment.duration ?? 0} mins',
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.blue.shade700,
                   ),
                 ),
               ],

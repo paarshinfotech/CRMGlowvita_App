@@ -835,6 +835,52 @@ class ApiService {
     }
   }
 
+  // Update appointment status
+  static Future<Map<String, dynamic>> updateAppointmentStatus(
+      String id, String status,
+      {String? cancellationReason}) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
+      final Map<String, dynamic> body = {
+        '_id': id,
+        'status': status,
+      };
+
+      if (status == 'cancelled' && cancellationReason != null) {
+        body['cancellationReason'] = cancellationReason;
+      }
+
+      print('🔄 Updating status: $status for ID: $id');
+
+      final response = await http.patch(
+        Uri.parse('$baseUrl/crm/appointments'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': 'crm_access_token=$token',
+        },
+        body: json.encode(body),
+      );
+
+      print(
+          '📥 Update Status Response [${response.statusCode}]: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data; // Returns the full response including updated appointment
+      } else {
+        throw Exception(
+            'Failed to update status: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('❌ Error updating status: $e');
+      rethrow;
+    }
+  }
+
   static Future<AppointmentModel> getAppointmentById(String id) async {
     try {
       final token = await _getAuthToken();

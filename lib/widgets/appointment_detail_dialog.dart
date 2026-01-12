@@ -20,6 +20,13 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
   late TabController _tabController;
   AppointmentModel? _appointment;
   bool _isLoading = true;
+  bool _isUpdatingStatus = false;
+  final List<String> _statusOptions = [
+    'mark as scheduled',
+    'confirm appointment',
+    'completed without payment'
+        'cancel appointment',
+  ];
 
   @override
   void initState() {
@@ -175,7 +182,8 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                         _actionChip(
                             Icons.attach_money_rounded, 'Collect Payment'),
                         _actionChip(Icons.calendar_today_rounded, 'Reschedule'),
-                        _statusChip(_appointment!.status ?? 'Scheduled'),
+                        _buildStatusDropdown(
+                            _appointment!.status ?? 'Scheduled'),
                       ],
                     ),
 
@@ -465,51 +473,6 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
     );
   }
 
-  Widget _statusChip(String status) {
-    final color = status.toLowerCase() == 'scheduled'
-        ? Colors.green.shade700
-        : Colors.orange.shade700;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            status.capitalize(),
-            style: GoogleFonts.poppins(
-                fontSize: 12.5, fontWeight: FontWeight.w500),
-          ),
-          const SizedBox(width: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade500,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              status.toUpperCase(),
-              style: const TextStyle(
-                  fontSize: 9,
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _infoTile(IconData icon, String label, String value,
       {bool isStatus = false}) {
     return Container(
@@ -608,5 +571,156 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
         ],
       ),
     );
+  }
+
+  Widget _buildStatusDropdown(String currentStatus) {
+    if (_isUpdatingStatus) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+
+    final color = currentStatus.toLowerCase() == 'scheduled'
+        ? Colors.green.shade700
+        : (currentStatus.toLowerCase() == 'confirmed'
+            ? Colors.blue.shade700
+            : (currentStatus.toLowerCase() == 'cancelled'
+                ? Colors.red.shade700
+                : Colors.orange.shade700));
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: PopupMenuButton<String>(
+        onSelected: _handleStatusChange,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        itemBuilder: (context) {
+          return _statusOptions.map((status) {
+            return PopupMenuItem(
+              value: status,
+              child: Text(status.capitalize(), style: GoogleFonts.poppins()),
+            );
+          }).toList();
+        },
+        offset: const Offset(0, 40),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                currentStatus.capitalize(),
+                style: GoogleFonts.poppins(
+                    fontSize: 12.5, fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.keyboard_arrow_down,
+                  size: 16, color: Colors.black54),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleStatusChange(String newStatus) async {
+    if (_appointment == null) return;
+    if (newStatus.toLowerCase() ==
+        (_appointment!.status?.toLowerCase() ?? '')) {
+      return;
+    }
+
+    String? cancellationReason;
+    if (newStatus.toLowerCase() == 'cancelled') {
+      final reasonController = TextEditingController();
+      cancellationReason = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Cancel Appointment',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Please provide a reason for cancellation:',
+                  style: GoogleFonts.poppins(fontSize: 13)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: reasonController,
+                decoration: InputDecoration(
+                    hintText: 'Reason...',
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                maxLines: 3,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Back'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (reasonController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Reason is required')));
+                  return;
+                }
+                Navigator.pop(context, reasonController.text.trim());
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: Text('Cancel Appointment',
+                  style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+
+      if (cancellationReason == null) return;
+    }
+
+    setState(() => _isUpdatingStatus = true);
+    try {
+      final res = await ApiService.updateAppointmentStatus(
+          _appointment!.id!, newStatus.toLowerCase(),
+          cancellationReason: cancellationReason);
+
+      if (mounted) {
+        setState(() {
+          if (res['appointment'] != null) {
+            _appointment = AppointmentModel.fromJson(res['appointment']);
+          }
+          _isUpdatingStatus = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Status updated successfully')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isUpdatingStatus = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update status: $e')),
+        );
+      }
+    }
   }
 }
