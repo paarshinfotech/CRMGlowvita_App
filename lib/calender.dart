@@ -12,11 +12,13 @@ import 'dart:io' show HttpClient, X509Certificate;
 import 'package:http/io_client.dart' as http_io;
 import 'widgets/create_appointment_form.dart';
 import 'widgets/custom_drawer.dart';
+import 'widgets/appointment_detail_dialog.dart';
 import 'Notification.dart';
 import 'Profile.dart';
 import 'shared_data.dart';
 
 class Appointments {
+  final String id; // Added ID
   final DateTime startTime;
   final Duration duration;
   final String clientName;
@@ -27,6 +29,7 @@ class Appointments {
   final String mode;
 
   Appointments({
+    this.id = '', // Default empty
     required this.startTime,
     required this.duration,
     required this.clientName,
@@ -114,6 +117,7 @@ class _CalendarState extends State<Calendar> {
           }
 
           return Appointments(
+            id: m.id ?? '',
             startTime: start,
             duration: Duration(minutes: m.duration ?? 30),
             clientName: m.clientName ?? 'Unknown',
@@ -790,208 +794,207 @@ class _CalendarState extends State<Calendar> {
                                                       quarterSlot;
 
                                               return Positioned(
-                                                top: top,
-                                                left: 6.w,
-                                                right: 6.w,
-                                                height: height.clamp(
-                                                    60.h,
-                                                    slotHeight *
-                                                        4), // Prevent overflow
-                                                child: Container(
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.white,
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            8.r),
-                                                    border: Border.all(
-                                                        color:
-                                                            Colors.grey[200]!,
-                                                        width: 1),
-                                                    boxShadow: [
-                                                      BoxShadow(
-                                                        color: Colors.black
-                                                            .withOpacity(0.04),
-                                                        blurRadius: 4,
-                                                        offset: Offset(0, 2),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  child: ClipRRect(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            8.r),
-                                                    child: Stack(
-                                                      children: [
-                                                        // Left Indicator Bar
-                                                        Positioned(
-                                                          left: 0,
-                                                          top: 0,
-                                                          bottom: 0,
-                                                          child: Container(
-                                                            width: 4.w,
-                                                            color: _getStatusColor(
-                                                                    appt.status)
-                                                                .withOpacity(
-                                                                    0.8),
+                                                  top: top,
+                                                  left: 6.w,
+                                                  right: 6.w,
+                                                  height: height.clamp(
+                                                      60.h,
+                                                      slotHeight *
+                                                          4), // Prevent overflow
+                                                  child: GestureDetector(
+                                                    onTap: () {
+                                                      if (appt.id.isNotEmpty) {
+                                                        print(
+                                                            '🔘 Tapped appointment: ${appt.clientName} (ID: ${appt.id})');
+                                                        showDialog(
+                                                          context: context,
+                                                          builder: (context) =>
+                                                              AppointmentDetailDialog(
+                                                            appointmentId:
+                                                                appt.id,
                                                           ),
-                                                        ),
-                                                        // Main Content
-                                                        Padding(
-                                                          padding: EdgeInsets
-                                                              .fromLTRB(
-                                                                  10.w,
-                                                                  4.h,
-                                                                  8.w,
-                                                                  2.h),
-                                                          child:
-                                                              ScrollConfiguration(
-                                                            behavior: const ScrollBehavior()
-                                                                .copyWith(
-                                                                    scrollbars:
-                                                                        false),
-                                                            child:
-                                                                SingleChildScrollView(
-                                                              physics:
-                                                                  const NeverScrollableScrollPhysics(),
-                                                              child: Column(
-                                                                crossAxisAlignment:
-                                                                    CrossAxisAlignment
-                                                                        .start,
-                                                                mainAxisSize:
-                                                                    MainAxisSize
-                                                                        .min,
-                                                                children: [
-                                                                  // Client Name Row
-                                                                  Row(
-                                                                    mainAxisAlignment:
-                                                                        MainAxisAlignment
-                                                                            .spaceBetween,
+                                                        );
+                                                      } else {
+                                                        print(
+                                                            '⚠️ Appointment has no ID: ${appt.clientName}');
+                                                        // fallback message if somehow no id
+                                                        ScaffoldMessenger.of(
+                                                                context)
+                                                            .showSnackBar(
+                                                          const SnackBar(
+                                                              content: Text(
+                                                                  'No ID for this appointment')),
+                                                        );
+                                                      }
+                                                    },
+                                                    child: Container(
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.white,
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(8.r),
+                                                        border: Border.all(
+                                                            color: Colors
+                                                                .grey[200]!,
+                                                            width: 1),
+                                                        boxShadow: [
+                                                          BoxShadow(
+                                                            color: Colors.black
+                                                                .withOpacity(
+                                                                    0.04),
+                                                            blurRadius: 4,
+                                                            offset:
+                                                                Offset(0, 2),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      child: ClipRRect(
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(8.r),
+                                                        child: Stack(
+                                                          children: [
+                                                            // Left Indicator Bar
+                                                            Positioned(
+                                                              left: 0,
+                                                              top: 0,
+                                                              bottom: 0,
+                                                              child: Container(
+                                                                width: 4.w,
+                                                                color: _getStatusColor(appt
+                                                                        .status)
+                                                                    .withOpacity(
+                                                                        0.8),
+                                                              ),
+                                                            ),
+                                                            // Main Content
+                                                            Padding(
+                                                              padding:
+                                                                  EdgeInsets
+                                                                      .fromLTRB(
+                                                                          10.w,
+                                                                          4.h,
+                                                                          8.w,
+                                                                          2.h),
+                                                              child:
+                                                                  ScrollConfiguration(
+                                                                behavior: const ScrollBehavior()
+                                                                    .copyWith(
+                                                                        scrollbars:
+                                                                            false),
+                                                                child:
+                                                                    SingleChildScrollView(
+                                                                  physics:
+                                                                      const NeverScrollableScrollPhysics(),
+                                                                  child: Column(
+                                                                    crossAxisAlignment:
+                                                                        CrossAxisAlignment
+                                                                            .start,
+                                                                    mainAxisSize:
+                                                                        MainAxisSize
+                                                                            .min,
                                                                     children: [
-                                                                      Expanded(
-                                                                        child:
-                                                                            Text(
-                                                                          appt.clientName,
-                                                                          style: TextStyle(
-                                                                              fontSize: 10.sp,
-                                                                              fontWeight: FontWeight.bold,
-                                                                              color: Colors.black),
-                                                                          maxLines:
-                                                                              1,
-                                                                          overflow:
-                                                                              TextOverflow.ellipsis,
-                                                                        ),
+                                                                      // Client Name Row
+                                                                      Row(
+                                                                        mainAxisAlignment:
+                                                                            MainAxisAlignment.spaceBetween,
+                                                                        children: [
+                                                                          Expanded(
+                                                                            child:
+                                                                                Text(
+                                                                              appt.clientName,
+                                                                              style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.bold, color: Colors.black),
+                                                                              maxLines: 1,
+                                                                              overflow: TextOverflow.ellipsis,
+                                                                            ),
+                                                                          ),
+                                                                          // Status Chip
+                                                                          Container(
+                                                                            padding:
+                                                                                EdgeInsets.symmetric(horizontal: 10.w, vertical: 2.h),
+                                                                            decoration:
+                                                                                BoxDecoration(
+                                                                              color: _getStatusColor(appt.status).withOpacity(0.12),
+                                                                              borderRadius: BorderRadius.circular(12.r),
+                                                                            ),
+                                                                            child:
+                                                                                Text(
+                                                                              appt.status,
+                                                                              style: TextStyle(fontSize: 7.sp, fontWeight: FontWeight.bold, color: _getStatusColor(appt.status)),
+                                                                            ),
+                                                                          ),
+                                                                        ],
                                                                       ),
-                                                                      // Status Chip
+                                                                      SizedBox(
+                                                                          height:
+                                                                              4.h),
+                                                                      // Time Row
+                                                                      Row(
+                                                                        children: [
+                                                                          Icon(
+                                                                            Icons.access_time,
+                                                                            size:
+                                                                                10.sp,
+                                                                            color:
+                                                                                Colors.blueGrey[600],
+                                                                          ),
+                                                                          SizedBox(
+                                                                              width: 4.w),
+                                                                          Text(
+                                                                            '${DateFormat('hh:mma').format(appt.startTime)} - ${DateFormat('hh:mma').format(appt.endTime)}',
+                                                                            style: TextStyle(
+                                                                                fontSize: 8.sp,
+                                                                                fontWeight: FontWeight.w600,
+                                                                                color: Colors.blueGrey[800]),
+                                                                          ),
+                                                                        ],
+                                                                      ),
+                                                                      SizedBox(
+                                                                          height:
+                                                                              4.h),
+                                                                      // Booking Mode Chip
                                                                       Container(
                                                                         padding: EdgeInsets.symmetric(
                                                                             horizontal:
-                                                                                10.w,
-                                                                            vertical: 2.h),
+                                                                                8.w,
+                                                                            vertical: 3.h),
                                                                         decoration:
                                                                             BoxDecoration(
                                                                           color:
-                                                                              _getStatusColor(appt.status).withOpacity(0.12),
+                                                                              Colors.blue[50],
                                                                           borderRadius:
-                                                                              BorderRadius.circular(12.r),
+                                                                              BorderRadius.circular(6.r),
+                                                                          border:
+                                                                              Border.all(color: Colors.blue[100]!),
                                                                         ),
                                                                         child:
+                                                                            Row(
+                                                                          mainAxisSize:
+                                                                              MainAxisSize.min,
+                                                                          children: [
+                                                                            Icon(
+                                                                              appt.mode.toLowerCase() == 'online' ? Icons.language : Icons.store,
+                                                                              size: 9.sp,
+                                                                              color: Colors.blue[800],
+                                                                            ),
+                                                                            SizedBox(width: 4.w),
                                                                             Text(
-                                                                          appt.status,
-                                                                          style: TextStyle(
-                                                                              fontSize: 7.sp,
-                                                                              fontWeight: FontWeight.bold,
-                                                                              color: _getStatusColor(appt.status)),
+                                                                              appt.mode.toLowerCase() == 'online' ? 'Web Booking' : 'Offline Booking',
+                                                                              style: TextStyle(fontSize: 7.sp, fontWeight: FontWeight.bold, color: Colors.blue[800]),
+                                                                            ),
+                                                                          ],
                                                                         ),
                                                                       ),
                                                                     ],
                                                                   ),
-                                                                  SizedBox(
-                                                                      height:
-                                                                          4.h),
-                                                                  // Time Row
-                                                                  Row(
-                                                                    children: [
-                                                                      Icon(
-                                                                        Icons
-                                                                            .access_time,
-                                                                        size: 10
-                                                                            .sp,
-                                                                        color: Colors
-                                                                            .blueGrey[600],
-                                                                      ),
-                                                                      SizedBox(
-                                                                          width:
-                                                                              4.w),
-                                                                      Text(
-                                                                        '${DateFormat('hh:mma').format(appt.startTime)} - ${DateFormat('hh:mma').format(appt.endTime)}',
-                                                                        style: TextStyle(
-                                                                            fontSize:
-                                                                                8.sp,
-                                                                            fontWeight: FontWeight.w600,
-                                                                            color: Colors.blueGrey[800]),
-                                                                      ),
-                                                                    ],
-                                                                  ),
-                                                                  SizedBox(
-                                                                      height:
-                                                                          4.h),
-                                                                  // Booking Mode Chip
-                                                                  Container(
-                                                                    padding: EdgeInsets.symmetric(
-                                                                        horizontal:
-                                                                            8.w,
-                                                                        vertical:
-                                                                            3.h),
-                                                                    decoration:
-                                                                        BoxDecoration(
-                                                                      color: Colors
-                                                                          .blue[50],
-                                                                      borderRadius:
-                                                                          BorderRadius.circular(
-                                                                              6.r),
-                                                                      border: Border.all(
-                                                                          color:
-                                                                              Colors.blue[100]!),
-                                                                    ),
-                                                                    child: Row(
-                                                                      mainAxisSize:
-                                                                          MainAxisSize
-                                                                              .min,
-                                                                      children: [
-                                                                        Icon(
-                                                                          appt.mode.toLowerCase() == 'online'
-                                                                              ? Icons.language
-                                                                              : Icons.store,
-                                                                          size:
-                                                                              9.sp,
-                                                                          color:
-                                                                              Colors.blue[800],
-                                                                        ),
-                                                                        SizedBox(
-                                                                            width:
-                                                                                4.w),
-                                                                        Text(
-                                                                          appt.mode.toLowerCase() == 'online'
-                                                                              ? 'Web Booking'
-                                                                              : 'Offline Booking',
-                                                                          style: TextStyle(
-                                                                              fontSize: 7.sp,
-                                                                              fontWeight: FontWeight.bold,
-                                                                              color: Colors.blue[800]),
-                                                                        ),
-                                                                      ],
-                                                                    ),
-                                                                  ),
-                                                                ],
+                                                                ),
                                                               ),
                                                             ),
-                                                          ),
+                                                          ],
                                                         ),
-                                                      ],
+                                                      ),
                                                     ),
-                                                  ),
-                                                ),
-                                              );
+                                                  ));
                                             }),
                                           ],
                                         ),

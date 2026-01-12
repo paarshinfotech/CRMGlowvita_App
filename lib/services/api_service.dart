@@ -815,8 +815,6 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        // The user's sample shows a List directly, not wrapped in { success: true, data: [...] }
-        // but let's be careful. If it's a list, we parse it.
         if (data is List) {
           return data.map((json) => AppointmentModel.fromJson(json)).toList();
         } else if (data is Map && data['data'] != null) {
@@ -833,6 +831,56 @@ class ApiService {
       }
     } catch (e) {
       print('Error fetching appointments: $e');
+      rethrow;
+    }
+  }
+
+  static Future<AppointmentModel> getAppointmentById(String id) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
+      print('🔍 Fetching appointment with ID: $id');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/crm/appointments?id=$id'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': 'crm_access_token=$token',
+        },
+      );
+
+      print('📥 Response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data is List && data.isNotEmpty) {
+          print('📋 Received ${data.length} appointments in response');
+
+          // Find the appointment matching the requested ID
+          final matchingAppt = data.firstWhere(
+            (appt) => appt['_id'] == id,
+            orElse: () => data[0], // Fallback to first if no match
+          );
+
+          print('✅ Using appointment with ID: ${matchingAppt['_id']}');
+          return AppointmentModel.fromJson(matchingAppt);
+        } else if (data is Map && data['data'] != null) {
+          print('📦 Received appointment data as Map');
+          return AppointmentModel.fromJson(data['data']);
+        } else {
+          throw Exception(
+              'Unexpected response format from appointment detail API');
+        }
+      } else {
+        throw Exception(
+            'Failed to load appointment details: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('❌ Error fetching appointment details: $e');
       rethrow;
     }
   }
