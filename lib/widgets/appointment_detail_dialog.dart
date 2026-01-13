@@ -736,15 +736,28 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
           cancellationReason: cancellationReason);
 
       if (mounted) {
-        setState(() {
+        try {
           if (res['appointment'] != null) {
-            _appointment = AppointmentModel.fromJson(res['appointment']);
+            setState(() {
+              _appointment = AppointmentModel.fromJson(res['appointment']);
+              _isUpdatingStatus = false;
+            });
           }
-          _isUpdatingStatus = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Status updated successfully')),
-        );
+        } catch (e) {
+          print('⚠️ Parsing error after status update (suppressed): $e');
+          // If parsing fails, we still want to show success as the API call worked.
+          // We'll trigger a fresh fetch to get the correct data.
+          await _fetchAppointmentDetails();
+          if (mounted) {
+            setState(() => _isUpdatingStatus = false);
+          }
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Status updated successfully')),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
