@@ -258,7 +258,7 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
 
                     const SizedBox(height: 8),
                     Text(
-                      '• ${_appointment?.paymentStatus?.capitalize() ?? 'Unpaid'}',
+                      '• ${_appointment?.paymentMethod?.capitalize() ?? 'Unpaid'}',
                       style: GoogleFonts.poppins(
                           fontSize: 12.5, color: Colors.grey.shade700),
                     ),

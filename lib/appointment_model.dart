@@ -9,7 +9,7 @@ class AppointmentModel {
   final String? endTime;
   final int? duration;
   final double? amount;
-  final String? paymentStatus;
+  final String? paymentMethod;
   final String? status;
   final bool? isMultiService;
   final bool? isHomeService;
@@ -41,7 +41,7 @@ class AppointmentModel {
     this.endTime,
     this.duration,
     this.amount,
-    this.paymentStatus,
+    this.paymentMethod,
     this.status,
     this.isMultiService,
     this.isHomeService,
@@ -73,7 +73,7 @@ class AppointmentModel {
       endTime: json['endTime'],
       duration: (json['duration'] as num?)?.toInt(),
       amount: (json['amount'] as num?)?.toDouble(),
-      paymentStatus: json['paymentStatus'],
+      paymentMethod: json['paymentMethod'],
       status: json['status'],
       isMultiService: json['isMultiService'] ?? false,
       isHomeService: json['isHomeService'] ?? false,

@@ -8,6 +8,8 @@ import 'Profile.dart';
 import 'widgets/custom_drawer.dart';
 import 'services/api_service.dart';
 import 'appointment_model.dart';
+import 'widgets/appointment_detail_dialog.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 
 extension StringExtension on String {
   String capitalize() {
@@ -804,115 +806,219 @@ class _AppointmentState extends State<Appointment>
     final timeRange =
         '${appointment.startTime ?? '--'}  - ${appointment.endTime ?? '--'}';
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header with ID and status
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                appointment.id?.substring(0, 8) ?? 'REF000',
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Slidable(
+        key: ValueKey(appointment.id),
+        endActionPane: ActionPane(
+          motion: const ScrollMotion(),
+          children: [
+            SlidableAction(
+              onPressed: (context) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Edit feature coming soon!')),
+                );
+              },
+              backgroundColor: const Color(0xFF21B7CA),
+              foregroundColor: Colors.white,
+              icon: Icons.edit,
+              label: 'Edit',
+            ),
+            SlidableAction(
+              onPressed: (context) {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Delete Appointment'),
+                    content: const Text(
+                        'Are you sure you want to delete this appointment?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          if (appointment.id != null) {
+                            _deleteAppointment(appointment.id!);
+                          }
+                        },
+                        child: const Text('Delete',
+                            style: TextStyle(color: Colors.red)),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              backgroundColor: const Color(0xFFFE4A49),
+              foregroundColor: Colors.white,
+              icon: Icons.delete,
+              label: 'Delete',
+            ),
+          ],
+        ),
+        child: GestureDetector(
+          onTap: () {
+            if (appointment.id != null) {
+              showDialog(
+                context: context,
+                builder: (context) => AppointmentDetailDialog(
+                  appointmentId: appointment.id!,
                 ),
-              ),
-              _buildStatusTag(appointment.status ?? 'Unknown'),
-            ],
-          ),
-          const SizedBox(height: 10),
-          // Client and service
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              );
+            }
+          },
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header with ID and status
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      appointment.clientName ?? 'Unknown Client',
-                      style: GoogleFonts.poppins(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                    Row(
+                      children: [
+                        Icon(Icons.payment, size: 14, color: Colors.grey[600]),
+                        SizedBox(width: 4),
+                        Text(
+                          appointment.paymentMethod ?? 'unpaid',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                      ],
+                    ),
+                    _buildStatusTag(appointment.status ?? 'Unknown'),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                // Client and service
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            appointment.clientName ?? 'Unknown Client',
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            appointment.serviceName ?? 'Unknown Service',
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      appointment.serviceName ?? 'Unknown Service',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        color: Colors.grey.shade700,
-                      ),
+                    // Staff and price
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          appointment.staffName ?? 'Unassigned',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          '\u20b9${appointment.amount?.toStringAsFixed(0) ?? '0'}',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.blue,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ),
-              // Staff and price
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    appointment.staffName ?? 'Unassigned',
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
+                const SizedBox(height: 10),
+                // Schedule info
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(6),
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    '\u20b9${appointment.amount?.toStringAsFixed(0) ?? '0'}',
-                    style: GoogleFonts.poppins(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.blue,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          // Schedule info
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: Colors.blue.shade50,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.access_time, size: 14, color: Colors.blue),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    '$scheduledDate • $timeRange',
-                    style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      color: Colors.blue.shade700,
-                    ),
-                  ),
-                ),
-                Text(
-                  '${appointment.duration ?? 0} mins',
-                  style: GoogleFonts.poppins(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.blue.shade700,
+                  child: Row(
+                    children: [
+                      Icon(Icons.access_time, size: 14, color: Colors.blue),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          '$scheduledDate • $timeRange',
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            color: Colors.blue.shade700,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '${appointment.duration ?? 0} mins',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.blue.shade700,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
+  }
+
+  Future<void> _deleteAppointment(String id) async {
+    try {
+      // Show loading indicator
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Deleting appointment...')),
+      );
+
+      await ApiService.deleteAppointment(id);
+
+      // Refresh list
+      await _fetchAppointments();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Appointment deleted successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }

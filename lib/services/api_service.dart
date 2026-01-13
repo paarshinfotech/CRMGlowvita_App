@@ -961,6 +961,37 @@ class ApiService {
     }
   }
 
+  static Future<void> deleteAppointment(String id) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
+      print('🗑️ Deleting appointment with ID: $id');
+
+      final response = await http.delete(
+        Uri.parse('$baseUrl/crm/appointments/$id'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': 'crm_access_token=$token',
+        },
+      );
+
+      print('📥 Delete response status: ${response.statusCode}');
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        print('✅ Successfully deleted appointment: $id');
+      } else {
+        throw Exception(
+            'Failed to delete appointment: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('❌ Error deleting appointment: $e');
+      rethrow;
+    }
+  }
+
   // End of ApiService class
 }
 
