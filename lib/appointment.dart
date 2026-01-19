@@ -8,8 +8,7 @@ import 'Profile.dart';
 import 'widgets/custom_drawer.dart';
 import 'services/api_service.dart';
 import 'appointment_model.dart';
-import 'widgets/appointment_detail_dialog.dart';
-import 'package:flutter_slidable/flutter_slidable.dart';
+import 'services/api_service.dart';
 
 extension StringExtension on String {
   String capitalize() {
@@ -54,6 +53,11 @@ class _AppointmentState extends State<Appointment>
   Set<String> _uniqueServices = {};
   Set<String> _uniqueStaff = {};
 
+  // Pagination state
+  int _currentPage = 1;
+  int _limit = 10;
+  final List<int> _limitOptions = [5, 10, 15, 20, 25, 50];
+
   final List<String> statuses = [
     'All',
     'scheduled',
@@ -80,8 +84,10 @@ class _AppointmentState extends State<Appointment>
 
   Future<void> _fetchAppointments() async {
     try {
-      print('📥 Fetching appointments from API...');
-      final appointments = await ApiService.getAppointments();
+      print(
+          '📥 Fetching appointments from API (Page: $_currentPage, Limit: $_limit)...');
+      final appointments =
+          await ApiService.getAppointments(page: _currentPage, limit: _limit);
 
       setState(() {
         _apiAppointments = appointments;
@@ -316,38 +322,303 @@ class _AppointmentState extends State<Appointment>
   }
 
   Widget _buildStatusTag(String status) {
-    Color bgColor;
+    Color color;
     switch (status.toLowerCase()) {
-      case "new":
-        bgColor = Colors.orange;
+      case 'scheduled':
+      case 'schedule':
+        color = Colors.orange.shade700;
         break;
-      case "completed":
-        bgColor = Colors.green;
+      case 'confirmed':
+        color = Colors.blue.shade700;
         break;
-      case "cancelled":
-        bgColor = Colors.red;
+      case 'completed':
+        color = Colors.green.shade700;
         break;
-      case "confirmed":
-        bgColor = Colors.blue;
+      case 'cancelled':
+        color = Colors.red.shade700;
         break;
       default:
-        bgColor = Colors.grey;
+        color = Colors.grey.shade700;
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: bgColor.withOpacity(0.1),
-        border: Border.all(color: bgColor),
-        borderRadius: BorderRadius.circular(12),
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(15),
       ),
       child: Text(
-        status,
+        status.capitalize(),
         style: GoogleFonts.poppins(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: bgColor,
+            color: color, fontSize: 11, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+
+  Widget _buildPaymentTag(AppointmentModel appt) {
+    final paid = appt.amountPaid ?? 0;
+    final total = appt.totalAmount ?? appt.amount ?? 0;
+
+    String label;
+    Color color;
+
+    if (paid >= total && total > 0) {
+      label = "PAID";
+      color = Colors.green.shade600;
+    } else if (paid > 0) {
+      label = "PARTIALLY PAID (₹${paid.toStringAsFixed(0)})";
+      color = Colors.orange.shade600;
+    } else {
+      label = "UNPAID";
+      color = Colors.red.shade400;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.poppins(
+            color: color, fontSize: 10, fontWeight: FontWeight.w700),
+      ),
+    );
+  }
+
+  Widget _buildAppointmentCard(AppointmentModel appt) {
+    final cardStyle = GoogleFonts.poppins(fontSize: 13, color: Colors.black87);
+    final subStyle =
+        GoogleFonts.poppins(fontSize: 11, color: Colors.grey.shade600);
+
+    final dateStr =
+        appt.date != null ? DateFormat('MMM d, yyyy').format(appt.date!) : '-';
+    final timeStr = '${appt.startTime ?? '--'} - ${appt.endTime ?? '--'}';
+
+    final items = appt.serviceItems ?? [];
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header: Client & Status
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(appt.clientName ?? 'Unknown Client',
+                          style: cardStyle.copyWith(
+                              fontSize: 15, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Icon(Icons.calendar_today,
+                              size: 11, color: Colors.grey.shade500),
+                          const SizedBox(width: 4),
+                          Text('$dateStr • $timeStr', style: subStyle),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                _buildStatusTag(appt.status ?? 'Schedule'),
+              ],
+            ),
+          ),
+
+          // Services Section
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            color: Colors.grey.shade50,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('SERVICES & STAFF',
+                    style: subStyle.copyWith(
+                        fontSize: 9,
+                        letterSpacing: 1,
+                        fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                ...items.isEmpty
+                    ? [Text(appt.serviceName ?? '—', style: cardStyle)]
+                    : items.map((item) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${item.serviceName} (${item.duration} min)',
+                                  style: cardStyle.copyWith(fontSize: 12.5),
+                                ),
+                              ),
+                              Text(
+                                item.staffName ?? '—',
+                                style: subStyle.copyWith(
+                                    fontSize: 12, color: Colors.blue.shade700),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+              ],
+            ),
+          ),
+
+          // Footer: Payment & Actions
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                _buildPaymentTag(appt),
+                const Spacer(),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    RichText(
+                      text: TextSpan(
+                        children: [
+                          TextSpan(
+                            text: 'Paid: ',
+                            style: subStyle.copyWith(fontSize: 10),
+                          ),
+                          TextSpan(
+                            text:
+                                '₹${appt.amountPaid?.toStringAsFixed(2) ?? '0.00'}',
+                            style: cardStyle.copyWith(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                                color: Colors.green.shade700),
+                          ),
+                        ],
+                      ),
+                    ),
+                    RichText(
+                      text: TextSpan(
+                        children: [
+                          TextSpan(
+                            text: 'Total: ',
+                            style: subStyle.copyWith(fontSize: 10),
+                          ),
+                          TextSpan(
+                            text:
+                                '₹${(appt.totalAmount ?? appt.amount ?? 0).toStringAsFixed(2)}',
+                            style: cardStyle.copyWith(
+                                fontWeight: FontWeight.w700, fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(appt.paymentMethod ?? 'Pay at Salon', style: subStyle),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // Divider and Mini Action Bar
+          Divider(height: 1, color: Colors.grey.shade100),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                _actionIcon(Icons.edit_outlined, Colors.blue, () {
+                  _editAppointment(appt);
+                }, label: 'Edit'),
+                _actionIcon(Icons.delete_outline, Colors.red, () {
+                  _confirmDelete(appt);
+                }, label: 'Delete'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _actionIcon(IconData icon, Color color, VoidCallback onTap,
+      {String? label}) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Row(
+            children: [
+              Icon(icon, size: 16, color: color),
+              if (label != null) ...[
+                const SizedBox(width: 4),
+                Text(label,
+                    style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        color: color,
+                        fontWeight: FontWeight.w500)),
+              ],
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  void _editAppointment(AppointmentModel appt) {
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute(
+            builder: (context) => CreateAppointmentForm(
+              existingAppointment: appt,
+            ),
+          ),
+        )
+        .then((_) => _fetchAppointments());
+  }
+
+  void _confirmDelete(AppointmentModel appt) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Appointment'),
+        content:
+            const Text('Are you sure you want to delete this appointment?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              if (appt.id != null) {
+                _deleteAppointment(appt.id!);
+              }
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
       ),
     );
   }
@@ -740,6 +1011,7 @@ class _AppointmentState extends State<Appointment>
               ),
               SizedBox(height: 10),
               // Appointments cards
+              // Appointments list
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -752,15 +1024,99 @@ class _AppointmentState extends State<Appointment>
                       )
                     : _filteredAppointments.isEmpty
                         ? Center(
+                            child: Padding(
+                            padding: const EdgeInsets.all(32),
                             child: Text("No appointments found.",
-                                style: GoogleFonts.poppins(fontSize: 13)))
+                                style: GoogleFonts.poppins(fontSize: 13)),
+                          ))
                         : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: _filteredAppointments.map((appointment) {
                               return _buildAppointmentCard(appointment);
                             }).toList(),
                           ),
               ),
-              SizedBox(height: 20),
+
+              // Pagination Controls
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Text("Show",
+                            style: GoogleFonts.poppins(
+                                fontSize: 12, color: Colors.grey.shade600)),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<int>(
+                              value: _limit,
+                              items: _limitOptions.map((int value) {
+                                return DropdownMenuItem<int>(
+                                  value: value,
+                                  child: Text(value.toString(),
+                                      style: GoogleFonts.poppins(fontSize: 12)),
+                                );
+                              }).toList(),
+                              onChanged: (int? newValue) {
+                                if (newValue != null) {
+                                  setState(() {
+                                    _limit = newValue;
+                                    _currentPage = 1;
+                                    _isLoading = true;
+                                  });
+                                  _fetchAppointments();
+                                }
+                              },
+                              icon: const Icon(Icons.arrow_drop_down, size: 18),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.chevron_left),
+                          onPressed: _currentPage > 1
+                              ? () {
+                                  setState(() {
+                                    _currentPage--;
+                                    _isLoading = true;
+                                  });
+                                  _fetchAppointments();
+                                }
+                              : null,
+                        ),
+                        Text("Page $_currentPage",
+                            style: GoogleFonts.poppins(
+                                fontSize: 13, fontWeight: FontWeight.w600)),
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right),
+                          onPressed: _apiAppointments.length >= _limit
+                              ? () {
+                                  setState(() {
+                                    _currentPage++;
+                                    _isLoading = true;
+                                  });
+                                  _fetchAppointments();
+                                }
+                              : null,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
             ],
           ),
         ),
@@ -798,227 +1154,16 @@ class _AppointmentState extends State<Appointment>
         .length;
   }
 
-  Widget _buildAppointmentCard(AppointmentModel appointment) {
-    // Format date and time
-    final scheduledDate = appointment.date != null
-        ? DateFormat('MMM d, yyyy').format(appointment.date!)
-        : 'No date';
-    final timeRange =
-        '${appointment.startTime ?? '--'}  - ${appointment.endTime ?? '--'}';
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Slidable(
-        key: ValueKey(appointment.id),
-        endActionPane: ActionPane(
-          motion: const ScrollMotion(),
-          children: [
-            SlidableAction(
-              onPressed: (context) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Edit feature coming soon!')),
-                );
-              },
-              backgroundColor: const Color(0xFF21B7CA),
-              foregroundColor: Colors.white,
-              icon: Icons.edit,
-              label: 'Edit',
-            ),
-            SlidableAction(
-              onPressed: (context) {
-                showDialog(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text('Delete Appointment'),
-                    content: const Text(
-                        'Are you sure you want to delete this appointment?'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: const Text('Cancel'),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          if (appointment.id != null) {
-                            _deleteAppointment(appointment.id!);
-                          }
-                        },
-                        child: const Text('Delete',
-                            style: TextStyle(color: Colors.red)),
-                      ),
-                    ],
-                  ),
-                );
-              },
-              backgroundColor: const Color(0xFFFE4A49),
-              foregroundColor: Colors.white,
-              icon: Icons.delete,
-              label: 'Delete',
-            ),
-          ],
-        ),
-        child: GestureDetector(
-          onTap: () {
-            if (appointment.id != null) {
-              showDialog(
-                context: context,
-                builder: (context) => AppointmentDetailDialog(
-                  appointmentId: appointment.id!,
-                ),
-              );
-            }
-          },
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.grey.shade200),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header with ID and status
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.payment, size: 14, color: Colors.grey[600]),
-                        SizedBox(width: 4),
-                        Text(
-                          appointment.paymentMethod ?? 'unpaid',
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey[700],
-                          ),
-                        ),
-                      ],
-                    ),
-                    _buildStatusTag(appointment.status ?? 'Unknown'),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                // Client and service
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            appointment.clientName ?? 'Unknown Client',
-                            style: GoogleFonts.poppins(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            appointment.serviceName ?? 'Unknown Service',
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              color: Colors.grey.shade700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Staff and price
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          appointment.staffName ?? 'Unassigned',
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          '\u20b9${appointment.amount?.toStringAsFixed(0) ?? '0'}',
-                          style: GoogleFonts.poppins(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.blue,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                // Schedule info
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.access_time, size: 14, color: Colors.blue),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          '$scheduledDate • $timeRange',
-                          style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            color: Colors.blue.shade700,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        '${appointment.duration ?? 0} mins',
-                        style: GoogleFonts.poppins(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.blue.shade700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Future<void> _deleteAppointment(String id) async {
     try {
-      // Show loading indicator
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Deleting appointment...')),
-      );
-
+      print('🗑️ Deleting appointment with ID: $id');
       await ApiService.deleteAppointment(id);
 
       // Refresh list
       await _fetchAppointments();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Appointment deleted successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
+      print('✅ Appointment deleted successfully');
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to delete: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      print('❌ Failed to delete appointment: $e');
     }
   }
 }

@@ -798,15 +798,26 @@ class ApiService {
     }
   }
 
-  static Future<List<AppointmentModel>> getAppointments() async {
+  static Future<List<AppointmentModel>> getAppointments(
+      {int? page, int? limit}) async {
     try {
       final token = await _getAuthToken();
       if (token == null) {
         throw Exception('No authentication token found');
       }
 
+      String url = '$baseUrl/crm/appointments';
+      Map<String, String> queryParams = {};
+
+      if (page != null) queryParams['page'] = page.toString();
+      if (limit != null) queryParams['limit'] = limit.toString();
+
+      if (queryParams.isNotEmpty) {
+        url += '?' + Uri(queryParameters: queryParams).query;
+      }
+
       final response = await http.get(
-        Uri.parse('$baseUrl/crm/appointments'),
+        Uri.parse(url),
         headers: {
           'Content-Type': 'application/json',
           'Cookie': 'crm_access_token=$token',
