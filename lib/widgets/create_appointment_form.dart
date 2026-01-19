@@ -7,6 +7,7 @@ import '../add_customer.dart';
 import '../customer_model.dart';
 import '../calender.dart';
 import '../services/api_service.dart';
+import '../appointment_model.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io' show HttpClient, X509Certificate;
@@ -45,8 +46,13 @@ class QueuedService {
 
 class CreateAppointmentForm extends StatefulWidget {
   final Function(List<Appointments>)? onAppointmentCreated;
+  final AppointmentModel? existingAppointment;
 
-  const CreateAppointmentForm({super.key, this.onAppointmentCreated});
+  const CreateAppointmentForm({
+    super.key,
+    this.onAppointmentCreated,
+    this.existingAppointment,
+  });
 
   @override
   State<CreateAppointmentForm> createState() => _CreateAppointmentFormState();
@@ -90,13 +96,114 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
   @override
   void initState() {
     super.initState();
-    _loadClients();
-    _loadStaff();
-    _loadServices();
+    _initializeData();
 
     // Add listeners for real-time pricing updates
     _discountCtrl.addListener(_recalculatePricingAndTimes);
     _taxCtrl.addListener(_recalculatePricingAndTimes);
+  }
+
+  Future<void> _initializeData() async {
+    await Future.wait([
+      _loadClients(),
+      _loadStaff(),
+      _loadServices(),
+    ]);
+
+    if (widget.existingAppointment != null) {
+      _prefillForm();
+    }
+  }
+
+  void _prefillForm() {
+    final appt = widget.existingAppointment!;
+    setState(() {
+      _selectedDate = appt.date ?? DateTime.now();
+      if (appt.startTime != null && appt.startTime!.contains(':')) {
+        final parts = appt.startTime!.split(':');
+        _startTime =
+            TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+      }
+
+      _notesCtrl.text = appt.notes ?? '';
+      _discountCtrl.text = appt.discount?.toString() ?? '0';
+      // Internal logic for tax if needed
+      _taxCtrl.text = '0';
+
+      // Prefill Client
+      if (appt.client != null) {
+        _selectedClient = _clients.cast<Client?>().firstWhere(
+            (c) => c?.customer.id == appt.client!.id,
+            orElse: () => null);
+      }
+      _clientSearchCtrl.text = appt.clientName ?? '';
+
+      // Prefill Queue
+      _queuedServices = [];
+      if (appt.serviceItems != null && appt.serviceItems!.isNotEmpty) {
+        for (var item in appt.serviceItems!) {
+          final service = _availableServices.firstWhere(
+            (s) => s.name == item.serviceName,
+            orElse: () => Service(
+              id: item.serviceName, // Fallback ID if not found
+              name: item.serviceName,
+              price: item.amount?.toInt(),
+              duration: item.duration,
+            ),
+          );
+          final staff = _staff.firstWhere(
+            (s) => s.fullName == item.staffName,
+            orElse: () => StaffMember(
+              id: '',
+              fullName: item.staffName ?? 'Unknown',
+            ),
+          );
+
+          DateTime sTime;
+          if (item.startTime != null && item.startTime!.contains(':')) {
+            final p = item.startTime!.split(':');
+            sTime = DateTime(_selectedDate.year, _selectedDate.month,
+                _selectedDate.day, int.parse(p[0]), int.parse(p[1]));
+          } else {
+            sTime = _combine(_selectedDate, _startTime);
+          }
+
+          _queuedServices.add(QueuedService(
+            service: service,
+            staff: staff,
+            startTime: sTime,
+            endTime: sTime.add(Duration(minutes: item.duration ?? 0)),
+          ));
+        }
+      } else {
+        // Single service fallback
+        final service = _availableServices.firstWhere(
+          (s) => s.name == appt.serviceName,
+          orElse: () => Service(
+            name: appt.serviceName,
+            price: appt.amount?.toInt(),
+            duration: appt.duration,
+          ),
+        );
+        final staff = _staff.firstWhere(
+          (s) => s.fullName == appt.staffName,
+          orElse: () => StaffMember(
+            id: '',
+            fullName: appt.staffName ?? 'Unknown staff',
+          ),
+        );
+        final sTime = _combine(_selectedDate, _startTime);
+
+        _queuedServices.add(QueuedService(
+          service: service,
+          staff: staff,
+          startTime: sTime,
+          endTime: sTime.add(Duration(minutes: appt.duration ?? 0)),
+        ));
+      }
+    });
+
+    _recalculatePricingAndTimes();
   }
 
   // Add method to load clients from API
@@ -517,8 +624,11 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
       final qs = _queuedServices.first;
 
       final appointmentData = {
-        "client": _selectedClient!.customer.id,
-        "clientName": _selectedClient!.name,
+        "client": _selectedClient?.customer.id ??
+            widget.existingAppointment?.client?.id,
+        "clientName": _selectedClient?.name ??
+            widget.existingAppointment?.clientName ??
+            '',
         "service": qs.service.id,
         "serviceName": qs.service.name,
         "staff": qs.staff.id,
@@ -532,19 +642,43 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
         "tax": _parseMoney(_taxCtrl.text),
         "totalAmount": _calculateTotalAmount(),
         "finalAmount": _parseMoney(_totalCtrl.text),
-        "paymentStatus": "pending",
+        "paymentStatus":
+            widget.existingAppointment?.status == 'paid' ? 'paid' : 'pending',
         "status": "scheduled",
         "mode": "offline",
         "isMultiService": _queuedServices.length > 1,
         "notes": _notesCtrl.text,
+        "internalNotes": "",
+        "rescheduleReason": "",
+        "cancelReason": "",
+        "serviceItems": _queuedServices.map((item) {
+          return {
+            "service": item.service.id,
+            "serviceName": item.service.name,
+            "staff": item.staff.id,
+            "staffName": item.staff.fullName,
+            "startTime": DateFormat('HH:mm').format(item.startTime),
+            "endTime": DateFormat('HH:mm').format(item.endTime),
+            "duration": item.service.duration,
+            "amount": item.service.price,
+            "addOns": [],
+          };
+        }).toList(),
       };
 
-      await ApiService.createAppointment(appointmentData);
+      if (widget.existingAppointment != null) {
+        await ApiService.updateAppointment(
+            widget.existingAppointment!.id!, appointmentData);
+      } else {
+        await ApiService.createAppointment(appointmentData);
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Appointment created successfully'),
+          SnackBar(
+            content: Text(widget.existingAppointment != null
+                ? 'Appointment updated successfully'
+                : 'Appointment created successfully'),
             backgroundColor: Colors.green,
           ),
         );
@@ -554,7 +688,9 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
           return Appointments(
             startTime: qs.startTime,
             duration: Duration(minutes: qs.service.duration ?? 0),
-            clientName: _selectedClient!.name,
+            clientName: _selectedClient?.name ??
+                widget.existingAppointment?.clientName ??
+                'Unknown',
             serviceName: qs.service.name ?? 'Unknown',
             staffName: (qs.staff.fullName ?? qs.staff.id) ?? 'Unknown',
             status: 'scheduled',
@@ -573,7 +709,8 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error creating appointment: $e'),
+            content: Text(
+                'Error ${widget.existingAppointment != null ? 'updating' : 'creating'} appointment: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -714,29 +851,23 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                         },
                         fieldViewBuilder:
                             (context, textCtrl, focusNode, onSubmit) {
-                          // Keep the same controller instance in the widget state
-                          if (_clientSearchCtrl.text != textCtrl.text) {
+                          // Sync initial text if needed
+                          if (_clientSearchCtrl.text != textCtrl.text &&
+                              textCtrl.text.isEmpty) {
                             textCtrl.text = _clientSearchCtrl.text;
-                            textCtrl.selection = TextSelection.collapsed(
-                                offset: textCtrl.text.length);
                           }
-
-                          textCtrl.addListener(() {
-                            _clientSearchCtrl.text = textCtrl.text;
-                            if (textCtrl.text.trim().isEmpty) {
-                              setState(() => _selectedClient = null);
-                            }
-                          });
 
                           return TextFormField(
                             controller: textCtrl,
                             focusNode: focusNode,
+                            readOnly: widget.existingAppointment != null,
                             decoration: _inputDecoration(
                               label: 'Search for a client...',
                               prefix: const Icon(Icons.search, size: 18),
                             ),
                             style: TextStyle(fontSize: 10.sp),
-                            validator: (_) => (_selectedClient == null)
+                            validator: (_) => (_selectedClient == null &&
+                                    widget.existingAppointment == null)
                                 ? 'Select a client'
                                 : null,
                           );
@@ -749,7 +880,9 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                       height: 40.h,
                       width: 40.h,
                       child: OutlinedButton(
-                        onPressed: _openAddClientDialog,
+                        onPressed: widget.existingAppointment == null
+                            ? _openAddClientDialog
+                            : null,
                         style: OutlinedButton.styleFrom(
                           padding: EdgeInsets.zero,
                           shape: RoundedRectangleBorder(
@@ -854,7 +987,21 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                             ),
                           ))
                       .toList(),
-                  onChanged: (staff) => setState(() => _selectedStaff = staff),
+                  onChanged: (staff) {
+                    setState(() {
+                      _selectedStaff = staff;
+                      // Staff Update Fix: If this is a single-service appointment,
+                      // update the staff for the item in the queue immediately.
+                      if (_queuedServices.length == 1 && staff != null) {
+                        _queuedServices[0] = QueuedService(
+                          service: _queuedServices[0].service,
+                          staff: staff,
+                          startTime: _queuedServices[0].startTime,
+                          endTime: _queuedServices[0].endTime,
+                        );
+                      }
+                    });
+                  },
                 ),
 
                 SizedBox(height: 12.h),

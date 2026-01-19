@@ -992,6 +992,41 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> updateAppointment(
+      String id, Map<String, dynamic> appointmentData) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
+      print('🔄 Updating appointment with ID: $id');
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/crm/appointments/$id'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': 'crm_access_token=$token',
+        },
+        body: json.encode(appointmentData),
+      );
+
+      print(
+          '📥 Update Appointment Response [${response.statusCode}]: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data;
+      } else {
+        throw Exception(
+            'Failed to update appointment: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('❌ Error updating appointment: $e');
+      rethrow;
+    }
+  }
+
   // End of ApiService class
 }
 

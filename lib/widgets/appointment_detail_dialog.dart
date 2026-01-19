@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:glowvita/widgets/create_appointment_form.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../appointment_model.dart';
@@ -178,9 +179,50 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                       spacing: 10,
                       runSpacing: 10,
                       children: [
-                        _actionChip(
-                            Icons.attach_money_rounded, 'Collect Payment'),
-                        _actionChip(Icons.calendar_today_rounded, 'Reschedule'),
+                        if (_appointment?.status?.toLowerCase() !=
+                            'completed') ...[
+                          _actionChip(
+                              Icons.attach_money_rounded, 'Collect Payment'),
+
+                          // ── Reschedule ──
+                          Material(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(20),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: () {
+                                if (_appointment == null) return;
+
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => CreateAppointmentForm(
+                                      existingAppointment: _appointment,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 8),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.calendar_today_rounded,
+                                        size: 16, color: Colors.grey.shade800),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Reschedule',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 12.5,
+                                        color: Colors.grey.shade800,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                         _buildStatusDropdown(
                             _appointment!.status ?? 'Scheduled'),
                       ],
@@ -616,51 +658,81 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
         color = Colors.grey.shade700;
     }
 
+    final bool isCompleted = currentStatus.toLowerCase().contains('completed');
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.grey.shade100,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: PopupMenuButton<String>(
-        onSelected: _handleStatusChange,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        itemBuilder: (context) {
-          return _statusOptions.map((status) {
-            return PopupMenuItem(
-              value: status,
-              child: Text(status, style: GoogleFonts.poppins()),
-            );
-          }).toList();
-        },
-        offset: const Offset(0, 40),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      child: isCompleted
+          ? Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration:
+                        BoxDecoration(color: color, shape: BoxShape.circle),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _formatStatus(currentStatus),
+                    style: GoogleFonts.poppins(
+                        fontSize: 12.5, fontWeight: FontWeight.w500),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Text(
-                _formatStatus(currentStatus),
-                style: GoogleFonts.poppins(
-                    fontSize: 12.5, fontWeight: FontWeight.w500),
+            )
+          : PopupMenuButton<String>(
+              onSelected: _handleStatusChange,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              itemBuilder: (context) {
+                return _statusOptions.map((status) {
+                  return PopupMenuItem(
+                    value: status,
+                    child: Text(status, style: GoogleFonts.poppins()),
+                  );
+                }).toList();
+              },
+              offset: const Offset(0, 40),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration:
+                          BoxDecoration(color: color, shape: BoxShape.circle),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _formatStatus(currentStatus),
+                      style: GoogleFonts.poppins(
+                          fontSize: 12.5, fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.keyboard_arrow_down,
+                        size: 16, color: Colors.black54),
+                  ],
+                ),
               ),
-              const SizedBox(width: 4),
-              const Icon(Icons.keyboard_arrow_down,
-                  size: 16, color: Colors.black54),
-            ],
-          ),
-        ),
-      ),
+            ),
     );
   }
 
   Future<void> _handleStatusChange(String selectedAction) async {
     if (_appointment == null) return;
+
+    if (_appointment!.status?.toLowerCase().contains('completed') ?? false) {
+      return;
+    }
 
     // Map UI action strings to API status keys
     String newStatusKey;
