@@ -810,7 +810,11 @@ class ApiService {
       Map<String, String> queryParams = {};
 
       if (page != null) queryParams['page'] = page.toString();
-      if (limit != null) queryParams['limit'] = limit.toString();
+      if (limit != null) {
+        queryParams['limit'] = limit.toString();
+        // Redundant parameter for backends that might expect pageSize
+        queryParams['pageSize'] = limit.toString();
+      }
 
       if (queryParams.isNotEmpty) {
         url += '?' + Uri(queryParameters: queryParams).query;
@@ -826,16 +830,26 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        List<AppointmentModel> appointments = [];
+
         if (data is List) {
-          return data.map((json) => AppointmentModel.fromJson(json)).toList();
+          appointments =
+              data.map((json) => AppointmentModel.fromJson(json)).toList();
         } else if (data is Map && data['data'] != null) {
           List<dynamic> appointmentsData = data['data'];
-          return appointmentsData
+          appointments = appointmentsData
               .map((json) => AppointmentModel.fromJson(json))
               .toList();
         } else {
           throw Exception('Unexpected response format from appointments API');
         }
+
+        // Client-side safeguard to enforce requested limit
+        if (limit != null && appointments.length > limit) {
+          appointments = appointments.take(limit).toList();
+        }
+
+        return appointments;
       } else {
         throw Exception(
             'Failed to load appointments: ${response.statusCode} - ${response.body}');
@@ -999,6 +1013,42 @@ class ApiService {
       }
     } catch (e) {
       print('❌ Error deleting appointment: $e');
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> collectPayment(
+      Map<String, dynamic> paymentData) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
+      print(
+          '🔄 Collecting payment for appointment ID: ${paymentData['appointmentId']}');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/crm/payments/collect'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': 'crm_access_token=$token',
+        },
+        body: json.encode(paymentData),
+      );
+
+      print(
+          '📥 Collect Payment Response [${response.statusCode}]: ${response.body}');
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data;
+      } else {
+        throw Exception(
+            'Failed to collect payment: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('❌ Error collecting payment: $e');
       rethrow;
     }
   }

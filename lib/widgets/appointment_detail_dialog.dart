@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:glowvita/widgets/collect_payment_dialog.dart';
 import 'package:glowvita/widgets/create_appointment_form.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -88,470 +89,276 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
     final date = _appointment!.date ?? DateTime.now();
     final formattedDate = DateFormat('EEEE, MMMM d, yyyy').format(date);
 
-    // Determine Service Name Display
-    String displayServiceName = _appointment?.serviceName ?? '—';
-    if (_appointment?.isWeddingService == true &&
-        _appointment?.weddingPackageDetails != null) {
-      displayServiceName =
-          _appointment!.weddingPackageDetails!.packageName ?? 'Wedding Package';
-    } else if (_appointment?.isMultiService == true) {
-      displayServiceName = 'Multi-Service';
-    }
+    final isCompleted =
+        _appointment?.status?.toLowerCase().contains('completed') ?? false;
+    final total = _appointment?.totalAmount ?? _appointment?.amount ?? 0.0;
+    final paid = _appointment?.amountPaid ?? 0.0;
+    final remainingBalance = (total - paid).clamp(0.0, double.infinity);
 
     return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: SizedBox(
-        width: MediaQuery.of(context).size.width * 0.92,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 18, 16, 12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Appointment',
+      backgroundColor: Colors.white,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: Colors.grey.shade400, width: 1),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 10, 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4),
+                        child: Text(
+                          'Appointment Details',
                           style: GoogleFonts.poppins(
-                            fontSize: 17,
+                            fontSize: 15,
                             fontWeight: FontWeight.w600,
+                            color: Colors.black,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
+                      ),
+                      const SizedBox(height: 1),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4),
+                        child: Text(
                           '${_appointment?.clientName ?? "Client"} • ${DateFormat('MMM d, yyyy').format(date)} • ${_appointment?.startTime ?? ''}',
                           style: GoogleFonts.poppins(
-                            fontSize: 12.5,
-                            color: Colors.grey.shade700,
+                            fontSize: 11.5,
+                            color: Colors.grey.shade800,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded, size: 22),
-                    onPressed: () => Navigator.pop(context),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ],
-              ),
-            ),
-
-            const Divider(height: 1, thickness: 0.6),
-
-            // Tabs
-            TabBar(
-              controller: _tabController,
-              isScrollable: true,
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              labelPadding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              indicatorColor: Colors.blueGrey.shade700,
-              labelColor: Colors.blueGrey.shade900,
-              unselectedLabelColor: Colors.grey.shade600,
-              labelStyle: GoogleFonts.poppins(
-                  fontSize: 13, fontWeight: FontWeight.w600),
-              tabs: const [
-                Tab(text: 'Details'),
-                Tab(text: 'Client History'),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close_rounded,
+                      size: 18, color: Colors.black87),
+                  onPressed: () => Navigator.pop(context),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  visualDensity: VisualDensity.compact,
+                ),
               ],
             ),
+          ),
 
-            // Scrollable content
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          const Divider(height: 1, thickness: 1, color: Colors.grey),
+
+          // Tabs
+          TabBar(
+            controller: _tabController,
+            isScrollable: false,
+            indicatorColor: const Color(0xFF673AB7),
+            indicatorSize: TabBarIndicatorSize.label,
+            labelColor: Colors.black,
+            unselectedLabelColor: Colors.grey.shade800,
+            labelStyle: GoogleFonts.poppins(
+                fontSize: 12.5, fontWeight: FontWeight.w700),
+            unselectedLabelStyle: GoogleFonts.poppins(
+                fontSize: 12.5, fontWeight: FontWeight.w500),
+            padding: EdgeInsets.zero,
+            labelPadding: const EdgeInsets.symmetric(vertical: 6),
+            tabs: [
+              Tab(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const SizedBox(height: 16),
+                    const Icon(Icons.person_outline_rounded, size: 15),
+                    const SizedBox(width: 6),
+                    const Text('Details'),
+                  ],
+                ),
+              ),
+              Tab(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.history_rounded, size: 15),
+                    const SizedBox(width: 6),
+                    const Text('Client History'),
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 5, vertical: 0.5),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        border: Border.all(color: Colors.black12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text('4',
+                          style: GoogleFonts.poppins(
+                              fontSize: 9,
+                              color: Colors.black87,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
 
-                    // Quick actions
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
+          const Divider(height: 1, thickness: 1, color: Colors.grey),
+
+          // Body
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Action Buttons Row (Top)
+                  if (!isCompleted) ...[
+                    Row(
                       children: [
-                        if (_appointment?.status?.toLowerCase() !=
-                            'completed') ...[
-                          _actionChip(
-                              Icons.attach_money_rounded, 'Collect Payment'),
-
-                          // ── Reschedule ──
-                          Material(
-                            color: Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(20),
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(20),
+                        if (remainingBalance > 0)
+                          Expanded(
+                            child: _outlinedActionButton(
+                                Icons.payments_outlined, 'Collect Payment',
+                                onTap: () {
+                              _showCollectPaymentDialog();
+                            }),
+                          ),
+                        if (remainingBalance > 0) const SizedBox(width: 8),
+                        Expanded(
+                          child: _outlinedActionButton(
+                              Icons.calendar_month_rounded, 'Reschedule',
                               onTap: () {
-                                if (_appointment == null) return;
-
-                                Navigator.of(context).push(
+                            if (_appointment == null) return;
+                            Navigator.of(context)
+                                .push(
                                   MaterialPageRoute(
                                     builder: (context) => CreateAppointmentForm(
                                       existingAppointment: _appointment,
                                     ),
                                   ),
-                                );
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 8),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.calendar_today_rounded,
-                                        size: 16, color: Colors.grey.shade800),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      'Reschedule',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 12.5,
-                                        color: Colors.grey.shade800,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                        _buildStatusDropdown(
-                            _appointment!.status ?? 'Scheduled'),
+                                )
+                                .then((_) => _fetchAppointmentDetails());
+                          }),
+                        ),
                       ],
                     ),
-
-                    const SizedBox(height: 24),
-
-                    // Info cards grid
-                    ..._buildInfoGrid([
-                      _infoTile(Icons.person_outline_rounded, 'CLIENT',
-                          _appointment?.clientName ?? '—'),
-                      _infoTile(Icons.calendar_today_outlined, 'DATE & TIME',
-                          '$formattedDate\n${_appointment?.startTime ?? ''} - ${_appointment?.endTime ?? ''} (${_appointment?.duration ?? '?'} min)'),
-                      _infoTile(Icons.content_cut_rounded, 'SERVICE',
-                          displayServiceName),
-                      _infoTile(Icons.circle, 'STATUS',
-                          _appointment?.status?.capitalize() ?? 'Scheduled',
-                          isStatus: true),
-                      _infoTile(Icons.people_outline_rounded, 'STAFF',
-                          _appointment?.staffName ?? '—'),
-                    ]),
-
-                    // Location Info (Home Service)
-                    if (_appointment?.isHomeService == true &&
-                        _appointment?.homeServiceLocation != null) ...[
-                      const SizedBox(height: 16),
-                      _infoTile(
-                        Icons.location_on_outlined,
-                        'HOME SERVICE LOCATION',
-                        _appointment!.homeServiceLocation!.address ?? 'N/A',
-                      ),
-                    ],
-
-                    // Notes
-                    if (_appointment?.notes != null &&
-                        _appointment!.notes!.isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      _infoTile(
-                        Icons.note_alt_outlined,
-                        'NOTES',
-                        _appointment!.notes!,
-                      ),
-                    ],
-
-                    // Service List (Multi/Wedding)
-                    _buildServiceList(),
-
-                    const SizedBox(height: 28),
-
-                    // Payment section
-                    Text(
-                      'Payment Details',
-                      style: GoogleFonts.poppins(
-                          fontSize: 14.5, fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 12),
-
-                    _paymentRow('Service Amount',
-                        '₹${_appointment?.amount?.toStringAsFixed(2) ?? '0.00'}'),
-
-                    if ((_appointment?.discount ?? 0) > 0)
-                      _paymentRow('Discount',
-                          '- ₹${_appointment?.discount?.toStringAsFixed(2) ?? '0.00'}',
-                          muted: true),
-
-                    _paymentRow('Total Amount',
-                        '₹${_appointment?.totalAmount?.toStringAsFixed(2) ?? _appointment?.amount?.toStringAsFixed(2) ?? '0.00'}',
-                        bold: true),
-                    _paymentRow('Amount Paid',
-                        '₹${_appointment?.amountPaid?.toStringAsFixed(2) ?? '0.00'}',
-                        muted: true),
-                    _paymentRow('Amount Remaining',
-                        '₹${_appointment?.amountRemaining?.toStringAsFixed(2) ?? '0.00'}',
-                        muted: true),
-
                     const SizedBox(height: 8),
-                    Text(
-                      '• ${_appointment?.paymentMethod?.capitalize() ?? 'Unpaid'}',
-                      style: GoogleFonts.poppins(
-                          fontSize: 12.5, color: Colors.grey.shade700),
-                    ),
-
-                    // Payment History List
-                    if (_appointment?.paymentHistory != null &&
-                        _appointment!.paymentHistory!.isNotEmpty)
-                      _buildPaymentHistoryList(),
-
-                    const SizedBox(height: 32),
                   ],
-                ),
-              ),
-            ),
+                  // Status Dropdown on its own line
+                  _statusDropdown(_appointment?.status ?? 'Scheduled'),
 
-            // Footer
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.grey.shade800,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 10),
-                    ),
-                    child: const Text('Close', style: TextStyle(fontSize: 14)),
+                  const SizedBox(height: 12),
+
+                  // Payment History
+                  _paymentHistorySection(),
+
+                  const SizedBox(height: 16),
+
+                  // Info Cards
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          children: [
+                            _infoCard(Icons.person_outline_rounded, 'CLIENT',
+                                _appointment?.clientName ?? '—'),
+                            const SizedBox(height: 10),
+                            _serviceCard(),
+                            const SizedBox(height: 10),
+                            _infoCard(Icons.people_outline_rounded, 'STAFF',
+                                _appointment?.staffName ?? '—'),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            _infoCard(
+                              Icons.calendar_today_outlined,
+                              'DATE & TIME',
+                              DateFormat('EEEE, MMMM d, yyyy').format(date),
+                              subtitle:
+                                  '${_appointment?.startTime ?? ''} - ${_appointment?.endTime ?? ''} (${_appointment?.duration ?? '?'} min)',
+                              iconData: Icons.access_time_rounded,
+                            ),
+                            const SizedBox(height: 10),
+                            _statusCard(_appointment?.status ?? 'Scheduled'),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  ElevatedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.receipt_outlined, size: 18),
-                    label: const Text('Invoice'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueGrey.shade900,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 10),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
+
+                  const SizedBox(height: 20),
+                  const Divider(height: 1, thickness: 1, color: Colors.black),
+                  const SizedBox(height: 16),
+
+                  // Payment Details Summary
+                  Text(
+                    'Payment Details',
+                    style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black),
                   ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── Helper Methods ──────────────────────────────────────────────────────────
-
-  Widget _buildServiceList() {
-    if (_appointment?.isWeddingService == true &&
-        _appointment?.weddingPackageDetails?.packageServices != null &&
-        _appointment!.weddingPackageDetails!.packageServices!.isNotEmpty) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 24),
-          Text(
-            'Package Services',
-            style: GoogleFonts.poppins(
-                fontSize: 14.5, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 8),
-          ..._appointment!.weddingPackageDetails!.packageServices!.map((s) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Row(
-                children: [
-                  const Icon(Icons.check_circle_outline,
-                      size: 16, color: Colors.grey),
-                  const SizedBox(width: 8),
-                  Text(s.serviceName ?? 'Unknown Service',
-                      style: GoogleFonts.poppins(fontSize: 13)),
-                ],
-              ),
-            );
-          }),
-        ],
-      );
-    } else if (_appointment?.isMultiService == true &&
-        _appointment?.serviceItems != null &&
-        _appointment!.serviceItems!.isNotEmpty) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 24),
-          Text(
-            'Services',
-            style: GoogleFonts.poppins(
-                fontSize: 14.5, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 8),
-          ..._appointment!.serviceItems!.map((s) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(s.serviceName ?? 'Unknown',
-                            style: GoogleFonts.poppins(
-                                fontSize: 13, fontWeight: FontWeight.w500)),
-                        if (s.staffName != null)
-                          Text('by ${s.staffName}',
-                              style: GoogleFonts.poppins(
-                                  fontSize: 11, color: Colors.grey)),
-                      ],
-                    ),
+                  const SizedBox(height: 10),
+                  _paymentDetailRow(
+                      'Service Amount:', _appointment?.amount ?? 0),
+                  _paymentDetailRow('Add-on Amount:', 0.0),
+                  _paymentDetailRow('Service Tax (GST):', 0.0),
+                  _paymentDetailRow('Platform Fee:', 0.0),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 6),
+                    child:
+                        Divider(height: 1, thickness: 1, color: Colors.black12),
                   ),
-                  Text('₹${s.amount?.toStringAsFixed(0) ?? '0'}',
-                      style: GoogleFonts.poppins(fontSize: 13)),
-                ],
-              ),
-            );
-          }),
-        ],
-      );
-    }
-    return const SizedBox.shrink();
-  }
+                  _paymentDetailRow('Total Amount:',
+                      _appointment?.totalAmount ?? _appointment?.amount ?? 0,
+                      bold: true),
+                  _paymentDetailRow(
+                      'Amount Paid:', _appointment?.amountPaid ?? 0),
+                  _paymentDetailRow(
+                      'Amount Remaining:', _appointment?.amountRemaining ?? 0,
+                      color: Colors.red.shade800, bold: true),
+                  _paymentDetailRow('Payment Status:', 0,
+                      isStatusText: true,
+                      status: _getPaymentStatusText(_appointment!)),
 
-  Widget _buildPaymentHistoryList() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 24),
-        Text(
-          'Payment History',
-          style:
-              GoogleFonts.poppins(fontSize: 14.5, fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.grey.shade50,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.shade200),
-          ),
-          child: Column(
-            children: _appointment!.paymentHistory!.map((p) {
-              DateTime? pDate;
-              try {
-                if (p.paymentDate != null)
-                  pDate = DateTime.parse(p.paymentDate!);
-              } catch (_) {}
+                  const SizedBox(height: 20),
 
-              return Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                            pDate != null
-                                ? DateFormat('MMM d, hh:mm a').format(pDate)
-                                : 'Unknown Date',
-                            style: GoogleFonts.poppins(fontSize: 12)),
-                        Text(p.paymentMethod?.capitalize() ?? 'Cash',
-                            style: GoogleFonts.poppins(
-                                fontSize: 11, color: Colors.grey)),
-                      ],
-                    ),
-                    Text('₹${p.amount?.toStringAsFixed(2) ?? '0.00'}',
+                  // Bottom Close Button
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 8),
+                        side: BorderSide(color: Colors.grey.shade400, width: 1),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
+                        minimumSize: const Size(0, 0),
+                        backgroundColor: Colors.white,
+                      ),
+                      child: Text(
+                        'Close',
                         style: GoogleFonts.poppins(
-                            fontSize: 13, fontWeight: FontWeight.w600)),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _actionChip(IconData icon, String label) {
-    return Material(
-      color: Colors.grey.shade100,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () {},
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 16, color: Colors.grey.shade800),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: GoogleFonts.poppins(
-                    fontSize: 12.5, color: Colors.grey.shade800),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _infoTile(IconData icon, String label, String value,
-      {bool isStatus = false}) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            size: 20,
-            color: isStatus ? Colors.red.shade400 : Colors.grey.shade700,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: GoogleFonts.poppins(
-                    fontSize: 11,
-                    color: Colors.grey.shade600,
-                    fontWeight: FontWeight.w500,
+                            fontSize: 12,
+                            color: Colors.black,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  value,
-                  style: GoogleFonts.poppins(
-                      fontSize: 13.5, fontWeight: FontWeight.w500),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
@@ -559,81 +366,35 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
     );
   }
 
-  List<Widget> _buildInfoGrid(List<Widget> tiles) {
-    final List<Widget> result = [];
-
-    for (int i = 0; i < tiles.length; i += 2) {
-      result.add(
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _outlinedActionButton(IconData icon, String label,
+      {required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: Colors.grey.shade400, width: 1),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Expanded(child: tiles[i]),
-            const SizedBox(width: 12),
-            if (i + 1 < tiles.length)
-              Expanded(child: tiles[i + 1])
-            else
-              const Spacer(),
+            Icon(icon, size: 14, color: Colors.black),
+            const SizedBox(width: 6),
+            Text(label,
+                style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: Colors.black,
+                    fontWeight: FontWeight.w600)),
           ],
         ),
-      );
-
-      // Add spacing between rows (except after the last one)
-      if (i + 2 < tiles.length) {
-        result.add(const SizedBox(height: 12));
-      }
-    }
-
-    return result;
-  }
-
-  Widget _paymentRow(String label, String value,
-      {bool bold = false, bool muted = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: GoogleFonts.poppins(
-              fontSize: 13,
-              color: muted ? Colors.grey.shade700 : Colors.black87,
-              fontWeight: bold ? FontWeight.w600 : FontWeight.w400,
-            ),
-          ),
-          Text(
-            value,
-            style: GoogleFonts.poppins(
-              fontSize: 13,
-              color: muted ? Colors.grey.shade700 : Colors.black87,
-              fontWeight: bold ? FontWeight.w600 : FontWeight.w500,
-            ),
-          ),
-        ],
       ),
     );
   }
 
-  String _formatStatus(String status) {
-    if (status == 'completed_without_payment') return 'Completed (No Pay)';
-    return status.replaceAll('_', ' ').capitalize();
-  }
-
-  Widget _buildStatusDropdown(String currentStatus) {
-    if (_isUpdatingStatus) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: const SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2)),
-      );
-    }
-
+  Widget _statusDropdown(String currentStatus) {
     Color color;
     switch (currentStatus.toLowerCase()) {
       case 'scheduled':
@@ -649,6 +410,7 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
         color = Colors.purple.shade700;
         break;
       case 'completed_without_payment':
+      case 'completed (no pay)':
         color = Colors.purple.shade300;
         break;
       case 'in_progress':
@@ -661,70 +423,440 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
     final bool isCompleted = currentStatus.toLowerCase().contains('completed');
 
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(20),
+        color: Colors.white,
+        border: Border.all(color: Colors.grey.shade400, width: 1),
+        borderRadius: BorderRadius.circular(6),
       ),
-      child: isCompleted
-          ? Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration:
-                        BoxDecoration(color: color, shape: BoxShape.circle),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    _formatStatus(currentStatus),
-                    style: GoogleFonts.poppins(
-                        fontSize: 12.5, fontWeight: FontWeight.w500),
-                  ),
-                ],
-              ),
-            )
-          : PopupMenuButton<String>(
-              onSelected: _handleStatusChange,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              itemBuilder: (context) {
-                return _statusOptions.map((status) {
-                  return PopupMenuItem(
-                    value: status,
-                    child: Text(status, style: GoogleFonts.poppins()),
-                  );
-                }).toList();
-              },
-              offset: const Offset(0, 40),
-              child: Padding(
+      child: IgnorePointer(
+        ignoring: _isUpdatingStatus,
+        child: isCompleted
+            ? Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: Row(
-                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration:
-                          BoxDecoration(color: color, shape: BoxShape.circle),
+                    Row(
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                              color: color, shape: BoxShape.circle),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _formatStatus(currentStatus),
+                          style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _formatStatus(currentStatus),
-                      style: GoogleFonts.poppins(
-                          fontSize: 12.5, fontWeight: FontWeight.w500),
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.keyboard_arrow_down,
-                        size: 16, color: Colors.black54),
+                  ],
+                ),
+              )
+            : PopupMenuButton<String>(
+                onSelected: _handleStatusChange,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(color: Colors.grey.shade400),
+                ),
+                itemBuilder: (context) {
+                  return _statusOptions.map((status) {
+                    return PopupMenuItem(
+                      value: status,
+                      child: Text(status,
+                          style: GoogleFonts.poppins(
+                              fontSize: 12, fontWeight: FontWeight.w500)),
+                    );
+                  }).toList();
+                },
+                offset: const Offset(0, 40),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Row(
+                    children: [
+                      if (_isUpdatingStatus)
+                        const SizedBox(
+                          width: 12,
+                          height: 12,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 1.5, color: Colors.black),
+                        )
+                      else
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                              color: color, shape: BoxShape.circle),
+                        ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _formatStatus(currentStatus),
+                          style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const Icon(Icons.unfold_more_rounded,
+                          size: 16, color: Colors.black),
+                    ],
+                  ),
+                ),
+              ),
+      ),
+    );
+  }
+
+  Widget _paymentHistorySection() {
+    bool hasHistory = _appointment?.paymentHistory != null &&
+        _appointment!.paymentHistory!.isNotEmpty;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: Colors.grey.shade400, width: 1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.history_rounded, size: 14, color: Colors.black),
+              const SizedBox(width: 6),
+              Text('Payment History',
+                  style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (!hasHistory)
+            Text('No payments recorded yet.',
+                style: GoogleFonts.poppins(
+                    fontSize: 11.5, color: Colors.grey.shade700))
+          else
+            ..._appointment!.paymentHistory!
+                .map((p) => Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(p.paymentMethod?.capitalize() ?? 'Paid',
+                              style: GoogleFonts.poppins(
+                                  fontSize: 11.5, color: Colors.black)),
+                          Text('₹${p.amount?.toStringAsFixed(2) ?? '0.00'}',
+                              style: GoogleFonts.poppins(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.black)),
+                        ],
+                      ),
+                    ))
+                .toList(),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoCard(IconData icon, String label, String value,
+      {String? subtitle, IconData? iconData}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: Colors.grey.shade400, width: 1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              border: Border.all(color: Colors.black12),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Icon(icon, size: 16, color: Colors.black),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                    style: GoogleFonts.poppins(
+                        fontSize: 8.5,
+                        color: Colors.grey.shade800,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5)),
+                Text(value,
+                    style: GoogleFonts.poppins(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black)),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      if (iconData != null) ...[
+                        Icon(iconData, size: 11, color: Colors.grey.shade700),
+                        const SizedBox(width: 4),
+                      ],
+                      Expanded(
+                          child: Text(subtitle,
+                              style: GoogleFonts.poppins(
+                                  fontSize: 10,
+                                  color: Colors.grey.shade700,
+                                  fontWeight: FontWeight.w500))),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _serviceCard() {
+    final List<ServiceItem> items = _appointment!.serviceItems ?? [];
+    final String label =
+        items.length > 1 ? 'SERVICES (${items.length})' : 'SERVICE';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: Colors.grey.shade400, width: 1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  border: Border.all(color: Colors.black12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Icon(Icons.content_cut_rounded,
+                    size: 16, color: Colors.black),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label,
+                        style: GoogleFonts.poppins(
+                            fontSize: 8.5,
+                            color: Colors.grey.shade800,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5)),
+                    Text(_appointment!.serviceName ?? 'Unknown',
+                        style: GoogleFonts.poppins(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black)),
                   ],
                 ),
               ),
-            ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // List services dynamically
+          if (items.isEmpty)
+            _serviceItemDetail(
+                _appointment!.serviceName ?? 'Unknown',
+                _appointment!.amount ?? 0,
+                _appointment!.staffName ?? '—',
+                '${_appointment!.startTime}-${_appointment!.endTime} (${_appointment!.duration} min)')
+          else
+            ...items
+                .map((it) => _serviceItemDetail(
+                    it.serviceName ?? '—',
+                    it.amount ?? 0,
+                    it.staffName ?? '—',
+                    '${it.startTime}-${it.endTime} (${it.duration} min)'))
+                .toList(),
+        ],
+      ),
     );
+  }
+
+  Widget _serviceItemDetail(
+      String name, double price, String staff, String time) {
+    return Container(
+      margin: const EdgeInsets.only(top: 6),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFBFBFB),
+        border: Border.all(color: Colors.black12),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(name,
+                  style: GoogleFonts.poppins(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black)),
+              Text('₹${price.toStringAsFixed(2)}',
+                  style: GoogleFonts.poppins(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black)),
+            ],
+          ),
+          const SizedBox(height: 1),
+          Text('$staff • $time',
+              style: GoogleFonts.poppins(
+                  fontSize: 10,
+                  color: Colors.grey.shade800,
+                  fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusCard(String status) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: Colors.grey.shade400, width: 1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.red.shade50,
+              border: Border.all(color: Colors.red.shade100),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Icon(Icons.circle, size: 16, color: Colors.red.shade300),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('STATUS',
+                    style: GoogleFonts.poppins(
+                        fontSize: 8.5,
+                        color: Colors.grey.shade800,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5)),
+                Text(_formatStatus(status),
+                    style: GoogleFonts.poppins(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _paymentDetailRow(String label, double value,
+      {bool bold = false,
+      Color? color,
+      bool isStatusText = false,
+      String? status}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 5),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: Colors.black87,
+                  fontWeight: bold ? FontWeight.w700 : FontWeight.w400)),
+          if (isStatusText)
+            Text(status ?? 'Unpaid',
+                style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: Colors.black,
+                    fontWeight: FontWeight.w700))
+          else
+            Text('₹${value.toStringAsFixed(2)}',
+                style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: color ?? Colors.black,
+                    fontWeight: bold ? FontWeight.w700 : FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+
+  String _getPaymentStatusText(AppointmentModel appt) {
+    final paid = appt.amountPaid ?? 0;
+    final total = appt.totalAmount ?? appt.amount ?? 0;
+    if (paid >= total && total > 0) return 'Paid';
+    if (paid > 0) return 'Partially Paid';
+    return 'Unpaid';
+  }
+
+  String _formatStatus(String status) {
+    if (status == 'completed_without_payment' ||
+        status.toLowerCase() == 'completed (no pay)')
+      return 'Completed (No Pay)';
+    return status.replaceAll('_', ' ').capitalize();
+  }
+
+  void _showCollectPaymentDialog() {
+    if (_appointment == null) return;
+    showDialog(
+      context: context,
+      builder: (context) => CollectPaymentDialog(appointment: _appointment!),
+    ).then((result) async {
+      if (result != null) {
+        print('💰 Payment Collection Success: $result');
+        setState(() => _isUpdatingStatus = true);
+        try {
+          await _fetchAppointmentDetails();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Payment collected successfully')),
+            );
+          }
+        } catch (e) {
+          print('❌ Error refreshing after payment: $e');
+        } finally {
+          setState(() => _isUpdatingStatus = false);
+        }
+      }
+    });
   }
 
   Future<void> _handleStatusChange(String selectedAction) async {
@@ -734,16 +866,18 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
       return;
     }
 
-    // Map UI action strings to API status keys
     String newStatusKey;
     if (selectedAction == 'Confirm Appointment') {
       newStatusKey = 'confirmed';
     } else if (selectedAction == 'Complete without Payment') {
-      newStatusKey = 'completed';
+      newStatusKey = 'completed_without_payment';
     } else if (selectedAction == 'Cancel Appointment') {
       newStatusKey = 'cancelled';
+    } else if (selectedAction == 'Collect Payment') {
+      _showCollectPaymentDialog();
+      return;
     } else {
-      return; // Unknown action
+      return;
     }
 
     if (newStatusKey == (_appointment!.status?.toLowerCase() ?? '')) {
@@ -756,8 +890,11 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
       cancellationReason = await showDialog<String>(
         context: context,
         builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: Colors.grey.shade400)),
           title: Text('Cancel Appointment',
-              style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+              style: GoogleFonts.poppins(fontWeight: FontWeight.w700)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -768,8 +905,7 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                 controller: reasonController,
                 decoration: InputDecoration(
                     hintText: 'Reason...',
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8)),
+                    border: const OutlineInputBorder(),
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 8)),
                 maxLines: 3,
@@ -779,7 +915,7 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Back'),
+              child: const Text('Back', style: TextStyle(color: Colors.black)),
             ),
             ElevatedButton(
               onPressed: () {
@@ -790,53 +926,39 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                 }
                 Navigator.pop(context, reasonController.text.trim());
               },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.black),
               child: const Text('Cancel Appointment',
                   style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
       );
-
       if (cancellationReason == null) return;
     }
 
     setState(() => _isUpdatingStatus = true);
     try {
-      final res = await ApiService.updateAppointmentStatus(
-          _appointment!.id!, newStatusKey,
-          cancellationReason: cancellationReason);
-
+      await ApiService.updateAppointment(_appointment!.id!, {
+        'status': newStatusKey,
+        if (cancellationReason != null)
+          'cancellationReason': cancellationReason,
+      });
+      await _fetchAppointmentDetails();
       if (mounted) {
-        try {
-          if (res['appointment'] != null) {
-            setState(() {
-              _appointment = AppointmentModel.fromJson(res['appointment']);
-              _isUpdatingStatus = false;
-            });
-          }
-        } catch (e) {
-          print('⚠️ Parsing error after status update (suppressed): $e');
-          // If parsing fails, we still want to show success as the API call worked.
-          // We'll trigger a fresh fetch to get the correct data.
-          await _fetchAppointmentDetails();
-          if (mounted) {
-            setState(() => _isUpdatingStatus = false);
-          }
-        }
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Status updated successfully')),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Status updated successfully')),
+        );
       }
     } catch (e) {
+      print('❌ Error updating status: $e');
       if (mounted) {
-        setState(() => _isUpdatingStatus = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to update status: $e')),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUpdatingStatus = false);
       }
     }
   }

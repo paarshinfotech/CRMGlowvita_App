@@ -8,7 +8,7 @@ import 'Profile.dart';
 import 'widgets/custom_drawer.dart';
 import 'services/api_service.dart';
 import 'appointment_model.dart';
-import 'services/api_service.dart';
+import 'widgets/collect_payment_dialog.dart';
 
 extension StringExtension on String {
   String capitalize() {
@@ -544,6 +544,11 @@ class _AppointmentState extends State<Appointment>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                if ((appt.amountPaid ?? 0) <
+                    (appt.totalAmount ?? appt.amount ?? 0))
+                  _actionIcon(Icons.payments_outlined, Colors.green, () {
+                    _showCollectPaymentDialog(appt);
+                  }, label: 'Pay'),
                 _actionIcon(Icons.edit_outlined, Colors.blue, () {
                   _editAppointment(appt);
                 }, label: 'Edit'),
@@ -621,6 +626,20 @@ class _AppointmentState extends State<Appointment>
         ],
       ),
     );
+  }
+
+  void _showCollectPaymentDialog(AppointmentModel appt) {
+    showDialog(
+      context: context,
+      builder: (context) => CollectPaymentDialog(appointment: appt),
+    ).then((result) {
+      if (result != null) {
+        print('Payment Collected: $result');
+        // TODO: Call API to save payment
+        // For now, reload appointments to reflect any changes if API was called
+        _fetchAppointments();
+      }
+    });
   }
 
   @override
