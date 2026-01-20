@@ -89,11 +89,19 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
     final date = _appointment!.date ?? DateTime.now();
     final formattedDate = DateFormat('EEEE, MMMM d, yyyy').format(date);
 
-    final isCompleted =
-        _appointment?.status?.toLowerCase().contains('completed') ?? false;
-    final total = _appointment?.totalAmount ?? _appointment?.amount ?? 0.0;
-    final paid = _appointment?.amountPaid ?? 0.0;
-    final remainingBalance = (total - paid).clamp(0.0, double.infinity);
+    // Determine Service Name Display
+    String displayServiceName = _appointment?.serviceName ?? '—';
+    if (_appointment?.isWeddingService == true &&
+        _appointment?.weddingPackageDetails != null) {
+      displayServiceName =
+          _appointment!.weddingPackageDetails!.packageName ?? 'Wedding Package';
+    } else if (_appointment?.isMultiService == true) {
+      displayServiceName = 'Multi-Service';
+    }
+
+    final status = _appointment?.status?.toLowerCase() ?? '';
+    final isCompleted = status.contains('completed');
+    final isCancelled = status.contains('cancelled');
 
     return Dialog(
       backgroundColor: Colors.white,
@@ -218,38 +226,42 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Action Buttons Row (Top)
-                  if (!isCompleted) ...[
-                    Row(
-                      children: [
-                        if (remainingBalance > 0)
+                  if (!isCompleted)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Row(
+                        children: [
+                          if (!isCancelled) ...[
+                            Expanded(
+                              child: _outlinedActionButton(
+                                  Icons.payments_outlined, 'Collect Payment',
+                                  onTap: () {
+                                _showCollectPaymentDialog();
+                              }),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
                           Expanded(
                             child: _outlinedActionButton(
-                                Icons.payments_outlined, 'Collect Payment',
+                                Icons.calendar_month_rounded, 'Reschedule',
                                 onTap: () {
-                              _showCollectPaymentDialog();
+                              if (_appointment == null) return;
+                              Navigator.of(context)
+                                  .push(
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          CreateAppointmentForm(
+                                        existingAppointment: _appointment,
+                                      ),
+                                    ),
+                                  )
+                                  .then((_) => _fetchAppointmentDetails());
                             }),
                           ),
-                        if (remainingBalance > 0) const SizedBox(width: 8),
-                        Expanded(
-                          child: _outlinedActionButton(
-                              Icons.calendar_month_rounded, 'Reschedule',
-                              onTap: () {
-                            if (_appointment == null) return;
-                            Navigator.of(context)
-                                .push(
-                                  MaterialPageRoute(
-                                    builder: (context) => CreateAppointmentForm(
-                                      existingAppointment: _appointment,
-                                    ),
-                                  ),
-                                )
-                                .then((_) => _fetchAppointmentDetails());
-                          }),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 8),
-                  ],
+                  const SizedBox(height: 8),
                   // Status Dropdown on its own line
                   _statusDropdown(_appointment?.status ?? 'Scheduled'),
 

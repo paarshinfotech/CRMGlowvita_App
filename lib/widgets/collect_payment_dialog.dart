@@ -38,17 +38,12 @@ class _CollectPaymentDialogState extends State<CollectPaymentDialog> {
   @override
   void initState() {
     super.initState();
-    final total =
-        widget.appointment.totalAmount ?? widget.appointment.amount ?? 0.0;
-    final paid = widget.appointment.amountPaid ?? 0.0;
-    final remaining = (total - paid).clamp(0.0, double.infinity);
+    final remaining = (widget.appointment.amountRemaining ??
+            (widget.appointment.totalAmount ?? 0) -
+                (widget.appointment.amountPaid ?? 0))
+        .clamp(0.0, double.infinity);
 
-    // If it's a whole number, don't show .00
-    if (remaining == remaining.toInt()) {
-      _amountController.text = remaining.toInt().toString();
-    } else {
-      _amountController.text = remaining.toStringAsFixed(2);
-    }
+    _amountController.text = remaining.toStringAsFixed(0);
   }
 
   @override

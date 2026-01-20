@@ -810,11 +810,7 @@ class ApiService {
       Map<String, String> queryParams = {};
 
       if (page != null) queryParams['page'] = page.toString();
-      if (limit != null) {
-        queryParams['limit'] = limit.toString();
-        // Redundant parameter for backends that might expect pageSize
-        queryParams['pageSize'] = limit.toString();
-      }
+      if (limit != null) queryParams['limit'] = limit.toString();
 
       if (queryParams.isNotEmpty) {
         url += '?' + Uri(queryParameters: queryParams).query;
@@ -830,26 +826,16 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        List<AppointmentModel> appointments = [];
-
         if (data is List) {
-          appointments =
-              data.map((json) => AppointmentModel.fromJson(json)).toList();
+          return data.map((json) => AppointmentModel.fromJson(json)).toList();
         } else if (data is Map && data['data'] != null) {
           List<dynamic> appointmentsData = data['data'];
-          appointments = appointmentsData
+          return appointmentsData
               .map((json) => AppointmentModel.fromJson(json))
               .toList();
         } else {
           throw Exception('Unexpected response format from appointments API');
         }
-
-        // Client-side safeguard to enforce requested limit
-        if (limit != null && appointments.length > limit) {
-          appointments = appointments.take(limit).toList();
-        }
-
-        return appointments;
       } else {
         throw Exception(
             'Failed to load appointments: ${response.statusCode} - ${response.body}');

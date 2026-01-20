@@ -8,6 +8,7 @@ import 'Profile.dart';
 import 'widgets/custom_drawer.dart';
 import 'services/api_service.dart';
 import 'appointment_model.dart';
+import 'services/api_service.dart';
 import 'widgets/collect_payment_dialog.dart';
 
 extension StringExtension on String {
@@ -545,7 +546,11 @@ class _AppointmentState extends State<Appointment>
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 if ((appt.amountPaid ?? 0) <
-                    (appt.totalAmount ?? appt.amount ?? 0))
+                        (appt.totalAmount ?? appt.amount ?? 0) &&
+                    !(appt.status?.toLowerCase().contains('cancelled') ??
+                        false) &&
+                    !(appt.status?.toLowerCase().contains('completed') ??
+                        false))
                   _actionIcon(Icons.payments_outlined, Colors.green, () {
                     _showCollectPaymentDialog(appt);
                   }, label: 'Pay'),
