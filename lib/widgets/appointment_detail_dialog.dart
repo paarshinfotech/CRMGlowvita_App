@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../appointment_model.dart';
 import '../services/api_service.dart';
 import '../utils/string_extensions.dart';
+import '../invoice_management.dart';
 
 class AppointmentDetailDialog extends StatefulWidget {
   final String appointmentId;
@@ -100,8 +101,22 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
     }
 
     final status = _appointment?.status?.toLowerCase() ?? '';
-    final isCompleted = status.contains('completed');
     final isCancelled = status.contains('cancelled');
+
+    // An appointment is considered completed if:
+    // 1. Status explicitly contains "completed"
+    // 2. Status explicitly contains "paid" or "collected" or "success"
+    // 3. Amount is fully paid (amountPaid >= totalAmount)
+    final double totalAmount =
+        _appointment?.totalAmount ?? _appointment?.amount ?? 0;
+    final double amountPaid = _appointment?.amountPaid ?? 0;
+    final bool isPaidFull = totalAmount > 0 && amountPaid >= totalAmount;
+
+    final isCompleted = status.contains('completed') ||
+        status.contains('paid') ||
+        status.contains('collected') ||
+        status.contains('success') ||
+        isPaidFull;
 
     return Dialog(
       backgroundColor: Colors.white,
@@ -256,6 +271,21 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                                     ),
                                   )
                                   .then((_) => _fetchAppointmentDetails());
+                            }),
+                          ),
+                        ],
+                      ),
+                    )
+                  else if (!isCancelled)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _outlinedActionButton(
+                                Icons.receipt_long_outlined, 'View Invoice',
+                                onTap: () {
+                              // _showInvoice();
                             }),
                           ),
                         ],
@@ -432,7 +462,17 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
         color = Colors.grey.shade700;
     }
 
-    final bool isCompleted = currentStatus.toLowerCase().contains('completed');
+    final double totalAmount =
+        _appointment?.totalAmount ?? _appointment?.amount ?? 0;
+    final double amountPaid = _appointment?.amountPaid ?? 0;
+    final bool isPaidFull = totalAmount > 0 && amountPaid >= totalAmount;
+
+    final bool isCompleted =
+        currentStatus.toLowerCase().contains('completed') ||
+            currentStatus.toLowerCase().contains('paid') ||
+            currentStatus.toLowerCase().contains('collected') ||
+            currentStatus.toLowerCase().contains('success') ||
+            isPaidFull;
 
     return Container(
       width: double.infinity,
@@ -851,24 +891,49 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
     showDialog(
       context: context,
       builder: (context) => CollectPaymentDialog(appointment: _appointment!),
-    ).then((result) async {
-      if (result != null) {
-        print('💰 Payment Collection Success: $result');
-        setState(() => _isUpdatingStatus = true);
-        try {
-          await _fetchAppointmentDetails();
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Payment collected successfully')),
-            );
-          }
-        } catch (e) {
-          print('❌ Error refreshing after payment: $e');
-        } finally {
-          setState(() => _isUpdatingStatus = false);
-        }
-      }
-    });
+    ).then((_) => _fetchAppointmentDetails());
+  }
+
+  void _showInvoice() {
+    if (_appointment == null) return;
+
+    final invoiceData = {
+      'id': _appointment!.id ?? 'N/A',
+      'customer': _appointment!.clientName ?? 'Customer',
+      'email': _appointment!.client?.email ?? 'N/A',
+      'amount': _appointment!.totalAmount ?? _appointment!.amount ?? 0.0,
+      'date': _appointment!.date != null
+          ? DateFormat('yyyy-MM-dd').format(_appointment!.date!)
+          : DateFormat('yyyy-MM-dd').format(DateTime.now()),
+      'status': 'Paid',
+      'dueDate': '',
+      'services': _appointment!.serviceItems
+              ?.map((s) => {
+                    'name': s.serviceName ?? 'Unknown',
+                    'quantity': 1,
+                    'price': s.amount ?? 0.0,
+                    'tax': 0.0
+                  })
+              .toList() ??
+          [
+            {
+              'name': _appointment!.serviceName ?? 'Unknown',
+              'quantity': 1,
+              'price': _appointment!.amount ?? 0.0,
+              'tax': 0.0
+            }
+          ],
+      'products': [],
+      'paymentMethod': _appointment!.paymentMethod ?? 'Cash',
+      'discount': _appointment!.discount ?? 0.0,
+      'platformFee': 0.0,
+    };
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => InvoiceDetailsDialog(invoice: invoiceData),
+    );
   }
 
   Future<void> _handleStatusChange(String selectedAction) async {
