@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'services/api_service.dart';
 import 'dart:io';
+import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
 
 class CreateWeddingPackageDialog extends StatefulWidget {
-  const CreateWeddingPackageDialog({super.key});
+  final WeddingPackage? package;
+  const CreateWeddingPackageDialog({super.key, this.package});
 
   @override
   State<CreateWeddingPackageDialog> createState() =>
@@ -31,6 +33,7 @@ class _CreateWeddingPackageDialogState
 
   // Image & Multi-Staff State
   File? _coverImage;
+  String? _existingImageUrl;
   final ImagePicker _picker = ImagePicker();
   List<StaffMember> _selectedStaff = [];
   bool _submitting = false;
@@ -47,7 +50,19 @@ class _CreateWeddingPackageDialogState
     setState(() => _submitting = true);
 
     try {
-      final packageData = {
+      String? imageBase64;
+      if (_coverImage != null) {
+        final bytes = await _coverImage!.readAsBytes();
+        imageBase64 = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+      } else if (widget.package != null && _existingImageUrl == null) {
+        // If editing and existing image was removed, send empty string or null to indicate removal
+        // Depending on backend, might need to send a specific flag or empty string.
+        // Assuming sending 'image': null or empty string updates it.
+        imageBase64 =
+            ''; // Or null, try empty string first or based on API behavior
+      }
+
+      final Map<String, dynamic> packageData = {
         'name': _nameController.text.trim(),
         'description': _descController.text.trim(),
         'services': selectedServices.map((item) {
@@ -67,12 +82,25 @@ class _CreateWeddingPackageDialogState
         'assignedStaff': _selectedStaff.map((s) => s.id).toList(),
       };
 
-      final success = await ApiService.createWeddingPackage(packageData);
+      if (_coverImage != null) {
+        packageData['image'] = imageBase64;
+      } else if (widget.package != null && _existingImageUrl == null) {
+        // Image was removed
+        packageData['image'] = null;
+      }
+
+      final success = widget.package == null
+          ? await ApiService.createWeddingPackage(packageData)
+          : await ApiService.updateWeddingPackage(
+              widget.package!.id, packageData);
 
       if (success && mounted) {
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Wedding package created successfully')),
+          SnackBar(
+              content: Text(widget.package == null
+                  ? 'Wedding package created successfully'
+                  : 'Wedding package updated successfully')),
         );
       }
     } catch (e) {
@@ -91,6 +119,13 @@ class _CreateWeddingPackageDialogState
   @override
   void initState() {
     super.initState();
+    if (widget.package != null) {
+      _nameController.text = widget.package!.name ?? '';
+      _descController.text = widget.package!.description ?? '';
+      _staffCountController.text = (widget.package!.staffCount ?? 1).toString();
+      _priceController.text = (widget.package!.discountedPrice ?? 0).toString();
+      _existingImageUrl = widget.package!.image;
+    }
     _fetchInitialData();
   }
 
@@ -117,6 +152,28 @@ class _CreateWeddingPackageDialogState
         setState(() {
           availableServices = results[0] as List<Service>;
           availableStaff = results[1] as List<StaffMember>;
+
+          if (widget.package != null) {
+            // Pre-fill Services
+            selectedServices = (widget.package!.services ?? []).map((s) {
+              final serviceId = s['serviceId'];
+              final avaService = availableServices.firstWhere(
+                  (as) => as.id == serviceId,
+                  orElse: () => Service(name: s['serviceName'] ?? 'Unknown'));
+              return {
+                'service': avaService,
+                'qty': s['quantity'] ?? 1,
+                'requiresStaff': s['staffRequired'] ?? false,
+              };
+            }).toList();
+
+            // Pre-fill Staff
+            _selectedStaff = (widget.package!.assignedStaff ?? []).map((id) {
+              return availableStaff.firstWhere((st) => st.id == id,
+                  orElse: () => StaffMember(fullName: 'Unknown'));
+            }).toList();
+          }
+
           isLoading = false;
         });
       }
@@ -486,9 +543,14 @@ class _CreateWeddingPackageDialogState
                       image: FileImage(_coverImage!),
                       fit: BoxFit.cover,
                     )
-                  : null,
+                  : (_existingImageUrl != null)
+                      ? DecorationImage(
+                          image: NetworkImage(_existingImageUrl!),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
             ),
-            child: _coverImage == null
+            child: (_coverImage == null && _existingImageUrl == null)
                 ? Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -511,6 +573,7 @@ class _CreateWeddingPackageDialogState
                           onTap: () {
                             setState(() {
                               _coverImage = null;
+                              _existingImageUrl = null;
                             });
                           },
                           child: Container(

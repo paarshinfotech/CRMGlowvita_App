@@ -205,8 +205,15 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
                       motion: const ScrollMotion(),
                       children: [
                         SlidableAction(
-                          onPressed: (context) {
-                            // Edit logic
+                          onPressed: (context) async {
+                            final result = await showDialog<bool>(
+                              context: context,
+                              builder: (context) =>
+                                  CreateWeddingPackageDialog(package: pkg),
+                            );
+                            if (result == true) {
+                              _loadData();
+                            }
                           },
                           backgroundColor: Colors.blue.shade50,
                           foregroundColor: Colors.blue.shade700,
@@ -395,7 +402,6 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
               ),
             ],
           ),
-          const Divider(height: 20, thickness: 0.5),
           Row(
             children: [
               Expanded(

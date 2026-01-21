@@ -1183,6 +1183,48 @@ class ApiService {
       rethrow;
     }
   }
+
+  static Future<bool> updateWeddingPackage(
+      String? id, Map<String, dynamic> packageData) async {
+    try {
+      if (id == null) return false;
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/crm/wedding-packages'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': 'crm_access_token=$token',
+        },
+        body: json.encode({
+          ...packageData,
+          'packageId': id,
+        }),
+      );
+
+      print(
+          'Update Wedding Package Response [${response.statusCode}]: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true ||
+            data['message']?.toString().contains('successfully') == true) {
+          return true;
+        } else {
+          throw Exception(data['message'] ?? 'Unknown error');
+        }
+      } else {
+        throw Exception(
+            'Failed to update wedding package: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error updating wedding package: $e');
+      rethrow;
+    }
+  }
 }
 
 class Service {
