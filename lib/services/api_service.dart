@@ -370,13 +370,15 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          List<dynamic> staffData = data['data'];
-          return staffData.map((json) => StaffMember.fromJson(json)).toList();
-        } else {
-          throw Exception(
-              'Failed to load staff: ${data['message'] ?? 'Unknown error'}');
+        List<dynamic> staffList = [];
+
+        if (data is List) {
+          staffList = data;
+        } else if (data is Map) {
+          staffList = data['data'] ?? data['staff'] ?? [];
         }
+
+        return staffList.map((json) => StaffMember.fromJson(json)).toList();
       } else {
         throw Exception(
             'Failed to load staff: ${response.statusCode} - ${response.body}');
@@ -502,8 +504,15 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final List<dynamic> servicesData = data['services'] ?? [];
-        return servicesData.map((json) => Service.fromJson(json)).toList();
+        List<dynamic> servicesList = [];
+
+        if (data is List) {
+          servicesList = data;
+        } else if (data is Map) {
+          servicesList = data['services'] ?? data['data'] ?? [];
+        }
+
+        return servicesList.map((json) => Service.fromJson(json)).toList();
       } else {
         throw Exception(
             'Failed to load services: ${response.statusCode} - ${response.body}');

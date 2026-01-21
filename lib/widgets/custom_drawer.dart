@@ -22,7 +22,10 @@ import '../marketplace.dart';
 import '../invoice_management.dart';
 import '../expenses.dart';
 import '../sales.dart';
+import '../add_ons.dart';
+import '../wedding_packages.dart';
 import '../login.dart';
+
 // Drawer implementation for the app
 class CustomDrawer extends StatelessWidget {
   final String currentPage;
@@ -127,7 +130,8 @@ class CustomDrawer extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12 * scale),
               ),
               child: Row(
-                children: [                  // User Avatar
+                children: [
+                  // User Avatar
                   Container(
                     width: 40 * scale,
                     height: 40 * scale,
@@ -174,8 +178,7 @@ class CustomDrawer extends StatelessWidget {
                               ),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF457BFF),
-                                borderRadius:
-                                    BorderRadius.circular(12 * scale),
+                                borderRadius: BorderRadius.circular(12 * scale),
                               ),
                               child: Text(
                                 'PRO',
@@ -251,8 +254,7 @@ class CustomDrawer extends StatelessWidget {
                       icon: Icons.dashboard_outlined,
                       title: 'Dashboard',
                       isSelected: currentPage == 'Dashboard',
-                      onTap: () =>
-                          _navigateTo(context, const DashboardPage()),
+                      onTap: () => _navigateTo(context, const DashboardPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
@@ -270,8 +272,7 @@ class CustomDrawer extends StatelessWidget {
                       icon: Icons.event_note_outlined,
                       title: 'Appointments',
                       isSelected: currentPage == 'Appointments',
-                      onTap: () =>
-                          _navigateTo(context, const Appointment()),
+                      onTap: () => _navigateTo(context, const Appointment()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
@@ -313,6 +314,25 @@ class CustomDrawer extends StatelessWidget {
                     ),
                     _buildMenuItem(
                       context: context,
+                      icon: Icons.add_circle_outline,
+                      title: 'Add Ons',
+                      isSelected: currentPage == 'Add Ons',
+                      onTap: () => _navigateTo(context, const AddOnsPage()),
+                      scale: scale,
+                      baseFontScale: baseFontScale,
+                    ),
+                    _buildMenuItem(
+                      context: context,
+                      icon: Icons.card_giftcard,
+                      title: 'Wedding Package',
+                      isSelected: currentPage == 'Wedding Package',
+                      onTap: () =>
+                          _navigateTo(context, const WeddingPackagePage()),
+                      scale: scale,
+                      baseFontScale: baseFontScale,
+                    ),
+                    _buildMenuItem(
+                      context: context,
                       icon: Icons.inventory_2_outlined,
                       title: 'Products',
                       isSelected: currentPage == 'Products',
@@ -329,8 +349,7 @@ class CustomDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.question_answer_outlined,
                       title: 'Product Questions',
-                      isSelected:
-                          currentPage == 'Product Questions',
+                      isSelected: currentPage == 'Product Questions',
                       onTap: () => _navigateTo(
                         context,
                         const ProductQuestionsPage(),
@@ -343,8 +362,7 @@ class CustomDrawer extends StatelessWidget {
                       icon: Icons.star_outlined,
                       title: 'Reviews',
                       isSelected: currentPage == 'Reviews',
-                      onTap: () =>
-                          _navigateTo(context, const ReviewsPage()),
+                      onTap: () => _navigateTo(context, const ReviewsPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
@@ -368,12 +386,12 @@ class CustomDrawer extends StatelessWidget {
                       onTap: () => _navigateTo(context, const SalesPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
-                    ),                    _buildMenuItem(
+                    ),
+                    _buildMenuItem(
                       context: context,
                       icon: Icons.receipt_outlined,
                       title: 'Invoice Management',
-                      isSelected:
-                          currentPage == 'Invoice Management',
+                      isSelected: currentPage == 'Invoice Management',
                       onTap: () => _navigateTo(
                         context,
                         const InvoiceManagementPage(),
@@ -386,8 +404,7 @@ class CustomDrawer extends StatelessWidget {
                       icon: Icons.shopping_cart_outlined,
                       title: 'Orders',
                       isSelected: currentPage == 'Orders',
-                      onTap: () =>
-                          _navigateTo(context, OrdersPage()),
+                      onTap: () => _navigateTo(context, OrdersPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
@@ -408,8 +425,7 @@ class CustomDrawer extends StatelessWidget {
                       icon: Icons.account_balance_outlined,
                       title: 'Settlements',
                       isSelected: currentPage == 'Settlements',
-                      onTap: () =>
-                          _navigateTo(context, SettlementsPage()),
+                      onTap: () => _navigateTo(context, SettlementsPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
@@ -429,10 +445,8 @@ class CustomDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.local_offer_outlined,
                       title: 'Offers & Coupons',
-                      isSelected:
-                          currentPage == 'Offers & Coupons',
-                      onTap: () =>
-                          _navigateTo(context, OffersCouponsPage()),
+                      isSelected: currentPage == 'Offers & Coupons',
+                      onTap: () => _navigateTo(context, OffersCouponsPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
@@ -441,8 +455,7 @@ class CustomDrawer extends StatelessWidget {
                       icon: Icons.card_giftcard_outlined,
                       title: 'Referrals',
                       isSelected: currentPage == 'Referrals',
-                      onTap: () =>
-                          _navigateTo(context, const ReferralProg()),
+                      onTap: () => _navigateTo(context, const ReferralProg()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
@@ -459,8 +472,7 @@ class CustomDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.notifications_outlined,
                       title: 'Notifications',
-                      isSelected:
-                          currentPage == 'Notifications',
+                      isSelected: currentPage == 'Notifications',
                       onTap: () => _navigateTo(
                         context,
                         const NotificationPage(),
@@ -473,8 +485,7 @@ class CustomDrawer extends StatelessWidget {
                       icon: Icons.bar_chart_outlined,
                       title: 'Reports',
                       isSelected: currentPage == 'Reports',
-                      onTap: () =>
-                          _navigateTo(context, const ReportsPage()),
+                      onTap: () => _navigateTo(context, const ReportsPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
@@ -569,20 +580,15 @@ class CustomDrawer extends StatelessWidget {
           child: Icon(
             icon,
             size: 17 * baseFontScale,
-            color: isSelected
-                ? const Color(0xFF457BFF)
-                : Colors.black87,
+            color: isSelected ? const Color(0xFF457BFF) : Colors.black87,
           ),
         ),
         title: Text(
           title,
           style: GoogleFonts.poppins(
             fontSize: 16 * baseFontScale,
-            fontWeight:
-                isSelected ? FontWeight.w600 : FontWeight.w500,
-            color: isSelected
-                ? const Color(0xFF457BFF)
-                : Colors.black87,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            color: isSelected ? const Color(0xFF457BFF) : Colors.black87,
           ),
         ),
         trailing: hasNotification
@@ -645,7 +651,7 @@ class CustomDrawer extends StatelessWidget {
             ElevatedButton(
               onPressed: () async {
                 Navigator.pop(context);
-                
+
                 // Clear the auth token on logout
                 final prefs = await SharedPreferences.getInstance();
                 await prefs.remove('auth_token');
@@ -654,7 +660,7 @@ class CustomDrawer extends StatelessWidget {
                 await prefs.remove('user_role');
                 await prefs.remove('user_id');
                 await prefs.remove('user_data');
-                
+
                 Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(builder: (context) => const Login()),
