@@ -1083,7 +1083,69 @@ class ApiService {
     }
   }
 
-  // End of ApiService class
+  static Future<List<WeddingPackage>> getWeddingPackages() async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/crm/wedding-packages'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': 'crm_access_token=$token',
+        },
+      );
+
+      print(
+          'Wedding Packages Response [${response.statusCode}]: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['weddingPackages'] != null) {
+          List<dynamic> packagesData = data['weddingPackages'];
+          return packagesData
+              .map((json) => WeddingPackage.fromJson(json))
+              .toList();
+        } else {
+          return [];
+        }
+      } else {
+        throw Exception(
+            'Failed to load wedding packages: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching wedding packages: $e');
+      rethrow;
+    }
+  }
+
+  static Future<bool> toggleWeddingPackageStatus(
+      String id, bool isActive) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) throw Exception('No authentication token found');
+
+      final response = await http.patch(
+        Uri.parse('$baseUrl/crm/wedding-packages/$id'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': 'crm_access_token=$token',
+        },
+        body: json.encode({'isActive': isActive}),
+      );
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        throw Exception('Failed to toggle status: ${response.body}');
+      }
+    } catch (e) {
+      print('Error toggling package status: $e');
+      return false;
+    }
+  }
 }
 
 class Service {
@@ -1352,5 +1414,52 @@ class Product {
       'updatedAt': updatedAt,
       '__v': v,
     };
+  }
+}
+
+class WeddingPackage {
+  final String? id;
+  final String? name;
+  final String? description;
+  final List<dynamic>? services;
+  final double? totalPrice;
+  final double? discountedPrice;
+  final int? duration;
+  final int? staffCount;
+  final List<dynamic>? assignedStaff;
+  final String? image;
+  final String? status;
+  final bool? isActive;
+
+  WeddingPackage({
+    this.id,
+    this.name,
+    this.description,
+    this.services,
+    this.totalPrice,
+    this.discountedPrice,
+    this.duration,
+    this.staffCount,
+    this.assignedStaff,
+    this.image,
+    this.status,
+    this.isActive,
+  });
+
+  factory WeddingPackage.fromJson(Map<String, dynamic> json) {
+    return WeddingPackage(
+      id: json['_id'] ?? json['id'],
+      name: json['name'],
+      description: json['description'],
+      services: json['services'],
+      totalPrice: (json['totalPrice'] as num?)?.toDouble(),
+      discountedPrice: (json['discountedPrice'] as num?)?.toDouble(),
+      duration: json['duration'],
+      staffCount: json['staffCount'],
+      assignedStaff: json['assignedStaff'],
+      image: json['image'],
+      status: json['status'],
+      isActive: json['isActive'],
+    );
   }
 }
