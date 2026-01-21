@@ -1225,6 +1225,39 @@ class ApiService {
       rethrow;
     }
   }
+
+  static Future<bool> deleteWeddingPackage(String id) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
+      final response = await http.delete(
+        Uri.parse('$baseUrl/crm/wedding-packages'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': 'crm_access_token=$token',
+        },
+        body: json.encode({'packageId': id}),
+      );
+
+      print(
+          'Delete Wedding Package Response [${response.statusCode}]: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['success'] == true ||
+            data['message']?.toString().contains('successfully') == true;
+      } else {
+        throw Exception(
+            'Failed to delete wedding package: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error deleting wedding package: $e');
+      rethrow;
+    }
+  }
 }
 
 class Service {

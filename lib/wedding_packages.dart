@@ -243,12 +243,27 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
                               ),
                             );
                             if (confirm == true) {
-                              // Perform delete API call if needed
-                              setState(() {
-                                _allPackages.removeWhere((p) => p.id == pkg.id);
-                                _filteredPackages
-                                    .removeWhere((p) => p.id == pkg.id);
-                              });
+                              // Perform delete API call
+                              try {
+                                final success =
+                                    await ApiService.deleteWeddingPackage(
+                                        pkg.id!);
+                                if (success && context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text(
+                                            'Wedding package deleted successfully')),
+                                  );
+                                  _loadData();
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                        content: Text('Failed to delete: $e')),
+                                  );
+                                }
+                              }
                             }
                           },
                           backgroundColor: Colors.red.shade50,
