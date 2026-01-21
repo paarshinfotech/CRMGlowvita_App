@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'widgets/custom_drawer.dart';
 import 'add_wedding_package.dart';
 import 'services/api_service.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 
 class WeddingPackagePage extends StatefulWidget {
   const WeddingPackagePage({super.key});
@@ -198,7 +199,60 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
                 itemCount: _filteredPackages.length,
                 itemBuilder: (context, index) {
                   final pkg = _filteredPackages[index];
-                  return _buildPackageCard(pkg);
+                  return Slidable(
+                    key: ValueKey(pkg.id),
+                    endActionPane: ActionPane(
+                      motion: const ScrollMotion(),
+                      children: [
+                        SlidableAction(
+                          onPressed: (context) {
+                            // Edit logic
+                          },
+                          backgroundColor: Colors.blue.shade50,
+                          foregroundColor: Colors.blue.shade700,
+                          icon: Icons.edit_outlined,
+                          label: 'Edit',
+                        ),
+                        SlidableAction(
+                          onPressed: (context) async {
+                            // Delete logic
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Delete Package'),
+                                content: const Text(
+                                    'Are you sure you want to delete this wedding package?'),
+                                actions: [
+                                  TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, false),
+                                      child: const Text('Cancel')),
+                                  TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, true),
+                                      child: const Text('Delete',
+                                          style: TextStyle(color: Colors.red))),
+                                ],
+                              ),
+                            );
+                            if (confirm == true) {
+                              // Perform delete API call if needed
+                              setState(() {
+                                _allPackages.removeWhere((p) => p.id == pkg.id);
+                                _filteredPackages
+                                    .removeWhere((p) => p.id == pkg.id);
+                              });
+                            }
+                          },
+                          backgroundColor: Colors.red.shade50,
+                          foregroundColor: Colors.red.shade700,
+                          icon: Icons.delete_outline,
+                          label: 'Delete',
+                        ),
+                      ],
+                    ),
+                    child: _buildPackageCard(pkg),
+                  );
                 },
               ),
 
@@ -343,53 +397,29 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
           ),
           const Divider(height: 20, thickness: 0.5),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildStaffChips(pkg.assignedStaff),
-                  ],
-                ),
+                child: _buildStaffChips(pkg.assignedStaff),
               ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Row(
-                    children: [
-                      Text('Active',
-                          style: GoogleFonts.poppins(
-                              fontSize: 11, color: Colors.grey.shade600)),
-                      const SizedBox(width: 4),
-                      Transform.scale(
-                        scale: 0.6,
-                        child: SizedBox(
-                          height: 20,
-                          width: 34,
-                          child: Switch(
-                            value: pkg.isActive ?? false,
-                            onChanged: (v) => _toggleStatus(pkg, v),
-                            activeColor: const Color(0xFF331F33),
-                            materialTapTargetSize:
-                                MaterialTapTargetSize.shrinkWrap,
-                          ),
-                        ),
-                      ),
-                    ],
+              const SizedBox(width: 8),
+              _iconAction(Icons.visibility_outlined, () {}),
+              const SizedBox(width: 4),
+              Text('Active',
+                  style: GoogleFonts.poppins(
+                      fontSize: 11, color: Colors.grey.shade600)),
+              const SizedBox(width: 2),
+              Transform.scale(
+                scale: 0.6,
+                child: SizedBox(
+                  height: 20,
+                  width: 34,
+                  child: Switch(
+                    value: pkg.isActive ?? false,
+                    onChanged: (v) => _toggleStatus(pkg, v),
+                    activeColor: const Color(0xFF331F33),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      _iconAction(Icons.visibility_outlined, () {}),
-                      _iconAction(Icons.edit_outlined, () {}),
-                      _iconAction(Icons.delete_outline, () {},
-                          color: Colors.red.shade400),
-                    ],
-                  ),
-                ],
+                ),
               ),
             ],
           ),
@@ -411,8 +441,10 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
@@ -426,27 +458,22 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
                   fontWeight: FontWeight.w600,
                   color: const Color(0xFF424242))),
         ),
-        const SizedBox(height: 6),
-        Wrap(
-          spacing: 6,
-          runSpacing: 4,
-          children: staffIds.map((id) {
-            final staff = _allStaff.firstWhere((s) => s.id == id,
-                orElse: () => StaffMember(fullName: 'Unknown'));
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3E5F5),
-                borderRadius: BorderRadius.circular(5),
-              ),
-              child: Text(staff.fullName ?? '?',
-                  style: GoogleFonts.poppins(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
-                      color: const Color(0xFF6A1B9A))),
-            );
-          }).toList(),
-        ),
+        ...staffIds.map((id) {
+          final staff = _allStaff.firstWhere((s) => s.id == id,
+              orElse: () => StaffMember(fullName: 'Unknown'));
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF3E5F5),
+              borderRadius: BorderRadius.circular(5),
+            ),
+            child: Text(staff.fullName ?? '?',
+                style: GoogleFonts.poppins(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF6A1B9A))),
+          );
+        }),
       ],
     );
   }

@@ -33,6 +33,60 @@ class _CreateWeddingPackageDialogState
   File? _coverImage;
   final ImagePicker _picker = ImagePicker();
   List<StaffMember> _selectedStaff = [];
+  bool _submitting = false;
+
+  Future<void> _submitForm() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (selectedServices.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please add at least one service')),
+      );
+      return;
+    }
+
+    setState(() => _submitting = true);
+
+    try {
+      final packageData = {
+        'name': _nameController.text.trim(),
+        'description': _descController.text.trim(),
+        'services': selectedServices.map((item) {
+          final service = item['service'] as Service;
+          return {
+            'serviceId': service.id,
+            'serviceName': service.name,
+            'quantity': item['qty'],
+            'staffRequired': item['requiresStaff'],
+            'price': service.discountedPrice ?? service.price,
+          };
+        }).toList(),
+        'totalPrice': totalPrice,
+        'discountedPrice': double.tryParse(_priceController.text) ?? totalPrice,
+        'duration': totalDuration,
+        'staffCount': int.tryParse(_staffCountController.text) ?? 0,
+        'assignedStaff': _selectedStaff.map((s) => s.id).toList(),
+      };
+
+      final success = await ApiService.createWeddingPackage(packageData);
+
+      if (success && mounted) {
+        Navigator.pop(context, true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Wedding package created successfully')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _submitting = false);
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -175,11 +229,7 @@ class _CreateWeddingPackageDialogState
                     ),
                     const SizedBox(width: 8),
                     FilledButton(
-                      onPressed: () {
-                        if (_formKey.currentState!.validate()) {
-                          Navigator.pop(context);
-                        }
-                      },
+                      onPressed: _submitting ? null : _submitForm,
                       style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFF331F33),
                         padding: const EdgeInsets.symmetric(
@@ -189,8 +239,14 @@ class _CreateWeddingPackageDialogState
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8)),
                       ),
-                      child: Text('Create',
-                          style: GoogleFonts.poppins(fontSize: 12.5)),
+                      child: _submitting
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
+                          : Text('Create',
+                              style: GoogleFonts.poppins(fontSize: 12.5)),
                     ),
                   ],
                 ),

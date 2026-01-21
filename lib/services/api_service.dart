@@ -1146,6 +1146,43 @@ class ApiService {
       return false;
     }
   }
+
+  static Future<bool> createWeddingPackage(
+      Map<String, dynamic> packageData) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/crm/wedding-packages'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': 'crm_access_token=$token',
+        },
+        body: json.encode(packageData),
+      );
+
+      print(
+          'Create Wedding Package Response [${response.statusCode}]: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        if (data['message']?.toString().contains('successfully') == true) {
+          return true;
+        } else {
+          throw Exception(data['message'] ?? 'Unknown error');
+        }
+      } else {
+        throw Exception(
+            'Failed to create wedding package: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error creating wedding package: $e');
+      rethrow;
+    }
+  }
 }
 
 class Service {
