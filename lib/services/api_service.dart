@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../customer_model.dart';
 import '../appointment_model.dart';
+import '../addon_model.dart';
 
 class StaffMember {
   final String? id;
@@ -500,7 +501,7 @@ class ApiService {
         },
       );
 
-      print('Services API Response [${response.statusCode}]: ${response.body}');
+      // print('Services API Response [${response.statusCode}]: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -519,6 +520,125 @@ class ApiService {
       }
     } catch (e) {
       print('Error fetching services: $e');
+      rethrow;
+    }
+  }
+
+  // ==================== ADD-ONS ==================== //
+  static Future<List<AddOn>> getAddOns() async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) throw Exception('No authentication token found');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/crm/add-ons'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': 'crm_access_token=$token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        // User provided response format: { "addOns": [...] }
+        if (data['addOns'] != null) {
+          List<dynamic> addonsData = data['addOns'];
+          return addonsData.map((json) => AddOn.fromJson(json)).toList();
+        } else if (data['success'] == true && data['data'] != null) {
+          // Fallback for old format if any
+          List<dynamic> addonsData = data['data'];
+          return addonsData.map((json) => AddOn.fromJson(json)).toList();
+        } else {
+          return [];
+        }
+      } else {
+        throw Exception(
+            'Failed to load add-ons: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching add-ons: $e');
+      rethrow;
+    }
+  }
+
+  static Future<bool> createAddOn(AddOn addon) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) throw Exception('No authentication token found');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/crm/add-ons'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': 'crm_access_token=$token',
+        },
+        body: json.encode(addon.toJson()),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        return data['addOn'] != null || data['success'] == true;
+      } else {
+        throw Exception(
+            'Failed to create add-on: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error creating add-on: $e');
+      rethrow;
+    }
+  }
+
+  static Future<bool> updateAddOn(String id, AddOn addon) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) throw Exception('No authentication token found');
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/crm/add-ons'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': 'crm_access_token=$token',
+        },
+        body: json.encode(addon.toJson()),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['message']?.contains('successfully') == true ||
+            data['addOn'] != null ||
+            data['success'] == true;
+      } else {
+        throw Exception(
+            'Failed to update add-on: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error updating add-on: $e');
+      rethrow;
+    }
+  }
+
+  static Future<bool> deleteAddOn(String id) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) throw Exception('No authentication token found');
+
+      final response = await http.delete(
+        Uri.parse('$baseUrl/crm/add-ons?id=$id'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': 'crm_access_token=$token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['message']?.contains('successfully') == true;
+      } else {
+        throw Exception(
+            'Failed to delete add-on: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error deleting add-on: $e');
       rethrow;
     }
   }
