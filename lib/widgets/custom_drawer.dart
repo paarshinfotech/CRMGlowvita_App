@@ -69,13 +69,6 @@ class CustomDrawer extends StatelessWidget {
               ),
               decoration: BoxDecoration(
                 color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 4 * scale,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
               ),
               child: SafeArea(
                 bottom: false,
@@ -118,130 +111,7 @@ class CustomDrawer extends StatelessWidget {
               ),
             ),
 
-            // User Info Section
-            Container(
-              padding: EdgeInsets.all(12 * scale),
-              margin: EdgeInsets.symmetric(
-                horizontal: 12 * scale,
-                vertical: 12 * scale,
-              ),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF0F4FF),
-                borderRadius: BorderRadius.circular(12 * scale),
-              ),
-              child: Row(
-                children: [
-                  // User Avatar
-                  Container(
-                    width: 40 * scale,
-                    height: 40 * scale,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF457BFF).withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(
-                        userName.isNotEmpty ? userName[0].toUpperCase() : 'H',
-                        style: GoogleFonts.poppins(
-                          fontSize: 15 * baseFontScale,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF457BFF),
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 10 * scale),
-                  // User Info
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                userName,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 15 * baseFontScale,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.black,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                              ),
-                            ),
-                            SizedBox(width: 4 * scale),
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 6 * scale,
-                                vertical: 1 * scale,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF457BFF),
-                                borderRadius: BorderRadius.circular(12 * scale),
-                              ),
-                              child: Text(
-                                'PRO',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 9 * baseFontScale,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 3 * scale),
-                        Row(
-                          children: [
-                            Container(
-                              width: 5 * scale,
-                              height: 5 * scale,
-                              decoration: const BoxDecoration(
-                                color: Colors.green,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            SizedBox(width: 5 * scale),
-                            Flexible(
-                              child: Text(
-                                userType,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 13 * baseFontScale,
-                                  color: Colors.grey[600],
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // MENU Label
-            Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: 12 * scale,
-                vertical: 6 * scale,
-              ),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'MENU',
-                  style: GoogleFonts.poppins(
-                    fontSize: 17 * baseFontScale,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF457BFF),
-                    letterSpacing: 1.2,
-                  ),
-                ),
-              ),
-            ),
+            SizedBox(height: 10 * scale),
 
             // Menu Items
             Expanded(
@@ -570,23 +440,15 @@ class CustomDrawer extends StatelessWidget {
           horizontal: 16 * scale,
           vertical: 4 * scale,
         ),
-        leading: Container(
-          width: 36 * scale,
-          height: 36 * scale,
-          decoration: BoxDecoration(
-            color: isSelected ? Colors.white : Colors.transparent,
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            icon,
-            size: 17 * baseFontScale,
-            color: isSelected ? const Color(0xFF457BFF) : Colors.black87,
-          ),
+        leading: Icon(
+          icon,
+          size: 20 * baseFontScale,
+          color: isSelected ? const Color(0xFF457BFF) : Colors.black54,
         ),
         title: Text(
           title,
           style: GoogleFonts.poppins(
-            fontSize: 16 * baseFontScale,
+            fontSize: 14 * baseFontScale,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
             color: isSelected ? const Color(0xFF457BFF) : Colors.black87,
           ),

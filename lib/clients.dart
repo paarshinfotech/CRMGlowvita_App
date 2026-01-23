@@ -24,7 +24,7 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
   List<Customer> customers = [];
   int _selectedIndex = 0;
   String _searchQuery = '';
-  
+
   // Sort state
   int? _sortColumn;
   bool _sortAsc = true;
@@ -50,7 +50,7 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
         _currentTabIndex = _tabController.index;
       });
     });
-    
+
     // Load customers from API
     _loadCustomers();
   }
@@ -70,7 +70,7 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
     } catch (e) {
       setState(() {
         _isLoading = false;
-        
+
         // Check if it's an auth token error
         if (e.toString().contains('No authentication token found')) {
           print('Please log in to access customer data.');
@@ -98,7 +98,8 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
     _isScrolling = true;
 
     // Sync header
-    if (_headerScrollController.hasClients && source != _headerScrollController) {
+    if (_headerScrollController.hasClients &&
+        source != _headerScrollController) {
       _headerScrollController.jumpTo(offset);
     }
 
@@ -176,20 +177,26 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
       builder: (ctx) => Theme(
         data: Theme.of(ctx).copyWith(dialogBackgroundColor: Colors.white),
         child: AlertDialog(
-          title: Text('Delete customer', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600)),
+          title: Text('Delete customer',
+              style: GoogleFonts.poppins(
+                  fontSize: 14, fontWeight: FontWeight.w600)),
           content: Text(
             'Are you sure you want to delete ${customers[index].fullName}?',
             style: GoogleFonts.poppins(fontSize: 12),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel', style: GoogleFonts.poppins(fontSize: 12))),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child:
+                    Text('Cancel', style: GoogleFonts.poppins(fontSize: 12))),
             TextButton(
               onPressed: () async {
                 try {
                   // Store the customer name before deletion
                   final customerName = customers[index].fullName;
                   // Delete from API
-                  final success = await ApiService.deleteClient(customers[index].id!);
+                  final success =
+                      await ApiService.deleteClient(customers[index].id!);
                   if (success) {
                     setState(() {
                       customers.removeAt(index);
@@ -208,7 +215,8 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                   }
                 }
               },
-              child: Text('Delete', style: GoogleFonts.poppins(color: Colors.red, fontSize: 12)),
+              child: Text('Delete',
+                  style: GoogleFonts.poppins(color: Colors.red, fontSize: 12)),
             ),
           ],
         ),
@@ -219,7 +227,7 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
   List<Customer> get _filteredCustomers {
     final q = _searchQuery.trim().toLowerCase();
     List<Customer> filtered = List<Customer>.from(customers);
-    
+
     // Filter by tab (Offline/Online)
     if (_currentTabIndex == 0) {
       // Offline clients
@@ -228,7 +236,7 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
       // Online clients
       filtered = filtered.where((c) => c.isOnline).toList();
     }
-    
+
     // Filter by search query
     if (q.isEmpty) return filtered;
     return filtered.where((c) {
@@ -251,7 +259,7 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
     final list = List<Customer>.from(input);
     int cmp(String x, String y) => _sortAsc ? x.compareTo(y) : y.compareTo(x);
     int cmpNum(num x, num y) => _sortAsc ? x.compareTo(y) : y.compareTo(x);
-    
+
     list.sort((a, b) {
       switch (_sortColumn) {
         case 0: // Name
@@ -272,6 +280,7 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
     });
     return list;
   }
+
   // Method to show the customer details pop-up
   void _showCustomerDetails(BuildContext context, Customer customer) {
     showDialog(
@@ -290,21 +299,27 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
     final lastMonth = DateTime(now.year, now.month - 1, now.day);
     final thisMonth = DateTime(now.year, now.month, 1);
     final thirtyDaysAgo = now.subtract(const Duration(days: 30));
-    
-    final totalClientsLastMonth = customers.where((c) => c.createdAt != null && c.createdAt!.isBefore(lastMonth)).length;
-    final newClientsThisMonth = customers.where((c) => c.createdAt != null && c.createdAt!.isAfter(thisMonth)).length;
-    final totalBookings = customers.fold<int>(0, (sum, c) => sum + c.totalBookings);
-    final totalSpent = customers.fold<double>(0.0, (sum, c) => sum + c.totalSpent);
-    
+
+    final totalClientsLastMonth = customers
+        .where((c) => c.createdAt != null && c.createdAt!.isBefore(lastMonth))
+        .length;
+    final newClientsThisMonth = customers
+        .where((c) => c.createdAt != null && c.createdAt!.isAfter(thisMonth))
+        .length;
+    final totalBookings =
+        customers.fold<int>(0, (sum, c) => sum + c.totalBookings);
+    final totalSpent =
+        customers.fold<double>(0.0, (sum, c) => sum + c.totalSpent);
+
     // Count new clients based on status
     final newClients = customers.where((c) => c.status == 'New').length;
-    
+
     // Calculate change from last month for Total Clients
     final changeFromLastMonth = total - totalClientsLastMonth;
-    final changeText = changeFromLastMonth >= 0 
-        ? '+$changeFromLastMonth from last month' 
+    final changeText = changeFromLastMonth >= 0
+        ? '+$changeFromLastMonth from last month'
         : '$changeFromLastMonth from last month';
-    
+
     // Inactive clients: no lastVisit or lastVisit is older than 30 days
     final inactiveClients = customers.where((c) {
       if (c.lastVisit == null || c.lastVisit!.isEmpty) return true;
@@ -342,10 +357,11 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
           _syncScroll(_headerScrollController.offset, _headerScrollController);
         }
       });
-    } 
+    }
     return Theme(
       data: Theme.of(context).copyWith(
-        textTheme: GoogleFonts.poppinsTextTheme(Theme.of(context).textTheme).apply(fontSizeFactor: 0.85),
+        textTheme: GoogleFonts.poppinsTextTheme(Theme.of(context).textTheme)
+            .apply(fontSizeFactor: 0.85),
       ),
       child: Scaffold(
         drawer: const CustomDrawer(currentPage: 'Clients'),
@@ -375,7 +391,10 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
             ),
           ),
           title: Row(
-            children: [SizedBox(width: 20,),
+            children: [
+              SizedBox(
+                width: 20,
+              ),
               Expanded(
                 child: Text(
                   'Customers List',
@@ -392,7 +411,8 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const NotificationPage()),
+                    MaterialPageRoute(
+                        builder: (context) => const NotificationPage()),
                   );
                 },
               ),
@@ -400,7 +420,8 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const ProfilePage()),
+                    MaterialPageRoute(
+                        builder: (context) => const ProfilePage()),
                   );
                 },
                 child: Padding(
@@ -474,16 +495,19 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                   ],
                 ),
                 const SizedBox(height: 20),
-         
+
                 // Search Bar
                 TextField(
                   decoration: InputDecoration(
                     isDense: true,
                     prefixIcon: const Icon(Icons.search, size: 18),
                     hintText: 'Search by name, email, or phone...',
-                    hintStyle: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600]),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                    hintStyle: GoogleFonts.poppins(
+                        fontSize: 12, color: Colors.grey[600]),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                    contentPadding: const EdgeInsets.symmetric(
+                        vertical: 10, horizontal: 10),
                     fillColor: Colors.white,
                     filled: true,
                   ),
@@ -497,38 +521,55 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     OutlinedButton.icon(
-                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ImportCustomers())),
-                      icon: const Icon(Icons.upload_file_outlined, size: 18, color: Colors.blue),
-                      label: Text('Import', style: GoogleFonts.poppins(color: Colors.blue, fontSize: 12)),
+                      onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const ImportCustomers())),
+                      icon: const Icon(Icons.upload_file_outlined,
+                          size: 14, color: Colors.blue),
+                      label: Text('Import',
+                          style: GoogleFonts.poppins(
+                              color: Colors.blue, fontSize: 10)),
                       style: OutlinedButton.styleFrom(
                         backgroundColor: Colors.white,
                         side: const BorderSide(color: Colors.black, width: 1),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        minimumSize: const Size(0, 36),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 6),
+                        minimumSize: const Size(0, 30),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                     ),
                     const SizedBox(width: 10),
                     OutlinedButton.icon(
                       onPressed: () => _navigateAndAddCustomer(context),
-                      icon: const Icon(Icons.add, size: 18, color: Colors.blue),
-                      label: Text('Add Customer', style: GoogleFonts.poppins(color: Colors.blue, fontSize: 12)),
+                      icon: const Icon(Icons.add, size: 14, color: Colors.blue),
+                      label: Text('Add Customer',
+                          style: GoogleFonts.poppins(
+                              color: Colors.blue, fontSize: 10)),
                       style: OutlinedButton.styleFrom(
                         backgroundColor: Colors.white,
                         side: const BorderSide(color: Colors.black, width: 1),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        minimumSize: const Size(0, 36),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 6),
+                        minimumSize: const Size(0, 30),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                     ),
                     const SizedBox(width: 10),
                     OutlinedButton.icon(
                       onPressed: _isLoading ? null : _loadCustomers,
-                      icon: const Icon(Icons.refresh, size: 18, color: Colors.blue),
-                      label: Text('Refresh', style: GoogleFonts.poppins(color: Colors.blue, fontSize: 12)),
+                      icon: const Icon(Icons.refresh,
+                          size: 14, color: Colors.blue),
+                      label: Text('Refresh',
+                          style: GoogleFonts.poppins(
+                              color: Colors.blue, fontSize: 10)),
                       style: OutlinedButton.styleFrom(
                         backgroundColor: Colors.white,
                         side: const BorderSide(color: Colors.black, width: 1),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        minimumSize: const Size(0, 36),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 6),
+                        minimumSize: const Size(0, 30),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                     ),
                   ],
@@ -550,7 +591,8 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                     indicatorSize: TabBarIndicatorSize.tab,
                     labelColor: Colors.white,
                     unselectedLabelColor: Colors.black,
-                    labelStyle: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600),
+                    labelStyle: GoogleFonts.poppins(
+                        fontSize: 12, fontWeight: FontWeight.w600),
                     unselectedLabelStyle: GoogleFonts.poppins(fontSize: 12),
                     tabs: const [
                       Tab(text: 'Offline Clients'),
@@ -566,10 +608,13 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                   scrollDirection: Axis.horizontal,
                   physics: const ClampingScrollPhysics(),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                     decoration: const BoxDecoration(
                       color: Colors.white,
-                      border: Border(bottom: BorderSide(color: Color(0xFFEAEAEA), width: 1)),
+                      border: Border(
+                          bottom:
+                              BorderSide(color: Color(0xFFEAEAEA), width: 1)),
                     ),
                     child: Row(
                       children: [
@@ -581,10 +626,18 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text('Name', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 12)),
+                                Text('Name',
+                                    style: GoogleFonts.poppins(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12)),
                                 const SizedBox(width: 4),
                                 if (_sortColumn == 0)
-                                  Icon(_sortAsc ? Icons.arrow_upward : Icons.arrow_downward, size: 14, color: Colors.black54),
+                                  Icon(
+                                      _sortAsc
+                                          ? Icons.arrow_upward
+                                          : Icons.arrow_downward,
+                                      size: 14,
+                                      color: Colors.black54),
                               ],
                             ),
                           ),
@@ -598,10 +651,18 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text('Contact', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 12)),
+                                Text('Contact',
+                                    style: GoogleFonts.poppins(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12)),
                                 const SizedBox(width: 4),
                                 if (_sortColumn == 1)
-                                  Icon(_sortAsc ? Icons.arrow_upward : Icons.arrow_downward, size: 14, color: Colors.black54),
+                                  Icon(
+                                      _sortAsc
+                                          ? Icons.arrow_upward
+                                          : Icons.arrow_downward,
+                                      size: 14,
+                                      color: Colors.black54),
                               ],
                             ),
                           ),
@@ -615,10 +676,18 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text('Last Visit', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 12)),
+                                Text('Last Visit',
+                                    style: GoogleFonts.poppins(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12)),
                                 const SizedBox(width: 4),
                                 if (_sortColumn == 2)
-                                  Icon(_sortAsc ? Icons.arrow_upward : Icons.arrow_downward, size: 14, color: Colors.black54),
+                                  Icon(
+                                      _sortAsc
+                                          ? Icons.arrow_upward
+                                          : Icons.arrow_downward,
+                                      size: 14,
+                                      color: Colors.black54),
                               ],
                             ),
                           ),
@@ -632,10 +701,18 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text('Total Booking', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 12)),
+                                Text('Total Booking',
+                                    style: GoogleFonts.poppins(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12)),
                                 const SizedBox(width: 4),
                                 if (_sortColumn == 3)
-                                  Icon(_sortAsc ? Icons.arrow_upward : Icons.arrow_downward, size: 14, color: Colors.black54),
+                                  Icon(
+                                      _sortAsc
+                                          ? Icons.arrow_upward
+                                          : Icons.arrow_downward,
+                                      size: 14,
+                                      color: Colors.black54),
                               ],
                             ),
                           ),
@@ -649,10 +726,18 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text('Total Spent', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 12)),
+                                Text('Total Spent',
+                                    style: GoogleFonts.poppins(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12)),
                                 const SizedBox(width: 4),
                                 if (_sortColumn == 4)
-                                  Icon(_sortAsc ? Icons.arrow_upward : Icons.arrow_downward, size: 14, color: Colors.black54),
+                                  Icon(
+                                      _sortAsc
+                                          ? Icons.arrow_upward
+                                          : Icons.arrow_downward,
+                                      size: 14,
+                                      color: Colors.black54),
                               ],
                             ),
                           ),
@@ -666,10 +751,18 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text('Status', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 12)),
+                                Text('Status',
+                                    style: GoogleFonts.poppins(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12)),
                                 const SizedBox(width: 4),
                                 if (_sortColumn == 5)
-                                  Icon(_sortAsc ? Icons.arrow_upward : Icons.arrow_downward, size: 14, color: Colors.black54),
+                                  Icon(
+                                      _sortAsc
+                                          ? Icons.arrow_upward
+                                          : Icons.arrow_downward,
+                                      size: 14,
+                                      color: Colors.black54),
                               ],
                             ),
                           ),
@@ -678,7 +771,9 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                         // Actions
                         SizedBox(
                           width: 100,
-                          child: Text('Actions', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 12)),
+                          child: Text('Actions',
+                              style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w600, fontSize: 12)),
                         ),
                       ],
                     ),
@@ -695,17 +790,22 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.error_outline, size: 80, color: Colors.red[400]),
+                        Icon(Icons.error_outline,
+                            size: 80, color: Colors.red[400]),
                         const SizedBox(height: 16),
                         Text(
                           'Error loading customers',
-                          style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w600, color: Colors.grey[600]),
+                          style: GoogleFonts.poppins(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey[600]),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           _errorMessage!,
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 16, color: Colors.grey[500]),
+                          style:
+                              TextStyle(fontSize: 16, color: Colors.grey[500]),
                         ),
                         const SizedBox(height: 16),
                         ElevatedButton(
@@ -724,24 +824,30 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.people_outline, size: 80, color: Colors.grey[400]),
+                                Icon(Icons.people_outline,
+                                    size: 80, color: Colors.grey[400]),
                                 const SizedBox(height: 16),
                                 Text(
                                   'No Customers Yet',
-                                  style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w600, color: Colors.grey[600]),
+                                  style: GoogleFonts.poppins(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey[600]),
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
                                   "Click 'Add Customer' to create one.",
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(fontSize: 16, color: Colors.grey[500]),
+                                  style: TextStyle(
+                                      fontSize: 16, color: Colors.grey[500]),
                                 ),
                               ],
                             ),
                           )
                         : ListView.separated(
                             itemCount: rows.length,
-                            separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFEFEFEF)),
+                            separatorBuilder: (_, __) => const Divider(
+                                height: 1, color: Color(0xFFEFEFEF)),
                             itemBuilder: (context, idx) {
                               final c = rows[idx];
                               final actualIndex = customers.indexOf(c);
@@ -751,7 +857,8 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                                 physics: const ClampingScrollPhysics(),
                                 child: Container(
                                   color: Colors.white,
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 8),
                                   child: Row(
                                     children: [
                                       // Name + email
@@ -759,26 +866,45 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                                         width: 200,
                                         child: Row(
                                           children: [
-                                            c.imagePath != null && c.imagePath!.isNotEmpty
+                                            c.imagePath != null &&
+                                                    c.imagePath!.isNotEmpty
                                                 ? CircleAvatar(
                                                     radius: 16,
-                                                    backgroundImage: c.imagePath!.startsWith('http') 
-                                                        ? NetworkImage(c.imagePath!) as ImageProvider
-                                                        : FileImage(File(c.imagePath!)),
+                                                    backgroundImage: c
+                                                            .imagePath!
+                                                            .startsWith('http')
+                                                        ? NetworkImage(
+                                                                c.imagePath!)
+                                                            as ImageProvider
+                                                        : FileImage(
+                                                            File(c.imagePath!)),
                                                   )
                                                 : CircleAvatar(
                                                     radius: 16,
-                                                    backgroundColor: Colors.blue[100],
+                                                    backgroundColor:
+                                                        Colors.blue[100],
                                                     child: Text(
-                                                      c.fullName.isNotEmpty ? c.fullName[0].toUpperCase() : '?',
-                                                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 11, color: Colors.blue[900]),
+                                                      c.fullName.isNotEmpty
+                                                          ? c.fullName[0]
+                                                              .toUpperCase()
+                                                          : '?',
+                                                      style:
+                                                          GoogleFonts.poppins(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                              fontSize: 11,
+                                                              color: Colors
+                                                                  .blue[900]),
                                                     ),
                                                   ),
                                             const SizedBox(width: 8),
                                             Expanded(
                                               child: Text(
                                                 c.fullName,
-                                                style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 12),
+                                                style: GoogleFonts.poppins(
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 12),
                                                 overflow: TextOverflow.ellipsis,
                                               ),
                                             ),
@@ -790,20 +916,26 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                                       SizedBox(
                                         width: 140,
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
                                           children: [
-                                            if (c.email != null && c.email!.isNotEmpty) ...[
+                                            if (c.email != null &&
+                                                c.email!.isNotEmpty) ...[
                                               Text(
                                                 c.email!,
-                                                style: GoogleFonts.poppins(fontSize: 11),
+                                                style: GoogleFonts.poppins(
+                                                    fontSize: 11),
                                                 overflow: TextOverflow.ellipsis,
                                               ),
                                               const SizedBox(height: 2),
                                             ],
                                             Text(
                                               c.mobile,
-                                              style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w500),
+                                              style: GoogleFonts.poppins(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w500),
                                               overflow: TextOverflow.ellipsis,
                                             ),
                                           ],
@@ -815,7 +947,8 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                                         width: 120,
                                         child: Text(
                                           c.lastVisit ?? 'Never',
-                                          style: GoogleFonts.poppins(fontSize: 11),
+                                          style:
+                                              GoogleFonts.poppins(fontSize: 11),
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
@@ -825,7 +958,8 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                                         width: 130,
                                         child: Text(
                                           c.totalBookings.toString(),
-                                          style: GoogleFonts.poppins(fontSize: 11),
+                                          style:
+                                              GoogleFonts.poppins(fontSize: 11),
                                         ),
                                       ),
                                       const SizedBox(width: 12),
@@ -834,7 +968,8 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                                         width: 110,
                                         child: Text(
                                           '₹${c.totalSpent.toStringAsFixed(2)}',
-                                          style: GoogleFonts.poppins(fontSize: 11),
+                                          style:
+                                              GoogleFonts.poppins(fontSize: 11),
                                         ),
                                       ),
                                       const SizedBox(width: 12),
@@ -842,17 +977,23 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                                       SizedBox(
                                         width: 100,
                                         child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 10, vertical: 4),
                                           decoration: BoxDecoration(
-                                            color: c.status == 'Active' ? Colors.green[50] : Colors.grey[200],
-                                            borderRadius: BorderRadius.circular(16),
+                                            color: c.status == 'Active'
+                                                ? Colors.green[50]
+                                                : Colors.grey[200],
+                                            borderRadius:
+                                                BorderRadius.circular(16),
                                           ),
                                           child: Text(
                                             c.status,
                                             style: GoogleFonts.poppins(
                                               fontSize: 10,
                                               fontWeight: FontWeight.w600,
-                                              color: c.status == 'Active' ? Colors.green[800] : Colors.grey[800],
+                                              color: c.status == 'Active'
+                                                  ? Colors.green[800]
+                                                  : Colors.grey[800],
                                             ),
                                             textAlign: TextAlign.center,
                                           ),
@@ -863,21 +1004,31 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                                       SizedBox(
                                         width: 100,
                                         child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.start,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.start,
                                           children: [
                                             IconButton(
-                                              icon: const Icon(Icons.edit_outlined, size: 18),
+                                              icon: const Icon(
+                                                  Icons.edit_outlined,
+                                                  size: 18),
                                               padding: const EdgeInsets.all(8),
-                                              constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                                              onPressed: () => _editCustomer(actualIndex),
+                                              constraints: const BoxConstraints(
+                                                  minWidth: 40, minHeight: 40),
+                                              onPressed: () =>
+                                                  _editCustomer(actualIndex),
                                               tooltip: 'Edit',
                                             ),
                                             const SizedBox(width: 4),
                                             IconButton(
-                                              icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                                              icon: const Icon(
+                                                  Icons.delete_outline,
+                                                  size: 18,
+                                                  color: Colors.red),
                                               padding: const EdgeInsets.all(8),
-                                              constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                                              onPressed: () => _deleteCustomer(actualIndex),
+                                              constraints: const BoxConstraints(
+                                                  minWidth: 40, minHeight: 40),
+                                              onPressed: () =>
+                                                  _deleteCustomer(actualIndex),
                                               tooltip: 'Delete',
                                             ),
                                           ],
@@ -889,7 +1040,7 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                               );
                             },
                           ),
-                        ),
+                  ),
               ],
             ),
           ),
@@ -904,7 +1055,12 @@ class _InfoCard extends StatelessWidget {
   final String value;
   final String subtitle;
 
-  const _InfoCard({required this.title, required this.value, required this.subtitle, Key? key}) : super(key: key);
+  const _InfoCard(
+      {required this.title,
+      required this.value,
+      required this.subtitle,
+      Key? key})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -917,11 +1073,17 @@ class _InfoCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 10.sp)),
+            Text(title,
+                style: GoogleFonts.poppins(
+                    color: Colors.grey[600], fontSize: 10.sp)),
             const SizedBox(height: 6),
-            Text(value, style: GoogleFonts.poppins(fontSize: 16.sp, fontWeight: FontWeight.bold)),
+            Text(value,
+                style: GoogleFonts.poppins(
+                    fontSize: 16.sp, fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            Text(subtitle, style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 10.sp)),
+            Text(subtitle,
+                style: GoogleFonts.poppins(
+                    color: Colors.grey[600], fontSize: 10.sp)),
           ],
         ),
       ),
@@ -932,7 +1094,8 @@ class _InfoCard extends StatelessWidget {
 class CustomerDetailPopup extends StatefulWidget {
   final Customer customer;
 
-  const CustomerDetailPopup({Key? key, required this.customer}) : super(key: key);
+  const CustomerDetailPopup({Key? key, required this.customer})
+      : super(key: key);
 
   @override
   _CustomerDetailPopupState createState() => _CustomerDetailPopupState();
@@ -971,12 +1134,14 @@ class _CustomerDetailPopupState extends State<CustomerDetailPopup> {
             Column(
               children: [
                 _buildHeader(),
-                const Divider(height: 1, thickness: 1, color: Color(0xFFE0E0E0)),
+                const Divider(
+                    height: 1, thickness: 1, color: Color(0xFFE0E0E0)),
                 Expanded(
                   child: Row(
                     children: [
                       _buildSideMenu(),
-                      const VerticalDivider(width: 1, thickness: 1, color: Color(0xFFE0E0E0)),
+                      const VerticalDivider(
+                          width: 1, thickness: 1, color: Color(0xFFE0E0E0)),
                       _buildMainContent(),
                     ],
                   ),
@@ -1007,12 +1172,16 @@ class _CustomerDetailPopupState extends State<CustomerDetailPopup> {
             decoration: BoxDecoration(
               border: Border.all(color: Colors.grey.shade300, width: 1.5),
             ),
-            child: const Icon(Icons.person_outline, size: 30, color: Colors.black54),
+            child: const Icon(Icons.person_outline,
+                size: 30, color: Colors.black54),
           ),
           const SizedBox(width: 16),
           Text(
             widget.customer.fullName,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+            style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87),
           ),
           const Spacer(),
           Container(
@@ -1039,12 +1208,14 @@ class _CustomerDetailPopupState extends State<CustomerDetailPopup> {
             child: InkWell(
               onTap: () => setState(() => _selectedTabIndex = index),
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
                 child: Text(
                   _tabs[index],
                   style: TextStyle(
                     color: isSelected ? Colors.white : Colors.black87,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    fontWeight:
+                        isSelected ? FontWeight.bold : FontWeight.normal,
                     fontSize: 15,
                   ),
                 ),
@@ -1089,7 +1260,7 @@ class _CustomerDetailPopupState extends State<CustomerDetailPopup> {
             _buildMetricCard('0', 'Total Visits'),
             _buildMetricCard('0', 'Completed'),
             _buildMetricCard('0', 'Cancelled'),
-           ],
+          ],
         ),
       ),
     );
@@ -1156,7 +1327,7 @@ class _CustomerDetailPopupState extends State<CustomerDetailPopup> {
       padding: const EdgeInsets.symmetric(vertical: 10.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [ 
+        children: [
           Text(
             label,
             style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
@@ -1164,7 +1335,8 @@ class _CustomerDetailPopupState extends State<CustomerDetailPopup> {
           const SizedBox(height: 4),
           Text(
             value.isEmpty ? '—' : value, // Use a dash for empty values
-            style: const TextStyle(fontSize: 16,
+            style: const TextStyle(
+                fontSize: 16,
                 height: 1.4,
                 color: Colors.black87,
                 fontWeight: FontWeight.w500),
@@ -1190,7 +1362,10 @@ class _CustomerDetailPopupState extends State<CustomerDetailPopup> {
         children: [
           Text(
             value,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
+            style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87),
           ),
           const SizedBox(height: 6),
           Text(
@@ -1202,4 +1377,3 @@ class _CustomerDetailPopupState extends State<CustomerDetailPopup> {
     );
   }
 }
-

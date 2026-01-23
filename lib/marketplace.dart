@@ -114,8 +114,14 @@ class _MarketplacePageState extends State<MarketplacePage> {
     return products.where((product) {
       // Search filter
       final matchesSearch = _searchQuery.isEmpty ||
-          product['name'].toString().toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          product['vendor'].toString().toLowerCase().contains(_searchQuery.toLowerCase());
+          product['name']
+              .toString()
+              .toLowerCase()
+              .contains(_searchQuery.toLowerCase()) ||
+          product['vendor']
+              .toString()
+              .toLowerCase()
+              .contains(_searchQuery.toLowerCase());
 
       // Verified filter
       final matchesVerified = !_showVerifiedOnly || product['verified'] == true;
@@ -172,7 +178,8 @@ class _MarketplacePageState extends State<MarketplacePage> {
                 decoration: InputDecoration(
                   hintText: 'Search products...',
                   hintStyle: GoogleFonts.poppins(fontSize: 13),
-                  prefixIcon: const Icon(Icons.search, color: Colors.grey, size: 20),
+                  prefixIcon:
+                      const Icon(Icons.search, color: Colors.grey, size: 20),
                   suffixIcon: _searchQuery.isEmpty
                       ? null
                       : IconButton(
@@ -190,7 +197,8 @@ class _MarketplacePageState extends State<MarketplacePage> {
                     borderRadius: BorderRadius.circular(8),
                     borderSide: BorderSide.none,
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 ),
               ),
             ),
@@ -216,7 +224,9 @@ class _MarketplacePageState extends State<MarketplacePage> {
                     backgroundColor: Colors.white,
                     checkmarkColor: Colors.white,
                     labelStyle: GoogleFonts.poppins(
-                      color: _showVerifiedOnly ? Colors.white : Colors.grey.shade700,
+                      color: _showVerifiedOnly
+                          ? Colors.white
+                          : Colors.grey.shade700,
                       fontSize: 12,
                     ),
                   ),
@@ -261,7 +271,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
                   crossAxisCount: 2,
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
-                  childAspectRatio: 0.75,
+                  childAspectRatio: 0.65,
                 ),
                 itemCount: _filteredProducts.length,
                 itemBuilder: (context, index) {
@@ -301,7 +311,8 @@ class _MarketplacePageState extends State<MarketplacePage> {
                 width: double.infinity,
                 decoration: BoxDecoration(
                   color: Colors.grey.shade300,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(12)),
                 ),
                 child: Icon(
                   Icons.image_not_supported,
@@ -317,7 +328,8 @@ class _MarketplacePageState extends State<MarketplacePage> {
                   children: [
                     // In stock/out of stock tag
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
                         color: inStock ? Colors.green : Colors.red,
                         borderRadius: BorderRadius.circular(12),
@@ -335,7 +347,8 @@ class _MarketplacePageState extends State<MarketplacePage> {
                     // Discount tag
                     if (discount != null && discount > 0)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
                           color: Colors.orange,
                           borderRadius: BorderRadius.circular(12),
@@ -357,7 +370,8 @@ class _MarketplacePageState extends State<MarketplacePage> {
                 top: 8,
                 right: 8,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.8),
                     borderRadius: BorderRadius.circular(12),
@@ -441,7 +455,8 @@ class _MarketplacePageState extends State<MarketplacePage> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
                           foregroundColor: const Color(0xFF457BFF),
-                          side: BorderSide(color: const Color(0xFF457BFF), width: 1),
+                          side: BorderSide(
+                              color: const Color(0xFF457BFF), width: 1),
                           padding: const EdgeInsets.symmetric(vertical: 6),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(6),

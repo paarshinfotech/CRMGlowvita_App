@@ -320,17 +320,6 @@ class _AddOnsPageState extends State<AddOnsPage> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: Colors.purple.shade50,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Icon(Icons.spa_outlined,
-                    size: 20, color: Color(0xFF6B4E71)),
-              ),
-              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
