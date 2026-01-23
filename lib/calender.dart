@@ -102,7 +102,11 @@ class _CalendarState extends State<Calendar> {
     try {
       final models = await ApiService.getAppointments();
       setState(() {
-        _appointments = models.map((m) {
+        _appointments = models.where((m) {
+          // Client-side date filtering since API might return all
+          if (m.date == null) return true;
+          return DateUtils.isSameDay(m.date!, _selectedDate);
+        }).map((m) {
           // Combine date and startTime HH:mm
           DateTime start = m.date ?? _selectedDate;
           if (m.startTime != null && m.startTime!.contains(':')) {
@@ -116,13 +120,17 @@ class _CalendarState extends State<Calendar> {
             );
           }
 
+          // CRITICAL: Map staff name correctly to match staffList
+          String mappedStaffName =
+              m.staff?.fullName ?? m.staffName ?? 'Unassigned';
+
           return Appointments(
             id: m.id ?? '',
             startTime: start,
             duration: Duration(minutes: m.duration ?? 30),
             clientName: m.clientName ?? 'Unknown',
             serviceName: m.serviceName ?? 'Unknown Service',
-            staffName: m.staffName ?? 'Unassigned',
+            staffName: mappedStaffName,
             status: m.status ?? 'New',
             isWebBooking: m.isMultiService ?? false,
             mode: m.mode ?? 'offline',

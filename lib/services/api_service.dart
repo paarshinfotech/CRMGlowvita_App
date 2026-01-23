@@ -939,7 +939,12 @@ class ApiService {
       Map<String, String> queryParams = {};
 
       if (page != null) queryParams['page'] = page.toString();
-      if (limit != null) queryParams['limit'] = limit.toString();
+      if (limit != null) {
+        queryParams['limit'] = limit.toString();
+      } else {
+        queryParams['limit'] =
+            '100'; // Increase default limit to fetch more for calendar
+      }
 
       if (queryParams.isNotEmpty) {
         url += '?' + Uri(queryParameters: queryParams).query;
