@@ -730,24 +730,15 @@ class ApiService {
         'gender': serviceData['gender'] ?? 'unisex',
         'staff': staffIds,
         'commission': serviceData['allow_commission'] ?? false,
-        'homeService': {
-          'available': serviceData['homeService']?['available'] ?? false,
-          'charges': serviceData['homeService']?['charges'],
-        },
-        'weddingService': {
-          'available': serviceData['weddingService']?['available'] ?? false,
-          'charges': serviceData['weddingService']?['charges'],
-        },
+        'homeService': serviceData['home_service'] ?? false,
+        'weddingService': serviceData['wedding_service'] ?? false,
         'bookingInterval':
             int.tryParse(serviceData['booking_interval'] ?? '0') ?? 0,
-        'tax': {
-          'enabled': serviceData['tax']?['enabled'] ?? false,
-          'type': serviceData['tax']?['type'],
-          'value': serviceData['tax']?['value'],
-        },
+        'tax': serviceData['enable_tax'] ?? false,
         'onlineBooking': serviceData['online_booking'] ?? true,
         if (serviceData['image'] != null)
           'image': serviceData['image'], // base64 data URL
+        'addOns': serviceData['addOns'] ?? [],
       };
 
       final response = await http.post(
@@ -861,23 +852,11 @@ class ApiService {
         'gender': serviceData['gender'] ?? 'unisex',
         'staff': serviceData['staff'] ?? [],
         'commission': serviceData['allow_commission'] ?? false,
-        'homeService': {
-          'available': serviceData['homeService'] != null
-              ? (serviceData['homeService']['available'] ?? false)
-              : false,
-          'charges': (serviceData['homeService'] != null)
-              ? serviceData['homeService']['charges']
-              : 0,
-        },
-        'weddingService': {
-          'available': serviceData['weddingService'] != null
-              ? (serviceData['weddingService']['available'] ?? false)
-              : false,
-          'charges': (serviceData['weddingService'] != null)
-              ? serviceData['weddingService']['charges']
-              : 0,
-        },
+        'homeService': serviceData['home_service'] ?? false,
+        'weddingService': serviceData['wedding_service'] ?? false,
+        'tax': serviceData['enable_tax'] ?? false,
         'onlineBooking': serviceData['online_booking'] ?? true,
+        'addOns': serviceData['addOns'] ?? [],
       };
 
       if (serviceData['image'] != null) {
@@ -1411,6 +1390,7 @@ class Service {
   List<dynamic>? staff; // Added staff field
   double? homeServiceCharges; // Added
   double? weddingServiceCharges; // Added
+  List<String>? addOns; // Added: list of AddOn IDs mapped to this service
 
   Service({
     this.id,
@@ -1438,6 +1418,7 @@ class Service {
     this.staff, // Added staff
     this.homeServiceCharges, // Added
     this.weddingServiceCharges, // Added
+    this.addOns, // Added
   });
 
   factory Service.fromJson(Map<String, dynamic> json) {
@@ -1501,6 +1482,18 @@ class Service {
               return s.toString();
             }).toList()
           : null,
+      addOns: json['addOns'] is List
+          ? (json['addOns'] as List).map((a) {
+              if (a is Map) return a['_id']?.toString() ?? '';
+              return a.toString();
+            }).toList()
+          : (json['addons'] is List
+              ? (json['addons'] as List).map((a) => a.toString()).toList()
+              : (json['mappedAddons'] is List
+                  ? (json['mappedAddons'] as List)
+                      .map((a) => a.toString())
+                      .toList()
+                  : null)),
     );
   }
 
@@ -1531,6 +1524,7 @@ class Service {
       'createdAt': createdAt,
       'updatedAt': updatedAt,
       'staff': staff, // Include staff
+      'addOns': addOns, // Include addons
     };
   }
 }

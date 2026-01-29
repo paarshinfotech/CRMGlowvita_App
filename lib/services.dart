@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'add_services.dart';
 import 'widgets/custom_drawer.dart';
 import 'services/api_service.dart';
+import 'add_ons.dart';
 
 class Services extends StatefulWidget {
   const Services({super.key});
@@ -678,13 +679,114 @@ class _ServicesState extends State<Services> {
                                           const SizedBox(height: 8),
                                           Row(
                                             children: [
-                                              Text(
-                                                '₹${origPrice.toStringAsFixed(0)}',
-                                                style: GoogleFonts.poppins(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.w700,
-                                                    color:
-                                                        Colors.blue.shade700),
+                                              Expanded(
+                                                child: Text(
+                                                  '₹${origPrice.toStringAsFixed(0)}',
+                                                  style: GoogleFonts.poppins(
+                                                      fontSize: 16,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color:
+                                                          Colors.blue.shade700),
+                                                ),
+                                              ),
+                                              IconButton(
+                                                onPressed: () {
+                                                  showDialog(
+                                                    context: context,
+                                                    builder: (_) =>
+                                                        AddEditAddOnDialog(
+                                                      initialServiceId:
+                                                          service.id,
+                                                    ),
+                                                  );
+                                                },
+                                                icon: Icon(
+                                                    Icons.add_circle_outline,
+                                                    color: Colors.blue.shade600,
+                                                    size: 20),
+                                                tooltip: 'Add Add-on',
+                                                padding: EdgeInsets.zero,
+                                                constraints:
+                                                    const BoxConstraints(),
+                                              ),
+                                              PopupMenuButton<String>(
+                                                color: Colors.white,
+                                                padding: EdgeInsets.zero,
+                                                constraints:
+                                                    const BoxConstraints(),
+                                                icon: Icon(Icons.more_vert,
+                                                    color: Colors.grey.shade600,
+                                                    size: 20),
+                                                onSelected: (String result) {
+                                                  if (result == 'View') {
+                                                    _showServiceDetails(
+                                                        service);
+                                                  } else if (result == 'Edit') {
+                                                    _editService(index);
+                                                  } else if (result ==
+                                                      'Delete') {
+                                                    _deleteService(index);
+                                                  }
+                                                },
+                                                itemBuilder: (BuildContext
+                                                        context) =>
+                                                    <PopupMenuEntry<String>>[
+                                                  PopupMenuItem<String>(
+                                                    value: 'View',
+                                                    child: Row(
+                                                      children: [
+                                                        Icon(Icons.visibility,
+                                                            color: Colors
+                                                                .blue.shade600,
+                                                            size: 16),
+                                                        const SizedBox(
+                                                            width: 8),
+                                                        Text('View',
+                                                            style: GoogleFonts
+                                                                .poppins(
+                                                                    fontSize:
+                                                                        12)),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  PopupMenuItem<String>(
+                                                    value: 'Edit',
+                                                    child: Row(
+                                                      children: [
+                                                        Icon(Icons.edit,
+                                                            color: Colors.orange
+                                                                .shade600,
+                                                            size: 16),
+                                                        const SizedBox(
+                                                            width: 8),
+                                                        Text('Edit',
+                                                            style: GoogleFonts
+                                                                .poppins(
+                                                                    fontSize:
+                                                                        12)),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  PopupMenuItem<String>(
+                                                    value: 'Delete',
+                                                    child: Row(
+                                                      children: [
+                                                        Icon(Icons.delete,
+                                                            color: Colors
+                                                                .red.shade600,
+                                                            size: 16),
+                                                        const SizedBox(
+                                                            width: 8),
+                                                        Text('Delete',
+                                                            style: GoogleFonts
+                                                                .poppins(
+                                                                    fontSize:
+                                                                        12)),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
                                             ],
                                           ),
@@ -693,7 +795,7 @@ class _ServicesState extends State<Services> {
                                     ),
                                     Column(
                                       mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
+                                          MainAxisAlignment.center,
                                       children: [
                                         Transform.scale(
                                           scale: 0.75,
@@ -717,74 +819,6 @@ class _ServicesState extends State<Services> {
                                                 MaterialTapTargetSize
                                                     .shrinkWrap,
                                           ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        PopupMenuButton<String>(
-                                          color: Colors
-                                              .white, // White background for menu
-                                          icon: Icon(Icons.more_vert,
-                                              color: Colors.grey.shade600,
-                                              size: 20),
-                                          onSelected: (String result) {
-                                            if (result == 'View') {
-                                              _showServiceDetails(service);
-                                            } else if (result == 'Edit') {
-                                              _editService(index);
-                                            } else if (result == 'Delete') {
-                                              _deleteService(index);
-                                            }
-                                          },
-                                          itemBuilder: (BuildContext context) =>
-                                              <PopupMenuEntry<String>>[
-                                            PopupMenuItem<String>(
-                                              value: 'View',
-                                              child: Row(
-                                                children: [
-                                                  Icon(Icons.visibility,
-                                                      color:
-                                                          Colors.blue.shade600,
-                                                      size: 16),
-                                                  const SizedBox(width: 8),
-                                                  Text('View',
-                                                      style:
-                                                          GoogleFonts.poppins(
-                                                              fontSize: 12)),
-                                                ],
-                                              ),
-                                            ),
-                                            PopupMenuItem<String>(
-                                              value: 'Edit',
-                                              child: Row(
-                                                children: [
-                                                  Icon(Icons.edit,
-                                                      color: Colors
-                                                          .orange.shade600,
-                                                      size: 16),
-                                                  const SizedBox(width: 8),
-                                                  Text('Edit',
-                                                      style:
-                                                          GoogleFonts.poppins(
-                                                              fontSize: 12)),
-                                                ],
-                                              ),
-                                            ),
-                                            PopupMenuItem<String>(
-                                              value: 'Delete',
-                                              child: Row(
-                                                children: [
-                                                  Icon(Icons.delete,
-                                                      color:
-                                                          Colors.red.shade600,
-                                                      size: 16),
-                                                  const SizedBox(width: 8),
-                                                  Text('Delete',
-                                                      style:
-                                                          GoogleFonts.poppins(
-                                                              fontSize: 12)),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
                                         ),
                                       ],
                                     ),

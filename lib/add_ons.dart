@@ -455,10 +455,12 @@ class StatusBadge extends StatelessWidget {
 
 class AddEditAddOnDialog extends StatefulWidget {
   final AddOn? addOn;
+  final String? initialServiceId;
 
   const AddEditAddOnDialog({
     super.key,
     this.addOn,
+    this.initialServiceId,
   });
 
   @override
@@ -485,6 +487,11 @@ class _AddEditAddOnDialogState extends State<AddEditAddOnDialog> {
         TextEditingController(text: widget.addOn?.price?.toStringAsFixed(0));
     _duration = TextEditingController(text: widget.addOn?.duration?.toString());
     _selected = List.from(widget.addOn?.mappedServices ?? []);
+    if (widget.addOn == null && widget.initialServiceId != null) {
+      if (!_selected.contains(widget.initialServiceId)) {
+        _selected.add(widget.initialServiceId!);
+      }
+    }
     _fetchServices();
   }
 

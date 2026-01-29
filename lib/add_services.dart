@@ -6,6 +6,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import 'addon_model.dart';
 
 class AddServicePage extends StatefulWidget {
   final Map<String, dynamic>? serviceData;
@@ -63,11 +64,16 @@ class _AddServicePageState extends State<AddServicePage>
   bool enableTax = false;
   bool enableOnlineBooking = true;
 
+  List<AddOn> _availableAddOns = [];
+  List<String> _selectedAddOnIds = [];
+  bool _isAddOnsLoading = true;
+
   List<String> categories = [];
   List<String> serviceNames = [];
   Map<String, String> categoryIdMap = {}; // Maps category name to ID
   Map<String, List<String>> categoryServicesMap =
       {}; // Maps category name to its services
+  Map<String, List<String>> serviceNameToAddonIds = {}; // Added
   bool _isCategoriesLoading = true; // Flag to track category loading state
   bool _isServicesLoading = false; // Flag to track service loading state
 
@@ -111,8 +117,9 @@ class _AddServicePageState extends State<AddServicePage>
     _isStaffLoading = true;
 
     // Fetch data from APIs
-    _fetchCategories();
     _fetchStaff();
+    _fetchCategories();
+    _fetchAddOns();
 
     if (widget.serviceData != null) {
       final data = widget.serviceData!;
@@ -211,6 +218,12 @@ class _AddServicePageState extends State<AddServicePage>
 
       enableOnlineBooking = data['onlineBooking'] ?? true;
 
+      _selectedAddOnIds = data['addOns'] != null
+          ? List<String>.from(data['addOns'])
+          : (data['mappedAddons'] != null
+              ? List<String>.from(data['mappedAddons'])
+              : []);
+
       // Fix: Pre-populate selectedServiceName and normalize category
       selectedServiceName = data['name'];
       if (selectedCategory == null || selectedCategory == 'Uncategorized') {
@@ -295,7 +308,16 @@ class _AddServicePageState extends State<AddServicePage>
                         ? ['No service added']
                         : serviceNames,
                     selectedServiceName,
-                    (val) => setState(() => selectedServiceName = val),
+                    (val) {
+                      setState(() {
+                        selectedServiceName = val;
+                        if (val != null &&
+                            serviceNameToAddonIds.containsKey(val)) {
+                          _selectedAddOnIds =
+                              List.from(serviceNameToAddonIds[val]!);
+                        }
+                      });
+                    },
                     label: 'Service Name',
                     hint: _isServicesLoading
                         ? 'Loading...'
@@ -610,6 +632,143 @@ class _AddServicePageState extends State<AddServicePage>
                       ),
                     ),
                   ),
+                  if (widget.serviceData != null) ...[
+                    _spacer(12),
+                    _header("Add-ons"),
+                    Card(
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        side: BorderSide(color: Colors.grey.shade200),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: _isAddOnsLoading
+                            ? const Padding(
+                                padding: EdgeInsets.all(8.0),
+                                child: Center(
+                                  child: SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  ),
+                                ),
+                              )
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Builder(builder: (context) {
+                                        final serviceId =
+                                            widget.serviceData!['_id'] ??
+                                                widget.serviceData!['id'];
+                                        final visibleAddons = _availableAddOns
+                                            .where((a) =>
+                                                a.mappedServices
+                                                    ?.contains(serviceId) ??
+                                                false)
+                                            .toList();
+                                        return Checkbox(
+                                          value: visibleAddons.isNotEmpty &&
+                                              visibleAddons.every((a) =>
+                                                  _selectedAddOnIds
+                                                      .contains(a.id)),
+                                          onChanged: (bool? value) {
+                                            setState(() {
+                                              if (value == true) {
+                                                for (var a in visibleAddons) {
+                                                  if (!_selectedAddOnIds
+                                                      .contains(a.id)) {
+                                                    _selectedAddOnIds
+                                                        .add(a.id!);
+                                                  }
+                                                }
+                                              } else {
+                                                for (var a in visibleAddons) {
+                                                  _selectedAddOnIds
+                                                      .remove(a.id);
+                                                }
+                                              }
+                                            });
+                                          },
+                                          activeColor: const Color(0xFF6B4E71),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(4),
+                                          ),
+                                        );
+                                      }),
+                                      Text("Select All Add-ons",
+                                          style: GoogleFonts.poppins(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600)),
+                                    ],
+                                  ),
+                                  const Divider(height: 16),
+                                  ..._availableAddOns.where((addon) {
+                                    final serviceId =
+                                        widget.serviceData!['_id'] ??
+                                            widget.serviceData!['id'];
+                                    return addon.mappedServices
+                                            ?.contains(serviceId) ??
+                                        false;
+                                  }).map((addon) {
+                                    final isSelected =
+                                        _selectedAddOnIds.contains(addon.id);
+                                    return InkWell(
+                                      onTap: () {
+                                        setState(() {
+                                          if (isSelected) {
+                                            _selectedAddOnIds.remove(addon.id);
+                                          } else {
+                                            _selectedAddOnIds.add(addon.id!);
+                                          }
+                                        });
+                                      },
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 4),
+                                        child: Row(
+                                          children: [
+                                            Checkbox(
+                                              value: isSelected,
+                                              onChanged: (bool? value) {
+                                                setState(() {
+                                                  if (value == true) {
+                                                    _selectedAddOnIds
+                                                        .add(addon.id!);
+                                                  } else {
+                                                    _selectedAddOnIds
+                                                        .remove(addon.id);
+                                                  }
+                                                });
+                                              },
+                                              activeColor:
+                                                  const Color(0xFF6B4E71),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(4),
+                                              ),
+                                            ),
+                                            Expanded(
+                                              child: Text(
+                                                "${addon.name} (₹${addon.price?.toStringAsFixed(0)})",
+                                                style: GoogleFonts.poppins(
+                                                    fontSize: 13),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ],
+                              ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -761,6 +920,9 @@ class _AddServicePageState extends State<AddServicePage>
                           : null,
                     },
                     'allow_commission': allowCommission,
+                    'home_service': homeService, // Added
+                    'wedding_service': weddingService, // Added
+                    'enable_tax': enableTax, // Added
                     'staff': selectedStaff == 'All Staff'
                         ? allStaff
                             .map((name) => staffNameToId[name] ?? name)
@@ -780,6 +942,7 @@ class _AddServicePageState extends State<AddServicePage>
                       'value': _taxValue,
                     },
                     'online_booking': enableOnlineBooking,
+                    'addOns': _selectedAddOnIds,
                   };
 
                   if (_selectedImage != null) {
@@ -869,6 +1032,20 @@ class _AddServicePageState extends State<AddServicePage>
         ),
       ),
     );
+  }
+
+  Future<void> _fetchAddOns() async {
+    setState(() => _isAddOnsLoading = true);
+    try {
+      final addons = await ApiService.getAddOns();
+      setState(() {
+        _availableAddOns = addons;
+        _isAddOnsLoading = false;
+      });
+    } catch (e) {
+      print('Error fetching add-ons: $e');
+      setState(() => _isAddOnsLoading = false);
+    }
   }
 
   Future<void> _fetchStaff() async {
@@ -1018,79 +1195,38 @@ class _AddServicePageState extends State<AddServicePage>
 
     try {
       print('Fetching services for category: $categoryName');
-      final token = await ApiService.getAuthToken();
-      print('Service API Token retrieved: $token'); // Debug print
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
+      final fetchedServices = await ApiService.getServices();
 
-      final response = await http.get(
-        Uri.parse('https://admin.v2winonline.com/api/admin/services'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-      );
-      print(
-          'Service API Response Status: ${response.statusCode}'); // Debug print
+      // Filter services by selected category
+      List<String> servicesInCategory = [];
+      Set<String> uniqueServiceNames = <String>{};
 
-      if (response.statusCode == 200) {
-        final decoded = json.decode(response.body);
-        print('Service API Response: $decoded'); // Debug print
-        List<dynamic> serviceData;
-        if (decoded is List) {
-          serviceData = decoded;
-        } else {
-          serviceData = decoded['data'] ?? [];
-        }
+      serviceNameToAddonIds.clear();
 
-        // Filter services by selected category
-        List<String> servicesInCategory = [];
-        Set<String> uniqueServiceNames =
-            <String>{}; // Use a Set to ensure uniqueness
-        for (var service in serviceData) {
-          String serviceCategory = '';
-          if (service['category'] is Map) {
-            serviceCategory =
-                service['category']['name'] ?? service['category']['_id'] ?? '';
-          } else {
-            serviceCategory =
-                service['categoryName'] ?? service['category'] ?? '';
-          }
+      for (var service in fetchedServices) {
+        String serviceCategory = service.category ?? '';
 
-          print('Checking service: ' +
-              (service['name']?.toString() ?? 'Unknown') +
-              ' with category: ' +
-              serviceCategory); // Debug print
-          if (serviceCategory == categoryName) {
-            String serviceName = service['name'] ?? 'Unknown Service';
-            // Only add if not already in the set
-            if (!uniqueServiceNames.contains(serviceName)) {
-              uniqueServiceNames.add(serviceName);
-              servicesInCategory.add(serviceName);
-            }
+        if (serviceCategory == categoryName) {
+          String sName = service.name ?? 'Unknown Service';
+          if (!uniqueServiceNames.contains(sName)) {
+            uniqueServiceNames.add(sName);
+            servicesInCategory.add(sName);
+            serviceNameToAddonIds[sName] = service.addOns ?? [];
           }
         }
-
-        setState(() {
-          categoryServicesMap[categoryName] = servicesInCategory;
-          serviceNames = servicesInCategory;
-
-          // Fix: Ensure selectedServiceName is in the list to avoid dropdown crash
-          if (selectedServiceName != null &&
-              !serviceNames.contains(selectedServiceName)) {
-            serviceNames.add(selectedServiceName!);
-          }
-        });
-        print(
-            'Services loaded for category $categoryName: ${servicesInCategory.length}');
-      } else {
-        print('Service API Error: ${response.body}'); // Debug print
-        throw Exception('Failed to load services: ${response.statusCode}');
       }
+
+      setState(() {
+        categoryServicesMap[categoryName] = servicesInCategory;
+        serviceNames = servicesInCategory;
+
+        if (selectedServiceName != null &&
+            !serviceNames.contains(selectedServiceName)) {
+          serviceNames.add(selectedServiceName!);
+        }
+      });
     } catch (e) {
       print('Error fetching services: $e');
-      // Fallback to empty list
       setState(() {
         serviceNames = [];
       });
