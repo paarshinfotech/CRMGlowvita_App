@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../customer_model.dart';
 import '../appointment_model.dart';
 import '../addon_model.dart';
+import '../vendor_model.dart';
 
 class StaffMember {
   final String? id;
@@ -940,10 +941,14 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data is List) {
-          return data.map((json) => AppointmentModel.fromJson(json)).toList();
+          return data
+              .whereType<Map<String, dynamic>>()
+              .map((json) => AppointmentModel.fromJson(json))
+              .toList();
         } else if (data is Map && data['data'] != null) {
           List<dynamic> appointmentsData = data['data'];
           return appointmentsData
+              .whereType<Map<String, dynamic>>()
               .map((json) => AppointmentModel.fromJson(json))
               .toList();
         } else {
@@ -1359,6 +1364,40 @@ class ApiService {
       }
     } catch (e) {
       print('Error deleting wedding package: $e');
+      rethrow;
+    }
+  }
+
+  // ==================== VENDOR PROFILE ==================== //
+  static Future<VendorProfile> getVendorProfile() async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/crm/vendor'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': 'crm_access_token=$token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return VendorProfile.fromJson(data['data']);
+        } else {
+          throw Exception(
+              'Failed to load vendor profile: ${data['message'] ?? 'Unknown error'}');
+        }
+      } else {
+        throw Exception(
+            'Failed to load vendor profile: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching vendor profile: $e');
       rethrow;
     }
   }

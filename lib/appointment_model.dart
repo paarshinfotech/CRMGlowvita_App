@@ -79,10 +79,10 @@ class AppointmentModel {
       isHomeService: json['isHomeService'] ?? false,
       isWeddingService: json['isWeddingService'] ?? false,
       mode: json['mode'],
-      client: json['client'] != null
+      client: json['client'] is Map<String, dynamic>
           ? AppointmentClient.fromJson(json['client'])
           : null,
-      staff: json['staff'] != null && json['staff'] is Map<String, dynamic>
+      staff: json['staff'] is Map<String, dynamic>
           ? AppointmentStaff.fromJson(json['staff'])
           : null,
       notes: json['notes'],
@@ -92,15 +92,18 @@ class AppointmentModel {
       finalAmount: (json['finalAmount'] as num?)?.toDouble(),
       amountPaid: (json['amountPaid'] as num?)?.toDouble(),
       paymentHistory: (json['paymentHistory'] as List?)
-          ?.map((e) => PaymentRecord.fromJson(e))
+          ?.whereType<Map<String, dynamic>>()
+          .map((e) => PaymentRecord.fromJson(e))
           .toList(),
       serviceItems: (json['serviceItems'] as List?)
-          ?.map((e) => ServiceItem.fromJson(e))
+          ?.whereType<Map<String, dynamic>>()
+          .map((e) => ServiceItem.fromJson(e))
           .toList(),
-      weddingPackageDetails: json['weddingPackageDetails'] != null
-          ? WeddingPackageDetails.fromJson(json['weddingPackageDetails'])
-          : null,
-      homeServiceLocation: json['homeServiceLocation'] != null
+      weddingPackageDetails:
+          json['weddingPackageDetails'] is Map<String, dynamic>
+              ? WeddingPackageDetails.fromJson(json['weddingPackageDetails'])
+              : null,
+      homeServiceLocation: json['homeServiceLocation'] is Map<String, dynamic>
           ? HomeServiceLocation.fromJson(json['homeServiceLocation'])
           : null,
     );
