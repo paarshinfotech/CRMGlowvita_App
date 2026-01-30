@@ -54,6 +54,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
   Future<void> _registerUser() async {
     if (!_formKey.currentState!.validate()) return;
+
     if (selectedLat == null || selectedLng == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please select a location.")),
@@ -64,7 +65,7 @@ class _RegisterPageState extends State<RegisterPage> {
     setState(() => isLoading = true);
 
     try {
-      final payload = {
+      final payload = <String, dynamic>{
         "firstName": firstNameCtrl.text.trim(),
         "lastName": lastNameCtrl.text.trim(),
         "businessName": businessNameCtrl.text.trim(),
@@ -76,12 +77,19 @@ class _RegisterPageState extends State<RegisterPage> {
         "pincode": pincodeCtrl.text.trim(),
         "address": addressCtrl.text.trim(),
         "category": selectedCategory,
-        "role": "vendor",  // Explicitly set role as vendor
-        "location": {"lat": selectedLat, "lng": selectedLng},
-        "baseLocation": {"lat": selectedLat, "lng": selectedLng},
+
+        // IMPORTANT: Ensure double
+        "location": {
+          "lat": selectedLat!.toDouble(),
+          "lng": selectedLng!.toDouble(),
+        },
+        "baseLocation": {
+          "lat": selectedLat!.toDouble(),
+          "lng": selectedLng!.toDouble(),
+        },
       };
 
-      // Add optional fields if not empty
+      /// Optional fields
       if (businessDescCtrl.text.trim().isNotEmpty) {
         payload["description"] = businessDescCtrl.text.trim();
       }
@@ -92,48 +100,65 @@ class _RegisterPageState extends State<RegisterPage> {
         payload["referralCode"] = referralCtrl.text.trim();
       }
 
-      // Map subCategories based on checkboxes (adjust strings to match API expectation)
+      /// ✅ Correct subCategories as per API response example
+      /// API expects: ["at-salon"] not "shop", "onsite", etc.
       if (subCategories.isNotEmpty) {
         payload["subCategories"] = subCategories.map((cat) {
-          if (cat == "home") return "shop at home";
-          if (cat == "onsite") return "onsite";
-          return "shop";
+          switch (cat) {
+            case "home":
+              return "at-home";
+            case "onsite":
+              return "onsite";
+            default:
+              return "at-salon";
+          }
         }).toList();
       } else {
-        payload["subCategories"] = ["shop"]; // Default as per response example
+        payload["subCategories"] = ["at-salon"];
       }
 
-      final response = await http.post(
-        Uri.parse("https://partners.v2winonline.com/api/crm/auth/register"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(payload),
-      ).timeout(const Duration(seconds: 30));
+      debugPrint("REGISTER PAYLOAD: ${jsonEncode(payload)}");
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = jsonDecode(response.body);
-        if (data["message"] == "Account created successfully. Proceed to onboarding.") {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(data["message"])),
-          );
-          // Navigate to onboarding or dashboard
-          // Example: Navigator.pushReplacementNamed(context, '/onboarding');
-          Navigator.pop(context); // Or handle navigation as needed
-        } else {
-          throw Exception(data["message"] ?? "Registration failed");
-        }
+      final response = await http
+          .post(
+            Uri.parse("https://partners.v2winonline.com/api/crm/auth/register"),
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      debugPrint("STATUS CODE: ${response.statusCode}");
+      debugPrint("RESPONSE BODY: ${response.body}");
+
+      Map<String, dynamic> data = {};
+      try {
+        data = jsonDecode(response.body);
+      } catch (_) {
+        throw Exception("Invalid server response");
+      }
+
+      /// ✅ Accept ANY success code (200–299)
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final message = data["message"] ?? "Registration successful";
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+
+        /// Navigate forward
+        Navigator.pop(context);
       } else {
-        final errorData = jsonDecode(response.body);
-        throw Exception(errorData["message"] ?? "Server error: ${response.statusCode}");
+        throw Exception(
+            data["message"] ?? "Server error (${response.statusCode})");
       }
     } catch (e) {
       debugPrint("Registration error: $e");
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: ${e.toString()}")),
+        SnackBar(content: Text(e.toString().replaceFirst("Exception: ", ""))),
       );
     } finally {
-      if (mounted) {
-        setState(() => isLoading = false);
-      }
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
@@ -158,7 +183,8 @@ class _RegisterPageState extends State<RegisterPage> {
               children: [
                 // Progress bar
                 Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
                   child: Row(
                     children: [
                       Expanded(
@@ -177,7 +203,8 @@ class _RegisterPageState extends State<RegisterPage> {
                   child: PageView(
                     controller: _pageController,
                     physics: const NeverScrollableScrollPhysics(),
-                    onPageChanged: (index) => setState(() => currentStep = index),
+                    onPageChanged: (index) =>
+                        setState(() => currentStep = index),
                     children: [
                       _buildBusinessSetupPage(),
                       _buildLocationSetupPage(),
@@ -204,7 +231,8 @@ class _RegisterPageState extends State<RegisterPage> {
             Align(
               alignment: Alignment.centerLeft,
               child: IconButton(
-                icon: Icon(Icons.arrow_back, color: Colors.blue.shade700, size: 24.sp),
+                icon: Icon(Icons.arrow_back,
+                    color: Colors.blue.shade700, size: 24.sp),
                 onPressed: () {
                   Navigator.pop(context);
                 },
@@ -277,12 +305,12 @@ class _RegisterPageState extends State<RegisterPage> {
                 onChanged: (val) => setState(() => selectedCategory = val!),
                 items: ['unisex', 'male', 'female']
                     .map((e) => DropdownMenuItem(
-                      value: e, 
-                      child: Text(
-                        e,
-                        style: GoogleFonts.poppins(fontSize: 9.sp),
-                      ),
-                    ))
+                          value: e,
+                          child: Text(
+                            e,
+                            style: GoogleFonts.poppins(fontSize: 9.sp),
+                          ),
+                        ))
                     .toList(),
               ),
             ),
@@ -320,7 +348,7 @@ class _RegisterPageState extends State<RegisterPage> {
             children: [
               Expanded(
                 child: _buildOutlinedField(
-                  label: "First Name", 
+                  label: "First Name",
                   controller: firstNameCtrl,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -333,7 +361,7 @@ class _RegisterPageState extends State<RegisterPage> {
               const SizedBox(width: 16),
               Expanded(
                 child: _buildOutlinedField(
-                  label: "Last Name", 
+                  label: "Last Name",
                   controller: lastNameCtrl,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -347,49 +375,50 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
           const SizedBox(height: 16),
           _buildOutlinedField(
-                          label: "Phone", 
-                          controller: phoneCtrl, 
-                          keyboardType: TextInputType.phone,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Phone number is required';
-                            }
-                            if (!RegExp(r'^[0-9]{10,15}$').hasMatch(value)) {
-                              return 'Enter a valid phone number';
-                            }
-                            return null;
-                          },
-                        ),
+            label: "Phone",
+            controller: phoneCtrl,
+            keyboardType: TextInputType.phone,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Phone number is required';
+              }
+              if (!RegExp(r'^[0-9]{10,15}$').hasMatch(value)) {
+                return 'Enter a valid phone number';
+              }
+              return null;
+            },
+          ),
           const SizedBox(height: 16),
           _buildOutlinedField(
-                          label: "Email", 
-                          controller: emailCtrl, 
-                          keyboardType: TextInputType.emailAddress,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Email is required';
-                            }
-                            if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                              return 'Enter a valid email address';
-                            }
-                            return null;
-                          },
-                        ),
-                          const SizedBox(height: 16),
-                          _buildOutlinedField(
-                          label: "Password", 
-                          controller: passwordCtrl, 
-                          obscureText: true,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Password is required';
-                            }
-                            if (value.length < 6) {
-                              return 'Password must be at least 6 characters';
-                            }
-                            return null;
-                          },
-                        ),
+            label: "Email",
+            controller: emailCtrl,
+            keyboardType: TextInputType.emailAddress,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Email is required';
+              }
+              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                  .hasMatch(value)) {
+                return 'Enter a valid email address';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+          _buildOutlinedField(
+            label: "Password",
+            controller: passwordCtrl,
+            obscureText: true,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Password is required';
+              }
+              if (value.length < 6) {
+                return 'Password must be at least 6 characters';
+              }
+              return null;
+            },
+          ),
           const SizedBox(height: 32),
 
           // Optional fields
@@ -459,7 +488,8 @@ class _RegisterPageState extends State<RegisterPage> {
             Align(
               alignment: Alignment.centerLeft,
               child: IconButton(
-                icon: Icon(Icons.arrow_back, color: Colors.blue.shade700, size: 24.sp),
+                icon: Icon(Icons.arrow_back,
+                    color: Colors.blue.shade700, size: 24.sp),
                 onPressed: () {
                   _pageController.previousPage(
                     duration: const Duration(milliseconds: 300),
@@ -495,7 +525,8 @@ class _RegisterPageState extends State<RegisterPage> {
             ),
             SizedBox(height: 30.h),
             // Map picker
-            const Text("Location", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            const Text("Location",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
             const SizedBox(height: 12),
             GestureDetector(
               onTap: () async {
@@ -523,8 +554,13 @@ class _RegisterPageState extends State<RegisterPage> {
                     const Icon(Icons.location_on, color: Colors.purple),
                     const SizedBox(width: 12),
                     Text(
-                      addressCtrl.text.isEmpty ? "Choose from Map" : addressCtrl.text,
-                      style: TextStyle(color: addressCtrl.text.isEmpty ? Colors.grey.shade600 : Colors.black),
+                      addressCtrl.text.isEmpty
+                          ? "Choose from Map"
+                          : addressCtrl.text,
+                      style: TextStyle(
+                          color: addressCtrl.text.isEmpty
+                              ? Colors.grey.shade600
+                              : Colors.black),
                     ),
                   ],
                 ),
@@ -533,7 +569,7 @@ class _RegisterPageState extends State<RegisterPage> {
             const SizedBox(height: 32),
             // Full Address
             _buildOutlinedField(
-              label: "Full Address", 
+              label: "Full Address",
               controller: addressCtrl,
               validator: (value) {
                 if (value == null || value.isEmpty) {
@@ -548,7 +584,7 @@ class _RegisterPageState extends State<RegisterPage> {
               children: [
                 Expanded(
                   child: _buildOutlinedField(
-                    label: "State", 
+                    label: "State",
                     controller: stateCtrl,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -561,7 +597,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: _buildOutlinedField(
-                    label: "City", 
+                    label: "City",
                     controller: cityCtrl,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -575,7 +611,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 Expanded(
                   flex: 1,
                   child: _buildOutlinedField(
-                    label: "Pincode", 
+                    label: "Pincode",
                     controller: pincodeCtrl,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -720,7 +756,7 @@ class _RegisterPageState extends State<RegisterPage> {
               activeColor: Colors.blue.shade700,
             ),
             Text(
-              title, 
+              title,
               style: GoogleFonts.poppins(
                 fontSize: 10.sp,
                 fontWeight: FontWeight.w500,
@@ -749,11 +785,15 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
 
   Future<void> _updateAddress(LatLng point) async {
     try {
-      List<Placemark> placemarks = await placemarkFromCoordinates(point.latitude, point.longitude);
+      List<Placemark> placemarks =
+          await placemarkFromCoordinates(point.latitude, point.longitude);
       if (placemarks.isNotEmpty) {
         final p = placemarks.first;
         setState(() {
-          address = '${p.street ?? ''} ${p.subLocality ?? ''}, ${p.locality ?? ''}, ${p.administrativeArea ?? ''} ${p.postalCode ?? ''}'.replaceAll('  ', ' ').trim();
+          address =
+              '${p.street ?? ''} ${p.subLocality ?? ''}, ${p.locality ?? ''}, ${p.administrativeArea ?? ''} ${p.postalCode ?? ''}'
+                  .replaceAll('  ', ' ')
+                  .trim();
           if (address.endsWith(',')) {
             address = address.substring(0, address.length - 1).trim();
           }
@@ -763,12 +803,12 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
     } catch (e) {
       debugPrint('Error getting address: $e');
       setState(() {
-        address = '${point.latitude.toStringAsFixed(6)}, ${point.longitude.toStringAsFixed(6)}';
+        address =
+            '${point.latitude.toStringAsFixed(6)}, ${point.longitude.toStringAsFixed(6)}';
         _searchController.text = address;
       });
     }
   }
-
 
   @override
   void initState() {
@@ -778,9 +818,9 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
 
   Future<void> _getCurrentLocation() async {
     if (_isLoading) return;
-    
+
     setState(() => _isLoading = true);
-    
+
     try {
       // Check if location services are enabled
       bool serviceEnabled;
@@ -791,7 +831,8 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
             context: context,
             builder: (context) => AlertDialog(
               title: const Text('Location Services Disabled'),
-              content: const Text('Please enable location services to find your current location.'),
+              content: const Text(
+                  'Please enable location services to find your current location.'),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context, false),
@@ -807,7 +848,7 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
               ],
             ),
           );
-          
+
           if (serviceEnabledRequested != true) {
             return;
           }
@@ -817,7 +858,8 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Error checking location services. Please try again.'),
+              content:
+                  Text('Error checking location services. Please try again.'),
               duration: Duration(seconds: 3),
             ),
           );
@@ -833,7 +875,8 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Location permission is required to find your current location.'),
+                content: Text(
+                    'Location permission is required to find your current location.'),
                 duration: Duration(seconds: 3),
               ),
             );
@@ -866,7 +909,7 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
               ],
             ),
           );
-          
+
           if (openSettings == true) {
             // Wait a moment for the user to return from settings
             await Future.delayed(const Duration(seconds: 1));
@@ -883,17 +926,17 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
         position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high,
         ).timeout(const Duration(seconds: 10));
-        
+
         final newLocation = LatLng(position.latitude, position.longitude);
-        
+
         if (mounted) {
           setState(() {
             selectedLocation = newLocation;
           });
-          
+
           // Animate map to the new location
           _mapController.move(newLocation, 15.0);
-          
+
           // Update address after a short delay to ensure map has moved
           await Future.delayed(const Duration(milliseconds: 300));
           await _updateAddress(newLocation);
@@ -902,7 +945,8 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Getting location is taking longer than expected. Please check your connection.'),
+              content: Text(
+                  'Getting location is taking longer than expected. Please check your connection.'),
               duration: Duration(seconds: 3),
             ),
           );
@@ -912,7 +956,8 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Error: ${e.toString().replaceAll('Exception:', '').trim()}'),
+              content: Text(
+                  'Error: ${e.toString().replaceAll('Exception:', '').trim()}'),
               duration: const Duration(seconds: 3),
             ),
           );
@@ -974,17 +1019,20 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                   decoration: InputDecoration(
                     hintText: 'Search for a location',
                     hintStyle: GoogleFonts.poppins(fontSize: 10.sp),
-                    prefixIcon: Icon(Icons.search, size: 18.sp, color: Colors.blue.shade700),
+                    prefixIcon: Icon(Icons.search,
+                        size: 18.sp, color: Colors.blue.shade700),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10.r),
                       borderSide: BorderSide.none,
                     ),
                     filled: true,
                     fillColor: Colors.white,
-                    contentPadding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
+                    contentPadding:
+                        EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
                     suffixIcon: _searchController.text.isNotEmpty
                         ? IconButton(
-                            icon: Icon(Icons.clear, size: 18.sp, color: Colors.blue.shade700),
+                            icon: Icon(Icons.clear,
+                                size: 18.sp, color: Colors.blue.shade700),
                             onPressed: () {
                               _searchController.clear();
                               setState(() {});
@@ -994,81 +1042,84 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                   ),
                   onSubmitted: (value) async {
                     if (value.isEmpty) return;
-                  
-                  setState(() => _isLoading = true);
-                  
-                  try {
-                    List<Location> locations = await locationFromAddress(value).timeout(
-                      const Duration(seconds: 10),
-                      onTimeout: () {
-                        throw TimeoutException('Location search timed out');
-                      },
-                    );
-                    
-                    if (locations.isEmpty) {
-                      throw Exception('No matching locations found');
-                    }
-                    
-                    final location = locations.first;
-                    final newLocation = LatLng(location.latitude, location.longitude);
-                    
-                    setState(() {
-                      selectedLocation = newLocation;
-                    });
-                    
-                    // Animate map to the new location
-                    _mapController.move(newLocation, 15.0);
-                    
-                    // Update address after a short delay to ensure map has moved
-                    await Future.delayed(const Duration(milliseconds: 300));
-                    await _updateAddress(newLocation);
-                    
-                  } on TimeoutException {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Search is taking too long. Please try again.'),
-                          duration: Duration(seconds: 3),
-                        ),
+
+                    setState(() => _isLoading = true);
+
+                    try {
+                      List<Location> locations =
+                          await locationFromAddress(value).timeout(
+                        const Duration(seconds: 10),
+                        onTimeout: () {
+                          throw TimeoutException('Location search timed out');
+                        },
                       );
-                    }
-                  } catch (e) {
-                    debugPrint('Error searching location: $e');
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            e is TimeoutException 
-                              ? 'Search timed out. Please check your connection.'
-                              : 'Could not find the location. Please try a different search term.'
+
+                      if (locations.isEmpty) {
+                        throw Exception('No matching locations found');
+                      }
+
+                      final location = locations.first;
+                      final newLocation =
+                          LatLng(location.latitude, location.longitude);
+
+                      setState(() {
+                        selectedLocation = newLocation;
+                      });
+
+                      // Animate map to the new location
+                      _mapController.move(newLocation, 15.0);
+
+                      // Update address after a short delay to ensure map has moved
+                      await Future.delayed(const Duration(milliseconds: 300));
+                      await _updateAddress(newLocation);
+                    } on TimeoutException {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                                'Search is taking too long. Please try again.'),
+                            duration: Duration(seconds: 3),
                           ),
-                          duration: const Duration(seconds: 3),
-                        ),
-                      );
+                        );
+                      }
+                    } catch (e) {
+                      debugPrint('Error searching location: $e');
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(e is TimeoutException
+                                ? 'Search timed out. Please check your connection.'
+                                : 'Could not find the location. Please try a different search term.'),
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                      }
+                    } finally {
+                      if (mounted) {
+                        setState(() => _isLoading = false);
+                      }
                     }
-                  } finally {
-                    if (mounted) {
-                      setState(() => _isLoading = false);
-                    }
-                  }
-                },
+                  },
+                ),
               ),
-            ),
               const SizedBox(height: 12),
               ElevatedButton.icon(
                 onPressed: _isLoading ? null : _getCurrentLocation,
-                icon: _isLoading 
+                icon: _isLoading
                     ? SizedBox(
                         width: 20.w,
                         height: 20.h,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
                       )
                     : Icon(Icons.my_location, size: 20.sp),
-                label: Text('Use Current Location', style: GoogleFonts.poppins()),
+                label:
+                    Text('Use Current Location', style: GoogleFonts.poppins()),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue.shade700,
                   foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
+                  padding:
+                      EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8.r),
                   ),
@@ -1099,13 +1150,15 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                       onMapReady: () {
                         // Ensure map is properly centered on the selected location
                         if (_mapController.camera.center != selectedLocation) {
-                          _mapController.move(selectedLocation, _mapController.camera.zoom);
+                          _mapController.move(
+                              selectedLocation, _mapController.camera.zoom);
                         }
                       },
                     ),
                     children: [
                       TileLayer(
-                        urlTemplate: 'https://{s}.tile.openstreetmap.de/{z}/{x}/{y}.png',
+                        urlTemplate:
+                            'https://{s}.tile.openstreetmap.de/{z}/{x}/{y}.png',
                         subdomains: const ['a', 'b', 'c'],
                         userAgentPackageName: 'com.glowvita.app',
                       ),
@@ -1115,7 +1168,8 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                             width: 40,
                             height: 40,
                             point: selectedLocation,
-                            child: const Icon(Icons.location_pin, color: Colors.red, size: 40),
+                            child: const Icon(Icons.location_pin,
+                                color: Colors.red, size: 40),
                           ),
                         ],
                       ),
@@ -1136,15 +1190,17 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                     Text(
                       'Selected Location:',
                       style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.bold, 
+                        fontWeight: FontWeight.bold,
                         fontSize: 12.sp,
                       ),
                     ),
                     SizedBox(height: 4.h),
                     Text(
-                      address.isNotEmpty ? address : 'Tap on the map to select a location',
+                      address.isNotEmpty
+                          ? address
+                          : 'Tap on the map to select a location',
                       style: GoogleFonts.poppins(
-                        fontSize: 11.sp, 
+                        fontSize: 11.sp,
                         color: Colors.black87,
                       ),
                     ),
@@ -1152,7 +1208,7 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                     Text(
                       '${selectedLocation.latitude.toStringAsFixed(6)}, ${selectedLocation.longitude.toStringAsFixed(6)}',
                       style: GoogleFonts.poppins(
-                        fontSize: 10.sp, 
+                        fontSize: 10.sp,
                         color: Colors.grey.shade700,
                       ),
                     ),
@@ -1186,7 +1242,8 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8.r),
                       ),
-                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                       textStyle: GoogleFonts.poppins(
                         fontSize: 12.sp,
                         fontWeight: FontWeight.w600,
@@ -1196,7 +1253,9 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                       Navigator.pop(context, {
                         'lat': selectedLocation.latitude,
                         'lng': selectedLocation.longitude,
-                        'address': address.isNotEmpty ? address : '${selectedLocation.latitude.toStringAsFixed(6)}, ${selectedLocation.longitude.toStringAsFixed(6)}',
+                        'address': address.isNotEmpty
+                            ? address
+                            : '${selectedLocation.latitude.toStringAsFixed(6)}, ${selectedLocation.longitude.toStringAsFixed(6)}',
                       });
                     },
                     child: Text(
