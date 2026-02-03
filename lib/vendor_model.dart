@@ -122,6 +122,42 @@ class VendorProfile {
       timezone: json['timezone'] ?? '',
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      '_id': id,
+      'firstName': firstName,
+      'lastName': lastName,
+      'businessName': businessName,
+      'email': email,
+      'phone': phone,
+      'state': state,
+      'city': city,
+      'pincode': pincode,
+      'location': location?.toJson(),
+      'address': address,
+      'category': category,
+      'regionId': regionId,
+      'vendorType': vendorType,
+      'travelRadius': travelRadius,
+      'travelSpeed': travelSpeed,
+      'baseLocation': baseLocation?.toJson(),
+      'subCategories': subCategories,
+      'status': status,
+      'website': website,
+      'description': description,
+      'profileImage': profileImage,
+      'services': services,
+      'gallery': gallery,
+      'bankDetails': bankDetails?.toJson(),
+      'documents': documents?.toJson(),
+      'referralCode': referralCode,
+      'smsBalance': smsBalance,
+      'currentSmsBalance': currentSmsBalance,
+      'openingHours': openingHours.map((e) => e.toJson()).toList(),
+      'timezone': timezone,
+    };
+  }
 }
 
 class Location {
@@ -135,6 +171,13 @@ class Location {
       lat: (json['lat'] as num?)?.toDouble() ?? 0.0,
       lng: (json['lng'] as num?)?.toDouble() ?? 0.0,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'lat': lat,
+      'lng': lng,
+    };
   }
 }
 
@@ -164,6 +207,16 @@ class Subscription {
           .map((i) => History.fromJson(i))
           .toList(),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'plan': plan?.id,
+      'status': status,
+      'startDate': startDate?.toIso8601String(),
+      'endDate': endDate?.toIso8601String(),
+      'history': history.map((e) => e.toJson()).toList(),
+    };
   }
 }
 
@@ -227,6 +280,7 @@ class History {
   final DateTime? startDate;
   final DateTime? endDate;
   final String status;
+  final String? paymentMode;
   final String id;
 
   History({
@@ -234,6 +288,7 @@ class History {
     this.startDate,
     this.endDate,
     required this.status,
+    this.paymentMode,
     required this.id,
   });
 
@@ -244,8 +299,20 @@ class History {
           json['startDate'] != null ? DateTime.parse(json['startDate']) : null,
       endDate: json['endDate'] != null ? DateTime.parse(json['endDate']) : null,
       status: json['status'] ?? '',
+      paymentMode: json['paymentMode'] ?? 'Online',
       id: json['_id'] ?? '',
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'plan': plan,
+      'startDate': startDate?.toIso8601String(),
+      'endDate': endDate?.toIso8601String(),
+      'status': status,
+      'paymentMode': paymentMode,
+      '_id': id,
+    };
   }
 }
 
@@ -270,28 +337,114 @@ class BankDetails {
       accountHolder: json['accountHolder'],
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'bankName': bankName,
+      'accountNumber': accountNumber,
+      'ifscCode': ifscCode,
+      'accountHolder': accountHolder,
+    };
+  }
 }
 
 class Documents {
-  final String? aadharCard;
-  final String? panCard;
-  final String? aadharCardStatus;
-  final String? panCardStatus;
+  String? aadharCard;
+  String? udyogAadhar;
+  String? udhayamCert;
+  String? shopLicense;
+  String? panCard;
+  List<String> otherDocs;
+  String? aadharCardStatus;
+  String? udyogAadharStatus;
+  String? udhayamCertStatus;
+  String? shopLicenseStatus;
+  String? panCardStatus;
+  String? aadharCardRejectionReason;
+  String? udyogAadharRejectionReason;
+  String? udhayamCertRejectionReason;
+  String? shopLicenseRejectionReason;
+  String? panCardRejectionReason;
+  String? aadharCardAdminRejectionReason;
+  String? udyogAadharAdminRejectionReason;
+  String? udhayamCertAdminRejectionReason;
+  String? shopLicenseAdminRejectionReason;
+  String? panCardAdminRejectionReason;
 
   Documents({
     this.aadharCard,
+    this.udyogAadhar,
+    this.udhayamCert,
+    this.shopLicense,
     this.panCard,
+    required this.otherDocs,
     this.aadharCardStatus,
+    this.udyogAadharStatus,
+    this.udhayamCertStatus,
+    this.shopLicenseStatus,
     this.panCardStatus,
+    this.aadharCardRejectionReason,
+    this.udyogAadharRejectionReason,
+    this.udhayamCertRejectionReason,
+    this.shopLicenseRejectionReason,
+    this.panCardRejectionReason,
+    this.aadharCardAdminRejectionReason,
+    this.udyogAadharAdminRejectionReason,
+    this.udhayamCertAdminRejectionReason,
+    this.shopLicenseAdminRejectionReason,
+    this.panCardAdminRejectionReason,
   });
 
   factory Documents.fromJson(Map<String, dynamic> json) {
     return Documents(
       aadharCard: json['aadharCard'],
+      udyogAadhar: json['udyogAadhar'],
+      udhayamCert: json['udhayamCert'],
+      shopLicense: json['shopLicense'],
       panCard: json['panCard'],
+      otherDocs: List<String>.from(json['otherDocs'] ?? []),
       aadharCardStatus: json['aadharCardStatus'],
+      udyogAadharStatus: json['udyogAadharStatus'],
+      udhayamCertStatus: json['udhayamCertStatus'],
+      shopLicenseStatus: json['shopLicenseStatus'],
       panCardStatus: json['panCardStatus'],
+      aadharCardRejectionReason: json['aadharCardRejectionReason'],
+      udyogAadharRejectionReason: json['udyogAadharRejectionReason'],
+      udhayamCertRejectionReason: json['udhayamCertRejectionReason'],
+      shopLicenseRejectionReason: json['shopLicenseRejectionReason'],
+      panCardRejectionReason: json['panCardRejectionReason'],
+      aadharCardAdminRejectionReason: json['aadharCardAdminRejectionReason'],
+      udyogAadharAdminRejectionReason: json['udyogAadharAdminRejectionReason'],
+      udhayamCertAdminRejectionReason: json['udhayamCertAdminRejectionReason'],
+      shopLicenseAdminRejectionReason: json['shopLicenseAdminRejectionReason'],
+      panCardAdminRejectionReason: json['panCardAdminRejectionReason'],
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'aadharCard': aadharCard,
+      'udyogAadhar': udyogAadhar,
+      'udhayamCert': udhayamCert,
+      'shopLicense': shopLicense,
+      'panCard': panCard,
+      'otherDocs': otherDocs,
+      'aadharCardStatus': aadharCardStatus,
+      'udyogAadharStatus': udyogAadharStatus,
+      'udhayamCertStatus': udhayamCertStatus,
+      'shopLicenseStatus': shopLicenseStatus,
+      'panCardStatus': panCardStatus,
+      'aadharCardRejectionReason': aadharCardRejectionReason,
+      'udyogAadharRejectionReason': udyogAadharRejectionReason,
+      'udhayamCertRejectionReason': udhayamCertRejectionReason,
+      'shopLicenseRejectionReason': shopLicenseRejectionReason,
+      'panCardRejectionReason': panCardRejectionReason,
+      'aadharCardAdminRejectionReason': aadharCardAdminRejectionReason,
+      'udyogAadharAdminRejectionReason': udyogAadharAdminRejectionReason,
+      'udhayamCertAdminRejectionReason': udhayamCertAdminRejectionReason,
+      'shopLicenseAdminRejectionReason': shopLicenseAdminRejectionReason,
+      'panCardAdminRejectionReason': panCardAdminRejectionReason,
+    };
   }
 }
 
@@ -315,5 +468,14 @@ class OpeningHour {
       close: json['close'] ?? '',
       isOpen: json['isOpen'] ?? false,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'day': day,
+      'open': open,
+      'close': close,
+      'isOpen': isOpen,
+    };
   }
 }

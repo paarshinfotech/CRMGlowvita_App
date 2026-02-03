@@ -1401,6 +1401,41 @@ class ApiService {
       rethrow;
     }
   }
+
+  static Future<VendorProfile> updateVendorProfile(
+      Map<String, dynamic> profileData) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/crm/vendor'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': 'crm_access_token=$token',
+        },
+        body: json.encode(profileData),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return VendorProfile.fromJson(data['data']);
+        } else {
+          throw Exception(
+              'Failed to update vendor profile: ${data['message'] ?? 'Unknown error'}');
+        }
+      } else {
+        throw Exception(
+            'Failed to update vendor profile: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error updating vendor profile: $e');
+      rethrow;
+    }
+  }
 }
 
 class Service {

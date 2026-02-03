@@ -11,6 +11,8 @@ import 'widgets/custom_drawer.dart';
 import 'calender.dart';
 import 'widgets/create_appointment_form.dart';
 import 'shared_data.dart';
+import 'services/api_service.dart';
+import 'vendor_model.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -19,8 +21,11 @@ class DashboardPage extends StatefulWidget {
   State<DashboardPage> createState() => _DashboardPageState();
 }
 
-class _DashboardPageState extends State<DashboardPage> with TickerProviderStateMixin {
+class _DashboardPageState extends State<DashboardPage>
+    with TickerProviderStateMixin {
   int _filter = 0;
+  VendorProfile? _profile;
+  bool _isLoadingProfile = true;
 
   late AnimationController _kpiAnimationController;
   late Animation<double> _kpiFadeAnimation;
@@ -56,6 +61,8 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
             ))
         .toList();
 
+    _fetchProfile();
+
     Future.delayed(const Duration(milliseconds: 100), () {
       if (!mounted) return;
       _kpiAnimationController.forward();
@@ -63,6 +70,25 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
         controller.forward();
       }
     });
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final profile = await ApiService.getVendorProfile();
+      if (mounted) {
+        setState(() {
+          _profile = profile;
+          _isLoadingProfile = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingProfile = false;
+        });
+      }
+      debugPrint('Error fetching profile for dashboard: $e');
+    }
   }
 
   @override
@@ -120,7 +146,11 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
           ).apply(fontSizeFactor: baseFontScale),
         ),
         child: Scaffold(
-          drawer: const CustomDrawer(currentPage: 'Dashboard'),
+          drawer: CustomDrawer(
+            currentPage: 'Dashboard',
+            userName: _profile?.businessName ?? 'HarshalSpa',
+            profileImageUrl: _profile?.profileImage ?? '',
+          ),
           backgroundColor: const Color(0xFFF7F7F8),
           body: Stack(
             children: [
@@ -139,11 +169,13 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
                     ),
                     actions: [
                       IconButton(
-                        icon: const Icon(Icons.notifications, color: Colors.black),
+                        icon: const Icon(Icons.notifications,
+                            color: Colors.black),
                         onPressed: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => const NotificationPage()),
+                            MaterialPageRoute(
+                                builder: (_) => const NotificationPage()),
                           );
                         },
                       ),
@@ -151,7 +183,8 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
                         onTap: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => const ProfilePage()),
+                            MaterialPageRoute(
+                                builder: (_) => ProfilePage(profile: _profile)),
                           );
                         },
                         child: Padding(
@@ -160,12 +193,23 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
                             padding: EdgeInsets.all(2.w),
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              border: Border.all(color: Colors.black, width: 1.w),
+                              border:
+                                  Border.all(color: Colors.black, width: 1.w),
                             ),
-                            child: const CircleAvatar(
+                            child: CircleAvatar(
                               radius: 16,
-                              backgroundImage: AssetImage('assets/images/profile.jpeg'),
+                              backgroundImage: (_profile != null &&
+                                      _profile!.profileImage.isNotEmpty)
+                                  ? NetworkImage(_profile!.profileImage)
+                                  : const AssetImage(
+                                          'assets/images/profile.jpeg')
+                                      as ImageProvider,
                               backgroundColor: Colors.white,
+                              child: (_profile == null ||
+                                      _profile!.profileImage.isEmpty)
+                                  ? Icon(Icons.person,
+                                      size: 16.sp, color: Colors.grey)
+                                  : null,
                             ),
                           ),
                         ),
@@ -190,9 +234,13 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
                             SizedBox(height: 4.h),
                             Row(
                               children: [
-                                _MiniChip(text: today, icon: Icons.calendar_month_outlined),
+                                _MiniChip(
+                                    text: today,
+                                    icon: Icons.calendar_month_outlined),
                                 SizedBox(width: 8.w),
-                                _MiniChip(text: '$todaysDone done', icon: Icons.check_circle_outline),
+                                _MiniChip(
+                                    text: '$todaysDone done',
+                                    icon: Icons.check_circle_outline),
                               ],
                             ),
                             SizedBox(height: 10.h),
@@ -208,8 +256,12 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
                                         isScrollControlled: true,
                                         builder: (BuildContext context) {
                                           return SizedBox(
-                                            height: MediaQuery.of(context).size.height * 0.8,
-                                            child: const CreateAppointmentForm(),
+                                            height: MediaQuery.of(context)
+                                                    .size
+                                                    .height *
+                                                0.8,
+                                            child:
+                                                const CreateAppointmentForm(),
                                           );
                                         },
                                       );
@@ -224,7 +276,8 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
                                     onTap: () {
                                       Navigator.push(
                                         context,
-                                        MaterialPageRoute(builder: (_) => const Calendar()),
+                                        MaterialPageRoute(
+                                            builder: (_) => const Calendar()),
                                       );
                                     },
                                   ),
@@ -241,7 +294,8 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
                         height: 10.h,
                         decoration: const BoxDecoration(
                           color: Color(0xFFF7F7F8),
-                          borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+                          borderRadius:
+                              BorderRadius.vertical(top: Radius.circular(18)),
                         ),
                       ),
                     ),
@@ -254,8 +308,13 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Overview', style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700)),
-                          Text('Swipe', style: TextStyle(fontSize: 11.sp, color: Colors.grey[600])),
+                          Text('Overview',
+                              style: TextStyle(
+                                  fontSize: 13.sp,
+                                  fontWeight: FontWeight.w700)),
+                          Text('Swipe',
+                              style: TextStyle(
+                                  fontSize: 11.sp, color: Colors.grey[600])),
                         ],
                       ),
                     ),
@@ -308,7 +367,8 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
                               accent: const Color(0xFFF97316),
                               child: Padding(
                                 padding: const EdgeInsets.only(top: 6),
-                                child: _TopServiceSingle(baseFontScale: baseFontScale),
+                                child: _TopServiceSingle(
+                                    baseFontScale: baseFontScale),
                               ),
                             );
                           },
@@ -324,8 +384,13 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Appointments', style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700)),
-                          Text('Timeline', style: TextStyle(fontSize: 11.sp, color: Colors.grey[600])),
+                          Text('Appointments',
+                              style: TextStyle(
+                                  fontSize: 13.sp,
+                                  fontWeight: FontWeight.w700)),
+                          Text('Timeline',
+                              style: TextStyle(
+                                  fontSize: 11.sp, color: Colors.grey[600])),
                         ],
                       ),
                     ),
@@ -337,10 +402,22 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
                         spacing: 8.w,
                         runSpacing: 8.h,
                         children: [
-                          _FilterChip(label: 'All', selected: _filter == 0, onTap: () => setState(() => _filter = 0)),
-                          _FilterChip(label: 'Past', selected: _filter == 1, onTap: () => setState(() => _filter = 1)),
-                          _FilterChip(label: 'Current', selected: _filter == 2, onTap: () => setState(() => _filter = 2)),
-                          _FilterChip(label: 'Future', selected: _filter == 3, onTap: () => setState(() => _filter = 3)),
+                          _FilterChip(
+                              label: 'All',
+                              selected: _filter == 0,
+                              onTap: () => setState(() => _filter = 0)),
+                          _FilterChip(
+                              label: 'Past',
+                              selected: _filter == 1,
+                              onTap: () => setState(() => _filter = 1)),
+                          _FilterChip(
+                              label: 'Current',
+                              selected: _filter == 2,
+                              onTap: () => setState(() => _filter = 2)),
+                          _FilterChip(
+                              label: 'Future',
+                              selected: _filter == 3,
+                              onTap: () => setState(() => _filter = 3)),
                         ],
                       ),
                     ),
@@ -374,7 +451,8 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => ViewAppointmentPage(appointment: appt),
+                                    builder: (_) =>
+                                        ViewAppointmentPage(appointment: appt),
                                   ),
                                 );
                               },
@@ -384,7 +462,8 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
                       ),
                     ),
 
-                  SliverToBoxAdapter(child: SizedBox(height: bottomSheetInitialPadding.h)),
+                  SliverToBoxAdapter(
+                      child: SizedBox(height: bottomSheetInitialPadding.h)),
                 ],
               ),
 
@@ -397,7 +476,8 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
                   return Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+                      borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(18)),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.12),
@@ -423,8 +503,14 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('Staff Commission', style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700)),
-                              Text('Pull up', style: TextStyle(fontSize: 11.sp, color: Colors.grey[600])),
+                              Text('Staff Commission',
+                                  style: TextStyle(
+                                      fontSize: 13.sp,
+                                      fontWeight: FontWeight.w700)),
+                              Text('Pull up',
+                                  style: TextStyle(
+                                      fontSize: 11.sp,
+                                      color: Colors.grey[600])),
                             ],
                           ),
                         ),
@@ -433,13 +519,19 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
                         Expanded(
                           child: ListView(
                             controller: controller,
-                            padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 16.h),
+                            padding:
+                                EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 16.h),
                             children: [
-                              Text('All Time', style: TextStyle(fontSize: 11.sp, color: Colors.grey[600])),
+                              Text('All Time',
+                                  style: TextStyle(
+                                      fontSize: 11.sp,
+                                      color: Colors.grey[600])),
                               SizedBox(height: 10.h),
                               if (staffList.isEmpty)
                                 Center(
-                                  child: Text('No staff added yet.', style: TextStyle(fontSize: 12.sp, color: Colors.grey)),
+                                  child: Text('No staff added yet.',
+                                      style: TextStyle(
+                                          fontSize: 12.sp, color: Colors.grey)),
                                 )
                               else
                                 SingleChildScrollView(
@@ -449,31 +541,82 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
                                     dataRowMinHeight: 38,
                                     dataRowMaxHeight: 44,
                                     columnSpacing: 22,
-                                    headingRowColor: MaterialStateProperty.all(const Color(0xFFF5F5F5)),
+                                    headingRowColor: MaterialStateProperty.all(
+                                        const Color(0xFFF5F5F5)),
                                     columns: [
-                                      DataColumn(label: Text('Staff', style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600))),
-                                      DataColumn(label: Text('Appts', style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600))),
-                                      DataColumn(label: Text('Sales', style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600))),
-                                      DataColumn(label: Text('Comm.', style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600))),
+                                      DataColumn(
+                                          label: Text('Staff',
+                                              style: TextStyle(
+                                                  fontSize: 11.sp,
+                                                  fontWeight:
+                                                      FontWeight.w600))),
+                                      DataColumn(
+                                          label: Text('Appts',
+                                              style: TextStyle(
+                                                  fontSize: 11.sp,
+                                                  fontWeight:
+                                                      FontWeight.w600))),
+                                      DataColumn(
+                                          label: Text('Sales',
+                                              style: TextStyle(
+                                                  fontSize: 11.sp,
+                                                  fontWeight:
+                                                      FontWeight.w600))),
+                                      DataColumn(
+                                          label: Text('Comm.',
+                                              style: TextStyle(
+                                                  fontSize: 11.sp,
+                                                  fontWeight:
+                                                      FontWeight.w600))),
                                     ],
                                     rows: [
                                       ...staffList.map((staff) {
                                         return DataRow(
                                           cells: [
-                                            DataCell(Text(staff['name'] ?? '', style: TextStyle(fontSize: 11.sp))),
-                                            DataCell(Text('${staff['appointments']}', style: TextStyle(fontSize: 11.sp))),
-                                            DataCell(Text('₹ ${staff['sales']}', style: TextStyle(fontSize: 11.sp))),
-                                            DataCell(Text('₹ ${staff['commission']}', style: TextStyle(fontSize: 11.sp))),
+                                            DataCell(Text(staff['name'] ?? '',
+                                                style: TextStyle(
+                                                    fontSize: 11.sp))),
+                                            DataCell(Text(
+                                                '${staff['appointments']}',
+                                                style: TextStyle(
+                                                    fontSize: 11.sp))),
+                                            DataCell(Text('₹ ${staff['sales']}',
+                                                style: TextStyle(
+                                                    fontSize: 11.sp))),
+                                            DataCell(Text(
+                                                '₹ ${staff['commission']}',
+                                                style: TextStyle(
+                                                    fontSize: 11.sp))),
                                           ],
                                         );
                                       }).toList(),
                                       DataRow(
-                                        color: MaterialStateProperty.all(Colors.grey.shade100),
+                                        color: MaterialStateProperty.all(
+                                            Colors.grey.shade100),
                                         cells: [
-                                          DataCell(Text('Total', style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.bold))),
-                                          DataCell(Text(getTotal('appointments'), style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.bold))),
-                                          DataCell(Text('₹ ${getTotal('sales')}', style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.bold))),
-                                          DataCell(Text('₹ ${getTotal('commission')}', style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.bold))),
+                                          DataCell(Text('Total',
+                                              style: TextStyle(
+                                                  fontSize: 11.sp,
+                                                  fontWeight:
+                                                      FontWeight.bold))),
+                                          DataCell(Text(
+                                              getTotal('appointments'),
+                                              style: TextStyle(
+                                                  fontSize: 11.sp,
+                                                  fontWeight:
+                                                      FontWeight.bold))),
+                                          DataCell(Text(
+                                              '₹ ${getTotal('sales')}',
+                                              style: TextStyle(
+                                                  fontSize: 11.sp,
+                                                  fontWeight:
+                                                      FontWeight.bold))),
+                                          DataCell(Text(
+                                              '₹ ${getTotal('commission')}',
+                                              style: TextStyle(
+                                                  fontSize: 11.sp,
+                                                  fontWeight:
+                                                      FontWeight.bold))),
                                         ],
                                       ),
                                     ],
@@ -569,14 +712,16 @@ class _MiniChip extends StatefulWidget {
   State<_MiniChip> createState() => _MiniChipState();
 }
 
-class _MiniChipState extends State<_MiniChip> with SingleTickerProviderStateMixin {
+class _MiniChipState extends State<_MiniChip>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(milliseconds: 100), vsync: this);
+    _controller = AnimationController(
+        duration: const Duration(milliseconds: 100), vsync: this);
     _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
@@ -607,7 +752,8 @@ class _MiniChipState extends State<_MiniChip> with SingleTickerProviderStateMixi
             children: [
               Icon(widget.icon, size: 12, color: Colors.black87),
               SizedBox(width: 4.w),
-              Text(widget.text, style: TextStyle(fontSize: 10.sp, color: Colors.black87)),
+              Text(widget.text,
+                  style: TextStyle(fontSize: 10.sp, color: Colors.black87)),
             ],
           ),
         ),
@@ -621,20 +767,23 @@ class _QuickAction extends StatefulWidget {
   final IconData icon;
   final VoidCallback onTap;
 
-  const _QuickAction({required this.label, required this.icon, required this.onTap});
+  const _QuickAction(
+      {required this.label, required this.icon, required this.onTap});
 
   @override
   State<_QuickAction> createState() => _QuickActionState();
 }
 
-class _QuickActionState extends State<_QuickAction> with SingleTickerProviderStateMixin {
+class _QuickActionState extends State<_QuickAction>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(milliseconds: 100), vsync: this);
+    _controller = AnimationController(
+        duration: const Duration(milliseconds: 100), vsync: this);
     _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
@@ -665,7 +814,9 @@ class _QuickActionState extends State<_QuickAction> with SingleTickerProviderSta
               children: [
                 Icon(widget.icon, size: 14, color: Colors.black),
                 SizedBox(width: 6.w),
-                Text(widget.label, style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600)),
+                Text(widget.label,
+                    style: TextStyle(
+                        fontSize: 11.sp, fontWeight: FontWeight.w600)),
               ],
             ),
           ),
@@ -680,20 +831,23 @@ class _FilterChip extends StatefulWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _FilterChip({required this.label, required this.selected, required this.onTap});
+  const _FilterChip(
+      {required this.label, required this.selected, required this.onTap});
 
   @override
   State<_FilterChip> createState() => _FilterChipState();
 }
 
-class _FilterChipState extends State<_FilterChip> with SingleTickerProviderStateMixin {
+class _FilterChipState extends State<_FilterChip>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(milliseconds: 100), vsync: this);
+    _controller = AnimationController(
+        duration: const Duration(milliseconds: 100), vsync: this);
     _scaleAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
@@ -719,10 +873,12 @@ class _FilterChipState extends State<_FilterChip> with SingleTickerProviderState
         scale: _scaleAnimation,
         child: Container(
           padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
+          decoration: BoxDecoration(
+              color: bg, borderRadius: BorderRadius.circular(999)),
           child: Text(
             widget.label,
-            style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w600, color: fg),
+            style: TextStyle(
+                fontSize: 10.sp, fontWeight: FontWeight.w600, color: fg),
           ),
         ),
       ),
@@ -751,14 +907,16 @@ class _KpiCard extends StatefulWidget {
   State<_KpiCard> createState() => _KpiCardState();
 }
 
-class _KpiCardState extends State<_KpiCard> with SingleTickerProviderStateMixin {
+class _KpiCardState extends State<_KpiCard>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(milliseconds: 100), vsync: this);
+    _controller = AnimationController(
+        duration: const Duration(milliseconds: 100), vsync: this);
     _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
@@ -804,7 +962,8 @@ class _KpiCardState extends State<_KpiCard> with SingleTickerProviderStateMixin 
                   Expanded(
                     child: Text(
                       widget.title,
-                      style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                          fontSize: 11.sp, fontWeight: FontWeight.w700),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -812,9 +971,12 @@ class _KpiCardState extends State<_KpiCard> with SingleTickerProviderStateMixin 
                 ],
               ),
               SizedBox(height: 8.h),
-              Text(widget.value, style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800)),
+              Text(widget.value,
+                  style:
+                      TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800)),
               SizedBox(height: 2.h),
-              Text(widget.subtitle, style: TextStyle(fontSize: 10.sp, color: Colors.grey[600])),
+              Text(widget.subtitle,
+                  style: TextStyle(fontSize: 10.sp, color: Colors.grey[600])),
               if (widget.child != null) ...[
                 SizedBox(height: 6.h),
                 Expanded(child: widget.child!),
@@ -831,20 +993,24 @@ class _TimelineAppointmentTile extends StatefulWidget {
   final Map<String, dynamic> appointment;
   final VoidCallback onTap;
 
-  const _TimelineAppointmentTile({required this.appointment, required this.onTap});
+  const _TimelineAppointmentTile(
+      {required this.appointment, required this.onTap});
 
   @override
-  State<_TimelineAppointmentTile> createState() => _TimelineAppointmentTileState();
+  State<_TimelineAppointmentTile> createState() =>
+      _TimelineAppointmentTileState();
 }
 
-class _TimelineAppointmentTileState extends State<_TimelineAppointmentTile> with SingleTickerProviderStateMixin {
+class _TimelineAppointmentTileState extends State<_TimelineAppointmentTile>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(milliseconds: 100), vsync: this);
+    _controller = AnimationController(
+        duration: const Duration(milliseconds: 100), vsync: this);
     _scaleAnimation = Tween<double>(begin: 1.0, end: 0.97).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
@@ -880,14 +1046,18 @@ class _TimelineAppointmentTileState extends State<_TimelineAppointmentTile> with
                 Column(
                   children: [
                     Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                       decoration: BoxDecoration(
                         color: color.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
                         widget.appointment['time'],
-                        style: TextStyle(fontSize: 9.sp, fontWeight: FontWeight.w700, color: color),
+                        style: TextStyle(
+                            fontSize: 9.sp,
+                            fontWeight: FontWeight.w700,
+                            color: color),
                       ),
                     ),
                     SizedBox(height: 8.h),
@@ -906,11 +1076,16 @@ class _TimelineAppointmentTileState extends State<_TimelineAppointmentTile> with
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(widget.appointment['service'], style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w800)),
+                      Text(widget.appointment['service'],
+                          style: TextStyle(
+                              fontSize: 12.sp, fontWeight: FontWeight.w800)),
                       SizedBox(height: 2.h),
                       Text(
                         '${widget.appointment['client']} • ${widget.appointment['duration']} • ${widget.appointment['staff']}',
-                        style: TextStyle(fontSize: 10.sp, color: Colors.grey[600], fontWeight: FontWeight.w500),
+                        style: TextStyle(
+                            fontSize: 10.sp,
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w500),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -922,7 +1097,8 @@ class _TimelineAppointmentTileState extends State<_TimelineAppointmentTile> with
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                       decoration: BoxDecoration(
                         color: const Color(0xFFFFF7ED),
                         borderRadius: BorderRadius.circular(999),
@@ -932,12 +1108,18 @@ class _TimelineAppointmentTileState extends State<_TimelineAppointmentTile> with
                         children: [
                           Icon(Icons.lock_clock, size: 12, color: color),
                           SizedBox(width: 2.w),
-                          Text('New', style: TextStyle(fontSize: 9.sp, fontWeight: FontWeight.w700, color: color)),
+                          Text('New',
+                              style: TextStyle(
+                                  fontSize: 9.sp,
+                                  fontWeight: FontWeight.w700,
+                                  color: color)),
                         ],
                       ),
                     ),
                     SizedBox(height: 8.h),
-                    Text('₹ ${widget.appointment['price']}', style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w800)),
+                    Text('₹ ${widget.appointment['price']}',
+                        style: TextStyle(
+                            fontSize: 11.sp, fontWeight: FontWeight.w800)),
                   ],
                 ),
               ],
@@ -966,14 +1148,16 @@ class _EmptyStateCard extends StatefulWidget {
   State<_EmptyStateCard> createState() => _EmptyStateCardState();
 }
 
-class _EmptyStateCardState extends State<_EmptyStateCard> with SingleTickerProviderStateMixin {
+class _EmptyStateCardState extends State<_EmptyStateCard>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(milliseconds: 100), vsync: this);
+    _controller = AnimationController(
+        duration: const Duration(milliseconds: 100), vsync: this);
     _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
@@ -1009,22 +1193,28 @@ class _EmptyStateCardState extends State<_EmptyStateCard> with SingleTickerProvi
                   color: const Color(0xFFF3F4F6),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.event_busy, size: 16, color: Colors.black87),
+                child: const Icon(Icons.event_busy,
+                    size: 16, color: Colors.black87),
               ),
               SizedBox(width: 10.w),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(widget.title, style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w700)),
+                    Text(widget.title,
+                        style: TextStyle(
+                            fontSize: 11.sp, fontWeight: FontWeight.w700)),
                     SizedBox(height: 1.h),
-                    Text(widget.subtitle, style: TextStyle(fontSize: 10.sp, color: Colors.grey[600])),
+                    Text(widget.subtitle,
+                        style: TextStyle(
+                            fontSize: 10.sp, color: Colors.grey[600])),
                   ],
                 ),
               ),
               TextButton(
                 onPressed: widget.onAction,
-                child: Text(widget.actionLabel, style: TextStyle(fontSize: 10.sp)),
+                child:
+                    Text(widget.actionLabel, style: TextStyle(fontSize: 10.sp)),
               ),
             ],
           ),
@@ -1037,10 +1227,12 @@ class _EmptyStateCardState extends State<_EmptyStateCard> with SingleTickerProvi
 // ----------------- Demo data -----------------
 
 // Using shared data service
-final List<Map<String, dynamic>> staffList = sharedDataService.getDashboardStaffList();
+final List<Map<String, dynamic>> staffList =
+    sharedDataService.getDashboardStaffList();
 
 // Using shared data service
-final List<Map<String, dynamic>> appointments = sharedDataService.getDashboardAppointments();
+final List<Map<String, dynamic>> appointments =
+    sharedDataService.getDashboardAppointments();
 
 String getTotal(String key) {
   double total = 0.0;

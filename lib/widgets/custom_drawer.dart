@@ -31,12 +31,14 @@ class CustomDrawer extends StatelessWidget {
   final String currentPage;
   final String userName;
   final String userType;
+  final String profileImageUrl;
 
   const CustomDrawer({
     Key? key,
     required this.currentPage,
     this.userName = 'HarshalSpa',
     this.userType = 'Vendor Account',
+    this.profileImageUrl = '',
   }) : super(key: key);
 
   @override
@@ -111,6 +113,55 @@ class CustomDrawer extends StatelessWidget {
               ),
             ),
 
+            // User Info Header
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: 16 * scale,
+                vertical: 16 * scale,
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20 * scale,
+                    backgroundColor: Colors.grey[200],
+                    backgroundImage: profileImageUrl.isNotEmpty
+                        ? NetworkImage(profileImageUrl)
+                        : null,
+                    child: profileImageUrl.isEmpty
+                        ? Icon(Icons.person,
+                            size: 20 * scale, color: Colors.grey)
+                        : null,
+                  ),
+                  SizedBox(width: 12 * scale),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          userName,
+                          style: GoogleFonts.poppins(
+                            fontSize: 14 * baseFontScale,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          userType,
+                          style: GoogleFonts.poppins(
+                            fontSize: 11 * baseFontScale,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            Divider(height: 1, color: Colors.grey[100]),
             SizedBox(height: 10 * scale),
 
             // Menu Items
