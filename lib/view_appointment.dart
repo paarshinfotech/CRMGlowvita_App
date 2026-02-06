@@ -13,7 +13,7 @@ class ViewAppointmentPage extends StatelessWidget {
     final String reference = "#00001820 at Wed, 23 Jul 2025 at 12:57pm";
     String dropdownValue = 'New Appointment';
 
-    final Color primaryColor = Colors.blue;
+    final Color primaryColor = Theme.of(context).primaryColor;
 
     // ↓ Reduced font sizes across the page
     final TextStyle headingStyle = GoogleFonts.poppins(
@@ -64,7 +64,8 @@ class ViewAppointmentPage extends StatelessWidget {
                   CircleAvatar(
                     radius: 24, // slightly smaller
                     backgroundColor: primaryColor.withOpacity(0.1),
-                    child: const Icon(Icons.person, size: 26, color: Colors.blue),
+                    child: Icon(Icons.person,
+                        size: 26, color: Theme.of(context).primaryColor),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -73,12 +74,14 @@ class ViewAppointmentPage extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.home, size: 14, color: Colors.blue),
+                            Icon(Icons.home,
+                                size: 14,
+                                color: Theme.of(context).primaryColor),
                             const SizedBox(width: 6),
                             Text(
                               "Home Service",
                               style: GoogleFonts.poppins(
-                                color: Colors.blue,
+                                color: Theme.of(context).primaryColor,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -86,7 +89,8 @@ class ViewAppointmentPage extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 6),
-                        Text("User", style: headingStyle.copyWith(fontSize: 14)),
+                        Text("User",
+                            style: headingStyle.copyWith(fontSize: 14)),
                         const SizedBox(height: 4),
                         Text("juiware30@gmail.com", style: normalStyle),
                         const SizedBox(height: 2),
@@ -136,16 +140,20 @@ class ViewAppointmentPage extends StatelessWidget {
                             const SizedBox(height: 4),
                             Text(
                               "35 min with Juill Ware",
-                              style: smallStyle.copyWith(color: Colors.grey.shade700),
+                              style: smallStyle.copyWith(
+                                  color: Colors.grey.shade700),
                             ),
                             const SizedBox(height: 4),
                             Row(
                               children: [
-                                const Icon(Icons.home, size: 14, color: Colors.blue),
+                                Icon(Icons.home,
+                                    size: 14,
+                                    color: Theme.of(context).primaryColor),
                                 const SizedBox(width: 4),
                                 Text(
                                   "Home Service",
-                                  style: smallStyle.copyWith(color: Colors.grey),
+                                  style:
+                                      smallStyle.copyWith(color: Colors.grey),
                                 )
                               ],
                             )
@@ -180,7 +188,8 @@ class ViewAppointmentPage extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text("Total:", style: headingStyle.copyWith(fontSize: 14)),
+                      Text("Total:",
+                          style: headingStyle.copyWith(fontSize: 14)),
                       Text(
                         "₹310.00",
                         style: headingStyle.copyWith(
@@ -205,11 +214,13 @@ class ViewAppointmentPage extends StatelessWidget {
                 items: [
                   DropdownMenuItem(
                     value: 'cancel',
-                    child: Text('Cancel', style: normalStyle.copyWith(color: Colors.black)),
+                    child: Text('Cancel',
+                        style: normalStyle.copyWith(color: Colors.black)),
                   ),
                   DropdownMenuItem(
                     value: 'confirm',
-                    child: Text('Confirm', style: normalStyle.copyWith(color: Colors.black)),
+                    child: Text('Confirm',
+                        style: normalStyle.copyWith(color: Colors.black)),
                   ),
                 ],
                 onChanged: (value) {
@@ -225,7 +236,8 @@ class ViewAppointmentPage extends StatelessWidget {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 ),
                 style: GoogleFonts.poppins(
                   fontSize: 13, // reduced
@@ -258,14 +270,15 @@ class ViewAppointmentPage extends StatelessWidget {
                   elevation: 8,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
-                    side: const BorderSide(color: Colors.blue, width: 1),
+                    side: BorderSide(
+                        color: Theme.of(context).primaryColor, width: 1),
                   ),
                 ),
                 child: Text(
                   "Edit/Reschedule",
                   style: GoogleFonts.poppins(
                     fontSize: 12,
-                    color: Colors.blue,
+                    color: Theme.of(context).primaryColor,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -287,14 +300,15 @@ class ViewAppointmentPage extends StatelessWidget {
                   elevation: 8,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
-                    side: const BorderSide(color: Colors.blue, width: 1),
+                    side: BorderSide(
+                        color: Theme.of(context).primaryColor, width: 1),
                   ),
                 ),
                 child: Text(
                   "Invoice Details",
                   style: GoogleFonts.poppins(
                     fontSize: 12,
-                    color: Colors.blue,
+                    color: Theme.of(context).primaryColor,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -311,7 +325,8 @@ class ViewAppointmentPage extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryColor,
                 elevation: 8,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
               ),
               child: Text(
                 "Collect Payment",
@@ -381,7 +396,8 @@ class ViewAppointmentPage extends StatelessWidget {
                                 width: 46, // slightly smaller
                                 height: 46,
                                 decoration: BoxDecoration(
-                                  color: getDateBgColor(appointment["serviceType"]),
+                                  color: getDateBgColor(
+                                      context, appointment["serviceType"]),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Column(
@@ -403,16 +419,20 @@ class ViewAppointmentPage extends StatelessWidget {
                               ),
                               title: Text(
                                 appointment["service"],
-                                style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600),
+                                style: GoogleFonts.poppins(
+                                    fontSize: 12, fontWeight: FontWeight.w600),
                               ),
-                              subtitle: Text(appointment["duration"], style: smallStyle),
+                              subtitle: Text(appointment["duration"],
+                                  style: smallStyle),
                               trailing: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.schedule, size: 14, color: appointment["statusColor"]),
+                                      Icon(Icons.schedule,
+                                          size: 14,
+                                          color: appointment["statusColor"]),
                                       const SizedBox(width: 4),
                                       Text(
                                         appointment["status"],
@@ -426,7 +446,9 @@ class ViewAppointmentPage extends StatelessWidget {
                                   const SizedBox(height: 4),
                                   Text(
                                     appointment["price"],
-                                    style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.bold),
+                                    style: GoogleFonts.poppins(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold),
                                   ),
                                 ],
                               ),
@@ -451,7 +473,8 @@ class ViewAppointmentPage extends StatelessWidget {
                                 width: 46,
                                 height: 46,
                                 decoration: BoxDecoration(
-                                  color: getDateBgColor(appointment["serviceType"]),
+                                  color: getDateBgColor(
+                                      context, appointment["serviceType"]),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Column(
@@ -473,16 +496,20 @@ class ViewAppointmentPage extends StatelessWidget {
                               ),
                               title: Text(
                                 appointment["service"],
-                                style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600),
+                                style: GoogleFonts.poppins(
+                                    fontSize: 12, fontWeight: FontWeight.w600),
                               ),
-                              subtitle: Text(appointment["duration"], style: smallStyle),
+                              subtitle: Text(appointment["duration"],
+                                  style: smallStyle),
                               trailing: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.lock_clock, size: 14, color: appointment["statusColor"]),
+                                      Icon(Icons.lock_clock,
+                                          size: 14,
+                                          color: appointment["statusColor"]),
                                       const SizedBox(width: 4),
                                       Text(
                                         appointment["status"],
@@ -496,7 +523,9 @@ class ViewAppointmentPage extends StatelessWidget {
                                   const SizedBox(height: 4),
                                   Text(
                                     appointment["price"],
-                                    style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.bold),
+                                    style: GoogleFonts.poppins(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold),
                                   ),
                                 ],
                               ),
@@ -582,10 +611,10 @@ final List<Map<String, dynamic>> pastAppointments = [
   },
 ];
 
-Color getDateBgColor(String serviceType) {
+Color getDateBgColor(BuildContext context, String serviceType) {
   switch (serviceType) {
     case "home":
-      return Colors.blue.shade100;
+      return Theme.of(context).primaryColor.withOpacity(0.1);
     case "wedding":
       return Colors.red.shade100;
     default:
@@ -598,7 +627,8 @@ class InvoicePopup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final TextStyle titleStyle = GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.bold);
+    final TextStyle titleStyle =
+        GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.bold);
     final TextStyle normalStyle = GoogleFonts.poppins(fontSize: 12);
     final TextStyle smallStyle = GoogleFonts.poppins(fontSize: 11);
 
@@ -624,7 +654,8 @@ class InvoicePopup extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const SizedBox(height: 8),
-                    const Icon(Icons.hourglass_bottom, size: 52, color: Colors.orange),
+                    const Icon(Icons.hourglass_bottom,
+                        size: 52, color: Colors.orange),
                     Text(
                       'PENDING',
                       style: GoogleFonts.poppins(
@@ -646,7 +677,9 @@ class InvoicePopup extends StatelessWidget {
                         backgroundColor: Colors.black,
                         minimumSize: const Size(double.infinity, 40),
                       ),
-                      child: Text('Rebook', style: GoogleFonts.poppins(color: Colors.white, fontSize: 12)),
+                      child: Text('Rebook',
+                          style: GoogleFonts.poppins(
+                              color: Colors.white, fontSize: 12)),
                     ),
                     const SizedBox(height: 16),
                     Row(
@@ -662,7 +695,9 @@ class InvoicePopup extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    Center(child: InvoicePopup.iconButton(Icons.download, 'Download')),
+                    Center(
+                        child: InvoicePopup.iconButton(
+                            Icons.download, 'Download')),
                   ],
                 ),
               ),
@@ -691,11 +726,14 @@ class InvoicePopup extends StatelessWidget {
                             Center(
                               child: Text(
                                 'Invoice #1186',
-                                style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 14),
+                                style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.bold, fontSize: 14),
                               ),
                             ),
                             const SizedBox(height: 4),
-                            Center(child: Text('Thursday, 17 Jul 2025', style: normalStyle)),
+                            Center(
+                                child: Text('Thursday, 17 Jul 2025',
+                                    style: normalStyle)),
                             const SizedBox(height: 4),
                             Center(
                               child: Text.rich(
@@ -706,7 +744,7 @@ class InvoicePopup extends StatelessWidget {
                                     TextSpan(
                                       text: 'SS SS',
                                       style: GoogleFonts.poppins(
-                                        color: Colors.blue,
+                                        color: Theme.of(context).primaryColor,
                                         fontWeight: FontWeight.w600,
                                         fontSize: 12,
                                       ),
@@ -718,7 +756,9 @@ class InvoicePopup extends StatelessWidget {
                             const SizedBox(height: 6),
                             const Center(
                               child: Chip(
-                                label: Text('PENDING', style: TextStyle(color: Colors.orange, fontSize: 11)),
+                                label: Text('PENDING',
+                                    style: TextStyle(
+                                        color: Colors.orange, fontSize: 11)),
                                 backgroundColor: Color(0xFFFFF3CD),
                                 visualDensity: VisualDensity.compact,
                               ),
@@ -727,9 +767,15 @@ class InvoicePopup extends StatelessWidget {
                             Row(
                               children: [
                                 Expanded(
-                                  child: Text('Item', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 12)),
+                                  child: Text('Item',
+                                      style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12)),
                                 ),
-                                Text('Amount', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 12)),
+                                Text('Amount',
+                                    style: GoogleFonts.poppins(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12)),
                               ],
                             ),
                             const SizedBox(height: 8),
@@ -751,7 +797,8 @@ class InvoicePopup extends StatelessWidget {
                             rowText('Platform Fee:', '₹10.00', normalStyle),
                             const Divider(height: 30),
                             rowText('Total', '₹ 310', normalStyle),
-                            rowText('Balance', '₹ 310.00', normalStyle, isBold: true),
+                            rowText('Balance', '₹ 310.00', normalStyle,
+                                isBold: true),
                           ],
                         ),
                       )
@@ -766,8 +813,10 @@ class InvoicePopup extends StatelessWidget {
     );
   }
 
-  static Widget rowText(String title, String value, TextStyle base, {bool isBold = false}) {
-    final style = base.copyWith(fontWeight: isBold ? FontWeight.bold : FontWeight.normal);
+  static Widget rowText(String title, String value, TextStyle base,
+      {bool isBold = false}) {
+    final style =
+        base.copyWith(fontWeight: isBold ? FontWeight.bold : FontWeight.normal);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
@@ -792,7 +841,9 @@ class InvoicePopup extends StatelessWidget {
             children: [
               Icon(icon, size: 18, color: Colors.black),
               const SizedBox(height: 4),
-              Text(label, style: GoogleFonts.poppins(color: Colors.black, fontSize: 11)),
+              Text(label,
+                  style:
+                      GoogleFonts.poppins(color: Colors.black, fontSize: 11)),
             ],
           ),
         )
@@ -802,7 +853,8 @@ class InvoicePopup extends StatelessWidget {
 }
 
 void _showEmailPopup(BuildContext context) {
-  final TextStyle titleStyle = GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.bold);
+  final TextStyle titleStyle =
+      GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.bold);
   final TextStyle normalStyle = GoogleFonts.poppins(fontSize: 12);
 
   showDialog(
@@ -829,30 +881,28 @@ void _showEmailPopup(BuildContext context) {
                   ],
                 ),
                 const SizedBox(height: 16),
-
                 _buildLabel('To', normalStyle),
-                _buildTextField(hint: 'juiware30@gmail.com', style: normalStyle),
-
+                _buildTextField(
+                    hint: 'juiware30@gmail.com', style: normalStyle),
                 _buildLabel(
                   'Your email (Optional)',
                   normalStyle,
-                  optionalHint: 'Enter your email to receive a reply from clients',
+                  optionalHint:
+                      'Enter your email to receive a reply from clients',
                 ),
                 _buildTextField(hint: 'mail@example.com', style: normalStyle),
-
                 _buildLabel('Subject', normalStyle),
                 _buildTextField(
                   hint: 'Sales Invoice #1186 From Men\'s Salons',
                   style: normalStyle,
                 ),
-
                 _buildLabel('Message', normalStyle),
                 _buildTextField(
-                  hint: 'Hi,\nPlease see attached sales invoice #1186.\nThank you.',
+                  hint:
+                      'Hi,\nPlease see attached sales invoice #1186.\nThank you.',
                   maxLines: 5,
                   style: normalStyle,
                 ),
-
                 Container(
                   margin: const EdgeInsets.symmetric(vertical: 12),
                   padding: const EdgeInsets.all(12),
@@ -862,30 +912,33 @@ void _showEmailPopup(BuildContext context) {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.attach_file, color: Colors.grey[700], size: 18),
+                      Icon(Icons.attach_file,
+                          color: Colors.grey[700], size: 18),
                       const SizedBox(width: 8),
                       Text(
                         'Sales Invoice #1186.PDF',
                         style: normalStyle.copyWith(
                           fontWeight: FontWeight.w600,
-                          color: Colors.blue[700],
+                          color: Theme.of(context).primaryColor,
                         ),
                       ),
                     ],
                   ),
                 ),
-
                 Align(
                   alignment: Alignment.centerRight,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 12),
                     ),
                     onPressed: () {
                       Navigator.of(context).pop();
                     },
-                    child: Text('Send', style: GoogleFonts.poppins(color: Colors.white, fontSize: 12)),
+                    child: Text('Send',
+                        style: GoogleFonts.poppins(
+                            color: Colors.white, fontSize: 12)),
                   ),
                 ),
               ],
@@ -917,7 +970,8 @@ Widget _buildLabel(String title, TextStyle style, {String? optionalHint}) {
   );
 }
 
-Widget _buildTextField({required String hint, required TextStyle style, int maxLines = 1}) {
+Widget _buildTextField(
+    {required String hint, required TextStyle style, int maxLines = 1}) {
   return TextFormField(
     maxLines: maxLines,
     initialValue: hint,
@@ -933,8 +987,10 @@ Widget _buildTextField({required String hint, required TextStyle style, int maxL
 }
 
 void _showCollectPaymentPopup(BuildContext context, double totalAmount) {
-  final TextStyle amountStyle = GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.bold);
-  final TextStyle titleStyle = GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.bold);
+  final TextStyle amountStyle =
+      GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.bold);
+  final TextStyle titleStyle =
+      GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.bold);
 
   showDialog(
     context: context,
@@ -955,13 +1011,17 @@ void _showCollectPaymentPopup(BuildContext context, double totalAmount) {
                   ElevatedButton(
                     onPressed: () {},
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
+                      backgroundColor: Theme.of(context).primaryColor,
                       foregroundColor: Colors.white,
                       elevation: 8,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(5)),
                     ),
-                    child: Text('Save Order', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 12)),
+                    child: Text('Save Order',
+                        style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.bold, fontSize: 12)),
                   ),
                   const SizedBox(width: 12),
                   ElevatedButton(
@@ -970,10 +1030,14 @@ void _showCollectPaymentPopup(BuildContext context, double totalAmount) {
                       backgroundColor: Colors.black,
                       foregroundColor: Colors.white,
                       elevation: 8,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(5)),
                     ),
-                    child: Text('Pay Later', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 12)),
+                    child: Text('Pay Later',
+                        style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.bold, fontSize: 12)),
                   ),
                 ],
               ),

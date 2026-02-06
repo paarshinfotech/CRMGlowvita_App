@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'supp_drawer.dart'; 
+import 'supp_drawer.dart';
 
 class SuppShippingPage extends StatefulWidget {
   const SuppShippingPage({super.key});
@@ -111,10 +111,11 @@ class _SuppShippingConfigPageState extends State<SuppShippingPage> {
                         ),
                         subtitle: Text(
                           'Turn off to offer free shipping on all orders',
-                          style: GoogleFonts.poppins(fontSize: 10, color: Colors.grey.shade600),
+                          style: GoogleFonts.poppins(
+                              fontSize: 10, color: Colors.grey.shade600),
                         ),
                         value: enableShipping,
-                        activeColor: const Color(0xFF2563EB),
+                        activeColor: Theme.of(context).primaryColor,
                         onChanged: (v) => setState(() => enableShipping = v),
                       ),
                     ),
@@ -138,13 +139,17 @@ class _SuppShippingConfigPageState extends State<SuppShippingPage> {
                           title: 'Fixed Amount (₹)',
                           value: ChargeType.fixed,
                           groupValue: chargeType,
-                          onChanged: enableShipping ? (v) => setState(() => chargeType = v!) : null,
+                          onChanged: enableShipping
+                              ? (v) => setState(() => chargeType = v!)
+                              : null,
                         ),
                         _RadioPill<ChargeType>(
                           title: 'Percentage (%)',
                           value: ChargeType.percent,
                           groupValue: chargeType,
-                          onChanged: enableShipping ? (v) => setState(() => chargeType = v!) : null,
+                          onChanged: enableShipping
+                              ? (v) => setState(() => chargeType = v!)
+                              : null,
                         ),
                       ],
                     ),
@@ -163,7 +168,8 @@ class _SuppShippingConfigPageState extends State<SuppShippingPage> {
                     TextField(
                       controller: amountCtrl,
                       enabled: enableShipping,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       decoration: InputDecoration(
                         prefixIcon: Padding(
                           padding: const EdgeInsets.only(left: 14, right: 6),
@@ -176,11 +182,17 @@ class _SuppShippingConfigPageState extends State<SuppShippingPage> {
                             ),
                           ),
                         ),
-                        prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-                        hintText: chargeType == ChargeType.fixed ? 'e.g., 80' : 'e.g., 5',
-                        hintStyle: GoogleFonts.poppins(fontSize: 13, color: Colors.grey.shade500),
+                        prefixIconConstraints:
+                            const BoxConstraints(minWidth: 0, minHeight: 0),
+                        hintText: chargeType == ChargeType.fixed
+                            ? 'e.g., 80'
+                            : 'e.g., 5',
+                        hintStyle: GoogleFonts.poppins(
+                            fontSize: 13, color: Colors.grey.shade500),
                         filled: true,
-                        fillColor: enableShipping ? Colors.white : Colors.grey.shade100,
+                        fillColor: enableShipping
+                            ? Colors.white
+                            : Colors.grey.shade100,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                           borderSide: BorderSide(color: Colors.grey.shade300),
@@ -191,7 +203,8 @@ class _SuppShippingConfigPageState extends State<SuppShippingPage> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: Color(0xFF2563EB), width: 2),
+                          borderSide: BorderSide(
+                              color: Theme.of(context).primaryColor, width: 2),
                         ),
                         contentPadding: fieldPadding,
                       ),
@@ -200,13 +213,14 @@ class _SuppShippingConfigPageState extends State<SuppShippingPage> {
 
                     // Save Button
                     Align(
-                      alignment: isMobile ? Alignment.center : Alignment.centerRight,
+                      alignment:
+                          isMobile ? Alignment.center : Alignment.centerRight,
                       child: SizedBox(
                         width: isMobile ? double.infinity : 220,
                         child: ElevatedButton(
                           onPressed: _save,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF2563EB),
+                            backgroundColor: Theme.of(context).primaryColor,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             elevation: 2,
@@ -260,10 +274,14 @@ class _RadioPill<T> extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFE8F0FE) : (enabled ? Colors.grey.shade50 : Colors.grey.shade100),
+          color: selected
+              ? Theme.of(context).primaryColor.withOpacity(0.1)
+              : (enabled ? Colors.grey.shade50 : Colors.grey.shade100),
           borderRadius: BorderRadius.circular(28),
           border: Border.all(
-            color: selected ? const Color(0xFF2563EB) : Colors.grey.shade300,
+            color: selected
+                ? Theme.of(context).primaryColor
+                : Colors.grey.shade300,
             width: selected ? 2 : 1.5,
           ),
         ),
@@ -273,7 +291,7 @@ class _RadioPill<T> extends StatelessWidget {
             Radio<T>(
               value: value,
               groupValue: groupValue,
-              activeColor: const Color(0xFF2563EB),
+              activeColor: Theme.of(context).primaryColor,
               onChanged: enabled ? onChanged : null,
               visualDensity: VisualDensity.compact,
             ),
@@ -283,7 +301,11 @@ class _RadioPill<T> extends StatelessWidget {
               style: GoogleFonts.poppins(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: enabled ? (selected ? const Color(0xFF2563EB) : Colors.black87) : Colors.grey.shade500,
+                color: enabled
+                    ? (selected
+                        ? Theme.of(context).primaryColor
+                        : Colors.black87)
+                    : Colors.grey.shade500,
               ),
             ),
           ],

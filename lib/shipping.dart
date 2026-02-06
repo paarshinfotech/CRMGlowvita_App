@@ -37,7 +37,10 @@ class _ShippingConfigPageState extends State<ShippingPage> {
         elevation: 0.5,
         backgroundColor: Colors.white,
         title: const Text('Shipping Configuration',
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 16)),
+            style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.w600,
+                fontSize: 16)),
         iconTheme: const IconThemeData(color: Colors.black),
         leading: Builder(
           builder: (context) => IconButton(
@@ -161,8 +164,7 @@ class _ShippingConfigPageState extends State<ShippingPage> {
                         ),
                         prefixIconConstraints:
                             const BoxConstraints(minWidth: 0, minHeight: 0),
-                        hintText:
-                            chargeType == ChargeType.fixed ? '80' : '5',
+                        hintText: chargeType == ChargeType.fixed ? '80' : '5',
                         filled: true,
                         fillColor:
                             enableShipping ? Colors.white : Colors.grey[100],
@@ -184,15 +186,14 @@ class _ShippingConfigPageState extends State<ShippingPage> {
 
                     // Save button aligned right on wide, full width on mobile
                     Align(
-                      alignment: isMobile
-                          ? Alignment.center
-                          : Alignment.centerRight,
+                      alignment:
+                          isMobile ? Alignment.center : Alignment.centerRight,
                       child: SizedBox(
                         width: isMobile ? double.infinity : null,
                         child: ElevatedButton(
                           onPressed: _save,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF2563EB),
+                            backgroundColor: Theme.of(context).primaryColor,
                             foregroundColor: Colors.white,
                             padding: EdgeInsets.symmetric(
                                 horizontal: isMobile ? 16 : 20,
@@ -205,9 +206,9 @@ class _ShippingConfigPageState extends State<ShippingPage> {
                             ),
                           ),
                           child: const Text('Save Changes',
-                                                          style: TextStyle(
-                                                            fontSize: 14,
-                                                          )),
+                              style: TextStyle(
+                                fontSize: 14,
+                              )),
                         ),
                       ),
                     ),
@@ -244,10 +245,14 @@ class _RadioPill<T> extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFE8F0FE) : Colors.grey.shade200,
+          color: selected
+              ? Theme.of(context).primaryColor.withOpacity(0.12)
+              : Colors.grey.shade200,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: selected ? const Color(0xFF2563EB) : Colors.grey.shade300,
+            color: selected
+                ? Theme.of(context).primaryColor
+                : Colors.grey.shade300,
           ),
         ),
         child: Row(
@@ -255,7 +260,7 @@ class _RadioPill<T> extends StatelessWidget {
           children: [
             Radio<T>(
               value: value,
-              activeColor: Colors.blue,
+              activeColor: Theme.of(context).primaryColor,
               groupValue: groupValue,
               onChanged: onChanged,
               toggleable: false,

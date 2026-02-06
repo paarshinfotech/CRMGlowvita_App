@@ -59,7 +59,7 @@ class _OtpVerificationState extends State<OtpVerification> {
                           style: GoogleFonts.poppins(
                             fontSize: 16.sp,
                             fontWeight: FontWeight.w500,
-                            color: Colors.blue.shade800,
+                            color: Theme.of(context).primaryColor,
                             shadows: [
                               Shadow(
                                 blurRadius: 3.0,
@@ -115,13 +115,13 @@ class _OtpVerificationState extends State<OtpVerification> {
                               label: Container(
                                 padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
                                 decoration: BoxDecoration(
-                                  color: Colors.blue.shade100,
+                                  color: Theme.of(context).primaryColor.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(6.r),
                                 ),
                                 child: Text(
                                   'Enter OTP',
                                   style: GoogleFonts.poppins(
-                                    color: Colors.blue.shade800,
+                                    color: Theme.of(context).primaryColor,
                                     fontSize: 10.sp,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -160,7 +160,7 @@ class _OtpVerificationState extends State<OtpVerification> {
                               }
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue.shade700,
+                              backgroundColor: Theme.of(context).primaryColor,
                               foregroundColor: Colors.white,
                               padding: EdgeInsets.symmetric(vertical: 9.h),
                               shape: RoundedRectangleBorder(

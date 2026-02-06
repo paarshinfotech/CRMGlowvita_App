@@ -5,11 +5,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'services/api_service.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:io' show HttpClient, X509Certificate;
-import 'package:http/io_client.dart' as http_io;
 import 'widgets/create_appointment_form.dart';
 import 'widgets/custom_drawer.dart';
 import 'widgets/appointment_detail_dialog.dart';
@@ -71,20 +66,16 @@ class _CalendarState extends State<Calendar> {
   Map<String, bool> selectedStaff = {};
   List<Appointments> _appointments = [];
 
+  // WORKING HOURS DATA
+  Map<String, dynamic> workingHours = {};
+  bool isWorkingHoursLoading = false;
+
   DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
   double _timeToOffset(DateTime time) {
     final minutes = time.hour * 60 + time.minute;
     final quarterSlot = slotHeight / 4;
     return (minutes / 15) * quarterSlot;
-  }
-
-//  helper to bypass SSL (same as in staff.dart)
-  http_io.IOClient _cookieClient() {
-    final ioClient = HttpClient();
-    ioClient.badCertificateCallback =
-        (X509Certificate cert, String host, int port) => true;
-    return http_io.IOClient(ioClient);
   }
 
   void _setSelectedDate(DateTime newDate) {
@@ -154,9 +145,10 @@ class _CalendarState extends State<Calendar> {
     _horizontalScrollController = ScrollController();
     _staffHeaderScrollController = ScrollController();
 
-    // This will now actually fetch real staff and appointments
+    // This will now actually fetch real staff, appointments, and working hours
     _loadStaff();
     _loadAppointments();
+    _loadWorkingHours();
 
     // Timer and scroll sync...
     _horizontalScrollController.addListener(() {
@@ -178,62 +170,36 @@ class _CalendarState extends State<Calendar> {
     });
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token') ?? '';
-      if (token.isEmpty) {
-        throw Exception('No auth token found. Please login again.');
-      }
+      final List<StaffMember> staffMembers = await ApiService.getStaff();
 
-      final client = _cookieClient();
-      final response = await client.get(
-        Uri.parse('https://partners.v2winonline.com/api/crm/staff'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          "Cookie": "crm_access_token=$token",
-        },
-      );
-      client.close();
+      setState(() {
+        staffList = staffMembers.map<Map<String, dynamic>>((member) {
+          final fullName = (member.fullName ?? 'Unknown Staff').trim();
+          return {
+            'id': member.id ?? 'unknown',
+            'fullName': fullName.isEmpty ? 'No Name' : fullName,
+            'position': member.position ?? 'Staff',
+            'status': member.status ?? 'Active',
+            'photo': member.photo,
+          };
+        }).toList();
 
-      debugPrint('Staff API Status: ${response.statusCode}');
-      debugPrint('Staff API Body: ${response.body}');
+        // Auto-select first 2 staff
+        selectedStaff.clear();
+        for (int i = 0; i < staffList.length && i < 2; i++) {
+          final name = staffList[i]['fullName'] as String;
+          selectedStaff[name] = true;
+        }
+        // Ensure others are false
+        for (int i = 2; i < staffList.length; i++) {
+          final name = staffList[i]['fullName'] as String;
+          selectedStaff[name] = false;
+        }
 
-      if (response.statusCode == 200) {
-        final List<dynamic> rawList = json.decode(response.body);
-
-        setState(() {
-          staffList = rawList.map<Map<String, dynamic>>((item) {
-            final map = item as Map<String, dynamic>;
-            final fullName =
-                (map['fullName'] ?? 'Unknown Staff').toString().trim();
-            return {
-              'id': map['_id']?.toString() ?? 'unknown',
-              'fullName': fullName.isEmpty ? 'No Name' : fullName,
-              'position': (map['position'] ?? 'Staff').toString(),
-              'status': (map['status'] ?? 'Active').toString(),
-              'photo': map['photo']?.toString(),
-            };
-          }).toList();
-
-          // Auto-select first 2 staff
-          selectedStaff.clear();
-          for (int i = 0; i < staffList.length && i < 2; i++) {
-            final name = staffList[i]['fullName'] as String;
-            selectedStaff[name] = true;
-          }
-          // Ensure others are false
-          for (int i = 2; i < staffList.length; i++) {
-            final name = staffList[i]['fullName'] as String;
-            selectedStaff[name] = false;
-          }
-
-          debugPrint('Loaded ${staffList.length} staff members');
-          debugPrint(
-              'Selected: ${selectedStaff.keys.where((k) => selectedStaff[k]!).toList()}');
-        });
-      } else {
-        throw Exception('Failed to load staff: ${response.statusCode}');
-      }
+        debugPrint('Loaded ${staffList.length} staff members');
+        debugPrint(
+            'Selected: ${selectedStaff.keys.where((k) => selectedStaff[k]!).toList()}');
+      });
     } catch (e, stack) {
       debugPrint('ERROR loading staff: $e');
       debugPrint(stack.toString());
@@ -271,6 +237,59 @@ class _CalendarState extends State<Calendar> {
     }
   }
 
+  Future<void> _loadWorkingHours() async {
+    setState(() {
+      isWorkingHoursLoading = true;
+    });
+
+    try {
+      final data = await ApiService.getWorkingHours();
+      setState(() {
+        workingHours = data;
+        isWorkingHoursLoading = false;
+      });
+      debugPrint('Loaded working hours: ${workingHours['workingHoursArray']}');
+    } catch (e) {
+      debugPrint('Error loading working hours: $e');
+      setState(() {
+        isWorkingHoursLoading = false;
+      });
+    }
+  }
+
+  String _getWorkingHoursForDay(DateTime date) {
+    if (workingHours.isEmpty || workingHours['workingHoursArray'] == null) {
+      return 'Loading...';
+    }
+
+    final dayName = DateFormat('EEEE').format(date);
+    final List<dynamic> hoursArray = workingHours['workingHoursArray'];
+
+    try {
+      final dayData = hoursArray.firstWhere(
+        (item) =>
+            item['day']?.toString().toLowerCase() == dayName.toLowerCase(),
+        orElse: () => null,
+      );
+
+      if (dayData == null || dayData['isOpen'] == false) {
+        return 'Closed';
+      }
+
+      final openTime = dayData['open'] ?? '';
+      final closeTime = dayData['close'] ?? '';
+
+      if (openTime.isEmpty || closeTime.isEmpty) {
+        return 'Closed';
+      }
+
+      return '$openTime - $closeTime';
+    } catch (e) {
+      debugPrint('Error getting working hours: $e');
+      return 'Closed';
+    }
+  }
+
   @override
   void dispose() {
     _timer?.cancel();
@@ -289,7 +308,7 @@ class _CalendarState extends State<Calendar> {
       case 'pending':
         return Colors.orange[700]!;
       case 'scheduled':
-        return Colors.purple[400]!;
+        return Theme.of(context).primaryColor;
       case 'cancelled':
         return Colors.red[600]!;
       default:
@@ -459,7 +478,7 @@ class _CalendarState extends State<Calendar> {
                             Navigator.of(context).pop();
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.black,
+                            backgroundColor: Theme.of(context).primaryColor,
                             padding: EdgeInsets.symmetric(vertical: 12.h),
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8.r)),
@@ -594,11 +613,12 @@ class _CalendarState extends State<Calendar> {
                             DateFormat('MMMM yyyy').format(_selectedDate),
                             style: TextStyle(
                                 fontSize: 10.sp,
-                                color: Colors.blue,
+                                color: Theme.of(context).primaryColor,
                                 fontWeight: FontWeight.w500),
                           ),
                           Icon(Icons.arrow_drop_down,
-                              size: 16.sp, color: Colors.blue),
+                              size: 16.sp,
+                              color: Theme.of(context).primaryColor),
                         ],
                       ),
                     ),
@@ -680,9 +700,14 @@ class _CalendarState extends State<Calendar> {
                                 ),
                                 SizedBox(height: 1.h),
                                 Text(
-                                  staff['status'] ?? 'Active',
+                                  _getWorkingHoursForDay(_selectedDate),
                                   style: TextStyle(
-                                      fontSize: 7.sp, color: Colors.green[700]),
+                                      fontSize: 7.sp,
+                                      color: _getWorkingHoursForDay(
+                                                  _selectedDate) ==
+                                              'Closed'
+                                          ? Colors.red[700]
+                                          : Colors.green[700]),
                                 ),
                               ],
                             ),
@@ -944,7 +969,7 @@ class _CalendarState extends State<Calendar> {
                                                                             size:
                                                                                 10.sp,
                                                                             color:
-                                                                                Colors.blueGrey[600],
+                                                                                Theme.of(context).primaryColor,
                                                                           ),
                                                                           SizedBox(
                                                                               width: 4.w),
@@ -953,7 +978,7 @@ class _CalendarState extends State<Calendar> {
                                                                             style: TextStyle(
                                                                                 fontSize: 8.sp,
                                                                                 fontWeight: FontWeight.w600,
-                                                                                color: Colors.blueGrey[800]),
+                                                                                color: Theme.of(context).primaryColor),
                                                                           ),
                                                                         ],
                                                                       ),
@@ -968,12 +993,13 @@ class _CalendarState extends State<Calendar> {
                                                                             vertical: 3.h),
                                                                         decoration:
                                                                             BoxDecoration(
-                                                                          color:
-                                                                              Colors.blue[50],
+                                                                          color: Theme.of(context)
+                                                                              .primaryColor
+                                                                              .withOpacity(0.08),
                                                                           borderRadius:
                                                                               BorderRadius.circular(6.r),
                                                                           border:
-                                                                              Border.all(color: Colors.blue[100]!),
+                                                                              Border.all(color: Theme.of(context).primaryColor.withOpacity(0.2)),
                                                                         ),
                                                                         child:
                                                                             Row(
@@ -983,12 +1009,12 @@ class _CalendarState extends State<Calendar> {
                                                                             Icon(
                                                                               appt.mode.toLowerCase() == 'online' ? Icons.language : Icons.store,
                                                                               size: 9.sp,
-                                                                              color: Colors.blue[800],
+                                                                              color: Theme.of(context).primaryColor,
                                                                             ),
                                                                             SizedBox(width: 4.w),
                                                                             Text(
                                                                               appt.mode.toLowerCase() == 'online' ? 'Web Booking' : 'Offline Booking',
-                                                                              style: TextStyle(fontSize: 7.sp, fontWeight: FontWeight.bold, color: Colors.blue[800]),
+                                                                              style: TextStyle(fontSize: 7.sp, fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor),
                                                                             ),
                                                                           ],
                                                                         ),
@@ -1104,7 +1130,7 @@ class _CalendarState extends State<Calendar> {
           Stack(
             children: [
               FloatingActionButton(
-                backgroundColor: Colors.blue,
+                backgroundColor: Theme.of(context).primaryColor,
                 elevation: 6,
                 heroTag: 'staff_select',
                 onPressed: _showStaffSelection,

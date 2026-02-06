@@ -110,8 +110,10 @@ class _SalesHistoryState extends State<SalesHistory> {
             .contains(searchText.toLowerCase());
 
         final matchesDate = _selectedDateRange == null ||
-            (service['date'].isAfter(_selectedDateRange!.start.subtract(const Duration(days: 1))) &&
-                service['date'].isBefore(_selectedDateRange!.end.add(const Duration(days: 1))));
+            (service['date'].isAfter(_selectedDateRange!.start
+                    .subtract(const Duration(days: 1))) &&
+                service['date'].isBefore(
+                    _selectedDateRange!.end.add(const Duration(days: 1))));
 
         return matchesSearch && matchesDate;
       }).toList();
@@ -191,8 +193,10 @@ class _SalesHistoryState extends State<SalesHistory> {
                     backgroundColor: Colors.white,
                     foregroundColor: Colors.black87,
                     side: BorderSide(color: Colors.black54),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
                     elevation: 0,
                   ),
                 ),
@@ -204,7 +208,8 @@ class _SalesHistoryState extends State<SalesHistory> {
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
-                      icon: const Icon(Icons.file_download_outlined, color: Colors.black),
+                      icon: const Icon(Icons.file_download_outlined,
+                          color: Colors.black),
                       items: const [
                         DropdownMenuItem(value: 'csv', child: Text('CSV')),
                         DropdownMenuItem(value: 'pdf', child: Text('PDF')),
@@ -230,7 +235,8 @@ class _SalesHistoryState extends State<SalesHistory> {
               child: Card(
                 color: Colors.white,
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: SingleChildScrollView(
@@ -238,11 +244,14 @@ class _SalesHistoryState extends State<SalesHistory> {
                     child: SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: DataTable(
-                        headingRowColor: MaterialStateColor.resolveWith((states) => Colors.grey.shade200),
+                        headingRowColor: MaterialStateColor.resolveWith(
+                            (states) => Colors.grey.shade200),
                         columnSpacing: 24,
                         dataRowHeight: 60,
-                        headingTextStyle: const TextStyle(fontWeight: FontWeight.bold),
-                        border: TableBorder.all(color: Colors.black26, width: 0.6),
+                        headingTextStyle:
+                            const TextStyle(fontWeight: FontWeight.bold),
+                        border:
+                            TableBorder.all(color: Colors.black26, width: 0.6),
                         columns: const [
                           DataColumn(label: Text("Invoice")),
                           DataColumn(label: Text("Status")),
@@ -261,33 +270,41 @@ class _SalesHistoryState extends State<SalesHistory> {
                             final isEven = index % 2 == 0;
                             return DataRow(
                               color: MaterialStateColor.resolveWith(
-                                    (states) => isEven ? Colors.grey.shade50 : Colors.white,
+                                (states) =>
+                                    isEven ? Colors.grey.shade50 : Colors.white,
                               ),
                               cells: [
                                 DataCell(Text(service['invoice'])),
                                 DataCell(
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 6),
                                     decoration: BoxDecoration(
                                       color: _getStatusColor(service['status']),
                                       borderRadius: BorderRadius.circular(20),
                                     ),
                                     child: Text(
                                       service['status'],
-                                      style: const TextStyle(color: Colors.white),
+                                      style:
+                                          const TextStyle(color: Colors.white),
                                     ),
                                   ),
                                 ),
-                                DataCell(Text(DateFormat('dd MMM yyyy, hh:mm a').format(service['date']))),
+                                DataCell(Text(DateFormat('dd MMM yyyy, hh:mm a')
+                                    .format(service['date']))),
                                 DataCell(Text(service['customer'])),
                                 DataCell(Text(service['qty'].toString())),
-                                DataCell(Text(_currencyFormat(service['grossSale']))),
-                                DataCell(Text(_currencyFormat(service['discount']))),
-                                DataCell(Text(_currencyFormat(service['netSale']))),
+                                DataCell(Text(
+                                    _currencyFormat(service['grossSale']))),
+                                DataCell(
+                                    Text(_currencyFormat(service['discount']))),
+                                DataCell(
+                                    Text(_currencyFormat(service['netSale']))),
                                 DataCell(Text(_currencyFormat(service['tax']))),
                                 DataCell(Text(
                                   _currencyFormat(service['totalSales']),
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold),
                                 )),
                               ],
                             );
@@ -295,18 +312,33 @@ class _SalesHistoryState extends State<SalesHistory> {
 
                           // TOTAL ROW
                           DataRow(
-                            color: MaterialStateColor.resolveWith((states) => Colors.yellow.shade50),
+                            color: MaterialStateColor.resolveWith(
+                                (states) => Colors.yellow.shade50),
                             cells: [
-                              const DataCell(Text("Total", style: TextStyle(fontWeight: FontWeight.bold))),
+                              const DataCell(Text("Total",
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.bold))),
                               const DataCell(Text("")),
                               const DataCell(Text("")),
                               const DataCell(Text("")),
-                              DataCell(Text(totalQty.toString(), style: const TextStyle(fontWeight: FontWeight.bold))),
-                              DataCell(Text(_currencyFormat(totalGrossSale), style: const TextStyle(fontWeight: FontWeight.bold))),
-                              DataCell(Text(_currencyFormat(totalDiscount), style: const TextStyle(fontWeight: FontWeight.bold))),
-                              DataCell(Text(_currencyFormat(totalNetSale), style: const TextStyle(fontWeight: FontWeight.bold))),
-                              DataCell(Text(_currencyFormat(totalTax), style: const TextStyle(fontWeight: FontWeight.bold))),
-                              DataCell(Text(_currencyFormat(totalSales), style: const TextStyle(fontWeight: FontWeight.bold))),
+                              DataCell(Text(totalQty.toString(),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold))),
+                              DataCell(Text(_currencyFormat(totalGrossSale),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold))),
+                              DataCell(Text(_currencyFormat(totalDiscount),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold))),
+                              DataCell(Text(_currencyFormat(totalNetSale),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold))),
+                              DataCell(Text(_currencyFormat(totalTax),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold))),
+                              DataCell(Text(_currencyFormat(totalSales),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold))),
                             ],
                           ),
                         ],
@@ -348,10 +380,12 @@ class _SalesHistoryState extends State<SalesHistory> {
           ),
           IconButton(
             icon: const Icon(Icons.notifications),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationPage())),
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const NotificationPage())),
           ),
           GestureDetector(
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilePage())),
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const ProfilePage())),
             child: Padding(
               padding: EdgeInsets.only(right: 10.w),
               child: Container(
@@ -376,13 +410,13 @@ class _SalesHistoryState extends State<SalesHistory> {
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'paid':
-        return Colors.blue;
+        return Theme.of(context).primaryColor;
       case 'pending':
         return Colors.orange;
       case 'cancelled':
         return Colors.red;
       case 'unpaid':
-        return Colors.blueGrey;
+        return Theme.of(context).primaryColor;
       default:
         return Colors.grey;
     }

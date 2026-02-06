@@ -77,6 +77,33 @@ class _My_ProfileState extends State<My_Profile>
         _errorMessage = null;
       });
       final profile = await ApiService.getVendorProfile();
+
+      // Fetch working hours
+      try {
+        final workingHoursData = await ApiService.getWorkingHours();
+        if (workingHoursData['workingHoursArray'] != null) {
+          final List<dynamic> hoursArray =
+              workingHoursData['workingHoursArray'];
+          for (var dayData in hoursArray) {
+            final String day = dayData['day'];
+            final bool isOpen = dayData['isOpen'] ?? false;
+            final String openTime = dayData['open'] ?? '';
+            final String closeTime = dayData['close'] ?? '';
+
+            openDays[day] = isOpen;
+            if (isOpen && openTime.isNotEmpty) {
+              openTimes[day] = openTime;
+            }
+            if (isOpen && closeTime.isNotEmpty) {
+              closeTimes[day] = closeTime;
+            }
+          }
+        }
+      } catch (e) {
+        print('Error fetching working hours: $e');
+        // Continue even if working hours fail to load
+      }
+
       setState(() {
         _profile = profile;
         _isLoading = false;
@@ -90,6 +117,54 @@ class _My_ProfileState extends State<My_Profile>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error loading profile: $e')),
       );
+    }
+  }
+
+  // Convert 12-hour format (09:00AM) to 24-hour format (09:00)
+  String _convert12To24Hour(String time12) {
+    try {
+      if (!time12.contains('AM') && !time12.contains('PM')) {
+        return time12; // Already in 24-hour format
+      }
+
+      final isPM = time12.toUpperCase().contains('PM');
+      final timeWithoutPeriod =
+          time12.replaceAll(RegExp(r'[AP]M', caseSensitive: false), '');
+      final parts = timeWithoutPeriod.split(':');
+      int hour = int.parse(parts[0]);
+      final minute = parts[1];
+
+      if (isPM && hour != 12) {
+        hour += 12;
+      } else if (!isPM && hour == 12) {
+        hour = 0;
+      }
+
+      return '${hour.toString().padLeft(2, '0')}:$minute';
+    } catch (e) {
+      print('Error converting time: $e');
+      return time12;
+    }
+  }
+
+  // Convert 24-hour format (18:30) to 12-hour format (06:30PM)
+  String _convert24To12Hour(String time24) {
+    try {
+      final parts = time24.split(':');
+      int hour = int.parse(parts[0]);
+      final minute = parts[1];
+
+      final period = hour >= 12 ? 'PM' : 'AM';
+      if (hour > 12) {
+        hour -= 12;
+      } else if (hour == 0) {
+        hour = 12;
+      }
+
+      return '${hour.toString().padLeft(2, '0')}:$minute$period';
+    } catch (e) {
+      print('Error converting time: $e');
+      return time24;
     }
   }
 
@@ -183,6 +258,97 @@ class _My_ProfileState extends State<My_Profile>
       }
 
       final updatedProfile = await ApiService.updateVendorProfile(payload);
+
+      // Update working hours separately
+      try {
+        final workingHoursPayload = {
+          'workingHours': {
+            'monday': {
+              'isOpen': openDays['Monday'] ?? false,
+              'hours': (openDays['Monday'] ?? false)
+                  ? [
+                      {
+                        'openTime': openTimes['Monday'] ?? '09:00',
+                        'closeTime': closeTimes['Monday'] ?? '18:30',
+                      }
+                    ]
+                  : []
+            },
+            'tuesday': {
+              'isOpen': openDays['Tuesday'] ?? false,
+              'hours': (openDays['Tuesday'] ?? false)
+                  ? [
+                      {
+                        'openTime': openTimes['Tuesday'] ?? '09:00',
+                        'closeTime': closeTimes['Tuesday'] ?? '18:30',
+                      }
+                    ]
+                  : []
+            },
+            'wednesday': {
+              'isOpen': openDays['Wednesday'] ?? false,
+              'hours': (openDays['Wednesday'] ?? false)
+                  ? [
+                      {
+                        'openTime': openTimes['Wednesday'] ?? '09:00',
+                        'closeTime': closeTimes['Wednesday'] ?? '18:30',
+                      }
+                    ]
+                  : []
+            },
+            'thursday': {
+              'isOpen': openDays['Thursday'] ?? false,
+              'hours': (openDays['Thursday'] ?? false)
+                  ? [
+                      {
+                        'openTime': openTimes['Thursday'] ?? '09:00',
+                        'closeTime': closeTimes['Thursday'] ?? '18:30',
+                      }
+                    ]
+                  : []
+            },
+            'friday': {
+              'isOpen': openDays['Friday'] ?? false,
+              'hours': (openDays['Friday'] ?? false)
+                  ? [
+                      {
+                        'openTime': openTimes['Friday'] ?? '09:00',
+                        'closeTime': closeTimes['Friday'] ?? '18:30',
+                      }
+                    ]
+                  : []
+            },
+            'saturday': {
+              'isOpen': openDays['Saturday'] ?? false,
+              'hours': (openDays['Saturday'] ?? false)
+                  ? [
+                      {
+                        'openTime': openTimes['Saturday'] ?? '09:00',
+                        'closeTime': closeTimes['Saturday'] ?? '18:30',
+                      }
+                    ]
+                  : []
+            },
+            'sunday': {
+              'isOpen': openDays['Sunday'] ?? false,
+              'hours': (openDays['Sunday'] ?? false)
+                  ? [
+                      {
+                        'openTime': openTimes['Sunday'] ?? '09:00',
+                        'closeTime': closeTimes['Sunday'] ?? '18:30',
+                      }
+                    ]
+                  : []
+            },
+          },
+          'timezone': 'Asia/Kolkata'
+        };
+
+        await ApiService.updateWorkingHours(workingHoursPayload);
+      } catch (e) {
+        print('Error updating working hours: $e');
+        // Continue even if working hours update fails
+      }
 
       setState(() {
         _profile = updatedProfile;
@@ -350,7 +516,7 @@ class _My_ProfileState extends State<My_Profile>
     }
   }
 
-  void _applyMondayToAll() {
+  /*void _applyMondayToAll() {
     final monOpen = openTimes['Monday'] ?? "09:00";
     final monClose = closeTimes['Monday'] ?? "18:30";
     setState(() {
@@ -364,7 +530,7 @@ class _My_ProfileState extends State<My_Profile>
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Monday times applied to all open days')),
     );
-  }
+  }*/
 
   String _mapVendorType(String type) {
     switch (type) {
@@ -1081,7 +1247,7 @@ class _My_ProfileState extends State<My_Profile>
                   if (hasDoc) ...[
                     IconButton(
                       icon: Icon(Icons.visibility_outlined,
-                          size: 16.sp, color: Colors.blue),
+                          size: 16.sp, color: Theme.of(context).primaryColor),
                       onPressed: () => _viewMedia(
                           isNew ? _newDocumentsBase64[key] : url, label),
                     ),
@@ -1134,8 +1300,12 @@ class _My_ProfileState extends State<My_Profile>
   // ──────────────────────────────────────────────
   //  7. Opening Hours
   // ──────────────────────────────────────────────
+  // ──────────────────────────────────────────────
+//  7. Opening Hours – Ultra minimal + fixed
+// ──────────────────────────────────────────────
   Widget _buildOpeningHoursTab() {
     if (_isLoading) return _buildLoading();
+
     final days = [
       "Monday",
       "Tuesday",
@@ -1147,177 +1317,188 @@ class _My_ProfileState extends State<My_Profile>
     ];
 
     return SingleChildScrollView(
-      padding: EdgeInsets.all(20.w),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Opening Hours",
-              style: GoogleFonts.inter(
-                  fontSize: 17.sp, fontWeight: FontWeight.w700)),
+          Text(
+            "Opening Hours",
+            style: GoogleFonts.inter(
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           SizedBox(height: 4.h),
-          Text("Set your weekly business hours",
-              style: GoogleFonts.inter(
-                  fontSize: 10.5.sp, color: Colors.grey.shade600)),
-          SizedBox(height: 24.h),
+          Text(
+            "Weekly hours",
+            style: GoogleFonts.inter(
+              fontSize: 10.sp,
+              color: Colors.grey.shade600,
+            ),
+          ),
+          SizedBox(height: 16.h),
           ...days.map((day) {
             final isOpen = openDays[day] ?? false;
+
             return Padding(
-              padding: EdgeInsets.only(bottom: 16.h),
+              padding: EdgeInsets.only(bottom: 10.h),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  // Day name + apply link (only Monday)
                   SizedBox(
-                      width: 70.w,
-                      child: Row(
-                        children: [
-                          Text(day,
+                    width: 100.w,
+                    child: Row(
+                      children: [
+                        Text(
+                          day,
+                          style: GoogleFonts.inter(
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        if (day == "Monday") ...[
+                          // SizedBox(width: 6.w),
+                          /*  GestureDetector(
+                            onTap: _applyMondayToAll,
+                            child: Text(
+                              "apply all",
                               style: GoogleFonts.inter(
-                                  fontSize: 11.sp,
-                                  fontWeight: FontWeight.w600)),
-                          if (day == "Monday") ...[
-                            SizedBox(width: 4.w),
-                            InkWell(
-                              onTap: _applyMondayToAll,
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: 6.w, vertical: 2.h),
-                                decoration: BoxDecoration(
-                                  border:
-                                      Border.all(color: Colors.grey.shade300),
-                                  borderRadius: BorderRadius.circular(4.r),
-                                ),
-                                child: Text("Apply to All",
-                                    style: GoogleFonts.inter(
-                                        fontSize: 8.sp,
-                                        fontWeight: FontWeight.w500)),
+                                fontSize: 9.5.sp,
+                                color: Colors.grey.shade600,
+                                decoration: TextDecoration.underline,
                               ),
                             ),
-                          ],
+                          ),*/
                         ],
-                      )),
-                  SizedBox(width: 8.w),
+                      ],
+                    ),
+                  ),
+
+                  // Time fields or Closed state
                   Expanded(
-                    child: Row(
-                      children: [
-                        if (isOpen) ...[
-                          Expanded(child: _timePicker(day, true)),
-                          Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 4.w),
-                            child: Icon(Icons.access_time,
-                                size: 14.sp, color: Colors.grey.shade400),
-                          ),
-                          Expanded(child: _timePicker(day, false)),
-                          Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 4.w),
-                            child: Icon(Icons.access_time,
-                                size: 14.sp, color: Colors.grey.shade400),
-                          ),
-                        ] else
-                          Expanded(
-                            child: Container(
-                              height: 36.h,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade50,
-                                borderRadius: BorderRadius.circular(6.r),
-                              ),
-                              child: Text("-- : --",
+                    child: isOpen
+                        ? Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Expanded(child: _compactTimePicker(day, true)),
+                              Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 6.w),
+                                child: Text(
+                                  "–",
                                   style: GoogleFonts.inter(
-                                      fontSize: 11.sp,
-                                      color: Colors.grey.shade400)),
+                                    fontSize: 11.sp,
+                                    color: Colors.grey.shade400,
+                                  ),
+                                ),
+                              ),
+                              Expanded(child: _compactTimePicker(day, false)),
+                            ],
+                          )
+                        : Container(
+                            height: 28.h,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade300),
+                              borderRadius: BorderRadius.circular(6.r),
+                            ),
+                            child: Text(
+                              "Closed",
+                              style: GoogleFonts.inter(
+                                fontSize: 10.sp,
+                                color: Colors.grey.shade500,
+                              ),
                             ),
                           ),
-                      ],
-                    ),
                   ),
+
                   SizedBox(width: 12.w),
-                  Container(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                    decoration: BoxDecoration(
-                      color: isOpen ? Colors.green.shade50 : Colors.red.shade50,
-                      borderRadius: BorderRadius.circular(12.r),
+
+                  // Compact switch
+                  Transform.scale(
+                    scale: 0.78,
+                    child: Switch(
+                      value: isOpen,
+                      onChanged: (v) => setState(() => openDays[day] = v),
+                      activeColor: Colors.black87,
+                      inactiveThumbColor: Colors.grey.shade400,
+                      inactiveTrackColor: Colors.grey.shade300,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CircleAvatar(
-                            radius: 3.r,
-                            backgroundColor:
-                                isOpen ? Colors.green : Colors.red),
-                        SizedBox(width: 4.w),
-                        Text(isOpen ? "Open" : "Closed",
-                            style: GoogleFonts.inter(
-                                fontSize: 9.sp,
-                                fontWeight: FontWeight.w600,
-                                color: isOpen ? Colors.green : Colors.red)),
-                      ],
-                    ),
-                  ),
-                  SizedBox(width: 4.w),
-                  Switch(
-                    value: isOpen,
-                    onChanged: (v) => setState(() => openDays[day] = v),
-                    activeColor: Colors.black87,
                   ),
                 ],
               ),
             );
           }),
-          SizedBox(height: 24.h),
-          _saveButton(text: "Save Hours"),
+          SizedBox(height: 20.h),
+          Align(
+            alignment: Alignment.centerRight,
+            child: SizedBox(
+              height: 34.h,
+              child: _saveButton(text: "Save"),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _timePicker(String day, bool isOpenTime) {
-    final time =
-        isOpenTime ? (openTimes[day] ?? "09:00") : (closeTimes[day] ?? "18:30");
+  Widget _compactTimePicker(String day, bool isOpenTime) {
+    // Always provide fallback so picker opens even if value is missing
+    final rawTime = isOpenTime ? openTimes[day] : closeTimes[day];
+    final displayTime = (rawTime?.isNotEmpty ?? false)
+        ? rawTime!
+        : (isOpenTime ? "09:00" : "18:30");
+
     return GestureDetector(
       onTap: () async {
-        TimeOfDay? pickedTime = await showTimePicker(
+        final initial = _parseTime(displayTime); // safe fallback
+
+        final picked = await showTimePicker(
           context: context,
-          initialTime: _parseTime(time),
-          builder: (context, child) {
-            return Theme(
-              data: ThemeData.light().copyWith(
-                colorScheme: const ColorScheme.light(
-                  primary: Colors.black,
-                  onPrimary: Colors.white,
-                  surface: Colors.white,
-                  onSurface: Colors.black,
-                ),
+          initialTime: initial,
+          builder: (context, child) => Theme(
+            data: ThemeData.light().copyWith(
+              colorScheme: const ColorScheme.light(
+                primary: Colors.black87,
+                onPrimary: Colors.white,
               ),
-              child: child!,
-            );
-          },
+            ),
+            child: child!,
+          ),
         );
-        if (pickedTime != null) {
-          final formattedTime =
-              "${pickedTime.hour.toString().padLeft(2, '0')}:${pickedTime.minute.toString().padLeft(2, '0')}";
+
+        if (picked != null) {
+          final formatted =
+              "${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}";
           setState(() {
             if (isOpenTime) {
-              openTimes[day] = formattedTime;
+              openTimes[day] = formatted;
             } else {
-              closeTimes[day] = formattedTime;
+              closeTimes[day] = formatted;
             }
           });
         }
       },
       child: Container(
-        height: 36.h,
+        height: 28.h,
         alignment: Alignment.center,
+        constraints:
+            BoxConstraints(minWidth: 68.w), // prevents too narrow fields
         decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(6.r)),
-        child: Text(time, style: GoogleFonts.inter(fontSize: 11.sp)),
+          border: Border.all(color: Colors.grey.shade300, width: 1),
+          borderRadius: BorderRadius.circular(6.r),
+        ),
+        child: Text(
+          displayTime,
+          style: GoogleFonts.inter(
+            fontSize: 10.5.sp,
+            color: Colors.black87,
+          ),
+        ),
       ),
     );
-  }
-
-  TimeOfDay _parseTime(String timeStr) {
-    final parts = timeStr.split(":");
-    return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
   }
 
   Widget _buildSubItem(String label, String value, {Color? color}) {
@@ -1351,6 +1532,18 @@ class _My_ProfileState extends State<My_Profile>
         ),
       ],
     );
+  }
+
+  TimeOfDay _parseTime(String timeStr) {
+    try {
+      final parts = timeStr.split(":");
+      final hour = int.parse(parts[0]);
+      final minute = int.parse(parts[1]);
+      return TimeOfDay(hour: hour, minute: minute);
+    } catch (e) {
+      // Fallback in case of invalid format
+      return const TimeOfDay(hour: 9, minute: 0);
+    }
   }
 
   // ──────────────────────────────────────────────
@@ -1537,9 +1730,10 @@ class _CollapsibleInfoSectionState extends State<_CollapsibleInfoSection> {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.blue.shade50,
+        color: Theme.of(context).primaryColor.withOpacity(0.05),
         borderRadius: BorderRadius.circular(8.r),
-        border: Border.all(color: Colors.blue.shade100),
+        border:
+            Border.all(color: Theme.of(context).primaryColor.withOpacity(0.2)),
       ),
       child: Column(
         children: [
@@ -1547,18 +1741,18 @@ class _CollapsibleInfoSectionState extends State<_CollapsibleInfoSection> {
             dense: true,
             contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 0),
             leading: Icon(Icons.location_on_outlined,
-                color: Colors.blue.shade700, size: 20.sp),
+                color: Theme.of(context).primaryColor, size: 20.sp),
             title: Text("Why are these settings important?",
                 style: GoogleFonts.inter(
                     fontSize: 12.sp,
                     fontWeight: FontWeight.w600,
-                    color: Colors.blue.shade900)),
+                    color: Theme.of(context).primaryColor)),
             trailing: IconButton(
               icon: Icon(
                   _isExpanded
                       ? Icons.keyboard_arrow_up
                       : Icons.keyboard_arrow_down,
-                  color: Colors.blue.shade700),
+                  color: Theme.of(context).primaryColor),
               onPressed: () => setState(() => _isExpanded = !_isExpanded),
             ),
             onTap: () => setState(() => _isExpanded = !_isExpanded),
@@ -1595,11 +1789,11 @@ class _CollapsibleInfoSectionState extends State<_CollapsibleInfoSection> {
               style: GoogleFonts.inter(
                   fontSize: 12.sp,
                   fontWeight: FontWeight.bold,
-                  color: Colors.blue.shade700)),
+                  color: Theme.of(context).primaryColor)),
           Expanded(
             child: Text(text,
                 style: GoogleFonts.inter(
-                    fontSize: 11.sp, color: Colors.blue.shade900)),
+                    fontSize: 11.sp, color: Theme.of(context).primaryColor)),
           ),
         ],
       ),

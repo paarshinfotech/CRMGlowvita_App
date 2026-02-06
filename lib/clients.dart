@@ -525,11 +525,12 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                           context,
                           MaterialPageRoute(
                               builder: (context) => const ImportCustomers())),
-                      icon: const Icon(Icons.upload_file_outlined,
-                          size: 14, color: Colors.blue),
+                      icon: Icon(Icons.upload_file_outlined,
+                          size: 14, color: Theme.of(context).primaryColor),
                       label: Text('Import',
                           style: GoogleFonts.poppins(
-                              color: Colors.blue, fontSize: 10)),
+                              color: Theme.of(context).primaryColor,
+                              fontSize: 10)),
                       style: OutlinedButton.styleFrom(
                         backgroundColor: Colors.white,
                         side: const BorderSide(color: Colors.black, width: 1),
@@ -542,10 +543,12 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                     const SizedBox(width: 10),
                     OutlinedButton.icon(
                       onPressed: () => _navigateAndAddCustomer(context),
-                      icon: const Icon(Icons.add, size: 14, color: Colors.blue),
+                      icon: Icon(Icons.add,
+                          size: 14, color: Theme.of(context).primaryColor),
                       label: Text('Add Customer',
                           style: GoogleFonts.poppins(
-                              color: Colors.blue, fontSize: 10)),
+                              color: Theme.of(context).primaryColor,
+                              fontSize: 10)),
                       style: OutlinedButton.styleFrom(
                         backgroundColor: Colors.white,
                         side: const BorderSide(color: Colors.black, width: 1),
@@ -558,11 +561,12 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                     const SizedBox(width: 10),
                     OutlinedButton.icon(
                       onPressed: _isLoading ? null : _loadCustomers,
-                      icon: const Icon(Icons.refresh,
-                          size: 14, color: Colors.blue),
+                      icon: Icon(Icons.refresh,
+                          size: 14, color: Theme.of(context).primaryColor),
                       label: Text('Refresh',
                           style: GoogleFonts.poppins(
-                              color: Colors.blue, fontSize: 10)),
+                              color: Theme.of(context).primaryColor,
+                              fontSize: 10)),
                       style: OutlinedButton.styleFrom(
                         backgroundColor: Colors.white,
                         side: const BorderSide(color: Colors.black, width: 1),
@@ -585,7 +589,7 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                   child: TabBar(
                     controller: _tabController,
                     indicator: BoxDecoration(
-                      color: Colors.blue,
+                      color: Theme.of(context).primaryColor,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     indicatorSize: TabBarIndicatorSize.tab,
@@ -882,7 +886,9 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                                                 : CircleAvatar(
                                                     radius: 16,
                                                     backgroundColor:
-                                                        Colors.blue[100],
+                                                        Theme.of(context)
+                                                            .primaryColor
+                                                            .withOpacity(0.1),
                                                     child: Text(
                                                       c.fullName.isNotEmpty
                                                           ? c.fullName[0]

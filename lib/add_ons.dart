@@ -157,7 +157,7 @@ class _AddOnsPageState extends State<AddOnsPage> {
                 ),
               ),
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF331F33),
+                backgroundColor: Theme.of(context).primaryColor,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
                 minimumSize: const Size(0, 32),
@@ -334,7 +334,7 @@ class _AddOnsPageState extends State<AddOnsPage> {
                             style: GoogleFonts.poppins(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
-                                color: const Color(0xFF331F33))),
+                                color: Theme.of(context).primaryColor)),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -359,7 +359,7 @@ class _AddOnsPageState extends State<AddOnsPage> {
               ),
               const SizedBox(width: 8),
               _iconAction(Icons.edit_outlined, () => _openAddDialog(addon),
-                  color: Colors.blue.shade300),
+                  color: Theme.of(context).primaryColor.withOpacity(0.7)),
               const SizedBox(width: 8),
               _iconAction(Icons.delete_outline, () => _deleteConfirm(addon.id!),
                   color: Colors.red.shade300),
@@ -720,7 +720,8 @@ class _AddEditAddOnDialogState extends State<AddEditAddOnDialog> {
                                             color: Colors.grey.shade400,
                                             width: 1.5,
                                           ),
-                                          activeColor: const Color(0xFF6B4E71),
+                                          activeColor:
+                                              Theme.of(context).primaryColor,
                                         ),
                                       ),
                                       const SizedBox(width: 8),
@@ -756,7 +757,7 @@ class _AddEditAddOnDialogState extends State<AddEditAddOnDialog> {
                     FilledButton(
                       onPressed: _isSaving ? null : _save,
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF6B4E71),
+                        backgroundColor: Theme.of(context).primaryColor,
                         padding: const EdgeInsets.symmetric(
                             horizontal: 36, vertical: 16),
                         shape: RoundedRectangleBorder(

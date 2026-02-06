@@ -8,7 +8,7 @@ class ReferralProg extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Color lightBlue = const Color(0xFFF1F6FF);
-    Color cardBlue = const Color(0xFF457BFF);
+    Color cardBlue = Theme.of(context).primaryColor;
     double cardPadding = 16.0;
 
     return Scaffold(
@@ -46,7 +46,8 @@ class ReferralProg extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 5),
                             decoration: BoxDecoration(
                               color: cardBlue,
                               borderRadius: BorderRadius.circular(10),
@@ -78,7 +79,8 @@ class ReferralProg extends StatelessWidget {
                                     ),
                                     const SizedBox(height: 8),
                                     Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         const Icon(Icons.currency_rupee,
                                             size: 15, color: Colors.black87),
@@ -86,7 +88,9 @@ class ReferralProg extends StatelessWidget {
                                         const Expanded(
                                           child: Text(
                                             "Earn a commission on every completed online purchase of a GlowvitaSalon service.",
-                                            style: TextStyle(fontSize: 13, color: Colors.black87),
+                                            style: TextStyle(
+                                                fontSize: 13,
+                                                color: Colors.black87),
                                           ),
                                         ),
                                       ],
@@ -103,7 +107,8 @@ class ReferralProg extends StatelessWidget {
                                     const SizedBox(height: 2),
                                     const Text(
                                       "Invite salons to GlowvitaSalon CRM and earn a commission when they sell any GlowvitaSalon service online.",
-                                      style: TextStyle(fontSize: 13, color: Colors.black87),
+                                      style: TextStyle(
+                                          fontSize: 13, color: Colors.black87),
                                     ),
                                   ],
                                 ),
@@ -115,19 +120,22 @@ class ReferralProg extends StatelessWidget {
                           Center(
                             child: SizedBox(
                               width: 220,
-                              height : 40,
+                              height: 40,
                               child: ElevatedButton.icon(
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.white,elevation: 8,
+                                  backgroundColor: Colors.white,
+                                  elevation: 8,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                 ),
-                                icon: const Icon(Icons.share, color: Colors.blue, size: 17),
-                                label: const Text(
+                                icon: Icon(Icons.share,
+                                    color: Theme.of(context).primaryColor,
+                                    size: 17),
+                                label: Text(
                                   'Share Now',
                                   style: TextStyle(
-                                      color: Colors.blue,
+                                      color: Theme.of(context).primaryColor,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 15),
                                 ),
@@ -150,16 +158,20 @@ class ReferralProg extends StatelessWidget {
                       mainAxisSpacing: 9,
                       physics: const NeverScrollableScrollPhysics(),
                       children: [
-                        _statTile(Icons.person_outline, "Your commission", "0", cardBlue),
-                        _statTile(Icons.currency_rupee, "Total commission", "0.00", cardBlue),
-                        _statTile(Icons.timer_rounded, "Current commission", "0.00", cardBlue),
-                        _statTile(Icons.currency_rupee, "Current month invites", "0", cardBlue),
+                        _statTile(Icons.person_outline, "Your commission", "0",
+                            cardBlue),
+                        _statTile(Icons.currency_rupee, "Total commission",
+                            "0.00", cardBlue),
+                        _statTile(Icons.timer_rounded, "Current commission",
+                            "0.00", cardBlue),
+                        _statTile(Icons.currency_rupee, "Current month invites",
+                            "0", cardBlue),
                         _statTile(Icons.timer, "Total invites", "0", cardBlue),
                         Container(), // Empty for grid symmetry
                       ],
                     ),
                     const SizedBox(height: 18),
-                    _criteriaCard(),
+                    _criteriaCard(context),
                     const SizedBox(height: 22),
                     _referralDetailsCard(context, cardBlue),
                     const SizedBox(height: 22),
@@ -212,7 +224,8 @@ class ReferralProg extends StatelessWidget {
             ),
             Text(
               value,
-              style: TextStyle(fontSize: 15, color: iconColor, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  fontSize: 15, color: iconColor, fontWeight: FontWeight.bold),
             )
           ],
         ),
@@ -220,19 +233,20 @@ class ReferralProg extends StatelessWidget {
     );
   }
 
-  Widget _criteriaCard() {
-    Widget _numberCircle(String number) {
+  Widget _criteriaCard(BuildContext context) {
+    Widget _numberCircle(BuildContext context, String number) {
       return Container(
         width: 26,
         height: 26,
         decoration: BoxDecoration(
-          color: Colors.blue,
+          color: Theme.of(context).primaryColor,
           shape: BoxShape.circle,
         ),
         alignment: Alignment.center,
         child: Text(
           number,
-          style: TextStyle(fontSize: 10,
+          style: TextStyle(
+            fontSize: 10,
             color: Colors.white,
             fontWeight: FontWeight.bold,
           ),
@@ -265,14 +279,13 @@ class ReferralProg extends StatelessWidget {
             ),
           ),
           SizedBox(height: 10),
-
           ExpansionTile(
             tilePadding: EdgeInsets.zero,
             collapsedIconColor: Colors.black54,
             iconColor: Colors.black54,
             title: Row(
               children: [
-                _numberCircle("1"),
+                _numberCircle(context, "1"),
                 SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -292,14 +305,13 @@ class ReferralProg extends StatelessWidget {
               ),
             ],
           ),
-
           ExpansionTile(
             tilePadding: EdgeInsets.zero,
             collapsedIconColor: Colors.black54,
             iconColor: Colors.black54,
             title: Row(
               children: [
-                _numberCircle("2"),
+                _numberCircle(context, "2"),
                 SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -319,14 +331,13 @@ class ReferralProg extends StatelessWidget {
               ),
             ],
           ),
-
           ExpansionTile(
             tilePadding: EdgeInsets.zero,
             collapsedIconColor: Colors.black54,
             iconColor: Colors.black54,
             title: Row(
               children: [
-                _numberCircle("3"),
+                _numberCircle(context, "3"),
                 SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -402,8 +413,7 @@ class ReferralProg extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(7)),
                   ),
-                  icon: const Icon(Icons.share,
-                      color: Colors.white, size: 18),
+                  icon: const Icon(Icons.share, color: Colors.white, size: 18),
                   label: const Text('Share via Social Media',
                       style: TextStyle(
                           fontSize: 13,
@@ -419,7 +429,8 @@ class ReferralProg extends StatelessWidget {
     );
   }
 
-  Widget _copyRow(BuildContext context, {required String value, required IconData icon}) {
+  Widget _copyRow(BuildContext context,
+      {required String value, required IconData icon}) {
     return Transform.translate(
       offset: Offset(10, 7),
       child: Container(
@@ -470,6 +481,7 @@ class ReferralProg extends StatelessWidget {
       ),
     );
   }
+
   Widget _rewardsCard(BuildContext context, Color cardBlue) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -504,13 +516,21 @@ class ReferralProg extends StatelessWidget {
             childAspectRatio: 1.5,
             physics: const NeverScrollableScrollPhysics(),
             children: [
-              _rewardTile(Icons.percent, "20% Discount",
-                  "Your friend gets 20% off their first course purchase", cardBlue),
-              _rewardTile(Icons.currency_rupee_rounded, "₹500 Cashback",
-                  "You earn ₹500 when your friend completes their first course", cardBlue),
-              _rewardTile(Icons.all_inclusive, "Unlimited Referrals",
+              _rewardTile(
+                  context,
+                  Icons.percent,
+                  "20% Discount",
+                  "Your friend gets 20% off their first course purchase",
+                  cardBlue),
+              _rewardTile(
+                  context,
+                  Icons.currency_rupee_rounded,
+                  "₹500 Cashback",
+                  "You earn ₹500 when your friend completes their first course",
+                  cardBlue),
+              _rewardTile(context, Icons.all_inclusive, "Unlimited Referrals",
                   "No limit on referrals", cardBlue),
-              _rewardTile(Icons.flash_on, "Quick Rewards",
+              _rewardTile(context, Icons.flash_on, "Quick Rewards",
                   "Rewards credited within 48 hours ", cardBlue),
             ],
           ),
@@ -519,13 +539,14 @@ class ReferralProg extends StatelessWidget {
     );
   }
 
-  Widget _rewardTile(
-      IconData icon, String title, String subtitle, Color iconColor) {
+  Widget _rewardTile(BuildContext context, IconData icon, String title,
+      String subtitle, Color iconColor) {
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFFF7F9FD),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blue[100]!),
+        border:
+            Border.all(color: Theme.of(context).primaryColor.withOpacity(0.2)),
       ),
       padding: const EdgeInsets.all(9),
       child: Row(
@@ -542,7 +563,8 @@ class ReferralProg extends StatelessWidget {
                         fontWeight: FontWeight.bold, fontSize: 13)),
                 const SizedBox(height: 2),
                 Text(subtitle,
-                    style: const TextStyle(fontSize: 11, color: Colors.black54)),
+                    style:
+                        const TextStyle(fontSize: 11, color: Colors.black54)),
               ],
             ),
           ),
@@ -550,5 +572,4 @@ class ReferralProg extends StatelessWidget {
       ),
     );
   }
-
 }

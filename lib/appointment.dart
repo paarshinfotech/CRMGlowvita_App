@@ -201,7 +201,6 @@ class _AppointmentState extends State<Appointment>
             .toList(),
         onChanged: onChanged,
       );
-
   Widget _buildDateRangeSelector() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
@@ -298,7 +297,8 @@ class _AppointmentState extends State<Appointment>
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
               foregroundColor: Colors.black87,
-              side: BorderSide(color: Colors.black54),
+              side:
+                  BorderSide(color: Theme.of(context).primaryColor, width: 1.5),
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8)),
@@ -330,7 +330,7 @@ class _AppointmentState extends State<Appointment>
         color = Colors.orange.shade700;
         break;
       case 'confirmed':
-        color = Colors.blue.shade700;
+        color = Theme.of(context).primaryColor;
         break;
       case 'completed':
         color = Colors.green.shade700;
@@ -477,7 +477,8 @@ class _AppointmentState extends State<Appointment>
                               Text(
                                 item.staffName ?? '—',
                                 style: subStyle.copyWith(
-                                    fontSize: 12, color: Colors.blue.shade700),
+                                    fontSize: 12,
+                                    color: Theme.of(context).primaryColor),
                               ),
                             ],
                           ),
@@ -554,7 +555,8 @@ class _AppointmentState extends State<Appointment>
                   _actionIcon(Icons.payments_outlined, Colors.green, () {
                     _showCollectPaymentDialog(appt);
                   }, label: 'Pay'),
-                _actionIcon(Icons.edit_outlined, Colors.blue, () {
+                _actionIcon(Icons.edit_outlined, Theme.of(context).primaryColor,
+                    () {
                   _editAppointment(appt);
                 }, label: 'Edit'),
                 _actionIcon(Icons.delete_outline, Colors.red, () {
@@ -720,10 +722,10 @@ class _AppointmentState extends State<Appointment>
                       width: 1.w,
                     ),
                   ),
-                  child: const CircleAvatar(
+                  child: CircleAvatar(
                     radius: 17,
                     backgroundImage: AssetImage('assets/images/profile.jpeg'),
-                    backgroundColor: Colors.white,
+                    backgroundColor: Theme.of(context).primaryColor,
                   ),
                 ),
               ),
@@ -910,11 +912,11 @@ class _AppointmentState extends State<Appointment>
                     Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
+                        color: Theme.of(context).primaryColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child:
-                          const Icon(Icons.event, color: Colors.blue, size: 18),
+                      child: Icon(Icons.event,
+                          color: Theme.of(context).primaryColor, size: 18),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -939,12 +941,12 @@ class _AppointmentState extends State<Appointment>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
+                        color: Theme.of(context).primaryColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text('${_filteredAppointments.length}',
                           style: GoogleFonts.poppins(
-                            color: Colors.blue,
+                            color: Theme.of(context).primaryColor,
                             fontWeight: FontWeight.w600,
                             fontSize: 12,
                           )),
@@ -959,8 +961,8 @@ class _AppointmentState extends State<Appointment>
               ),
               TabBar(
                 controller: _tabController,
-                indicatorColor: Colors.blue,
-                labelColor: Colors.blue,
+                indicatorColor: Theme.of(context).primaryColor,
+                labelColor: Theme.of(context).primaryColor,
                 unselectedLabelColor: Colors.black54,
                 labelStyle: GoogleFonts.poppins(
                     fontWeight: FontWeight.w600, fontSize: 12),
@@ -1152,7 +1154,7 @@ class _AppointmentState extends State<Appointment>
             MaterialPageRoute(builder: (_) => const CreateAppointmentForm()),
           );
         },
-        backgroundColor: Colors.blue,
+        backgroundColor: Theme.of(context).primaryColor,
         child: const Icon(Icons.add, size: 26, color: Colors.white),
         tooltip: 'Add Appointment',
       ),

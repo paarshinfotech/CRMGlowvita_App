@@ -315,7 +315,7 @@ class _ProductsPageState extends State<Products> {
     // Keep your original palette
     const scaffoldBg = Color(0xFFF5F5F5);
     const cardBg = Colors.white;
-    const accent = Color(0xFF457BFF);
+    final accent = Theme.of(context).primaryColor;
     const approved = Color(0xFF4ECDC4);
     const disapproved = Colors.red;
     const pending = Colors.orange;
@@ -432,7 +432,7 @@ class _ProductsPageState extends State<Products> {
                     ),
                     foregroundColor: WidgetStateProperty.resolveWith((states) {
                       return states.contains(WidgetState.selected)
-                          ? Colors.blue
+                          ? Theme.of(context).primaryColor
                           : Colors.grey;
                     }),
                     padding: WidgetStateProperty.all(
@@ -455,7 +455,7 @@ class _ProductsPageState extends State<Products> {
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
+                    backgroundColor: Theme.of(context).primaryColor,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -484,11 +484,11 @@ class _ProductsPageState extends State<Products> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
+                      color: Theme.of(context).primaryColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.inventory_2,
-                        color: Colors.blue, size: 20),
+                    child: Icon(Icons.inventory_2,
+                        color: Theme.of(context).primaryColor, size: 20),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -512,12 +512,12 @@ class _ProductsPageState extends State<Products> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
+                      color: Theme.of(context).primaryColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text('$productCount',
                         style: GoogleFonts.poppins(
-                          color: Colors.blue,
+                          color: Theme.of(context).primaryColor,
                           fontWeight: FontWeight.w600,
                           fontSize: 11,
                         )),
@@ -1025,7 +1025,7 @@ class _ListTileCard extends StatelessWidget {
                     product['category'] ?? '',
                     style: GoogleFonts.poppins(
                       fontSize: 9,
-                      color: Colors.blue, // kept blue in list style
+                      color: Theme.of(context).primaryColor, // standardized
                       fontWeight: FontWeight.w500,
                     ),
                   ),

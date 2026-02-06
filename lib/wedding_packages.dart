@@ -108,7 +108,7 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
                 ),
               ),
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF331F33),
+                backgroundColor: Theme.of(context).primaryColor,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
                 minimumSize: const Size(0, 32),
@@ -215,8 +215,9 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
                               _loadData();
                             }
                           },
-                          backgroundColor: Colors.blue.shade50,
-                          foregroundColor: Colors.blue.shade700,
+                          backgroundColor:
+                              Theme.of(context).primaryColor.withOpacity(0.1),
+                          foregroundColor: Theme.of(context).primaryColor,
                           icon: Icons.edit_outlined,
                           label: 'Edit',
                         ),
@@ -396,7 +397,7 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
                             style: GoogleFonts.poppins(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
-                                color: const Color(0xFF331F33))),
+                                color: Theme.of(context).primaryColor)),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -437,7 +438,7 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
                   child: Switch(
                     value: pkg.isActive ?? false,
                     onChanged: (v) => _toggleStatus(pkg, v),
-                    activeColor: const Color(0xFF331F33),
+                    activeColor: Theme.of(context).primaryColor,
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                 ),
@@ -470,7 +471,7 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
           decoration: BoxDecoration(
-            color: const Color(0xFFE0D8E0),
+            color: Theme.of(context).primaryColor.withOpacity(0.12),
             borderRadius: BorderRadius.circular(15),
           ),
           child: Text('${staffIds.length} staff',
@@ -485,14 +486,14 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: const Color(0xFFF3E5F5),
+              color: Theme.of(context).primaryColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(5),
             ),
             child: Text(staff.fullName ?? '?',
                 style: GoogleFonts.poppins(
                     fontSize: 10,
                     fontWeight: FontWeight.w500,
-                    color: const Color(0xFF6A1B9A))),
+                    color: Theme.of(context).primaryColor)),
           );
         }),
       ],

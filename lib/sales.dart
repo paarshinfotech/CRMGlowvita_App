@@ -23,7 +23,7 @@ class _SalesPageState extends State<SalesPage>
   static const Color _border = Color(0xFFE2E8F0);
   static const Color _muted = Color(0xFF64748B);
   static const Color _text = Color(0xFF0F172A);
-  static const Color _primary = Color(0xFF2563EB);
+  static const Color _primary = Color(0xFF5D121B); // Brand Maroon
   static const Color _success = Color(0xFF10B981);
   static const Color _primaryDark = Color(0xFF3F2B3E);
 

@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io' show HttpClient, X509Certificate;
 import 'package:http/http.dart' as http;
+import 'package:http/io_client.dart' as http_io;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../customer_model.dart';
 import '../appointment_model.dart';
@@ -26,6 +28,9 @@ class StaffMember {
   final DateTime? startDate;
   final DateTime? endDate;
   final String? description;
+
+  String? get emailAddress => email;
+  String? get mobileNo => mobile;
 
   StaffMember({
     this.id,
@@ -77,6 +82,30 @@ class StaffMember {
       description: json['description'],
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      '_id': id,
+      'vendorId': vendorId,
+      'fullName': fullName,
+      'emailAddress': email,
+      'mobileNo': mobile,
+      'position': position,
+      'photo': photo,
+      'status': status,
+      'permissions': permissions,
+      'availability': availability,
+      'blockedTimes': blockedTimes,
+      'bankDetails': bankDetails,
+      'salary': salary,
+      'yearOfExperience': yearOfExperience,
+      'clientsServed': clientsServed,
+      'commission': commission,
+      'startDate': startDate?.toIso8601String(),
+      'endDate': endDate?.toIso8601String(),
+      'description': description,
+    };
+  }
 }
 
 class ApiService {
@@ -105,21 +134,199 @@ class ApiService {
     return await _getAuthToken();
   }
 
+  // Centralized HTTP client with SSL bypass
+  static http.Client _getHttpClient() {
+    final ioClient = HttpClient();
+    ioClient.badCertificateCallback =
+        (X509Certificate cert, String host, int port) => true;
+    return http_io.IOClient(ioClient);
+  }
+
+  // Generic POST request helper
+  static Future<http.Response> _post(String url, Map<String, dynamic> body,
+      {Map<String, String>? headers, bool useAuth = true}) async {
+    final client = _getHttpClient();
+    try {
+      final Map<String, String> requestHeaders = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...?headers,
+      };
+
+      if (useAuth) {
+        final token = await _getAuthToken();
+        if (token != null) {
+          requestHeaders['Cookie'] = 'crm_access_token=$token';
+        }
+      }
+
+      return await client
+          .post(
+            Uri.parse(url),
+            headers: requestHeaders,
+            body: json.encode(body),
+          )
+          .timeout(const Duration(seconds: 30));
+    } finally {
+      client.close();
+    }
+  }
+
+  // Generic GET request helper
+  static Future<http.Response> _get(String url,
+      {Map<String, String>? headers, bool useAuth = true}) async {
+    final client = _getHttpClient();
+    try {
+      final Map<String, String> requestHeaders = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...?headers,
+      };
+
+      if (useAuth) {
+        final token = await _getAuthToken();
+        if (token != null) {
+          requestHeaders['Cookie'] = 'crm_access_token=$token';
+        }
+      }
+
+      return await client
+          .get(
+            Uri.parse(url),
+            headers: requestHeaders,
+          )
+          .timeout(const Duration(seconds: 30));
+    } finally {
+      client.close();
+    }
+  }
+
+  // Generic PUT request helper
+  static Future<http.Response> _put(String url, Map<String, dynamic> body,
+      {Map<String, String>? headers, bool useAuth = true}) async {
+    final client = _getHttpClient();
+    try {
+      final Map<String, String> requestHeaders = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...?headers,
+      };
+
+      if (useAuth) {
+        final token = await _getAuthToken();
+        if (token != null) {
+          requestHeaders['Cookie'] = 'crm_access_token=$token';
+        }
+      }
+
+      return await client
+          .put(
+            Uri.parse(url),
+            headers: requestHeaders,
+            body: json.encode(body),
+          )
+          .timeout(const Duration(seconds: 30));
+    } finally {
+      client.close();
+    }
+  }
+
+  // Generic DELETE request helper
+  static Future<http.Response> _delete(String url,
+      {Map<String, dynamic>? body,
+      Map<String, String>? headers,
+      bool useAuth = true}) async {
+    final client = _getHttpClient();
+    try {
+      final Map<String, String> requestHeaders = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...?headers,
+      };
+
+      if (useAuth) {
+        final token = await _getAuthToken();
+        if (token != null) {
+          requestHeaders['Cookie'] = 'crm_access_token=$token';
+        }
+      }
+
+      final request = http.Request('DELETE', Uri.parse(url));
+      request.headers.addAll(requestHeaders);
+      if (body != null) {
+        request.body = json.encode(body);
+      }
+
+      final streamedResponse = await client.send(request);
+      return await http.Response.fromStream(streamedResponse);
+    } finally {
+      client.close();
+    }
+  }
+
+  // Generic PATCH request helper
+  static Future<http.Response> _patch(String url, Map<String, dynamic> body,
+      {Map<String, String>? headers, bool useAuth = true}) async {
+    final client = _getHttpClient();
+    try {
+      final Map<String, String> requestHeaders = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...?headers,
+      };
+
+      if (useAuth) {
+        final token = await _getAuthToken();
+        if (token != null) {
+          requestHeaders['Cookie'] = 'crm_access_token=$token';
+        }
+      }
+
+      return await client
+          .patch(
+            Uri.parse(url),
+            headers: requestHeaders,
+            body: json.encode(body),
+          )
+          .timeout(const Duration(seconds: 30));
+    } finally {
+      client.close();
+    }
+  }
+
+  // Login
+  static Future<http.Response> login(String email, String password) async {
+    return await _post(
+      '$baseUrl/crm/auth/login',
+      {'email': email, 'password': password},
+      useAuth: false,
+    );
+  }
+
+  // Vendor Register
+  static Future<http.Response> registerVendor(
+      Map<String, dynamic> payload) async {
+    return await _post(
+      '$baseUrl/crm/auth/register',
+      payload,
+      useAuth: false,
+    );
+  }
+
+  // Supplier Register
+  static Future<http.Response> registerSupplier(
+      Map<String, dynamic> payload) async {
+    return await _post(
+      '$adminBaseUrl/admin/suppliers',
+      payload,
+      useAuth: false,
+    );
+  }
+
   // Get all clients
   static Future<List<Customer>> getClients() async {
     try {
-      final token = await _getAuthToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
-
-      final response = await http.get(
-        Uri.parse('$baseUrl$clientsEndpoint'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-      );
+      final response = await _get('$baseUrl$clientsEndpoint');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -144,18 +351,7 @@ class ApiService {
   // Get all products
   static Future<List<Product>> getProducts() async {
     try {
-      final token = await _getAuthToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
-
-      final response = await http.get(
-        Uri.parse('$baseUrl/crm/products'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-      );
+      final response = await _get('$baseUrl/crm/products');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -179,19 +375,8 @@ class ApiService {
   // Delete a product
   static Future<bool> deleteProduct(String productId) async {
     try {
-      final token = await _getAuthToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
-
-      final response = await http.delete(
-        Uri.parse('$baseUrl/crm/products'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-        body: json.encode({'id': productId}),
-      );
+      final response =
+          await _delete('$baseUrl/crm/products', body: {'id': productId});
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -214,21 +399,7 @@ class ApiService {
   // Create a new product
   static Future<bool> createProduct(Map<String, dynamic> productData) async {
     try {
-      final token = await _getAuthToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
-
-      final response = await http
-          .post(
-            Uri.parse('$baseUrl/crm/products'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Cookie': 'crm_access_token=$token',
-            },
-            body: json.encode(productData),
-          )
-          .timeout(const Duration(seconds: 60));
+      final response = await _post('$baseUrl/crm/products', productData);
 
       print(
           'Create Product Response [${response.statusCode}]: ${response.body}');
@@ -255,25 +426,11 @@ class ApiService {
   static Future<bool> updateProduct(
       String productId, Map<String, dynamic> productData) async {
     try {
-      final token = await _getAuthToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
-
-      final response = await http
-          .put(
-            Uri.parse('$baseUrl/crm/products?id=$productId'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Cookie': 'crm_access_token=$token',
-            },
-            body: json.encode({
-              ...productData,
-              'id': productId,
-              '_id': productId, // Include both just in case
-            }),
-          )
-          .timeout(const Duration(seconds: 60));
+      final response = await _put('$baseUrl/crm/products?id=$productId', {
+        ...productData,
+        'id': productId,
+        '_id': productId, // Include both just in case
+      });
 
       print(
           'Update Product Response [${response.statusCode}]: ${response.body}');
@@ -299,12 +456,8 @@ class ApiService {
   // Get all product categories
   static Future<List<Map<String, dynamic>>> getProductCategories() async {
     try {
-      final response = await http.get(
-        Uri.parse('$adminBaseUrl$productCategoriesEndpoint'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      );
+      final response =
+          await _get('$adminBaseUrl$productCategoriesEndpoint', useAuth: false);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -327,15 +480,13 @@ class ApiService {
   static Future<Map<String, dynamic>> addProductCategory(
       String name, String description) async {
     try {
-      final response = await http.post(
-        Uri.parse('$adminBaseUrl$productCategoriesEndpoint'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: json.encode({
+      final response = await _post(
+        '$adminBaseUrl$productCategoriesEndpoint',
+        {
           'name': name,
           'description': description,
-        }),
+        },
+        useAuth: false,
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -357,18 +508,7 @@ class ApiService {
 
   static Future<List<StaffMember>> getStaff() async {
     try {
-      final token = await _getAuthToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
-
-      final response = await http.get(
-        Uri.parse('$baseUrl$staffEndpoint'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-      );
+      final response = await _get('$baseUrl$staffEndpoint');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -391,20 +531,28 @@ class ApiService {
     }
   }
 
+  // Create a new staff member
+  static Future<http.Response> createStaff(
+      Map<String, dynamic> staffData) async {
+    return await _post('$baseUrl$staffEndpoint', staffData);
+  }
+
+  // Update an existing staff member
+  static Future<http.Response> updateStaff(
+      String staffId, Map<String, dynamic> staffData) async {
+    return await _put('$baseUrl$staffEndpoint?id=$staffId', staffData);
+  }
+
+  // Delete a staff member
+  static Future<http.Response> deleteStaff(String staffId) async {
+    return await _delete('$baseUrl$staffEndpoint?id=$staffId');
+  }
+
   // Add a new client
   static Future<Customer> addClient(Customer customer) async {
     try {
-      final token = await _getAuthToken();
-      if (token == null) throw Exception('No authentication token found');
-
-      final response = await http.post(
-        Uri.parse('$baseUrl$clientsEndpoint'),
-        headers: {
-          'Cookie': 'crm_access_token=$token',
-          'Content-Type': 'application/json',
-        },
-        body: json.encode(customer.toJson()),
-      );
+      final response =
+          await _post('$baseUrl$clientsEndpoint', customer.toJson());
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -427,19 +575,11 @@ class ApiService {
   // Update an existing client
   static Future<Customer> updateClient(Customer customer) async {
     try {
-      final token = await _getAuthToken();
-      if (token == null) throw Exception('No authentication token found');
       if (customer.id == null)
         throw Exception('Customer ID is required for update');
 
-      final response = await http.put(
-        Uri.parse('$baseUrl$clientsEndpoint'),
-        headers: {
-          'Cookie': 'crm_access_token=$token',
-          'Content-Type': 'application/json',
-        },
-        body: json.encode(customer.toJson()),
-      );
+      final response =
+          await _put('$baseUrl$clientsEndpoint', customer.toJson());
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -462,17 +602,8 @@ class ApiService {
   // Delete a client
   static Future<bool> deleteClient(String clientId) async {
     try {
-      final token = await _getAuthToken();
-      if (token == null) throw Exception('No authentication token found');
-
-      final response = await http.delete(
-        Uri.parse('$baseUrl$clientsEndpoint'),
-        headers: {
-          'Cookie': 'crm_access_token=$token',
-          'Content-Type': 'application/json',
-        },
-        body: json.encode({'id': clientId}),
-      );
+      final response =
+          await _delete('$baseUrl$clientsEndpoint', body: {'id': clientId});
 
       if ([200, 201, 204].contains(response.statusCode)) {
         return true;
@@ -489,18 +620,7 @@ class ApiService {
   // ==================== GET SERVICES ==================== //
   static Future<List<Service>> getServices() async {
     try {
-      final token = await _getAuthToken();
-      if (token == null || token.isEmpty) {
-        throw Exception('Authentication token missing. Please login again.');
-      }
-
-      final response = await http.get(
-        Uri.parse('$baseUrl$servicesEndpoint'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-      );
+      final response = await _get('$baseUrl$servicesEndpoint');
 
       // print('Services API Response [${response.statusCode}]: ${response.body}');
 
@@ -525,19 +645,62 @@ class ApiService {
     }
   }
 
+  // ==================== SERVICE CATEGORIES ==================== //
+  static Future<List<Map<String, dynamic>>> getServiceCategories() async {
+    try {
+      final response = await _get('$baseUrl/crm/categories');
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded is List) return List<Map<String, dynamic>>.from(decoded);
+        return List<Map<String, dynamic>>.from(decoded['data'] ?? []);
+      } else {
+        throw Exception('Failed to load categories: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching categories: $e');
+      rethrow;
+    }
+  }
+
+  static Future<http.Response> createServiceCategory(
+      Map<String, dynamic> data) async {
+    return await _post('$baseUrl/crm/categories', data);
+  }
+
+  // ==================== SERVICES BY CATEGORY ==================== //
+  static Future<List<Map<String, dynamic>>> getServicesByCategory(
+      String categoryName) async {
+    try {
+      final response =
+          await _get('$baseUrl/crm/services?category=$categoryName');
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded is List) return List<Map<String, dynamic>>.from(decoded);
+        return List<Map<String, dynamic>>.from(decoded['data'] ?? []);
+      } else {
+        throw Exception('Failed to load services: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching services by category: $e');
+      rethrow;
+    }
+  }
+
+  // ==================== MASTER SERVICES ==================== //
+  static Future<http.Response> createMasterCategory(
+      Map<String, dynamic> data) async {
+    return await _post('$adminBaseUrl/admin/categories', data);
+  }
+
+  static Future<http.Response> createMasterService(
+      Map<String, dynamic> data) async {
+    return await _post('$adminBaseUrl/admin/services', data);
+  }
+
   // ==================== ADD-ONS ==================== //
   static Future<List<AddOn>> getAddOns() async {
     try {
-      final token = await _getAuthToken();
-      if (token == null) throw Exception('No authentication token found');
-
-      final response = await http.get(
-        Uri.parse('$baseUrl/crm/add-ons'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-      );
+      final response = await _get('$baseUrl/crm/add-ons');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -564,17 +727,7 @@ class ApiService {
 
   static Future<bool> createAddOn(AddOn addon) async {
     try {
-      final token = await _getAuthToken();
-      if (token == null) throw Exception('No authentication token found');
-
-      final response = await http.post(
-        Uri.parse('$baseUrl/crm/add-ons'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-        body: json.encode(addon.toJson()),
-      );
+      final response = await _post('$baseUrl/crm/add-ons', addon.toJson());
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
@@ -591,17 +744,7 @@ class ApiService {
 
   static Future<bool> updateAddOn(String id, AddOn addon) async {
     try {
-      final token = await _getAuthToken();
-      if (token == null) throw Exception('No authentication token found');
-
-      final response = await http.put(
-        Uri.parse('$baseUrl/crm/add-ons'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-        body: json.encode(addon.toJson()),
-      );
+      final response = await _put('$baseUrl/crm/add-ons', addon.toJson());
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -620,16 +763,7 @@ class ApiService {
 
   static Future<bool> deleteAddOn(String id) async {
     try {
-      final token = await _getAuthToken();
-      if (token == null) throw Exception('No authentication token found');
-
-      final response = await http.delete(
-        Uri.parse('$baseUrl/crm/add-ons?id=$id'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-      );
+      final response = await _delete('$baseUrl/crm/add-ons?id=$id');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -647,19 +781,8 @@ class ApiService {
 
   static Future<bool> deleteService(String serviceId) async {
     try {
-      final token = await _getAuthToken();
-      if (token == null || token.isEmpty) {
-        throw Exception('Authentication token missing. Please login again.');
-      }
-
-      final response = await http.delete(
-        Uri.parse('$baseUrl$servicesEndpoint'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-        body: json.encode({'serviceId': serviceId}),
-      );
+      final response = await _delete('$baseUrl$servicesEndpoint',
+          body: {'serviceId': serviceId});
 
       print(
           'Delete Service Response [${response.statusCode}]: ${response.body}');
@@ -697,11 +820,6 @@ class ApiService {
 
   static Future<bool> createService(Map<String, dynamic> serviceData) async {
     try {
-      final token = await _getAuthToken();
-      if (token == null || token.isEmpty) {
-        throw Exception('Authentication token missing. Please login again.');
-      }
-
       // IMPORTANT: category must be the MongoDB _id (String), not the name
       final String? categoryId =
           serviceData['category_id']; // will be passed from UI
@@ -742,16 +860,9 @@ class ApiService {
         'addOns': serviceData['addOns'] ?? [],
       };
 
-      final response = await http.post(
-        Uri.parse('$baseUrl$servicesEndpoint'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-        body: json.encode({
-          'services': [mappedServiceData]
-        }),
-      );
+      final response = await _post('$baseUrl$servicesEndpoint', {
+        'services': [mappedServiceData]
+      });
 
       print(
           'Create Service Response [${response.statusCode}]: ${response.body}');
@@ -834,11 +945,6 @@ class ApiService {
   static Future<bool> updateService(
       String serviceId, Map<String, dynamic> serviceData) async {
     try {
-      final token = await _getAuthToken();
-      if (token == null || token.isEmpty) {
-        throw Exception('Authentication token missing. Please login again.');
-      }
-
       // Map the field names to match API expectations
       final mappedServiceData = {
         '_id': serviceId,
@@ -864,16 +970,9 @@ class ApiService {
         mappedServiceData['image'] = serviceData['image'];
       }
 
-      final response = await http.put(
-        Uri.parse('$baseUrl$servicesEndpoint'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-        body: json.encode({
-          'services': [mappedServiceData]
-        }),
-      );
+      final response = await _put('$baseUrl$servicesEndpoint', {
+        'services': [mappedServiceData]
+      });
 
       print(
           'Update Service Response [${response.statusCode}]: ${response.body}');
@@ -910,11 +1009,6 @@ class ApiService {
   static Future<List<AppointmentModel>> getAppointments(
       {int? page, int? limit}) async {
     try {
-      final token = await _getAuthToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
-
       String url = '$baseUrl/crm/appointments';
       Map<String, String> queryParams = {};
 
@@ -930,13 +1024,7 @@ class ApiService {
         url += '?' + Uri(queryParameters: queryParams).query;
       }
 
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-      );
+      final response = await _get(url);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -969,11 +1057,6 @@ class ApiService {
       String id, String status,
       {String? cancellationReason}) async {
     try {
-      final token = await _getAuthToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
-
       final Map<String, dynamic> body = {
         '_id': id,
         'status': status,
@@ -985,14 +1068,7 @@ class ApiService {
 
       print('🔄 Updating status: $status for ID: $id');
 
-      final response = await http.patch(
-        Uri.parse('$baseUrl/crm/appointments'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-        body: json.encode(body),
-      );
+      final response = await _patch('$baseUrl/crm/appointments', body);
 
       print(
           '📥 Update Status Response [${response.statusCode}]: ${response.body}');
@@ -1012,20 +1088,9 @@ class ApiService {
 
   static Future<AppointmentModel> getAppointmentById(String id) async {
     try {
-      final token = await _getAuthToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
-
       print('🔍 Fetching appointment with ID: $id');
 
-      final response = await http.get(
-        Uri.parse('$baseUrl/crm/appointments?id=$id'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-      );
+      final response = await _get('$baseUrl/crm/appointments?id=$id');
 
       print('📥 Response status: ${response.statusCode}');
 
@@ -1063,19 +1128,8 @@ class ApiService {
   static Future<Map<String, dynamic>> createAppointment(
       Map<String, dynamic> appointmentData) async {
     try {
-      final token = await _getAuthToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
-
-      final response = await http.post(
-        Uri.parse('$baseUrl/crm/appointments'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-        body: json.encode(appointmentData),
-      );
+      final response =
+          await _post('$baseUrl/crm/appointments', appointmentData);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
@@ -1092,20 +1146,9 @@ class ApiService {
 
   static Future<void> deleteAppointment(String id) async {
     try {
-      final token = await _getAuthToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
-
       print('🗑️ Deleting appointment with ID: $id');
 
-      final response = await http.delete(
-        Uri.parse('$baseUrl/crm/appointments/$id'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-      );
+      final response = await _delete('$baseUrl/crm/appointments/$id');
 
       print('📥 Delete response status: ${response.statusCode}');
 
@@ -1124,22 +1167,11 @@ class ApiService {
   static Future<Map<String, dynamic>> collectPayment(
       Map<String, dynamic> paymentData) async {
     try {
-      final token = await _getAuthToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
-
       print(
           '🔄 Collecting payment for appointment ID: ${paymentData['appointmentId']}');
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/crm/payments/collect'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-        body: json.encode(paymentData),
-      );
+      final response =
+          await _post('$baseUrl/crm/payments/collect', paymentData);
 
       print(
           '📥 Collect Payment Response [${response.statusCode}]: ${response.body}');
@@ -1160,21 +1192,10 @@ class ApiService {
   static Future<Map<String, dynamic>> updateAppointment(
       String id, Map<String, dynamic> appointmentData) async {
     try {
-      final token = await _getAuthToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
-
       print('🔄 Updating appointment with ID: $id');
 
-      final response = await http.put(
-        Uri.parse('$baseUrl/crm/appointments/$id'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-        body: json.encode(appointmentData),
-      );
+      final response =
+          await _put('$baseUrl/crm/appointments/$id', appointmentData);
 
       print(
           '📥 Update Appointment Response [${response.statusCode}]: ${response.body}');
@@ -1194,18 +1215,7 @@ class ApiService {
 
   static Future<List<WeddingPackage>> getWeddingPackages() async {
     try {
-      final token = await _getAuthToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
-
-      final response = await http.get(
-        Uri.parse('$baseUrl/crm/wedding-packages'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-      );
+      final response = await _get('$baseUrl/crm/wedding-packages');
 
       print(
           'Wedding Packages Response [${response.statusCode}]: ${response.body}');
@@ -1233,17 +1243,8 @@ class ApiService {
   static Future<bool> toggleWeddingPackageStatus(
       String id, bool isActive) async {
     try {
-      final token = await _getAuthToken();
-      if (token == null) throw Exception('No authentication token found');
-
-      final response = await http.patch(
-        Uri.parse('$baseUrl/crm/wedding-packages/$id'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-        body: json.encode({'isActive': isActive}),
-      );
+      final response = await _patch(
+          '$baseUrl/crm/wedding-packages/$id', {'isActive': isActive});
 
       if (response.statusCode == 200) {
         return true;
@@ -1259,19 +1260,8 @@ class ApiService {
   static Future<bool> createWeddingPackage(
       Map<String, dynamic> packageData) async {
     try {
-      final token = await _getAuthToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
-
-      final response = await http.post(
-        Uri.parse('$baseUrl/crm/wedding-packages'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-        body: json.encode(packageData),
-      );
+      final response =
+          await _post('$baseUrl/crm/wedding-packages', packageData);
 
       print(
           'Create Wedding Package Response [${response.statusCode}]: ${response.body}');
@@ -1297,22 +1287,11 @@ class ApiService {
       String? id, Map<String, dynamic> packageData) async {
     try {
       if (id == null) return false;
-      final token = await _getAuthToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
 
-      final response = await http.put(
-        Uri.parse('$baseUrl/crm/wedding-packages'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-        body: json.encode({
-          ...packageData,
-          'packageId': id,
-        }),
-      );
+      final response = await _put('$baseUrl/crm/wedding-packages', {
+        ...packageData,
+        'packageId': id,
+      });
 
       print(
           'Update Wedding Package Response [${response.statusCode}]: ${response.body}');
@@ -1337,19 +1316,8 @@ class ApiService {
 
   static Future<bool> deleteWeddingPackage(String id) async {
     try {
-      final token = await _getAuthToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
-
-      final response = await http.delete(
-        Uri.parse('$baseUrl/crm/wedding-packages'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-        body: json.encode({'packageId': id}),
-      );
+      final response = await _delete('$baseUrl/crm/wedding-packages',
+          body: {'packageId': id});
 
       print(
           'Delete Wedding Package Response [${response.statusCode}]: ${response.body}');
@@ -1371,18 +1339,7 @@ class ApiService {
   // ==================== VENDOR PROFILE ==================== //
   static Future<VendorProfile> getVendorProfile() async {
     try {
-      final token = await _getAuthToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
-
-      final response = await http.get(
-        Uri.parse('$baseUrl/crm/vendor'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-      );
+      final response = await _get('$baseUrl/crm/vendor');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -1405,19 +1362,7 @@ class ApiService {
   static Future<VendorProfile> updateVendorProfile(
       Map<String, dynamic> profileData) async {
     try {
-      final token = await _getAuthToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
-
-      final response = await http.put(
-        Uri.parse('$baseUrl/crm/vendor'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-        body: json.encode(profileData),
-      );
+      final response = await _put('$baseUrl/crm/vendor', profileData);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -1433,6 +1378,148 @@ class ApiService {
       }
     } catch (e) {
       print('Error updating vendor profile: $e');
+      rethrow;
+    }
+  }
+
+  static Future<List<OfferModel>> getOffers() async {
+    try {
+      print('🔍 Fetching all offers...');
+
+      final response = await _get('$baseUrl/crm/offers');
+
+      print('📥 Offers Response [${response.statusCode}]: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.map((json) => OfferModel.fromJson(json)).toList();
+      } else {
+        throw Exception(
+            'Failed to load offers: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('❌ Error fetching offers: $e');
+      rethrow;
+    }
+  }
+
+  static Future<http.Response> createOffer(Map<String, dynamic> data) async {
+    try {
+      print('🚀 Creating new offer...');
+      final response = await _post('$baseUrl/crm/offers', data);
+      print(
+          '📥 Create Offer Response [${response.statusCode}]: ${response.body}');
+      return response;
+    } catch (e) {
+      print('❌ Error creating offer: $e');
+      rethrow;
+    }
+  }
+
+  static Future<http.Response> updateOffer(
+      String id, Map<String, dynamic> data) async {
+    try {
+      print('🔄 Updating offer with ID: $id...');
+      final response = await _put('$baseUrl/crm/offers?id=$id', data);
+      print(
+          '📥 Update Offer Response [${response.statusCode}]: ${response.body}');
+      return response;
+    } catch (e) {
+      print('❌ Error updating offer: $e');
+      rethrow;
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getCategories() async {
+    try {
+      final response = await _get('$baseUrl/crm/categories');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        List<dynamic> categoryData;
+        if (data is List) {
+          categoryData = data;
+        } else {
+          categoryData = data['data'] ?? data['categories'] ?? [];
+        }
+        return categoryData.map((c) => c as Map<String, dynamic>).toList();
+      } else {
+        throw Exception('Failed to load categories: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching categories: $e');
+      rethrow;
+    }
+  }
+
+  static Future<bool> deleteOffer(String id) async {
+    try {
+      print('🗑️ Deleting offer with ID: $id');
+
+      final response = await _delete('$baseUrl/crm/offers?id=$id');
+
+      print(
+          '📥 Delete Offer Response [${response.statusCode}]: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['success'] == true;
+      } else {
+        throw Exception(
+            'Failed to delete offer: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('❌ Error deleting offer: $e');
+      rethrow;
+    }
+  }
+
+  // ==================== WORKING HOURS ==================== //
+  static Future<Map<String, dynamic>> getWorkingHours() async {
+    try {
+      print('🔍 Fetching working hours...');
+
+      final response = await _get('$baseUrl/crm/workinghours');
+
+      print(
+          '📥 Working Hours Response [${response.statusCode}]: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data;
+      } else {
+        throw Exception(
+            'Failed to load working hours: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('❌ Error fetching working hours: $e');
+      rethrow;
+    }
+  }
+
+  static Future<bool> updateWorkingHours(
+      Map<String, dynamic> workingHoursData) async {
+    try {
+      print('🔄 Updating working hours...');
+      print('📤 Data: ${json.encode(workingHoursData)}');
+
+      final response =
+          await _put('$baseUrl/crm/workinghours', workingHoursData);
+
+      print(
+          '📥 Update Working Hours Response [${response.statusCode}]: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['success'] == true ||
+            data['message']?.toString().contains('successfully') == true ||
+            data['message']?.toString().contains('updated') == true;
+      } else {
+        throw Exception(
+            'Failed to update working hours: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('❌ Error updating working hours: $e');
       rethrow;
     }
   }
@@ -1766,5 +1853,94 @@ class WeddingPackage {
       status: json['status'],
       isActive: json['isActive'],
     );
+  }
+}
+
+class OfferModel {
+  final String? id;
+  final String? code;
+  final String? type;
+  final num? value;
+  final String? status;
+  final DateTime? startDate;
+  final DateTime? expires;
+  final int? redeemed;
+  final List<dynamic>? applicableSpecialties;
+  final List<dynamic>? applicableCategories;
+  final List<dynamic>? applicableServices;
+  final List<dynamic>? applicableServiceCategories;
+  final String? offerImage;
+  final bool? isCustomCode;
+  final num? minOrderAmount;
+  final String? businessType;
+  final String? businessId;
+  final String? regionId;
+
+  OfferModel({
+    this.id,
+    this.code,
+    this.type,
+    this.value,
+    this.status,
+    this.startDate,
+    this.expires,
+    this.redeemed,
+    this.applicableSpecialties,
+    this.applicableCategories,
+    this.applicableServices,
+    this.applicableServiceCategories,
+    this.offerImage,
+    this.isCustomCode,
+    this.minOrderAmount,
+    this.businessType,
+    this.businessId,
+    this.regionId,
+  });
+
+  factory OfferModel.fromJson(Map<String, dynamic> json) {
+    return OfferModel(
+      id: json['_id'],
+      code: json['code'],
+      type: json['type'],
+      value: json['value'],
+      status: json['status'],
+      startDate:
+          json['startDate'] != null ? DateTime.parse(json['startDate']) : null,
+      expires: json['expires'] != null ? DateTime.parse(json['expires']) : null,
+      redeemed: json['redeemed'],
+      applicableSpecialties: json['applicableSpecialties'],
+      applicableCategories: json['applicableCategories'],
+      applicableServices: json['applicableServices'],
+      applicableServiceCategories: json['applicableServiceCategories'],
+      offerImage: json['offerImage'],
+      isCustomCode: json['isCustomCode'],
+      minOrderAmount: json['minOrderAmount'],
+      businessType: json['businessType'],
+      businessId: json['businessId'],
+      regionId: json['regionId'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      '_id': id,
+      'code': code,
+      'type': type,
+      'value': value,
+      'status': status,
+      'startDate': startDate?.toIso8601String(),
+      'expires': expires?.toIso8601String(),
+      'redeemed': redeemed,
+      'applicableSpecialties': applicableSpecialties,
+      'applicableCategories': applicableCategories,
+      'applicableServices': applicableServices,
+      'applicableServiceCategories': applicableServiceCategories,
+      'offerImage': offerImage,
+      'isCustomCode': isCustomCode,
+      'minOrderAmount': minOrderAmount,
+      'businessType': businessType,
+      'businessId': businessId,
+      'regionId': regionId,
+    };
   }
 }

@@ -17,7 +17,8 @@ class _ProductQuestionsPageState extends State<SuppProductQuestionsPage> {
       'customerName': 'Priya Sharma',
       'productName': 'Hydrating Face Serum',
       'question': 'Does this serum work for oily skin as well?',
-      'answer': 'Yes, this serum is suitable for all skin types including oily skin. It\'s non-comedogenic and won\'t clog pores.',
+      'answer':
+          'Yes, this serum is suitable for all skin types including oily skin. It\'s non-comedogenic and won\'t clog pores.',
       'date': '2025-11-15',
       'status': 'Answered',
       'hasAnswer': true,
@@ -37,7 +38,8 @@ class _ProductQuestionsPageState extends State<SuppProductQuestionsPage> {
       'customerName': 'Anjali Patel',
       'productName': 'Argan Oil Hair Mask',
       'question': 'Can I use this on colored hair?',
-      'answer': 'Absolutely! This hair mask is safe for colored hair and will help maintain your color while nourishing your hair.',
+      'answer':
+          'Absolutely! This hair mask is safe for colored hair and will help maintain your color while nourishing your hair.',
       'date': '2025-11-05',
       'status': 'Answered',
       'hasAnswer': true,
@@ -57,7 +59,8 @@ class _ProductQuestionsPageState extends State<SuppProductQuestionsPage> {
       'customerName': 'Sneha Reddy',
       'productName': 'Gel Nail Polish Kit',
       'question': 'Do I need a UV lamp for all the colors?',
-      'answer': 'Yes, all gel polishes in this kit require a UV or LED lamp for curing. The kit includes a UV lamp for your convenience.',
+      'answer':
+          'Yes, all gel polishes in this kit require a UV or LED lamp for curing. The kit includes a UV lamp for your convenience.',
       'date': '2025-10-20',
       'status': 'Answered',
       'hasAnswer': true,
@@ -83,13 +86,27 @@ class _ProductQuestionsPageState extends State<SuppProductQuestionsPage> {
     return questions.where((question) {
       // Search filter
       final matchesSearch = _searchQuery.isEmpty ||
-          question['customerName'].toString().toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          question['productName'].toString().toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          question['question'].toString().toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          (question['answer']?.toString().toLowerCase().contains(_searchQuery.toLowerCase()) ?? false);
+          question['customerName']
+              .toString()
+              .toLowerCase()
+              .contains(_searchQuery.toLowerCase()) ||
+          question['productName']
+              .toString()
+              .toLowerCase()
+              .contains(_searchQuery.toLowerCase()) ||
+          question['question']
+              .toString()
+              .toLowerCase()
+              .contains(_searchQuery.toLowerCase()) ||
+          (question['answer']
+                  ?.toString()
+                  .toLowerCase()
+                  .contains(_searchQuery.toLowerCase()) ??
+              false);
 
       // Status filter
-      final matchesStatus = _selectedStatus == 'All' || question['status'] == _selectedStatus;
+      final matchesStatus =
+          _selectedStatus == 'All' || question['status'] == _selectedStatus;
 
       return matchesSearch && matchesStatus;
     }).toList();
@@ -127,7 +144,8 @@ class _ProductQuestionsPageState extends State<SuppProductQuestionsPage> {
                 decoration: InputDecoration(
                   hintText: 'Search questions...',
                   hintStyle: GoogleFonts.poppins(fontSize: 13),
-                  prefixIcon: const Icon(Icons.search, color: Colors.grey, size: 20),
+                  prefixIcon:
+                      const Icon(Icons.search, color: Colors.grey, size: 20),
                   suffixIcon: _searchQuery.isEmpty
                       ? null
                       : IconButton(
@@ -145,7 +163,8 @@ class _ProductQuestionsPageState extends State<SuppProductQuestionsPage> {
                     borderRadius: BorderRadius.circular(8),
                     borderSide: BorderSide.none,
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 ),
               ),
             ),
@@ -300,10 +319,11 @@ class _ProductQuestionsPageState extends State<SuppProductQuestionsPage> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
+                      color: Theme.of(context).primaryColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.question_answer, color: Colors.blue, size: 20),
+                    child: Icon(Icons.question_answer,
+                        color: Theme.of(context).primaryColor, size: 20),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -315,7 +335,7 @@ class _ProductQuestionsPageState extends State<SuppProductQuestionsPage> {
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                             )),
-                        Text('${_filteredQuestions.length} questions in total',    
+                        Text('${_filteredQuestions.length} questions in total',
                             style: GoogleFonts.poppins(
                               fontSize: 11,
                               color: Colors.grey.shade600,
@@ -324,14 +344,15 @@ class _ProductQuestionsPageState extends State<SuppProductQuestionsPage> {
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
+                      color: Theme.of(context).primaryColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text('${_filteredQuestions.length}',
                         style: GoogleFonts.poppins(
-                          color: Colors.blue,
+                          color: Theme.of(context).primaryColor,
                           fontWeight: FontWeight.w600,
                           fontSize: 12,
                         )),
@@ -375,17 +396,21 @@ class _ProductQuestionsPageState extends State<SuppProductQuestionsPage> {
   }
 
   int _getAnsweredCount() {
-    return questions.where((question) => question['status'] == 'Answered').length;
+    return questions
+        .where((question) => question['status'] == 'Answered')
+        .length;
   }
 
   int _getPendingCount() {
-    return questions.where((question) => question['status'] == 'Pending').length;
+    return questions
+        .where((question) => question['status'] == 'Pending')
+        .length;
   }
 
   Widget _buildQuestionCard(Map<String, dynamic> question) {
     final status = question['status'] as String;
     final hasAnswer = question['hasAnswer'] as bool;
-    
+
     Color statusColor;
     switch (status) {
       case 'Answered':
@@ -426,7 +451,8 @@ class _ProductQuestionsPageState extends State<SuppProductQuestionsPage> {
                     ),
                     const SizedBox(height: 2),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
                         color: Colors.purple.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
@@ -448,7 +474,8 @@ class _ProductQuestionsPageState extends State<SuppProductQuestionsPage> {
                 children: [
                   // Status badge
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: statusColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
@@ -493,7 +520,7 @@ class _ProductQuestionsPageState extends State<SuppProductQuestionsPage> {
               style: GoogleFonts.poppins(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: Colors.blue,
+                color: Theme.of(context).primaryColor,
               ),
             ),
             const SizedBox(height: 4),
@@ -512,9 +539,10 @@ class _ProductQuestionsPageState extends State<SuppProductQuestionsPage> {
                 _showAnswerDialog(question);
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
+                backgroundColor: Theme.of(context).primaryColor,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -546,7 +574,7 @@ class _ProductQuestionsPageState extends State<SuppProductQuestionsPage> {
 
   void _showAnswerDialog(Map<String, dynamic> question) {
     final answerController = TextEditingController();
-    
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -590,7 +618,8 @@ class _ProductQuestionsPageState extends State<SuppProductQuestionsPage> {
                     borderRadius: BorderRadius.circular(8),
                     borderSide: BorderSide(color: Colors.grey.shade300),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 ),
               ),
             ],
@@ -612,7 +641,8 @@ class _ProductQuestionsPageState extends State<SuppProductQuestionsPage> {
                 if (answerController.text.trim().isNotEmpty) {
                   // Update the question with the answer
                   setState(() {
-                    final index = questions.indexWhere((q) => q['id'] == question['id']);
+                    final index =
+                        questions.indexWhere((q) => q['id'] == question['id']);
                     if (index != -1) {
                       questions[index]['answer'] = answerController.text.trim();
                       questions[index]['status'] = 'Answered';
@@ -623,7 +653,7 @@ class _ProductQuestionsPageState extends State<SuppProductQuestionsPage> {
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF457BFF),
+                backgroundColor: Theme.of(context).primaryColor,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),

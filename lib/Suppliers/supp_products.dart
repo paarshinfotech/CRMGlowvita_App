@@ -135,7 +135,7 @@ class _SuppProductsPageState extends State<SuppProducts> {
   Widget build(BuildContext context) {
     const scaffoldBg = Color(0xFFF5F5F5);
     const cardBg = Colors.white;
-    const accent = Color(0xFF457BFF);
+    final accent = Theme.of(context).primaryColor;
     const approved = Color(0xFF4ECDC4);
     const disapproved = Colors.red;
     const pending = Colors.orange;
@@ -168,7 +168,8 @@ class _SuppProductsPageState extends State<SuppProducts> {
               decoration: InputDecoration(
                 hintText: 'Search Products...',
                 hintStyle: GoogleFonts.poppins(fontSize: 13),
-                prefixIcon: const Icon(Icons.search, color: Colors.grey, size: 20),
+                prefixIcon:
+                    const Icon(Icons.search, color: Colors.grey, size: 20),
                 suffixIcon: searchQuery.isEmpty
                     ? null
                     : IconButton(
@@ -249,10 +250,9 @@ class _SuppProductsPageState extends State<SuppProducts> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    foregroundColor:
-                        WidgetStateProperty.resolveWith((states) {
+                    foregroundColor: WidgetStateProperty.resolveWith((states) {
                       return states.contains(WidgetState.selected)
-                          ? Colors.blue
+                          ? Theme.of(context).primaryColor
                           : Colors.grey;
                     }),
                     padding: WidgetStateProperty.all(
@@ -275,7 +275,7 @@ class _SuppProductsPageState extends State<SuppProducts> {
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
+                    backgroundColor: Theme.of(context).primaryColor,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -293,8 +293,7 @@ class _SuppProductsPageState extends State<SuppProducts> {
             // Count card
             Container(
               width: double.infinity,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                 color: cardBg,
                 borderRadius: BorderRadius.circular(_radius),
@@ -305,11 +304,11 @@ class _SuppProductsPageState extends State<SuppProducts> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
+                      color: Theme.of(context).primaryColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child:
-                        const Icon(Icons.inventory_2, color: Colors.blue, size: 20),
+                    child: Icon(Icons.inventory_2,
+                        color: Theme.of(context).primaryColor, size: 20),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -333,12 +332,12 @@ class _SuppProductsPageState extends State<SuppProducts> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
+                      color: Theme.of(context).primaryColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text('$productCount',
                         style: GoogleFonts.poppins(
-                          color: Colors.blue,
+                          color: Theme.of(context).primaryColor,
                           fontWeight: FontWeight.w600,
                           fontSize: 11,
                         )),
@@ -537,7 +536,8 @@ class _GridCard extends StatelessWidget {
                     top: 8,
                     left: 8,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: statusBg,
                         borderRadius: BorderRadius.circular(12),
@@ -546,7 +546,9 @@ class _GridCard extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            status == 'Approved' ? Icons.check_circle : Icons.pending,
+                            status == 'Approved'
+                                ? Icons.check_circle
+                                : Icons.pending,
                             color: Colors.white,
                             size: 10,
                           ),
@@ -568,7 +570,8 @@ class _GridCard extends StatelessWidget {
                     top: 8,
                     right: 8,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
@@ -646,12 +649,14 @@ class _GridCard extends StatelessWidget {
                         child: OutlinedButton.icon(
                           onPressed: onEdit,
                           icon: const Icon(Icons.edit, size: 16),
-                          label: Text('Edit', style: GoogleFonts.poppins(fontSize: 12)),
+                          label: Text('Edit',
+                              style: GoogleFonts.poppins(fontSize: 12)),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.black87,
                             side: BorderSide(color: Colors.grey.shade300),
                             padding: const EdgeInsets.symmetric(vertical: 10),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6)),
                           ),
                         ),
                       ),
@@ -664,7 +669,8 @@ class _GridCard extends StatelessWidget {
                           foregroundColor: Colors.red,
                           side: BorderSide(color: Colors.grey.shade300),
                           padding: const EdgeInsets.symmetric(vertical: 10),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6)),
                         ),
                       ),
                     ],
@@ -751,7 +757,8 @@ class _ListTileCard extends StatelessWidget {
                       top: 4,
                       left: 4,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: statusBg,
                           borderRadius: BorderRadius.circular(10),
@@ -759,7 +766,9 @@ class _ListTileCard extends StatelessWidget {
                         child: Row(
                           children: [
                             Icon(
-                              status == 'Approved' ? Icons.check_circle : Icons.pending,
+                              status == 'Approved'
+                                  ? Icons.check_circle
+                                  : Icons.pending,
                               color: Colors.white,
                               size: 9,
                             ),
@@ -781,7 +790,8 @@ class _ListTileCard extends StatelessWidget {
                       top: 4,
                       right: 4,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(10),
@@ -813,7 +823,7 @@ class _ListTileCard extends StatelessWidget {
                       brand,
                       style: GoogleFonts.poppins(
                         fontSize: 9,
-                        color: Colors.blue,
+                        color: Theme.of(context).primaryColor,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -861,13 +871,15 @@ class _ListTileCard extends StatelessWidget {
                         child: OutlinedButton.icon(
                           onPressed: onEdit,
                           icon: const Icon(Icons.edit, size: 14),
-                          label: Text('Edit', style: GoogleFonts.poppins(fontSize: 11)),
+                          label: Text('Edit',
+                              style: GoogleFonts.poppins(fontSize: 11)),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.black87,
                             side: BorderSide(color: Colors.grey.shade300),
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             visualDensity: VisualDensity.compact,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6)),
                           ),
                         ),
                       ),
@@ -875,13 +887,15 @@ class _ListTileCard extends StatelessWidget {
                       OutlinedButton.icon(
                         onPressed: onDelete,
                         icon: const Icon(Icons.delete, size: 14),
-                        label: Text('Delete', style: GoogleFonts.poppins(fontSize: 11)),
+                        label: Text('Delete',
+                            style: GoogleFonts.poppins(fontSize: 11)),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.red,
                           side: BorderSide(color: Colors.grey.shade300),
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           visualDensity: VisualDensity.compact,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6)),
                         ),
                       ),
                     ],
@@ -962,7 +976,8 @@ class _ImagePreviewPageState extends State<ImagePreviewPage> {
             child: Align(
               alignment: Alignment.topLeft,
               child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
+                icon:
+                    const Icon(Icons.arrow_back, color: Colors.white, size: 28),
                 onPressed: () => Navigator.pop(context),
               ),
             ),

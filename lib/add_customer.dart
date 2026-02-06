@@ -9,7 +9,7 @@ import 'services/api_service.dart';
 
 class AddCustomer extends StatefulWidget {
   final Customer? existing;
-  
+
   const AddCustomer({super.key, this.existing});
 
   @override
@@ -47,15 +47,18 @@ class _AddCustomerState extends State<AddCustomer> {
       _selectedGender = widget.existing!.gender;
       _imagePath = widget.existing!.imagePath;
       _isOnline = widget.existing!.isOnline;
-      if (widget.existing!.dateOfBirth != null && widget.existing!.dateOfBirth!.isNotEmpty) {
+      if (widget.existing!.dateOfBirth != null &&
+          widget.existing!.dateOfBirth!.isNotEmpty) {
         try {
-          _dateOfBirth = DateFormat('dd/MM/yyyy').parse(widget.existing!.dateOfBirth!);
+          _dateOfBirth =
+              DateFormat('dd/MM/yyyy').parse(widget.existing!.dateOfBirth!);
         } catch (e) {
           _dateOfBirth = null;
         }
       }
     }
   }
+
   @override
   void dispose() {
     _fullNameController.dispose();
@@ -77,13 +80,25 @@ class _AddCustomerState extends State<AddCustomer> {
         vendorId: null, // Will be set by the API
         fullName: _fullNameController.text.trim(),
         mobile: _mobileController.text.trim(),
-        email: _emailController.text.trim().isNotEmpty ? _emailController.text.trim() : null,
-        dateOfBirth: _dateOfBirth != null ? DateFormat('dd/MM/yyyy').format(_dateOfBirth!) : null,
+        email: _emailController.text.trim().isNotEmpty
+            ? _emailController.text.trim()
+            : null,
+        dateOfBirth: _dateOfBirth != null
+            ? DateFormat('dd/MM/yyyy').format(_dateOfBirth!)
+            : null,
         gender: _selectedGender,
-        country: _countryController.text.trim().isNotEmpty ? _countryController.text.trim() : null,
-        occupation: _occupationController.text.trim().isNotEmpty ? _occupationController.text.trim() : null,
-        address: _addressController.text.trim().isNotEmpty ? _addressController.text.trim() : null,
-        note: _noteController.text.trim().isNotEmpty ? _noteController.text.trim() : null,
+        country: _countryController.text.trim().isNotEmpty
+            ? _countryController.text.trim()
+            : null,
+        occupation: _occupationController.text.trim().isNotEmpty
+            ? _occupationController.text.trim()
+            : null,
+        address: _addressController.text.trim().isNotEmpty
+            ? _addressController.text.trim()
+            : null,
+        note: _noteController.text.trim().isNotEmpty
+            ? _noteController.text.trim()
+            : null,
         imagePath: _imagePath,
         totalBookings: widget.existing?.totalBookings ?? 0,
         totalSpent: widget.existing?.totalSpent ?? 0.0,
@@ -123,7 +138,7 @@ class _AddCustomerState extends State<AddCustomer> {
   InputDecoration _buildInputDecoration(String label, IconData icon) {
     return InputDecoration(
       labelText: label,
-      prefixIcon: Icon(icon, color: Colors.blue),
+      prefixIcon: Icon(icon, color: Theme.of(context).primaryColor),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12.0),
@@ -131,7 +146,8 @@ class _AddCustomerState extends State<AddCustomer> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12.0),
-        borderSide: const BorderSide(color: Colors.blue, width: 2.0),
+        borderSide:
+            BorderSide(color: Theme.of(context).primaryColor, width: 2.0),
       ),
     );
   }
@@ -156,7 +172,7 @@ class _AddCustomerState extends State<AddCustomer> {
           data: Theme.of(context).copyWith(
             datePickerTheme: DatePickerThemeData(
               backgroundColor: Colors.white,
-              headerBackgroundColor: Colors.blue,
+              headerBackgroundColor: Theme.of(context).primaryColor,
               headerForegroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
@@ -165,8 +181,8 @@ class _AddCustomerState extends State<AddCustomer> {
               dayStyle: GoogleFonts.poppins(fontSize: 14),
               yearStyle: GoogleFonts.poppins(fontSize: 16),
             ),
-            colorScheme: const ColorScheme.light(
-              primary: Colors.blue,
+            colorScheme: ColorScheme.light(
+              primary: Theme.of(context).primaryColor,
               onPrimary: Colors.white,
               surface: Colors.white,
               onSurface: Colors.black,
@@ -187,7 +203,8 @@ class _AddCustomerState extends State<AddCustomer> {
       appBar: AppBar(
         title: Text(
           widget.existing == null ? 'Add Customer' : 'Edit Customer',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.black),
+          style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600, color: Colors.black),
         ),
         backgroundColor: Colors.white,
         elevation: 1,
@@ -207,7 +224,8 @@ class _AddCustomerState extends State<AddCustomer> {
                 children: [
                   Text(
                     'Photo',
-                    style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600),
+                    style: GoogleFonts.poppins(
+                        fontSize: 14, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -220,15 +238,18 @@ class _AddCustomerState extends State<AddCustomer> {
                           : CircleAvatar(
                               radius: 40,
                               backgroundColor: Colors.grey[300],
-                              child: Icon(Icons.person, size: 40, color: Colors.grey[600]),
+                              child: Icon(Icons.person,
+                                  size: 40, color: Colors.grey[600]),
                             ),
                       const SizedBox(width: 16),
                       OutlinedButton.icon(
                         onPressed: _pickImage,
-                        icon: const Icon(Icons.photo_library_outlined, size: 18),
+                        icon:
+                            const Icon(Icons.photo_library_outlined, size: 18),
                         label: const Text('Choose Image'),
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
                         ),
                       ),
                       if (_imagePath != null && _imagePath!.isNotEmpty) ...[
@@ -246,7 +267,8 @@ class _AddCustomerState extends State<AddCustomer> {
               const SizedBox(height: 20),
               TextFormField(
                 controller: _fullNameController,
-                decoration: _buildInputDecoration("Full Name", Icons.person_outline),
+                decoration:
+                    _buildInputDecoration("Full Name", Icons.person_outline),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     print('Please enter full name');
@@ -258,18 +280,20 @@ class _AddCustomerState extends State<AddCustomer> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _emailController,
-                decoration: _buildInputDecoration("Email Address", Icons.email_outlined),
+                decoration: _buildInputDecoration(
+                    "Email Address", Icons.email_outlined),
                 keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _mobileController,
-                decoration: _buildInputDecoration("Phone Number", Icons.phone_android_outlined),
+                decoration: _buildInputDecoration(
+                    "Phone Number", Icons.phone_android_outlined),
                 keyboardType: TextInputType.phone,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     print('Please enter a phone number');
-                    return ' '; // Return empty space to prevent showing error on screen 
+                    return ' '; // Return empty space to prevent showing error on screen
                   }
                   return null;
                 },
@@ -279,11 +303,16 @@ class _AddCustomerState extends State<AddCustomer> {
               InkWell(
                 onTap: _pickDate,
                 child: InputDecorator(
-                  decoration: _buildInputDecoration("Date of Birth", Icons.calendar_today_outlined),
+                  decoration: _buildInputDecoration(
+                      "Date of Birth", Icons.calendar_today_outlined),
                   child: Text(
-                    _dateOfBirth == null ? 'Select date' : DateFormat('dd/MM/yyyy').format(_dateOfBirth!),
+                    _dateOfBirth == null
+                        ? 'Select date'
+                        : DateFormat('dd/MM/yyyy').format(_dateOfBirth!),
                     style: TextStyle(
-                      color: _dateOfBirth == null ? Colors.grey[600] : Colors.black,
+                      color: _dateOfBirth == null
+                          ? Colors.grey[600]
+                          : Colors.black,
                     ),
                   ),
                 ),
@@ -302,17 +331,20 @@ class _AddCustomerState extends State<AddCustomer> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _countryController,
-                decoration: _buildInputDecoration("Country", Icons.public_outlined),
+                decoration:
+                    _buildInputDecoration("Country", Icons.public_outlined),
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _occupationController,
-                decoration: _buildInputDecoration("Occupation", Icons.work_outline),
+                decoration:
+                    _buildInputDecoration("Occupation", Icons.work_outline),
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _addressController,
-                decoration: _buildInputDecoration("Address", Icons.location_on_outlined),
+                decoration: _buildInputDecoration(
+                    "Address", Icons.location_on_outlined),
                 maxLines: 2,
               ),
               const SizedBox(height: 16),
@@ -323,27 +355,32 @@ class _AddCustomerState extends State<AddCustomer> {
               ),
               const SizedBox(height: 16),
               CheckboxListTile(
-                title: Text('Online Client', style: GoogleFonts.poppins(fontSize: 14)),
-                subtitle: Text('Can book appointments online', style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[600])),
+                title: Text('Online Client',
+                    style: GoogleFonts.poppins(fontSize: 14)),
+                subtitle: Text('Can book appointments online',
+                    style: GoogleFonts.poppins(
+                        fontSize: 11, color: Colors.grey[600])),
                 value: _isOnline,
                 onChanged: (val) => setState(() => _isOnline = val ?? false),
                 controlAffinity: ListTileControlAffinity.leading,
                 contentPadding: EdgeInsets.zero,
-                activeColor: Colors.blue,
+                activeColor: Theme.of(context).primaryColor,
               ),
               const SizedBox(height: 32),
               ElevatedButton(
                 onPressed: _saveCustomer,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
+                  backgroundColor: Theme.of(context).primaryColor,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                   elevation: 5,
                 ),
                 child: Text(
                   widget.existing == null ? "SAVE CUSTOMER" : "UPDATE CUSTOMER",
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
             ],

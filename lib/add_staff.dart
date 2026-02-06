@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
-class AddStaffDialog extends StatefulWidget { 
+class AddStaffDialog extends StatefulWidget {
   final Map? existing; // raw API staff object for edit
 
   const AddStaffDialog({Key? key, this.existing}) : super(key: key);
@@ -32,6 +32,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
   DateTime? _startDate;
   DateTime? _endDate;
   bool _commissionEnabled = false;
+  final _commissionPercentage = TextEditingController();
 
   // Bank
   final _accHolder = TextEditingController();
@@ -178,9 +179,12 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       _experience.text = (m['yearOfExperience'] ?? '').toString();
       _clients.text = (m['clientsServed'] ?? '').toString();
       _commissionEnabled = m['commission'] == true;
+      _commissionPercentage.text = (m['commissionPercentage'] ?? '').toString();
 
-      if (m['startDate'] != null) _startDate = DateTime.tryParse(m['startDate'].toString());
-      if (m['endDate'] != null) _endDate = DateTime.tryParse(m['endDate'].toString());
+      if (m['startDate'] != null)
+        _startDate = DateTime.tryParse(m['startDate'].toString());
+      if (m['endDate'] != null)
+        _endDate = DateTime.tryParse(m['endDate'].toString());
 
       // Bank
       final bank = (m['bankDetails'] as Map?) ?? {};
@@ -201,7 +205,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       // Availability
       for (final fullDay in dayFullToAbbr.keys) {
         final abbr = dayFullToAbbr[fullDay]!;
-        
+
         // Check if availability is defined in the staff object
         final availabilityData = m['availability'] as Map<String, dynamic>?;
         if (availabilityData != null && availabilityData.containsKey(fullDay)) {
@@ -209,7 +213,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
           if (dayData != null) {
             final available = dayData['available'] == true;
             final slots = (dayData['slots'] as List?) ?? [];
-            
+
             if (available && slots.isNotEmpty) {
               final slot = (slots.first as Map?) ?? {};
               final start = (slot['startTime'] ?? '10:00').toString();
@@ -245,11 +249,13 @@ class _AddStaffDialogState extends State<AddStaffDialog>
         final endStr = b['endTime']?.toString();
         if (startStr != null && startStr.contains(':')) {
           final sp = startStr.split(':');
-          _blockStart = TimeOfDay(hour: int.parse(sp[0]), minute: int.parse(sp[1]));
+          _blockStart =
+              TimeOfDay(hour: int.parse(sp[0]), minute: int.parse(sp[1]));
         }
         if (endStr != null && endStr.contains(':')) {
           final ep = endStr.split(':');
-          _blockEnd = TimeOfDay(hour: int.parse(ep[0]), minute: int.parse(ep[1]));
+          _blockEnd =
+              TimeOfDay(hour: int.parse(ep[0]), minute: int.parse(ep[1]));
         }
 
         _blockReason.text = (b['reason'] ?? '').toString();
@@ -278,6 +284,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
     _salary.dispose();
     _experience.dispose();
     _clients.dispose();
+    _commissionPercentage.dispose();
 
     _accHolder.dispose();
     _accNumber.dispose();
@@ -306,8 +313,10 @@ class _AddStaffDialogState extends State<AddStaffDialog>
     );
     if (picked != null) {
       setState(() {
-        if (start) _startDate = picked;
-        else _endDate = picked;
+        if (start)
+          _startDate = picked;
+        else
+          _endDate = picked;
       });
     }
   }
@@ -323,11 +332,14 @@ class _AddStaffDialogState extends State<AddStaffDialog>
   }
 
   Future<void> _pickBlockTime(bool isStart) async {
-    final picked = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+    final picked =
+        await showTimePicker(context: context, initialTime: TimeOfDay.now());
     if (picked != null) {
       setState(() {
-        if (isStart) _blockStart = picked;
-        else _blockEnd = picked;
+        if (isStart)
+          _blockStart = picked;
+        else
+          _blockEnd = picked;
       });
     }
   }
@@ -349,39 +361,52 @@ class _AddStaffDialogState extends State<AddStaffDialog>
         isValid = _blockFormKey.currentState?.validate() ?? true;
         // Additional validation for block time fields
         if (isValid) {
-          if ((_blockDate != null || _blockStart != null || _blockEnd != null || _blockReason.text.trim().isNotEmpty)) {
+          if ((_blockDate != null ||
+              _blockStart != null ||
+              _blockEnd != null ||
+              _blockReason.text.trim().isNotEmpty)) {
             if (_blockDate == null) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Block date is required'), backgroundColor: Colors.red),
+                const SnackBar(
+                    content: Text('Block date is required'),
+                    backgroundColor: Colors.red),
               );
               isValid = false;
             }
             if (_blockStart == null) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Block start time is required'), backgroundColor: Colors.red),
+                const SnackBar(
+                    content: Text('Block start time is required'),
+                    backgroundColor: Colors.red),
               );
               isValid = false;
             }
             if (_blockEnd == null) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Block end time is required'), backgroundColor: Colors.red),
+                const SnackBar(
+                    content: Text('Block end time is required'),
+                    backgroundColor: Colors.red),
               );
               isValid = false;
             }
             if (_blockReason.text.trim().isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Block reason is required'), backgroundColor: Colors.red),
+                const SnackBar(
+                    content: Text('Block reason is required'),
+                    backgroundColor: Colors.red),
               );
               isValid = false;
             }
-            
+
             // Additional check: ensure start time is before end time
             if (_blockStart != null && _blockEnd != null) {
               int startMinutes = _blockStart!.hour * 60 + _blockStart!.minute;
               int endMinutes = _blockEnd!.hour * 60 + _blockEnd!.minute;
               if (startMinutes >= endMinutes) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Start time must be before end time'), backgroundColor: Colors.red),
+                  const SnackBar(
+                      content: Text('Start time must be before end time'),
+                      backgroundColor: Colors.red),
                 );
                 isValid = false;
               }
@@ -390,7 +415,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
         }
         break;
     }
-    
+
     if (isValid && _tabController.index < _tabController.length - 1) {
       _tabController.animateTo(_tabController.index + 1);
     }
@@ -420,49 +445,62 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       _tabController.animateTo(2);
       return false;
     }
-    
+
     // Additional validation for block time tab
     bool blockTimeValid = true;
     // Validate that if any block time field is filled, all required ones are filled
-    if ((_blockDate != null || _blockStart != null || _blockEnd != null || _blockReason.text.trim().isNotEmpty)) {
+    if ((_blockDate != null ||
+        _blockStart != null ||
+        _blockEnd != null ||
+        _blockReason.text.trim().isNotEmpty)) {
       if (_blockDate == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Block date is required'), backgroundColor: Colors.red),
+          const SnackBar(
+              content: Text('Block date is required'),
+              backgroundColor: Colors.red),
         );
         blockTimeValid = false;
       }
       if (_blockStart == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Block start time is required'), backgroundColor: Colors.red),
+          const SnackBar(
+              content: Text('Block start time is required'),
+              backgroundColor: Colors.red),
         );
         blockTimeValid = false;
       }
       if (_blockEnd == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Block end time is required'), backgroundColor: Colors.red),
+          const SnackBar(
+              content: Text('Block end time is required'),
+              backgroundColor: Colors.red),
         );
         blockTimeValid = false;
       }
       if (_blockReason.text.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Block reason is required'), backgroundColor: Colors.red),
+          const SnackBar(
+              content: Text('Block reason is required'),
+              backgroundColor: Colors.red),
         );
         blockTimeValid = false;
       }
-      
+
       // Additional check: ensure start time is before end time
       if (_blockStart != null && _blockEnd != null) {
         int startMinutes = _blockStart!.hour * 60 + _blockStart!.minute;
         int endMinutes = _blockEnd!.hour * 60 + _blockEnd!.minute;
         if (startMinutes >= endMinutes) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Start time must be before end time'), backgroundColor: Colors.red),
+            const SnackBar(
+                content: Text('Start time must be before end time'),
+                backgroundColor: Colors.red),
           );
           blockTimeValid = false;
         }
       }
     }
-    
+
     if (!blockOk || !blockTimeValid) {
       _tabController.animateTo(5);
       return false;
@@ -472,21 +510,27 @@ class _AddStaffDialogState extends State<AddStaffDialog>
     if (widget.existing == null) {
       if (_password.text.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Password is required for new staff'), backgroundColor: Colors.red),
+          const SnackBar(
+              content: Text('Password is required for new staff'),
+              backgroundColor: Colors.red),
         );
         _tabController.animateTo(0);
         return false;
       }
       if (_password.text.trim().length < 6) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Password must be at least 6 characters'), backgroundColor: Colors.red),
+          const SnackBar(
+              content: Text('Password must be at least 6 characters'),
+              backgroundColor: Colors.red),
         );
         _tabController.animateTo(0);
         return false;
       }
       if (_confirmPassword.text != _password.text) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Passwords do not match'), backgroundColor: Colors.red),
+          const SnackBar(
+              content: Text('Passwords do not match'),
+              backgroundColor: Colors.red),
         );
         _tabController.animateTo(0);
         return false;
@@ -496,14 +540,18 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       if (_password.text.trim().isNotEmpty) {
         if (_password.text.trim().length < 6) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Password must be at least 6 characters'), backgroundColor: Colors.red),
+            const SnackBar(
+                content: Text('Password must be at least 6 characters'),
+                backgroundColor: Colors.red),
           );
           _tabController.animateTo(0);
           return false;
         }
         if (_confirmPassword.text != _password.text) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Passwords do not match'), backgroundColor: Colors.red),
+            const SnackBar(
+                content: Text('Passwords do not match'),
+                backgroundColor: Colors.red),
           );
           _tabController.animateTo(0);
           return false;
@@ -517,24 +565,24 @@ class _AddStaffDialogState extends State<AddStaffDialog>
   void _save() {
     debugPrint('=== Staff Save Process Started ===');
     debugPrint('Status: Validating form data');
-    
+
     if (!_validateAll()) {
       debugPrint('Status: Validation failed, cannot proceed with save');
       return;
     }
-    
+
     debugPrint('Status: Validation passed, processing staff data');
 
-    final fullName = '${_firstName.text.trim()} ${_lastName.text.trim()}'.trim();
+    final fullName =
+        '${_firstName.text.trim()} ${_lastName.text.trim()}'.trim();
     debugPrint('Activities: Full name constructed: $fullName');
 
     // Permissions -> API list
     final List<String> permissions = _permissions.entries
-    .where((e) => e.value)
-    .map((e) => displayToPerm[e.key]!)
-    .toList();
+        .where((e) => e.value)
+        .map((e) => displayToPerm[e.key]!)
+        .toList();
     debugPrint('Activities: Permissions selected: $permissions');
-    
 
     // Availability format
     final Map<String, dynamic> availability = {};
@@ -554,10 +602,15 @@ class _AddStaffDialogState extends State<AddStaffDialog>
     });
     debugPrint('Activities: Availability set: $availability');
 
+    // Commission percentage
+    final double commissionPercentage =
+        double.tryParse(_commissionPercentage.text.trim()) ?? 0.0;
+
     // Blocked times
     final List<Map<String, dynamic>> blockedTimes = [];
-    debugPrint('Activities: Processing blocked times - Date: $_blockDate, Start: $_blockStart, End: $_blockEnd, Reason: ${_blockReason.text.trim()}');
-    
+    debugPrint(
+        'Activities: Processing blocked times - Date: $_blockDate, Start: $_blockStart, End: $_blockEnd, Reason: ${_blockReason.text.trim()}');
+
     if (_blockDate != null &&
         _blockStart != null &&
         _blockEnd != null &&
@@ -566,7 +619,8 @@ class _AddStaffDialogState extends State<AddStaffDialog>
         // Verify that start time is before end time before saving
         int startMinutes = _blockStart!.hour * 60 + _blockStart!.minute;
         int endMinutes = _blockEnd!.hour * 60 + _blockEnd!.minute;
-        if (startMinutes < endMinutes) { // Only proceed if start time is before end time
+        if (startMinutes < endMinutes) {
+          // Only proceed if start time is before end time
           blockedTimes.add({
             'date': DateFormat('yyyy-MM-dd').format(_blockDate!),
             'startTime': _formatTime(_blockStart),
@@ -575,21 +629,26 @@ class _AddStaffDialogState extends State<AddStaffDialog>
           });
           debugPrint('Activities: Blocked time added: ${blockedTimes.last}');
         } else {
-          debugPrint('Exception in blocked times: Start time must be before end time');
+          debugPrint(
+              'Exception in blocked times: Start time must be before end time');
           // Show error to user
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Start time must be before end time'), backgroundColor: Colors.red),
+              const SnackBar(
+                  content: Text('Start time must be before end time'),
+                  backgroundColor: Colors.red),
             );
           }
         }
       } catch (e) {
         debugPrint('Exception in blocked times: $e');
         // Handle potential date format errors
-        debugPrint('Status: Error formatting blocked times, continuing without blocked times');
+        debugPrint(
+            'Status: Error formatting blocked times, continuing without blocked times');
       }
     } else {
-      debugPrint('Activities: Blocked times not provided or incomplete, skipping');
+      debugPrint(
+          'Activities: Blocked times not provided or incomplete, skipping');
     }
 
     // Bank details
@@ -606,12 +665,17 @@ class _AddStaffDialogState extends State<AddStaffDialog>
     final int salary = int.tryParse(_salary.text.trim()) ?? 0;
     final int yearOfExperience = int.tryParse(_experience.text.trim()) ?? 0;
     final int clientsServed = int.tryParse(_clients.text.trim()) ?? 0;
-    debugPrint('Activities: Numeric values - Salary: $salary, Experience: $yearOfExperience, Clients: $clientsServed');
+    debugPrint(
+        'Activities: Numeric values - Salary: $salary, Experience: $yearOfExperience, Clients: $clientsServed');
 
     // Dates
-    final String? startDate = _startDate != null ? DateFormat('yyyy-MM-dd').format(_startDate!) : null;
-    final String? endDate = _endDate != null ? DateFormat('yyyy-MM-dd').format(_endDate!) : null;
-    debugPrint('Activities: Employment dates - Start: $startDate, End: $endDate');
+    final String? startDate = _startDate != null
+        ? DateFormat('yyyy-MM-dd').format(_startDate!)
+        : null;
+    final String? endDate =
+        _endDate != null ? DateFormat('yyyy-MM-dd').format(_endDate!) : null;
+    debugPrint(
+        'Activities: Employment dates - Start: $startDate, End: $endDate');
 
     // Password (optional on edit)
     String? password;
@@ -627,7 +691,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       }
     }
 
-    final Map<String, dynamic> result = { 
+    final Map<String, dynamic> result = {
       'fullName': fullName.isEmpty ? 'Unnamed Staff' : fullName,
       'position': _position.text.trim(),
       'mobileNo': _mobile.text.trim(),
@@ -639,6 +703,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       'yearOfExperience': yearOfExperience,
       'clientsServed': clientsServed,
       'commission': _commissionEnabled,
+      'commissionPercentage': commissionPercentage,
       'permissions': permissions,
       'permission': permissions,
       'availability': availability,
@@ -651,7 +716,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       // If imagePath is local file path, backend won't understand unless you upload it separately.
       if (_imagePath != null) 'photo': _imagePath,
     };
-    
+
     debugPrint('Activities: Staff data prepared for API: ${result.keys}');
     debugPrint('Status: Staff data preparation complete, ready to save');
     debugPrint('=== Staff Save Process Completed ===');
@@ -689,7 +754,8 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                 children: [
                   Text(
                     widget.existing == null ? 'Add New Staff' : 'Edit Staff',
-                    style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600),
+                    style: GoogleFonts.poppins(
+                        fontSize: 18, fontWeight: FontWeight.w600),
                   ),
                   const Spacer(),
                   IconButton(
@@ -739,15 +805,20 @@ class _AddStaffDialogState extends State<AddStaffDialog>
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                  TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancel')),
                   Row(
                     children: [
-                      TextButton(onPressed: _prevTab, child: const Text('Previous')),
+                      TextButton(
+                          onPressed: _prevTab, child: const Text('Previous')),
                       const SizedBox(width: 8),
                       if (_tabController.index < _tabController.length - 1)
-                        TextButton(onPressed: _nextTab, child: const Text('Next')),
+                        TextButton(
+                            onPressed: _nextTab, child: const Text('Next')),
                       if (_tabController.index == _tabController.length - 1)
-                        ElevatedButton(onPressed: _save, child: const Text('Save')),
+                        ElevatedButton(
+                            onPressed: _save, child: const Text('Save')),
                     ],
                   ),
                 ],
@@ -773,19 +844,25 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                     'First Name',
                     TextFormField(
                       controller: _firstName,
-                      validator: (v) => (v == null || v.trim().isEmpty) ? 'First name is required' : null,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'First name is required'
+                          : null,
                     ),
                   ),
                 ),
                 const SizedBox(width: 16),
-                Expanded(child: _labeled('Last Name', TextFormField(controller: _lastName))),
+                Expanded(
+                    child: _labeled(
+                        'Last Name', TextFormField(controller: _lastName))),
               ],
             ),
             _labeled(
               'Position',
               TextFormField(
                 controller: _position,
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Position is required' : null,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Position is required'
+                    : null,
               ),
             ),
             _labeled(
@@ -794,8 +871,10 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                 controller: _mobile,
                 keyboardType: TextInputType.phone,
                 validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'Mobile number is required';
-                  if (v.trim().length < 10) return 'Enter a valid mobile number';
+                  if (v == null || v.trim().isEmpty)
+                    return 'Mobile number is required';
+                  if (v.trim().length < 10)
+                    return 'Enter a valid mobile number';
                   return null;
                 },
               ),
@@ -807,7 +886,8 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                 keyboardType: TextInputType.emailAddress,
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) return 'Email is required';
-                  final ok = RegExp(r'^[\w\-.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v.trim());
+                  final ok = RegExp(r'^[\w\-.]+@([\w-]+\.)+[\w-]{2,4}$')
+                      .hasMatch(v.trim());
                   if (!ok) return 'Enter a valid email address';
                   return null;
                 },
@@ -821,10 +901,14 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                 obscureText: true,
                 validator: (v) {
                   if (widget.existing == null) {
-                    if (v == null || v.trim().isEmpty) return 'Password is required';
-                    if (v.trim().length < 6) return 'Password must be at least 6 characters';
+                    if (v == null || v.trim().isEmpty)
+                      return 'Password is required';
+                    if (v.trim().length < 6)
+                      return 'Password must be at least 6 characters';
                   } else {
-                    if (v != null && v.trim().isNotEmpty && v.trim().length < 6) {
+                    if (v != null &&
+                        v.trim().isNotEmpty &&
+                        v.trim().length < 6) {
                       return 'Password must be at least 6 characters';
                     }
                   }
@@ -839,7 +923,8 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                 obscureText: true,
                 validator: (v) {
                   if (widget.existing == null) {
-                    if (v == null || v.isEmpty) return 'Confirm password is required';
+                    if (v == null || v.isEmpty)
+                      return 'Confirm password is required';
                     if (v != _password.text) return 'Passwords do not match';
                   } else {
                     if (_password.text.trim().isNotEmpty) {
@@ -850,7 +935,8 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                 },
               ),
             ),
-            _labeled('Description', TextFormField(controller: _description, maxLines: 3)),
+            _labeled('Description',
+                TextFormField(controller: _description, maxLines: 3)),
             const SizedBox(height: 16),
             Row(
               children: [
@@ -861,7 +947,9 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                           ? NetworkImage(_imagePath!)
                           : FileImage(File(_imagePath!)) as ImageProvider)
                       : null,
-                  child: _imagePath == null ? const Icon(Icons.person, size: 40) : null,
+                  child: _imagePath == null
+                      ? const Icon(Icons.person, size: 40)
+                      : null,
                 ),
                 const SizedBox(width: 16),
                 Column(
@@ -904,8 +992,10 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                       controller: _salary,
                       keyboardType: TextInputType.number,
                       validator: (v) {
-                        if (v == null || v.trim().isEmpty) return null; // optional
-                        if (double.tryParse(v.trim()) == null) return 'Enter a valid salary';
+                        if (v == null || v.trim().isEmpty)
+                          return null; // optional
+                        if (double.tryParse(v.trim()) == null)
+                          return 'Enter a valid salary';
                         return null;
                       },
                     ),
@@ -919,8 +1009,10 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                       controller: _experience,
                       keyboardType: TextInputType.number,
                       validator: (v) {
-                        if (v == null || v.trim().isEmpty) return null; // optional
-                        if (int.tryParse(v.trim()) == null) return 'Enter a valid number';
+                        if (v == null || v.trim().isEmpty)
+                          return null; // optional
+                        if (int.tryParse(v.trim()) == null)
+                          return 'Enter a valid number';
                         return null;
                       },
                     ),
@@ -937,8 +1029,10 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                       controller: _clients,
                       keyboardType: TextInputType.number,
                       validator: (v) {
-                        if (v == null || v.trim().isEmpty) return null; // optional
-                        if (int.tryParse(v.trim()) == null) return 'Enter a valid number';
+                        if (v == null || v.trim().isEmpty)
+                          return null; // optional
+                        if (int.tryParse(v.trim()) == null)
+                          return 'Enter a valid number';
                         return null;
                       },
                     ),
@@ -949,21 +1043,95 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Commission', style: TextStyle(fontWeight: FontWeight.w600)),
-                      Switch(
-                        value: _commissionEnabled,
-                        onChanged: (v) => setState(() => _commissionEnabled = v),
+                      Row(
+                        children: [
+                          Switch(
+                            value: _commissionEnabled,
+                            activeColor: const Color(0xFF4A2C40),
+                            onChanged: (v) =>
+                                setState(() => _commissionEnabled = v),
+                          ),
+                          Text('Staff Commission',
+                              style: GoogleFonts.poppins(
+                                  fontSize: 13, fontWeight: FontWeight.w500)),
+                        ],
                       ),
                     ],
                   ),
                 ),
               ],
             ),
+            if (_commissionEnabled) ...[
+              const SizedBox(height: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Commission Percentage (%)',
+                      style: GoogleFonts.poppins(
+                          fontSize: 13, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _commissionPercentage,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    decoration: InputDecoration(
+                      hintText: '10',
+                      suffixText: '%',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(
+                            color: Color(0xFF4A2C40), width: 2),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                    ),
+                    validator: (v) {
+                      if (_commissionEnabled) {
+                        if (v == null || v.trim().isEmpty)
+                          return 'Percentage is required';
+                        if (double.tryParse(v.trim()) == null)
+                          return 'Enter a valid number';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.auto_graph,
+                          size: 14, color: Colors.grey),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Staff will earn ${_commissionPercentage.text.isEmpty ? '0' : _commissionPercentage.text}% on all completed appointments.',
+                        style: GoogleFonts.poppins(
+                            fontSize: 11, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
             Row(
               children: [
-                Expanded(child: _DateField(label: 'Start Date', date: _startDate, onTap: () => _pickDate(start: true))),
+                Expanded(
+                    child: _DateField(
+                        label: 'Start Date',
+                        date: _startDate,
+                        onTap: () => _pickDate(start: true))),
                 const SizedBox(width: 16),
-                Expanded(child: _DateField(label: 'End Date (Optional)', date: _endDate, onTap: () => _pickDate(start: false))),
+                Expanded(
+                    child: _DateField(
+                        label: 'End Date (Optional)',
+                        date: _endDate,
+                        onTap: () => _pickDate(start: false))),
               ],
             ),
           ],
@@ -984,7 +1152,8 @@ class _AddStaffDialogState extends State<AddStaffDialog>
               TextFormField(
                 controller: _accHolder,
                 validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'Account holder name is required';
+                  if (v == null || v.trim().isEmpty)
+                    return 'Account holder name is required';
                   return null;
                 },
               ),
@@ -995,8 +1164,10 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                 controller: _accNumber,
                 keyboardType: TextInputType.number,
                 validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'Account number is required';
-                  if (int.tryParse(v.trim()) == null) return 'Enter a valid account number';
+                  if (v == null || v.trim().isEmpty)
+                    return 'Account number is required';
+                  if (int.tryParse(v.trim()) == null)
+                    return 'Enter a valid account number';
                   return null;
                 },
               ),
@@ -1005,21 +1176,27 @@ class _AddStaffDialogState extends State<AddStaffDialog>
               'Bank Name',
               TextFormField(
                 controller: _bankName,
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Bank name is required' : null,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Bank name is required'
+                    : null,
               ),
             ),
             _labeled(
               'IFSC Code',
               TextFormField(
                 controller: _ifsc,
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'IFSC code is required' : null,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'IFSC code is required'
+                    : null,
               ),
             ),
             _labeled(
               'UPI ID',
               TextFormField(
                 controller: _upi,
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'UPI ID is required' : null,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'UPI ID is required'
+                    : null,
               ),
             ),
           ],
@@ -1058,9 +1235,14 @@ class _AddStaffDialogState extends State<AddStaffDialog>
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Row(
               children: [
-                SizedBox(width: 80, child: Text(day, style: const TextStyle(fontWeight: FontWeight.w600))),
+                SizedBox(
+                    width: 80,
+                    child: Text(day,
+                        style: const TextStyle(fontWeight: FontWeight.w600))),
                 const SizedBox(width: 16),
-                Expanded(child: _TimeRangePicker(day: day, controller: _weeklyTiming[day]!)),
+                Expanded(
+                    child: _TimeRangePicker(
+                        day: day, controller: _weeklyTiming[day]!)),
               ],
             ),
           );
@@ -1077,13 +1259,22 @@ class _AddStaffDialogState extends State<AddStaffDialog>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _DateField(label: 'Block Date', date: _blockDate, onTap: _pickBlockDate),
+            _DateField(
+                label: 'Block Date', date: _blockDate, onTap: _pickBlockDate),
             const SizedBox(height: 16),
             Row(
               children: [
-                Expanded(child: _TimeField(label: 'Start Time', time: _blockStart, onTap: () => _pickBlockTime(true))),
+                Expanded(
+                    child: _TimeField(
+                        label: 'Start Time',
+                        time: _blockStart,
+                        onTap: () => _pickBlockTime(true))),
                 const SizedBox(width: 16),
-                Expanded(child: _TimeField(label: 'End Time', time: _blockEnd, onTap: () => _pickBlockTime(false))),
+                Expanded(
+                    child: _TimeField(
+                        label: 'End Time',
+                        time: _blockEnd,
+                        onTap: () => _pickBlockTime(false))),
               ],
             ),
             const SizedBox(height: 16),
@@ -1105,7 +1296,9 @@ class _AddStaffDialogState extends State<AddStaffDialog>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+            Text(label,
+                style:
+                    const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
             const SizedBox(height: 6),
             field,
           ],
@@ -1118,7 +1311,8 @@ class _DateField extends StatelessWidget {
   final DateTime? date;
   final VoidCallback onTap;
 
-  const _DateField({required this.label, required this.date, required this.onTap});
+  const _DateField(
+      {required this.label, required this.date, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -1131,10 +1325,15 @@ class _DateField extends StatelessWidget {
           onTap: onTap,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            decoration: BoxDecoration(border: Border.all(color: Colors.grey), borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey),
+                borderRadius: BorderRadius.circular(8)),
             child: Row(
               children: [
-                Expanded(child: Text(date == null ? 'Not set' : DateFormat('dd/MM/yyyy').format(date!))),
+                Expanded(
+                    child: Text(date == null
+                        ? 'Not set'
+                        : DateFormat('dd/MM/yyyy').format(date!))),
                 const Icon(Icons.calendar_today),
               ],
             ),
@@ -1150,7 +1349,8 @@ class _TimeField extends StatelessWidget {
   final TimeOfDay? time;
   final VoidCallback onTap;
 
-  const _TimeField({required this.label, required this.time, required this.onTap});
+  const _TimeField(
+      {required this.label, required this.time, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -1163,7 +1363,9 @@ class _TimeField extends StatelessWidget {
           onTap: onTap,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            decoration: BoxDecoration(border: Border.all(color: Colors.grey), borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey),
+                borderRadius: BorderRadius.circular(8)),
             child: Row(
               children: [
                 Expanded(child: Text(time?.format(context) ?? 'Not set')),
@@ -1182,7 +1384,10 @@ class _TimeRangePicker extends StatefulWidget {
   final TextEditingController controller;
   final bool initialAvailability;
 
-  const _TimeRangePicker({required this.day, required this.controller, this.initialAvailability = true});
+  const _TimeRangePicker(
+      {required this.day,
+      required this.controller,
+      this.initialAvailability = true});
 
   @override
   State<_TimeRangePicker> createState() => _TimeRangePickerState();
@@ -1194,18 +1399,22 @@ class _TimeRangePickerState extends State<_TimeRangePicker> {
 
   void _updateText() {
     if (start != null && end != null) {
-      widget.controller.text = '${start!.format(context)} - ${end!.format(context)}';
+      widget.controller.text =
+          '${start!.format(context)} - ${end!.format(context)}';
     } else {
       widget.controller.text = '';
     }
   }
 
   Future<void> _pick(bool isStart) async {
-    final picked = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+    final picked =
+        await showTimePicker(context: context, initialTime: TimeOfDay.now());
     if (picked != null) {
       setState(() {
-        if (isStart) start = picked;
-        else end = picked;
+        if (isStart)
+          start = picked;
+        else
+          end = picked;
       });
       _updateText();
     }
@@ -1223,13 +1432,15 @@ class _TimeRangePickerState extends State<_TimeRangePicker> {
               decoration: BoxDecoration(
                 border: Border.all(),
                 borderRadius: BorderRadius.circular(8),
-                color: Colors.blue.shade50,
+                color: Theme.of(context).primaryColor.withOpacity(0.05),
               ),
-              child: Text(start?.format(context) ?? 'Start', textAlign: TextAlign.center),
+              child: Text(start?.format(context) ?? 'Start',
+                  textAlign: TextAlign.center),
             ),
           ),
         ),
-        const Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text('-')),
+        const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8), child: Text('-')),
         Expanded(
           child: InkWell(
             onTap: () => _pick(false),
@@ -1238,9 +1449,10 @@ class _TimeRangePickerState extends State<_TimeRangePicker> {
               decoration: BoxDecoration(
                 border: Border.all(),
                 borderRadius: BorderRadius.circular(8),
-                color: Colors.blue.shade50,
+                color: Theme.of(context).primaryColor.withOpacity(0.05),
               ),
-              child: Text(end?.format(context) ?? 'End', textAlign: TextAlign.center),
+              child: Text(end?.format(context) ?? 'End',
+                  textAlign: TextAlign.center),
             ),
           ),
         ),

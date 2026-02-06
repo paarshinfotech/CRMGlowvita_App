@@ -186,7 +186,7 @@ class _ServicesState extends State<Services> {
               if (service.discountedPrice != null &&
                   service.discountedPrice! < (service.price ?? 0))
                 _detailRow('Discounted Price', '₹${service.discountedPrice}',
-                    color: Colors.green.shade700),
+                    color: Theme.of(context).primaryColor),
               _detailRow('Duration',
                   service.duration != null ? '${service.duration} min' : 'N/A'),
               _detailRow('Gender', service.gender ?? 'unisex'),
@@ -243,7 +243,7 @@ class _ServicesState extends State<Services> {
             onPressed: () => Navigator.pop(context),
             child: Text('Close',
                 style: GoogleFonts.poppins(
-                    fontSize: 15, color: Colors.blue.shade700)),
+                    fontSize: 15, color: Theme.of(context).primaryColor)),
           ),
         ],
       ),
@@ -261,7 +261,7 @@ class _ServicesState extends State<Services> {
             child: Text(label,
                 style: GoogleFonts.poppins(
                     fontSize: 14,
-                    color: Colors.grey.shade700,
+                    color: Theme.of(context).primaryColor,
                     fontWeight: FontWeight.w500)),
           ),
           Expanded(
@@ -324,8 +324,9 @@ class _ServicesState extends State<Services> {
           final isMobile = constraints.maxWidth < 600;
 
           if (isLoading) {
-            return const Center(
-                child: CircularProgressIndicator(color: Colors.blue));
+            return Center(
+                child: CircularProgressIndicator(
+                    color: Theme.of(context).primaryColor));
           }
 
           if (errorMessage != null) {
@@ -414,8 +415,8 @@ class _ServicesState extends State<Services> {
                     itemBuilder: (context, index) {
                       switch (index) {
                         case 0:
-                          return _minimalStatCard(
-                              'Total', '$totalServices', Colors.blue.shade600);
+                          return _minimalStatCard('Total', '$totalServices',
+                              Theme.of(context).primaryColor);
                         case 1:
                           return _minimalStatCard('Categories',
                               '$totalCategories', Colors.purple.shade600);
@@ -449,13 +450,14 @@ class _ServicesState extends State<Services> {
                           selected: selected,
                           onSelected: (_) =>
                               setState(() => selectedCategory = cat),
-                          selectedColor: Colors.blue.shade50,
+                          selectedColor:
+                              Theme.of(context).primaryColor.withOpacity(0.1),
                           backgroundColor: Colors.grey.shade100,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20),
                             side: BorderSide(
                                 color: selected
-                                    ? Colors.blue.shade400
+                                    ? Theme.of(context).primaryColor
                                     : Colors.transparent),
                           ),
                         ),
@@ -478,7 +480,7 @@ class _ServicesState extends State<Services> {
                       label: Text('Add Service',
                           style: GoogleFonts.poppins(fontSize: 14)),
                       style: TextButton.styleFrom(
-                          foregroundColor: Colors.blue.shade700),
+                          foregroundColor: Theme.of(context).primaryColor),
                     ),
                   ],
                 ),
@@ -623,12 +625,15 @@ class _ServicesState extends State<Services> {
                                                         horizontal: 8,
                                                         vertical: 3),
                                                 decoration: BoxDecoration(
-                                                  color: Colors.blue.shade50,
+                                                  color: Theme.of(context)
+                                                      .primaryColor
+                                                      .withOpacity(0.1),
                                                   borderRadius:
                                                       BorderRadius.circular(10),
                                                   border: Border.all(
-                                                      color:
-                                                          Colors.blue.shade200,
+                                                      color: Theme.of(context)
+                                                          .primaryColor
+                                                          .withOpacity(0.5),
                                                       width: 0.5),
                                                 ),
                                                 child: Text(
@@ -636,8 +641,8 @@ class _ServicesState extends State<Services> {
                                                       'Category',
                                                   style: GoogleFonts.poppins(
                                                       fontSize: 11,
-                                                      color:
-                                                          Colors.blue.shade700),
+                                                      color: Theme.of(context)
+                                                          .primaryColor),
                                                 ),
                                               ),
                                               const SizedBox(width: 8),
@@ -686,8 +691,8 @@ class _ServicesState extends State<Services> {
                                                       fontSize: 16,
                                                       fontWeight:
                                                           FontWeight.w700,
-                                                      color:
-                                                          Colors.blue.shade700),
+                                                      color: Theme.of(context)
+                                                          .primaryColor),
                                                 ),
                                               ),
                                               IconButton(
@@ -703,7 +708,8 @@ class _ServicesState extends State<Services> {
                                                 },
                                                 icon: Icon(
                                                     Icons.add_circle_outline,
-                                                    color: Colors.blue.shade600,
+                                                    color: Theme.of(context)
+                                                        .primaryColor,
                                                     size: 20),
                                                 tooltip: 'Add Add-on',
                                                 padding: EdgeInsets.zero,
@@ -737,8 +743,9 @@ class _ServicesState extends State<Services> {
                                                     child: Row(
                                                       children: [
                                                         Icon(Icons.visibility,
-                                                            color: Colors
-                                                                .blue.shade600,
+                                                            color: Theme.of(
+                                                                    context)
+                                                                .primaryColor,
                                                             size: 16),
                                                         const SizedBox(
                                                             width: 8),

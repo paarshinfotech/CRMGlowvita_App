@@ -84,7 +84,7 @@ class SupplierDrawer extends StatelessWidget {
                             style: GoogleFonts.poppins(
                               fontSize: 20 * baseFontScale,
                               fontWeight: FontWeight.w600,
-                              color: const Color(0xFF457BFF),
+                              color: Theme.of(context).primaryColor,
                             ),
                           ),
                         ],
@@ -112,16 +112,17 @@ class SupplierDrawer extends StatelessWidget {
                 vertical: 12 * scale,
               ),
               decoration: BoxDecoration(
-                color: const Color(0xFFF0F4FF),
+                color: Theme.of(context).primaryColor.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(12 * scale),
               ),
               child: Row(
-                children: [                  // User Avatar
+                children: [
+                  // User Avatar
                   Container(
                     width: 40 * scale,
                     height: 40 * scale,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF457BFF).withValues(alpha: 0.2),
+                      color: Theme.of(context).primaryColor.withOpacity(0.2),
                       shape: BoxShape.circle,
                     ),
                     child: Center(
@@ -130,7 +131,7 @@ class SupplierDrawer extends StatelessWidget {
                         style: GoogleFonts.poppins(
                           fontSize: 15 * baseFontScale,
                           fontWeight: FontWeight.w600,
-                          color: const Color(0xFF457BFF),
+                          color: Theme.of(context).primaryColor,
                         ),
                       ),
                     ),
@@ -162,9 +163,8 @@ class SupplierDrawer extends StatelessWidget {
                                 vertical: 1 * scale,
                               ),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF457BFF),
-                                borderRadius:
-                                    BorderRadius.circular(12 * scale),
+                                color: Theme.of(context).primaryColor,
+                                borderRadius: BorderRadius.circular(12 * scale),
                               ),
                               child: Text(
                                 'PRO',
@@ -222,7 +222,7 @@ class SupplierDrawer extends StatelessWidget {
                   style: GoogleFonts.poppins(
                     fontSize: 17 * baseFontScale,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF457BFF),
+                    color: Theme.of(context).primaryColor,
                     letterSpacing: 1.2,
                   ),
                 ),
@@ -240,12 +240,11 @@ class SupplierDrawer extends StatelessWidget {
                       icon: Icons.dashboard_outlined,
                       title: 'Dashboard',
                       isSelected: currentPage == 'Dashboard',
-                      onTap: () =>
-                          _navigateTo(context, const DashboardPage()),
+                      onTap: () => _navigateTo(context, const DashboardPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
-                   /* _buildMenuItem(
+                    /* _buildMenuItem(
                       context: context,
                       icon: Icons.inventory_2_outlined,
                       title: 'Products',
@@ -398,8 +397,7 @@ class SupplierDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.question_answer_outlined,
                       title: 'Product Questions',
-                      isSelected:
-                          currentPage == 'Product Questions',
+                      isSelected: currentPage == 'Product Questions',
                       onTap: () => _navigateTo(
                         context,
                         const SuppProductQuestionsPage(),
@@ -422,8 +420,7 @@ class SupplierDrawer extends StatelessWidget {
                       icon: Icons.star_outlined,
                       title: 'Orders',
                       isSelected: currentPage == 'Orders',
-                      onTap: () =>
-                          _navigateTo(context, const SuppOrdersPage()),
+                      onTap: () => _navigateTo(context, const SuppOrdersPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
@@ -432,8 +429,7 @@ class SupplierDrawer extends StatelessWidget {
                       icon: Icons.star_outlined,
                       title: 'Sales',
                       isSelected: currentPage == 'Sales',
-                      onTap: () =>
-                          _navigateTo(context, const SuppSalesPage()),
+                      onTap: () => _navigateTo(context, const SuppSalesPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
@@ -442,8 +438,8 @@ class SupplierDrawer extends StatelessWidget {
                       icon: Icons.star_outlined,
                       title: 'Invoice Management',
                       isSelected: currentPage == 'Invoice Management',
-                      onTap: () =>
-                          _navigateTo(context, const SuppInvoiceManagementPage()),
+                      onTap: () => _navigateTo(
+                          context, const SuppInvoiceManagementPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
@@ -541,12 +537,14 @@ class SupplierDrawer extends StatelessWidget {
     return Container(
       margin: EdgeInsets.symmetric(vertical: 2 * scale),
       decoration: BoxDecoration(
-        color: isSelected ? const Color(0xFFE8F0FF) : Colors.transparent,
+        color: isSelected
+            ? Theme.of(context).primaryColor.withOpacity(0.1)
+            : Colors.transparent,
         borderRadius: BorderRadius.circular(12 * scale),
         border: isSelected
             ? Border(
                 right: BorderSide(
-                  color: const Color(0xFF457BFF),
+                  color: Theme.of(context).primaryColor,
                   width: 3,
                 ),
               )
@@ -568,20 +566,15 @@ class SupplierDrawer extends StatelessWidget {
           child: Icon(
             icon,
             size: 17 * baseFontScale,
-            color: isSelected
-                ? const Color(0xFF457BFF)
-                : Colors.black87,
+            color: isSelected ? Theme.of(context).primaryColor : Colors.black87,
           ),
         ),
         title: Text(
           title,
           style: GoogleFonts.poppins(
             fontSize: 16 * baseFontScale,
-            fontWeight:
-                isSelected ? FontWeight.w600 : FontWeight.w500,
-            color: isSelected
-                ? const Color(0xFF457BFF)
-                : Colors.black87,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            color: isSelected ? Theme.of(context).primaryColor : Colors.black87,
           ),
         ),
         trailing: hasNotification
@@ -645,7 +638,7 @@ class SupplierDrawer extends StatelessWidget {
             ElevatedButton(
               onPressed: () async {
                 Navigator.pop(context);
-                
+
                 // Clear the auth token on logout
                 final prefs = await SharedPreferences.getInstance();
                 await prefs.remove('auth_token');
@@ -654,7 +647,7 @@ class SupplierDrawer extends StatelessWidget {
                 await prefs.remove('user_role');
                 await prefs.remove('user_id');
                 await prefs.remove('user_data');
-                
+
                 Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(builder: (context) => const Login()),
@@ -662,7 +655,7 @@ class SupplierDrawer extends StatelessWidget {
                 );
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF457BFF),
+                backgroundColor: Theme.of(context).primaryColor,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8 * scale),
                 ),

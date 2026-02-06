@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import './supp_drawer.dart';  
+import './supp_drawer.dart';
 import '../customer_model.dart';
 import '../add_customer.dart';
 import 'dart:async';
@@ -18,7 +18,7 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
   static const Color _border = Color(0xFFE2E8F0);
   static const Color _muted = Color(0xFF64748B);
   static const Color _text = Color(0xFF0F172A);
-  static const Color _primary = Color(0xFF2563EB);
+  // Removed static _primary blue constant
   static const Color _success = Color(0xFF10B981);
 
   // Supplier-focused products data (removed services)
@@ -30,7 +30,11 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
     {'name': 'Matte Lipstick Set', 'category': 'Makeup', 'price': 1999.0},
     {'name': 'Beard Growth Oil', 'category': 'Males Grooming', 'price': 649.0},
     {'name': 'Gel Nail Polish Kit', 'category': 'Nails Care', 'price': 2799.0},
-    {'name': 'Professional Makeup Brush Set', 'category': 'Beauty Tools', 'price': 1499.0},
+    {
+      'name': 'Professional Makeup Brush Set',
+      'category': 'Beauty Tools',
+      'price': 1499.0
+    },
   ];
 
   // Sample customers data (updated dates around Dec 2025)
@@ -147,8 +151,10 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
   Customer? selectedCustomer;
 
   // Search controllers
-  final TextEditingController _productSearchController = TextEditingController();
-  final TextEditingController _customerSearchController = TextEditingController();
+  final TextEditingController _productSearchController =
+      TextEditingController();
+  final TextEditingController _customerSearchController =
+      TextEditingController();
 
   // Category filter
   String? selectedProductCategory;
@@ -182,7 +188,8 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
           product['name'].toString().toLowerCase().contains(q) ||
           product['category'].toString().toLowerCase().contains(q);
 
-      final matchesCategory = selectedProductCategory == 'All' || product['category'].toString() == selectedProductCategory;
+      final matchesCategory = selectedProductCategory == 'All' ||
+          product['category'].toString() == selectedProductCategory;
       return matchesSearch && matchesCategory;
     }).toList();
   }
@@ -235,7 +242,10 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
   }
 
   double get subtotal {
-    return selectedItems.fold(0.0, (sum, item) => sum + (item['price'] as double) * (item['quantity'] as int));
+    return selectedItems.fold(
+        0.0,
+        (sum, item) =>
+            sum + (item['price'] as double) * (item['quantity'] as int));
   }
 
   double get tax => subtotal * 0.18; // Assuming 18% GST for India
@@ -263,27 +273,37 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
   }
 
   // UI helpers
-  TextStyle get _h1 => GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w700, color: _text);
-  TextStyle get _h2 => GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700, color: _text);
-  TextStyle get _sub => GoogleFonts.poppins(fontSize: 11.5, fontWeight: FontWeight.w500, color: _muted);
-  TextStyle get _th => GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w700, color: _muted);
-  TextStyle get _td => GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: _text);
+  TextStyle get _h1 => GoogleFonts.poppins(
+      fontSize: 20, fontWeight: FontWeight.w700, color: _text);
+  TextStyle get _h2 => GoogleFonts.poppins(
+      fontSize: 16, fontWeight: FontWeight.w700, color: _text);
+  TextStyle get _sub => GoogleFonts.poppins(
+      fontSize: 11.5, fontWeight: FontWeight.w500, color: _muted);
+  TextStyle get _th => GoogleFonts.poppins(
+      fontSize: 11, fontWeight: FontWeight.w700, color: _muted);
+  TextStyle get _td => GoogleFonts.poppins(
+      fontSize: 12, fontWeight: FontWeight.w600, color: _text);
 
   InputDecoration _fieldDecoration({
     required String hint,
-    required IconData icon, 
+    required IconData icon,
     bool showClear = false,
     VoidCallback? onClear,
   }) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF94A3B8)),
+      hintStyle:
+          GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF94A3B8)),
       prefixIcon: Icon(icon, color: const Color(0xFF94A3B8), size: 20),
-      suffixIcon: showClear ? IconButton(icon: const Icon(Icons.close, size: 16), onPressed: onClear) : null,
+      suffixIcon: showClear
+          ? IconButton(
+              icon: const Icon(Icons.close, size: 16), onPressed: onClear)
+          : null,
       filled: true,
       fillColor: const Color(0xFFF8FAFC),
       contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+      border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
       isDense: true,
     );
   }
@@ -303,14 +323,19 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
             Icon(icon, size: 12, color: fg ?? _muted),
             const SizedBox(width: 4),
           ],
-          Text(text, style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w600, color: fg ?? _muted)),
+          Text(text,
+              style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: fg ?? _muted)),
         ],
       ),
     );
   }
 
   bool _isItemSelected(String name, double price) {
-    return selectedItems.any((x) => x['name'] == name && (x['price'] as double) == price);
+    return selectedItems
+        .any((x) => x['name'] == name && (x['price'] as double) == price);
   }
 
   int _gridCrossAxisCount(double width) {
@@ -347,14 +372,20 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
             ),
             child: Row(
               children: [
-                Icon(Icons.person, color: selectedCustomer == null ? _muted : _primary, size: 20),
+                Icon(Icons.person,
+                    color: selectedCustomer == null
+                        ? _muted
+                        : Theme.of(context).primaryColor,
+                    size: 20),
                 const SizedBox(width: 8),
                 Text(
                   selectedCustomer?.fullName ?? 'Select Customer',
                   style: GoogleFonts.poppins(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: selectedCustomer == null ? _muted : _text,
+                    color: selectedCustomer == null
+                        ? _muted
+                        : Theme.of(context).primaryColor,
                   ),
                 ),
                 const Spacer(),
@@ -384,20 +415,25 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.red,
                     side: const BorderSide(color: Colors.red),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
                   ),
-                  child: Text('Clear', style: GoogleFonts.poppins(fontSize: 12)),
+                  child:
+                      Text('Clear', style: GoogleFonts.poppins(fontSize: 12)),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: total > 0 ? () {} : null, // Implement invoice generation
+                  onPressed:
+                      total > 0 ? () {} : null, // Implement invoice generation
                   icon: const Icon(Icons.receipt_long, size: 18),
-                  label: Text('Generate Invoice', style: GoogleFonts.poppins(fontSize: 12)),
+                  label: Text('Generate Invoice',
+                      style: GoogleFonts.poppins(fontSize: 12)),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _primary,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    backgroundColor: Theme.of(context).primaryColor,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
                   ),
                 ),
               ),
@@ -424,7 +460,8 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
             flex: 3,
             child: Text(
               item['name'],
-              style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600),
+              style: GoogleFonts.poppins(
+                  fontSize: 12, fontWeight: FontWeight.w600),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -433,24 +470,29 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
             children: [
               _qtyButton(
                 icon: Icons.remove,
-                onTap: () => _updateItemQuantity(item['id'] as int, quantity - 1),
+                onTap: () =>
+                    _updateItemQuantity(item['id'] as int, quantity - 1),
               ),
               SizedBox(
                 width: 40,
                 child: Center(
-                  child: Text('$quantity', style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600)),
+                  child: Text('$quantity',
+                      style: GoogleFonts.poppins(
+                          fontSize: 12, fontWeight: FontWeight.w600)),
                 ),
               ),
               _qtyButton(
                 icon: Icons.add,
-                onTap: () => _updateItemQuantity(item['id'] as int, quantity + 1),
+                onTap: () =>
+                    _updateItemQuantity(item['id'] as int, quantity + 1),
               ),
             ],
           ),
           const SizedBox(width: 12),
           Text(
             '₹${((item['price'] as double) * quantity).toStringAsFixed(0)}',
-            style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600),
+            style:
+                GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600),
           ),
           const SizedBox(width: 12),
           IconButton(
@@ -492,7 +534,8 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
                       controller: _customerSearchController,
                       onChanged: (v) {
                         _customerSearchTimer?.cancel();
-                        _customerSearchTimer = Timer(const Duration(milliseconds: 300), () {
+                        _customerSearchTimer =
+                            Timer(const Duration(milliseconds: 300), () {
                           setState(() => customerSearchQuery = v);
                         });
                       },
@@ -511,10 +554,12 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
                   ElevatedButton.icon(
                     onPressed: _navigateToAddCustomer,
                     icon: const Icon(Icons.add, size: 18),
-                    label: Text('Add', style: GoogleFonts.poppins(fontSize: 12)),
+                    label:
+                        Text('Add', style: GoogleFonts.poppins(fontSize: 12)),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _primary,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      backgroundColor: Theme.of(context).primaryColor,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
                     ),
                   ),
                 ],
@@ -541,25 +586,33 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
                             setState(() => selectedCustomer = customer);
                             Navigator.pop(context);
                           },
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 4),
                           leading: CircleAvatar(
                             radius: 20,
-                            backgroundColor: _primary.withOpacity(0.1),
+                            backgroundColor:
+                                Theme.of(context).primaryColor.withOpacity(0.1),
                             child: Text(
                               customer.fullName[0].toUpperCase(),
-                              style: GoogleFonts.poppins(fontSize: 16, color: _primary, fontWeight: FontWeight.w600),
+                              style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  color: Theme.of(context).primaryColor,
+                                  fontWeight: FontWeight.w600),
                             ),
                           ),
                           title: Text(
                             customer.fullName,
-                            style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600),
+                            style: GoogleFonts.poppins(
+                                fontSize: 14, fontWeight: FontWeight.w600),
                           ),
                           subtitle: Text(
                             customer.mobile,
-                            style: GoogleFonts.poppins(fontSize: 12, color: _muted),
+                            style: GoogleFonts.poppins(
+                                fontSize: 12, color: _muted),
                           ),
                           trailing: isSelected
-                              ? const Icon(Icons.check_circle, color: _success)
+                              ? const Icon(Icons.check_circle,
+                                  color: Color(0xFF10B981))
                               : null,
                         );
                       },
@@ -611,7 +664,11 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
             items: productCategories
                 .map((cat) => DropdownMenuItem(
                       value: cat,
-                      child: Text(cat, style: GoogleFonts.poppins(fontSize: 12, color: _text, fontWeight: FontWeight.w600)),
+                      child: Text(cat,
+                          style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: _text,
+                              fontWeight: FontWeight.w600)),
                     ))
                 .toList(),
             onChanged: (v) => setState(() => selectedProductCategory = v),
@@ -623,7 +680,8 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
             ? Center(
                 child: Text(
                   'No products found',
-                  style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: _muted),
+                  style: GoogleFonts.poppins(
+                      fontSize: 13, fontWeight: FontWeight.w600, color: _muted),
                 ),
               )
             : GridView.builder(
@@ -638,14 +696,19 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
                 itemCount: filteredProducts.length,
                 itemBuilder: (context, index) {
                   final product = filteredProducts[index];
-                  final selected = _isItemSelected(product['name'], product['price'] as double);
+                  final selected = _isItemSelected(
+                      product['name'], product['price'] as double);
 
                   return AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
                     decoration: BoxDecoration(
                       color: _surface,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: selected ? _primary.withOpacity(0.45) : _border, width: selected ? 1.1 : 0.9),
+                      border: Border.all(
+                          color: selected
+                              ? Theme.of(context).primaryColor.withOpacity(0.45)
+                              : _border,
+                          width: selected ? 1.1 : 0.9),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.04),
@@ -667,10 +730,18 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
                                   product['name'],
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w800, color: _text),
+                                  style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w800,
+                                      color: _text),
                                 ),
                               ),
-                              if (selected) _chip('Added', bg: const Color(0xFFEFF6FF), fg: _primary),
+                              if (selected)
+                                _chip('Added',
+                                    bg: Theme.of(context)
+                                        .primaryColor
+                                        .withOpacity(0.1),
+                                    fg: Theme.of(context).primaryColor),
                             ],
                           ),
                           const SizedBox(height: 6),
@@ -680,7 +751,10 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
                             children: [
                               Text(
                                 '₹${(product['price'] as double).toStringAsFixed(0)}',
-                                style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w800, color: _primary),
+                                style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                    color: Theme.of(context).primaryColor),
                               ),
                               const Spacer(),
                               SizedBox(
@@ -688,13 +762,20 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
                                 child: ElevatedButton.icon(
                                   onPressed: () => _addItemToInvoice(product),
                                   icon: const Icon(Icons.add, size: 14),
-                                  label: Text('Add', style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w700)),
+                                  label: Text('Add',
+                                      style: GoogleFonts.poppins(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700)),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: _primary,
+                                    backgroundColor:
+                                        Theme.of(context).primaryColor,
                                     foregroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(6)),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8),
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
                                   ),
                                 ),
                               ),
@@ -802,8 +883,12 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: _muted)),
-          Text(value, style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w800, color: _text)),
+          Text(label,
+              style: GoogleFonts.poppins(
+                  fontSize: 12, fontWeight: FontWeight.w600, color: _muted)),
+          Text(value,
+              style: GoogleFonts.poppins(
+                  fontSize: 12, fontWeight: FontWeight.w800, color: _text)),
         ],
       ),
     );

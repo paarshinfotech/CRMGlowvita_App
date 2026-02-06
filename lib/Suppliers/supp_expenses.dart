@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'supp_drawer.dart'; 
+import 'supp_drawer.dart';
 
 class SuppExpensesPage extends StatefulWidget {
   const SuppExpensesPage({super.key});
@@ -77,27 +77,33 @@ class _SuppExpensesPageState extends State<SuppExpensesPage> {
   final TextEditingController _searchController = TextEditingController();
 
   int get totalRecords => expenses.length;
-  double get totalExpenses => expenses.fold(0.0, (sum, e) => sum + (e['amount'] as num? ?? 0));
+  double get totalExpenses =>
+      expenses.fold(0.0, (sum, e) => sum + (e['amount'] as num? ?? 0));
   int get currentMonthExpenses {
     final now = DateTime.now();
-    return expenses
-        .where((expense) {
-          try {
-            final dt = DateTime.parse(expense['date'] ?? "");
-            return dt.month == now.month && dt.year == now.year;
-          } catch (_) {
-            return false;
-          }
-        })
-        .fold(0, (sum, e) => sum + (e['amount'] as num? ?? 0).toInt());
+    return expenses.where((expense) {
+      try {
+        final dt = DateTime.parse(expense['date'] ?? "");
+        return dt.month == now.month && dt.year == now.year;
+      } catch (_) {
+        return false;
+      }
+    }).fold(0, (sum, e) => sum + (e['amount'] as num? ?? 0).toInt());
   }
 
   List<Map<String, dynamic>> get filteredExpenses {
     return expenses.where((expense) {
       final matchesSearch = _searchQuery.isEmpty ||
-          (expense['id']?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
-          (expense['type']?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
-          (expense['note']?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false);
+          (expense['id']?.toLowerCase().contains(_searchQuery.toLowerCase()) ??
+              false) ||
+          (expense['type']
+                  ?.toLowerCase()
+                  .contains(_searchQuery.toLowerCase()) ??
+              false) ||
+          (expense['note']
+                  ?.toLowerCase()
+                  .contains(_searchQuery.toLowerCase()) ??
+              false);
 
       final matchesPaymentMode = _selectedPaymentMode == 'All Payment Modes' ||
           expense['paymentMode'] == _selectedPaymentMode;
@@ -106,8 +112,10 @@ class _SuppExpensesPageState extends State<SuppExpensesPage> {
       if (_startDate != null || _endDate != null) {
         try {
           final dt = DateTime.parse(expense['date']);
-          if (_startDate != null && dt.isBefore(_startDate!)) matchesDateRange = false;
-          if (_endDate != null && dt.isAfter(_endDate!)) matchesDateRange = false;
+          if (_startDate != null && dt.isBefore(_startDate!))
+            matchesDateRange = false;
+          if (_endDate != null && dt.isAfter(_endDate!))
+            matchesDateRange = false;
         } catch (_) {}
       }
 
@@ -116,7 +124,10 @@ class _SuppExpensesPageState extends State<SuppExpensesPage> {
       final matchesAmount = (expense['amount'] as num? ?? 0) >= minAmt &&
           (expense['amount'] as num? ?? 0) <= maxAmt;
 
-      return matchesSearch && matchesPaymentMode && matchesDateRange && matchesAmount;
+      return matchesSearch &&
+          matchesPaymentMode &&
+          matchesDateRange &&
+          matchesAmount;
     }).toList();
   }
 
@@ -159,16 +170,22 @@ class _SuppExpensesPageState extends State<SuppExpensesPage> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text('Delete Expense', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-        content: Text('Are you sure you want to delete this expense?', style: GoogleFonts.poppins()),
+        title: Text('Delete Expense',
+            style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+        content: Text('Are you sure you want to delete this expense?',
+            style: GoogleFonts.poppins()),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel', style: GoogleFonts.poppins(color: Colors.grey))),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel',
+                  style: GoogleFonts.poppins(color: Colors.grey))),
           TextButton(
             onPressed: () {
               _deleteExpense(id);
               Navigator.pop(context);
             },
-            child: Text('Delete', style: GoogleFonts.poppins(color: Colors.red)),
+            child:
+                Text('Delete', style: GoogleFonts.poppins(color: Colors.red)),
           ),
         ],
       ),
@@ -189,7 +206,8 @@ class _SuppExpensesPageState extends State<SuppExpensesPage> {
       appBar: AppBar(
         title: Text(
           "Expenses",
-          style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.black, fontSize: 18),
+          style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600, color: Colors.black, fontSize: 18),
         ),
         backgroundColor: Colors.white,
         iconTheme: const IconThemeData(color: Colors.black),
@@ -203,35 +221,76 @@ class _SuppExpensesPageState extends State<SuppExpensesPage> {
               alignment: Alignment.centerLeft,
               child: Text(
                 "Track and manage your business expenses related to product supply",
-                style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[600]),
+                style:
+                    GoogleFonts.poppins(fontSize: 13, color: Colors.grey[600]),
               ),
             ),
             const SizedBox(height: 13),
             Row(
               children: [
-                Expanded(child: _InfoCard(title: 'Total Expenses', value: '₹${totalExpenses.toStringAsFixed(0)}', subtitle: 'All-time business expenses')),
+                Expanded(
+                    child: _InfoCard(
+                        title: 'Total Expenses',
+                        value: '₹${totalExpenses.toStringAsFixed(0)}',
+                        subtitle: 'All-time business expenses')),
                 const SizedBox(width: 12),
-                Expanded(child: _InfoCard(title: 'This Month', value: '₹$currentMonthExpenses', subtitle: 'Current month spending')),
+                Expanded(
+                    child: _InfoCard(
+                        title: 'This Month',
+                        value: '₹$currentMonthExpenses',
+                        subtitle: 'Current month spending')),
                 const SizedBox(width: 12),
-                Expanded(child: _InfoCard(title: 'Total Records', value: '$totalRecords', subtitle: 'Total expense entries')),
+                Expanded(
+                    child: _InfoCard(
+                        title: 'Total Records',
+                        value: '$totalRecords',
+                        subtitle: 'Total expense entries')),
               ],
             ),
             const SizedBox(height: 14),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(_radius), border: Border.all(color: Colors.grey.shade200)),
+              decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(_radius),
+                  border: Border.all(color: Colors.grey.shade200)),
               child: Row(
                 children: [
-                  Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(10)), child: const Icon(Icons.account_balance_wallet, color: Colors.blue, size: 22)),
+                  Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                          color:
+                              Theme.of(context).primaryColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10)),
+                      child: Icon(Icons.account_balance_wallet,
+                          color: Theme.of(context).primaryColor, size: 22)),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('My Business Expenses', style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600)),
-                      Text('Track costs for raw materials, packaging, marketing, and more', style: GoogleFonts.poppins(fontSize: 10.5, color: Colors.grey.shade600)),
-                    ]),
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('My Business Expenses',
+                              style: GoogleFonts.poppins(
+                                  fontSize: 13, fontWeight: FontWeight.w600)),
+                          Text(
+                              'Track costs for raw materials, packaging, marketing, and more',
+                              style: GoogleFonts.poppins(
+                                  fontSize: 10.5, color: Colors.grey.shade600)),
+                        ]),
                   ),
-                  Container(padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7), decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(20)), child: Text('$totalRecords', style: GoogleFonts.poppins(color: Colors.blue, fontWeight: FontWeight.w600, fontSize: 11))),
+                  Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 11, vertical: 7),
+                      decoration: BoxDecoration(
+                          color:
+                              Theme.of(context).primaryColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20)),
+                      child: Text('$totalRecords',
+                          style: GoogleFonts.poppins(
+                              color: Theme.of(context).primaryColor,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 11))),
                 ],
               ),
             ),
@@ -246,15 +305,37 @@ class _SuppExpensesPageState extends State<SuppExpensesPage> {
                     decoration: InputDecoration(
                       hintText: 'Search expenses...',
                       hintStyle: GoogleFonts.poppins(fontSize: 13),
-                      prefixIcon: const Icon(Icons.search, color: Colors.grey, size: 20),
-                      suffixIcon: _searchQuery.isEmpty ? null : IconButton(icon: const Icon(Icons.close, size: 16), onPressed: () { _searchController.clear(); setState(() => _searchQuery = ''); }),
-                      filled: true, fillColor: Colors.white,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(_radius), borderSide: BorderSide.none),
+                      prefixIcon: const Icon(Icons.search,
+                          color: Colors.grey, size: 20),
+                      suffixIcon: _searchQuery.isEmpty
+                          ? null
+                          : IconButton(
+                              icon: const Icon(Icons.close, size: 16),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _searchQuery = '');
+                              }),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(_radius),
+                          borderSide: BorderSide.none),
                     ),
                   ),
                 ),
                 const SizedBox(width: 10),
-                Expanded(flex: 1, child: Container(height: 42, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(_radius), border: Border.all(color: Colors.grey.shade300)), child: IconButton(icon: const Icon(Icons.filter_list, color: Colors.black87, size: 18), onPressed: _openFilterDialog))),
+                Expanded(
+                    flex: 1,
+                    child: Container(
+                        height: 42,
+                        decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(_radius),
+                            border: Border.all(color: Colors.grey.shade300)),
+                        child: IconButton(
+                            icon: const Icon(Icons.filter_list,
+                                color: Colors.black87, size: 18),
+                            onPressed: _openFilterDialog))),
               ],
             ),
             const SizedBox(height: 12),
@@ -264,28 +345,41 @@ class _SuppExpensesPageState extends State<SuppExpensesPage> {
                 OutlinedButton.icon(
                   onPressed: () {},
                   icon: const Icon(Icons.download, size: 16),
-                  label: Text("Export", style: GoogleFonts.poppins(fontSize: 13)),
-                  style: OutlinedButton.styleFrom(foregroundColor: Colors.blue, side: const BorderSide(color: Colors.blue), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                  label:
+                      Text("Export", style: GoogleFonts.poppins(fontSize: 13)),
+                  style: OutlinedButton.styleFrom(
+                      foregroundColor: Theme.of(context).primaryColor,
+                      side: BorderSide(color: Theme.of(context).primaryColor),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8))),
                 ),
                 const SizedBox(width: 13),
                 ElevatedButton.icon(
                   onPressed: _openAddExpenseDialog,
                   icon: const Icon(Icons.add, size: 17),
-                  label: Text("Add Expense", style: GoogleFonts.poppins(fontSize: 13)),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                  label: Text("Add Expense",
+                      style: GoogleFonts.poppins(fontSize: 13)),
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).primaryColor,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8))),
                 ),
               ],
             ),
             const SizedBox(height: 13),
             Expanded(
               child: filteredExpenses.isEmpty
-                  ? Center(child: Text('No expenses found', style: GoogleFonts.poppins(fontSize: 13)))
+                  ? Center(
+                      child: Text('No expenses found',
+                          style: GoogleFonts.poppins(fontSize: 13)))
                   : ListView.builder(
                       itemCount: filteredExpenses.length,
                       itemBuilder: (_, i) => SuppExpenseCard(
                         expense: filteredExpenses[i],
                         onView: () {},
-                        onDelete: () => _confirmDelete(filteredExpenses[i]['id']),
+                        onDelete: () =>
+                            _confirmDelete(filteredExpenses[i]['id']),
                       ),
                     ),
             ),
@@ -301,13 +395,17 @@ class SuppExpenseCard extends StatelessWidget {
   final VoidCallback? onView;
   final VoidCallback? onDelete;
 
-  const SuppExpenseCard({super.key, required this.expense, this.onView, this.onDelete});
+  const SuppExpenseCard(
+      {super.key, required this.expense, this.onView, this.onDelete});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 13),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(13), border: Border.all(color: const Color(0xFFE5E7EB))),
+      decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(13),
+          border: Border.all(color: const Color(0xFFE5E7EB))),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Column(
@@ -319,31 +417,60 @@ class SuppExpenseCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("#${expense['id']}", style: GoogleFonts.poppins(color: const Color(0xFF2563EB), fontWeight: FontWeight.w600, fontSize: 11)),
+                      Text("#${expense['id']}",
+                          style: GoogleFonts.poppins(
+                              color: Theme.of(context).primaryColor,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 11)),
                       const SizedBox(height: 2),
-                      Text(expense['date'], style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 9)),
+                      Text(expense['date'],
+                          style: GoogleFonts.poppins(
+                              color: Colors.grey[600], fontSize: 9)),
                     ],
                   ),
                 ),
-                Text("₹${expense['amount']}", style: GoogleFonts.poppins(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 15)),
+                Text("₹${expense['amount']}",
+                    style: GoogleFonts.poppins(
+                        color: Colors.black,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15)),
               ],
             ),
             const SizedBox(height: 8),
-            Text(expense['type'], style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600)),
-            Text(expense['paymentMode'], style: GoogleFonts.poppins(fontSize: 10, color: Colors.grey[700])),
+            Text(expense['type'],
+                style: GoogleFonts.poppins(
+                    fontSize: 12, fontWeight: FontWeight.w600)),
+            Text(expense['paymentMode'],
+                style:
+                    GoogleFonts.poppins(fontSize: 10, color: Colors.grey[700])),
             const SizedBox(height: 8),
-            Text("Invoice: ${expense['invoiceNo']}", style: GoogleFonts.poppins(fontSize: 10, color: Colors.grey[700])),
+            Text("Invoice: ${expense['invoiceNo']}",
+                style:
+                    GoogleFonts.poppins(fontSize: 10, color: Colors.grey[700])),
             if (expense['note']?.isNotEmpty == true) ...[
               const SizedBox(height: 4),
-              Text(expense['note'], style: GoogleFonts.poppins(fontSize: 10, color: Colors.grey[600]), overflow: TextOverflow.ellipsis, maxLines: 2),
+              Text(expense['note'],
+                  style: GoogleFonts.poppins(
+                      fontSize: 10, color: Colors.grey[600]),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2),
             ],
             const SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                TextButton(onPressed: onView, child: Text("View", style: GoogleFonts.poppins(color: Colors.blue, fontSize: 12))),
+                TextButton(
+                    onPressed: onView,
+                    child: Text("View",
+                        style: GoogleFonts.poppins(
+                            color: Theme.of(context).primaryColor,
+                            fontSize: 12))),
                 const SizedBox(width: 8),
-                TextButton(onPressed: onDelete, child: Text("Delete", style: GoogleFonts.poppins(color: Colors.red, fontSize: 12))),
+                TextButton(
+                    onPressed: onDelete,
+                    child: Text("Delete",
+                        style: GoogleFonts.poppins(
+                            color: Colors.red, fontSize: 12))),
               ],
             ),
           ],
@@ -355,19 +482,30 @@ class SuppExpenseCard extends StatelessWidget {
 
 class _InfoCard extends StatelessWidget {
   final String title, value, subtitle;
-  const _InfoCard({required this.title, required this.value, required this.subtitle});
+  const _InfoCard(
+      {required this.title, required this.value, required this.subtitle});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade200)),
+      decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade200)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title, style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w500, color: Colors.grey[600])),
+        Text(title,
+            style: GoogleFonts.poppins(
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[600])),
         const SizedBox(height: 2),
-        Text(value, style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
+        Text(value,
+            style:
+                GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 1),
-        Text(subtitle, style: GoogleFonts.poppins(fontSize: 9, color: Colors.grey[500])),
+        Text(subtitle,
+            style: GoogleFonts.poppins(fontSize: 9, color: Colors.grey[500])),
       ]),
     );
   }
@@ -405,7 +543,12 @@ class _SuppAddExpenseDialogState extends State<SuppAddExpenseDialog> {
     'Office Supplies',
   ];
 
-  final List<String> _paymentModes = ['Cash', 'UPI', 'Debit Card', 'Net Banking'];
+  final List<String> _paymentModes = [
+    'Cash',
+    'UPI',
+    'Debit Card',
+    'Net Banking'
+  ];
 
   @override
   void dispose() {
@@ -418,7 +561,8 @@ class _SuppAddExpenseDialogState extends State<SuppAddExpenseDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text('Add New Expense', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+      title: Text('Add New Expense',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
       content: SizedBox(
         width: double.maxFinite,
         child: Form(
@@ -429,47 +573,76 @@ class _SuppAddExpenseDialogState extends State<SuppAddExpenseDialog> {
               children: [
                 DropdownButtonFormField<String>(
                   value: _selectedType,
-                  decoration: InputDecoration(labelText: 'Expense Type *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8))),
-                  items: _expenseTypes.map((type) => DropdownMenuItem(value: type, child: Text(type))).toList(),
+                  decoration: InputDecoration(
+                      labelText: 'Expense Type *',
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8))),
+                  items: _expenseTypes
+                      .map((type) =>
+                          DropdownMenuItem(value: type, child: Text(type)))
+                      .toList(),
                   onChanged: (v) => setState(() => _selectedType = v),
                   validator: (v) => v == null ? 'Required' : null,
                 ),
                 const SizedBox(height: 12),
                 InkWell(
                   onTap: () async {
-                    final date = await showDatePicker(context: context, initialDate: _selectedDate, firstDate: DateTime(2020), lastDate: DateTime.now());
+                    final date = await showDatePicker(
+                        context: context,
+                        initialDate: _selectedDate,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime.now());
                     if (date != null) setState(() => _selectedDate = date);
                   },
                   child: InputDecorator(
-                    decoration: InputDecoration(labelText: 'Date *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8))),
-                    child: Text('${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}'),
+                    decoration: InputDecoration(
+                        labelText: 'Date *',
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8))),
+                    child: Text(
+                        '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}'),
                   ),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _amountController,
                   keyboardType: TextInputType.number,
-                  decoration: InputDecoration(labelText: 'Amount (₹) *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8))),
+                  decoration: InputDecoration(
+                      labelText: 'Amount (₹) *',
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8))),
                   validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: _selectedPaymentMode,
-                  decoration: InputDecoration(labelText: 'Payment Mode *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8))),
-                  items: _paymentModes.map((mode) => DropdownMenuItem(value: mode, child: Text(mode))).toList(),
+                  decoration: InputDecoration(
+                      labelText: 'Payment Mode *',
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8))),
+                  items: _paymentModes
+                      .map((mode) =>
+                          DropdownMenuItem(value: mode, child: Text(mode)))
+                      .toList(),
                   onChanged: (v) => setState(() => _selectedPaymentMode = v),
                   validator: (v) => v == null ? 'Required' : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _invoiceController,
-                  decoration: InputDecoration(labelText: 'Invoice Number (Optional)', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8))),
+                  decoration: InputDecoration(
+                      labelText: 'Invoice Number (Optional)',
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8))),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _noteController,
                   maxLines: 3,
-                  decoration: InputDecoration(labelText: 'Note (Optional)', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8))),
+                  decoration: InputDecoration(
+                      labelText: 'Note (Optional)',
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8))),
                 ),
               ],
             ),
@@ -477,13 +650,16 @@ class _SuppAddExpenseDialogState extends State<SuppAddExpenseDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel', style: GoogleFonts.poppins())),
+        TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: GoogleFonts.poppins())),
         ElevatedButton(
           onPressed: () {
             if (_formKey.currentState!.validate()) {
               // TODO: Add expense logic here
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Expense added successfully')));
+              ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Expense added successfully')));
             }
           },
           child: Text('Add Expense', style: GoogleFonts.poppins()),
@@ -498,7 +674,14 @@ class FilterOptionsDialog extends StatefulWidget {
   final String paymentMode;
   final DateTime? fromDate, toDate;
   final double? minAmount, maxAmount;
-  const FilterOptionsDialog({Key? key, this.paymentMode = 'All Payment Modes', this.fromDate, this.toDate, this.minAmount, this.maxAmount}) : super(key: key);
+  const FilterOptionsDialog(
+      {Key? key,
+      this.paymentMode = 'All Payment Modes',
+      this.fromDate,
+      this.toDate,
+      this.minAmount,
+      this.maxAmount})
+      : super(key: key);
   @override
   State<FilterOptionsDialog> createState() => _FilterOptionsDialogState();
 }
@@ -514,8 +697,10 @@ class _FilterOptionsDialogState extends State<FilterOptionsDialog> {
     _selectedPaymentMode = widget.paymentMode;
     _fromDate = widget.fromDate;
     _toDate = widget.toDate;
-    _minAmountCtrl = TextEditingController(text: widget.minAmount?.toString() ?? "0");
-    _maxAmountCtrl = TextEditingController(text: widget.maxAmount?.toString() ?? "");
+    _minAmountCtrl =
+        TextEditingController(text: widget.minAmount?.toString() ?? "0");
+    _maxAmountCtrl =
+        TextEditingController(text: widget.maxAmount?.toString() ?? "");
   }
 
   @override
@@ -525,12 +710,15 @@ class _FilterOptionsDialogState extends State<FilterOptionsDialog> {
     super.dispose();
   }
 
-  String _formatDate(DateTime? dt) => dt == null ? 'dd-mm-yyyy' : "${dt.day.toString().padLeft(2, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.year}";
+  String _formatDate(DateTime? dt) => dt == null
+      ? 'dd-mm-yyyy'
+      : "${dt.day.toString().padLeft(2, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.year}";
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text("Filter Options", style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+      title: Text("Filter Options",
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
       content: SizedBox(
         width: double.maxFinite,
         child: SingleChildScrollView(
@@ -539,8 +727,15 @@ class _FilterOptionsDialogState extends State<FilterOptionsDialog> {
             children: [
               DropdownButtonFormField<String>(
                 value: _selectedPaymentMode,
-                decoration: InputDecoration(labelText: 'Payment Mode', border: OutlineInputBorder()),
-                items: ['All Payment Modes', 'Cash', 'UPI', 'Debit Card', 'Net Banking']
+                decoration: InputDecoration(
+                    labelText: 'Payment Mode', border: OutlineInputBorder()),
+                items: [
+                  'All Payment Modes',
+                  'Cash',
+                  'UPI',
+                  'Debit Card',
+                  'Net Banking'
+                ]
                     .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                     .toList(),
                 onChanged: (v) => setState(() => _selectedPaymentMode = v!),
@@ -548,23 +743,59 @@ class _FilterOptionsDialogState extends State<FilterOptionsDialog> {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Expanded(child: InkWell(onTap: () async {
-                    final picked = await showDatePicker(context: context, initialDate: _fromDate ?? DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2035));
-                    if (picked != null) setState(() => _fromDate = picked);
-                  }, child: InputDecorator(decoration: InputDecoration(labelText: 'From Date', border: OutlineInputBorder()), child: Text(_formatDate(_fromDate))))),
+                  Expanded(
+                      child: InkWell(
+                          onTap: () async {
+                            final picked = await showDatePicker(
+                                context: context,
+                                initialDate: _fromDate ?? DateTime.now(),
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime(2035));
+                            if (picked != null)
+                              setState(() => _fromDate = picked);
+                          },
+                          child: InputDecorator(
+                              decoration: InputDecoration(
+                                  labelText: 'From Date',
+                                  border: OutlineInputBorder()),
+                              child: Text(_formatDate(_fromDate))))),
                   const SizedBox(width: 8),
-                  Expanded(child: InkWell(onTap: () async {
-                    final picked = await showDatePicker(context: context, initialDate: _toDate ?? DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2035));
-                    if (picked != null) setState(() => _toDate = picked);
-                  }, child: InputDecorator(decoration: InputDecoration(labelText: 'To Date', border: OutlineInputBorder()), child: Text(_formatDate(_toDate))))),
+                  Expanded(
+                      child: InkWell(
+                          onTap: () async {
+                            final picked = await showDatePicker(
+                                context: context,
+                                initialDate: _toDate ?? DateTime.now(),
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime(2035));
+                            if (picked != null)
+                              setState(() => _toDate = picked);
+                          },
+                          child: InputDecorator(
+                              decoration: InputDecoration(
+                                  labelText: 'To Date',
+                                  border: OutlineInputBorder()),
+                              child: Text(_formatDate(_toDate))))),
                 ],
               ),
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Expanded(child: TextFormField(controller: _minAmountCtrl, decoration: InputDecoration(labelText: 'Min Amount (₹)', border: OutlineInputBorder()), keyboardType: TextInputType.number)),
+                  Expanded(
+                      child: TextFormField(
+                          controller: _minAmountCtrl,
+                          decoration: InputDecoration(
+                              labelText: 'Min Amount (₹)',
+                              border: OutlineInputBorder()),
+                          keyboardType: TextInputType.number)),
                   const SizedBox(width: 8),
-                  Expanded(child: TextFormField(controller: _maxAmountCtrl, decoration: InputDecoration(labelText: 'Max Amount (₹)', border: OutlineInputBorder()), keyboardType: TextInputType.number)),
+                  Expanded(
+                      child: TextFormField(
+                          controller: _maxAmountCtrl,
+                          decoration: InputDecoration(
+                              labelText: 'Max Amount (₹)',
+                              border: OutlineInputBorder()),
+                          keyboardType: TextInputType.number)),
                 ],
               ),
             ],
@@ -572,25 +803,30 @@ class _FilterOptionsDialogState extends State<FilterOptionsDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel')),
-        TextButton(onPressed: () {
-          setState(() {
-            _selectedPaymentMode = 'All Payment Modes';
-            _fromDate = null;
-            _toDate = null;
-            _minAmountCtrl.text = "0";
-            _maxAmountCtrl.clear();
-          });
-        }, child: Text('Reset')),
-        ElevatedButton(onPressed: () {
-          Navigator.pop(context, {
-            "paymentMode": _selectedPaymentMode,
-            "fromDate": _fromDate,
-            "toDate": _toDate,
-            "minAmount": double.tryParse(_minAmountCtrl.text) ?? 0,
-            "maxAmount": double.tryParse(_maxAmountCtrl.text),
-          });
-        }, child: Text('Apply')),
+        TextButton(
+            onPressed: () => Navigator.pop(context), child: Text('Cancel')),
+        TextButton(
+            onPressed: () {
+              setState(() {
+                _selectedPaymentMode = 'All Payment Modes';
+                _fromDate = null;
+                _toDate = null;
+                _minAmountCtrl.text = "0";
+                _maxAmountCtrl.clear();
+              });
+            },
+            child: Text('Reset')),
+        ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context, {
+                "paymentMode": _selectedPaymentMode,
+                "fromDate": _fromDate,
+                "toDate": _toDate,
+                "minAmount": double.tryParse(_minAmountCtrl.text) ?? 0,
+                "maxAmount": double.tryParse(_maxAmountCtrl.text),
+              });
+            },
+            child: Text('Apply')),
       ],
     );
   }

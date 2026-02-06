@@ -5,7 +5,6 @@ import 'services/api_service.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
-import 'package:http/http.dart' as http;
 import 'addon_model.dart';
 
 class AddServicePage extends StatefulWidget {
@@ -555,7 +554,7 @@ class _AddServicePageState extends State<AddServicePage>
                         subtitle: const Text(
                             "Calculate staff commission when service is sold",
                             style: TextStyle(fontSize: 11)),
-                        activeColor: Colors.blue,
+                        activeColor: Theme.of(context).primaryColor,
                         contentPadding: EdgeInsets.zero,
                         dense: true,
                       ),
@@ -582,7 +581,7 @@ class _AddServicePageState extends State<AddServicePage>
                                       setState(() => homeService = val),
                                   title: const Text("Enable Home Service",
                                       style: TextStyle(fontSize: 13)),
-                                  activeColor: Colors.blue,
+                                  activeColor: Theme.of(context).primaryColor,
                                   contentPadding: EdgeInsets.zero,
                                   dense: true,
                                 ),
@@ -610,7 +609,7 @@ class _AddServicePageState extends State<AddServicePage>
                                       setState(() => weddingService = val),
                                   title: const Text("Enable Wedding Service",
                                       style: TextStyle(fontSize: 13)),
-                                  activeColor: Colors.blue,
+                                  activeColor: Theme.of(context).primaryColor,
                                   contentPadding: EdgeInsets.zero,
                                   dense: true,
                                 ),
@@ -693,7 +692,8 @@ class _AddServicePageState extends State<AddServicePage>
                                               }
                                             });
                                           },
-                                          activeColor: const Color(0xFF6B4E71),
+                                          activeColor:
+                                              Theme.of(context).primaryColor,
                                           shape: RoundedRectangleBorder(
                                             borderRadius:
                                                 BorderRadius.circular(4),
@@ -745,8 +745,8 @@ class _AddServicePageState extends State<AddServicePage>
                                                   }
                                                 });
                                               },
-                                              activeColor:
-                                                  const Color(0xFF6B4E71),
+                                              activeColor: Theme.of(context)
+                                                  .primaryColor,
                                               shape: RoundedRectangleBorder(
                                                 borderRadius:
                                                     BorderRadius.circular(4),
@@ -822,7 +822,7 @@ class _AddServicePageState extends State<AddServicePage>
                             },
                             title: const Text("Enable Tax",
                                 style: TextStyle(fontSize: 13)),
-                            activeColor: Colors.blue,
+                            activeColor: Theme.of(context).primaryColor,
                             contentPadding: EdgeInsets.zero,
                             dense: true,
                           ),
@@ -860,7 +860,7 @@ class _AddServicePageState extends State<AddServicePage>
                                 setState(() => enableOnlineBooking = val),
                             title: const Text("Enable Online Booking",
                                 style: TextStyle(fontSize: 13)),
-                            activeColor: Colors.blue,
+                            activeColor: Theme.of(context).primaryColor,
                             contentPadding: EdgeInsets.zero,
                             dense: true,
                           ),
@@ -1011,7 +1011,7 @@ class _AddServicePageState extends State<AddServicePage>
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
-                backgroundColor: Colors.blue,
+                backgroundColor: Theme.of(context).primaryColor,
                 foregroundColor: Colors.white,
                 elevation: 2,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -1054,65 +1054,41 @@ class _AddServicePageState extends State<AddServicePage>
     });
 
     try {
-      final token = await ApiService.getAuthToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
+      final members = await ApiService.getStaff();
+
+      List<String> staffNames = [];
+      staffNameToId.clear();
+      staffIdToName.clear();
+      for (var staff in members) {
+        String name = staff.fullName ?? 'Unknown Staff';
+        String id = staff.id ?? '';
+        staffNames.add(name);
+        staffNameToId[name] = id;
+        staffIdToName[id] = name;
       }
 
-      final response = await http.get(
-        Uri.parse('https://partners.v2winonline.com/api/crm/staff'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-      );
+      setState(() {
+        allStaff = staffNames;
+        staffMembers = ['All Staff', ...allStaff];
+        _isStaffLoading = false;
 
-      if (response.statusCode == 200) {
-        final decoded = json.decode(response.body);
-        List<dynamic> staffData;
-        if (decoded is List) {
-          staffData = decoded;
-        } else {
-          staffData = decoded['data'] ?? [];
-        }
-
-        List<String> staffNames = [];
-        staffNameToId.clear();
-        staffIdToName.clear();
-        for (var staff in staffData) {
-          String name = staff['fullName'] ?? 'Unknown Staff';
-          String id = staff['_id'] ?? '';
-          staffNames.add(name);
-          staffNameToId[name] = id;
-          staffIdToName[id] = name;
-        }
-
-        setState(() {
-          allStaff = staffNames;
-          staffMembers = ['All Staff', ...allStaff];
-          _isStaffLoading = false;
-
-          // If we have selectedStaff that contains IDs, translate them to names
-          if (selectedStaff != null && selectedStaff != 'All Staff') {
-            List<String> currentParts = selectedStaff!.split(',');
-            List<String> names = [];
-            for (var part in currentParts) {
-              String trimmed = part.trim();
-              if (staffIdToName.containsKey(trimmed)) {
-                names.add(staffIdToName[trimmed]!);
-              } else {
-                names.add(trimmed);
-              }
+        // If we have selectedStaff that contains IDs, translate them to names
+        if (selectedStaff != null && selectedStaff != 'All Staff') {
+          List<String> currentParts = selectedStaff!.split(',');
+          List<String> names = [];
+          for (var part in currentParts) {
+            String trimmed = part.trim();
+            if (staffIdToName.containsKey(trimmed)) {
+              names.add(staffIdToName[trimmed]!);
+            } else {
+              names.add(trimmed);
             }
-            selectedStaff = names.join(',');
           }
-        });
-      } else {
-        throw Exception('Failed to load staff: ${response.statusCode}');
-      }
+          selectedStaff = names.join(',');
+        }
+      });
     } catch (e) {
       print('Error fetching staff: $e');
-      // Fallback to default values if API call fails
       setState(() {
         staffMembers = ['All Staff'];
         _isStaffLoading = false;
@@ -1127,57 +1103,27 @@ class _AddServicePageState extends State<AddServicePage>
 
     try {
       print('Fetching categories...');
-      final token = await ApiService.getAuthToken();
-      print('Token retrieved: $token'); // Debug print
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
+      final categoryData = await ApiService.getServiceCategories();
 
-      final response = await http.get(
-        Uri.parse('https://partners.v2winonline.com/api/crm/categories'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'crm_access_token=$token',
-        },
-      );
-      print(
-          'Category API Response Status: ${response.statusCode}'); // Debug print
+      setState(() {
+        categories = [];
+        categoryIdMap = {}; // name → id
 
-      if (response.statusCode == 200) {
-        final decoded = json.decode(response.body);
-        print('Category API Response: $decoded'); // Debug print
-        List<dynamic> categoryData;
-        if (decoded is List) {
-          categoryData = decoded;
-        } else {
-          categoryData = decoded['data'] ?? [];
+        for (var cat in categoryData) {
+          String name = cat['name'] ?? 'Unknown Category';
+          String id = cat['_id'] ?? '';
+          categories.add(name);
+          categoryIdMap[name] = id;
         }
 
-        setState(() {
-          categories = [];
-          categoryIdMap = {}; // name → id
-
-          for (var cat in categoryData) {
-            String name = cat['name'] ?? 'Unknown Category';
-            String id = cat['_id'] ?? '';
-            categories.add(name);
-            categoryIdMap[name] = id; // ← important
-          }
-
-          // Fix: Ensure selectedCategory from data is in the list to avoid dropdown crash
-          if (selectedCategory != null &&
-              !categories.contains(selectedCategory)) {
-            categories.add(selectedCategory!);
-          }
-        });
-        print('Categories loaded: ${categories.length}');
-      } else {
-        print('Category API Error: ${response.body}'); // Debug print
-        throw Exception('Failed to load categories: ${response.statusCode}');
-      }
+        if (selectedCategory != null &&
+            !categories.contains(selectedCategory)) {
+          categories.add(selectedCategory!);
+        }
+      });
+      print('Categories loaded: ${categories.length}');
     } catch (e) {
       print('Error fetching categories: $e');
-      // Fallback to empty list
       setState(() {
         categories = [];
       });
@@ -1194,43 +1140,31 @@ class _AddServicePageState extends State<AddServicePage>
     });
 
     try {
-      print('Fetching services for category: $categoryName');
-      final fetchedServices = await ApiService.getServices();
+      final servicesData = await ApiService.getServicesByCategory(categoryName);
 
-      // Filter services by selected category
-      List<String> servicesInCategory = [];
-      Set<String> uniqueServiceNames = <String>{};
+      List<String> names = [];
+      for (var s in servicesData) {
+        String name = s['name'] ?? 'Unknown Service';
+        names.add(name);
 
-      serviceNameToAddonIds.clear();
-
-      for (var service in fetchedServices) {
-        String serviceCategory = service.category ?? '';
-
-        if (serviceCategory == categoryName) {
-          String sName = service.name ?? 'Unknown Service';
-          if (!uniqueServiceNames.contains(sName)) {
-            uniqueServiceNames.add(sName);
-            servicesInCategory.add(sName);
-            serviceNameToAddonIds[sName] = service.addOns ?? [];
-          }
+        if (s['addOns'] != null && s['addOns'] is List) {
+          serviceNameToAddonIds[name] = List<String>.from(s['addOns']);
         }
       }
 
       setState(() {
-        categoryServicesMap[categoryName] = servicesInCategory;
-        serviceNames = servicesInCategory;
-
-        if (selectedServiceName != null &&
-            !serviceNames.contains(selectedServiceName)) {
-          serviceNames.add(selectedServiceName!);
+        categoryServicesMap[categoryName] = names;
+        if (selectedCategory == categoryName) {
+          serviceNames = names;
+          if (selectedServiceName != null &&
+              !serviceNames.contains(selectedServiceName)) {
+            serviceNames.add(selectedServiceName!);
+          }
         }
+        _isServicesLoading = false;
       });
     } catch (e) {
-      print('Error fetching services: $e');
-      setState(() {
-        serviceNames = [];
-      });
-    } finally {
+      print('Error fetching services for category: $e');
       setState(() {
         _isServicesLoading = false;
       });
@@ -1271,7 +1205,8 @@ class _AddServicePageState extends State<AddServicePage>
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: Colors.blue, width: 1.5),
+        borderSide:
+            BorderSide(color: Theme.of(context).primaryColor, width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
@@ -1484,16 +1419,8 @@ class _AddServicePageState extends State<AddServicePage>
                           };
 
                           try {
-                            final token = await ApiService.getAuthToken();
-                            final response = await http.post(
-                              Uri.parse(
-                                  'https://admin.v2winonline.com/api/admin/categories'),
-                              headers: {
-                                'Content-Type': 'application/json',
-                                'Cookie': 'crm_access_token=$token',
-                              },
-                              body: jsonEncode(payload),
-                            );
+                            final response =
+                                await ApiService.createMasterCategory(payload);
 
                             if (response.statusCode == 200 ||
                                 response.statusCode == 201) {
@@ -1703,20 +1630,8 @@ class _AddServicePageState extends State<AddServicePage>
                           };
 
                           try {
-                            final token = await ApiService.getAuthToken();
-                            if (token == null) {
-                              throw Exception('No authentication token found');
-                            }
-
-                            final response = await http.post(
-                              Uri.parse(
-                                  'https://admin.v2winonline.com/api/admin/services'),
-                              headers: {
-                                'Content-Type': 'application/json',
-                                'Cookie': 'crm_access_token=$token',
-                              },
-                              body: jsonEncode(payload),
-                            );
+                            final response =
+                                await ApiService.createMasterService(payload);
 
                             if (response.statusCode == 200 ||
                                 response.statusCode == 201) {
@@ -1768,7 +1683,7 @@ class _AddServicePageState extends State<AddServicePage>
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          backgroundColor: Colors.blue,
+                          backgroundColor: Theme.of(context).primaryColor,
                           foregroundColor: Colors.white,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),

@@ -7,7 +7,6 @@ import './supp_drawer.dart';
 import '../products.dart';
 import 'supp_profile.dart';
 
-
 class Supp_DashboardPage extends StatefulWidget {
   const Supp_DashboardPage({super.key});
 
@@ -15,7 +14,8 @@ class Supp_DashboardPage extends StatefulWidget {
   State<Supp_DashboardPage> createState() => _DashboardPageState();
 }
 
-class _DashboardPageState extends State<Supp_DashboardPage> with TickerProviderStateMixin {
+class _DashboardPageState extends State<Supp_DashboardPage>
+    with TickerProviderStateMixin {
   late AnimationController _kpiAnimationController;
   late Animation<double> _kpiFadeAnimation;
 
@@ -125,17 +125,24 @@ class _DashboardPageState extends State<Supp_DashboardPage> with TickerProviderS
 
     // Calculate product summary statistics
     final int totalProducts = productsList.length;
-    final int approvedProducts = productsList.where((p) => p['status'] == 'Approved').length;
-    final int pendingProducts = productsList.where((p) => p['status'] == 'Pending').length;
-    final int disapprovedProducts = productsList.where((p) => p['status'] == 'Disapproved').length;
-    final int outOfStockProducts = productsList.where((p) => p['stock_quantity'] == 0).length;
-    final int lowStockProducts = productsList.where((p) => p['stock_quantity'] > 0 && p['stock_quantity'] <= 10).length;
-    
+    final int approvedProducts =
+        productsList.where((p) => p['status'] == 'Approved').length;
+    final int pendingProducts =
+        productsList.where((p) => p['status'] == 'Pending').length;
+    final int disapprovedProducts =
+        productsList.where((p) => p['status'] == 'Disapproved').length;
+    final int outOfStockProducts =
+        productsList.where((p) => p['stock_quantity'] == 0).length;
+    final int lowStockProducts = productsList
+        .where((p) => p['stock_quantity'] > 0 && p['stock_quantity'] <= 10)
+        .length;
+
     // Category distribution
     final Map<String, int> categoryDistribution = {};
     for (var product in productsList) {
       final category = product['category'];
-      categoryDistribution[category] = (categoryDistribution[category] ?? 0) + 1;
+      categoryDistribution[category] =
+          (categoryDistribution[category] ?? 0) + 1;
     }
 
     const double bottomSheetInitialPadding = 120;
@@ -176,10 +183,11 @@ class _DashboardPageState extends State<Supp_DashboardPage> with TickerProviderS
                     ),
                     actions: [
                       IconButton(
-                        icon: const Icon(Icons.notifications, color: Colors.black),
+                        icon: const Icon(Icons.notifications,
+                            color: Colors.black),
                         onPressed: () {
                           print('Opening notifications page');
-                         /* Navigator.push(
+                          /* Navigator.push(
                             context,
                             MaterialPageRoute(builder: (_) => const NotificationPage()),
                           );*/
@@ -190,7 +198,8 @@ class _DashboardPageState extends State<Supp_DashboardPage> with TickerProviderS
                           print('Opening profile page');
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => const SuppProfilePage()),
+                            MaterialPageRoute(
+                                builder: (_) => const SuppProfilePage()),
                           );
                         },
                         child: Padding(
@@ -199,11 +208,13 @@ class _DashboardPageState extends State<Supp_DashboardPage> with TickerProviderS
                             padding: EdgeInsets.all(2.w),
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              border: Border.all(color: Colors.black, width: 1.w),
+                              border:
+                                  Border.all(color: Colors.black, width: 1.w),
                             ),
                             child: const CircleAvatar(
                               radius: 16,
-                              backgroundImage: AssetImage('assets/images/profile.jpeg'),
+                              backgroundImage:
+                                  AssetImage('assets/images/profile.jpeg'),
                               backgroundColor: Colors.white,
                             ),
                           ),
@@ -229,7 +240,9 @@ class _DashboardPageState extends State<Supp_DashboardPage> with TickerProviderS
                             SizedBox(height: 4.h),
                             Row(
                               children: [
-                                _MiniChip(text: today, icon: Icons.calendar_month_outlined),
+                                _MiniChip(
+                                    text: today,
+                                    icon: Icons.calendar_month_outlined),
                                 SizedBox(width: 8.w),
                               ],
                             ),
@@ -244,7 +257,8 @@ class _DashboardPageState extends State<Supp_DashboardPage> with TickerProviderS
                         height: 10.h,
                         decoration: const BoxDecoration(
                           color: Color(0xFFF7F7F8),
-                          borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+                          borderRadius:
+                              BorderRadius.vertical(top: Radius.circular(18)),
                         ),
                       ),
                     ),
@@ -257,8 +271,13 @@ class _DashboardPageState extends State<Supp_DashboardPage> with TickerProviderS
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Overview', style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700)),
-                          Text('Swipe', style: TextStyle(fontSize: 11.sp, color: Colors.grey[600])),
+                          Text('Overview',
+                              style: TextStyle(
+                                  fontSize: 13.sp,
+                                  fontWeight: FontWeight.w700)),
+                          Text('Swipe',
+                              style: TextStyle(
+                                  fontSize: 11.sp, color: Colors.grey[600])),
                         ],
                       ),
                     ),
@@ -289,7 +308,7 @@ class _DashboardPageState extends State<Supp_DashboardPage> with TickerProviderS
                                 value: '$approvedProducts',
                                 subtitle: 'Products',
                                 icon: Icons.check_circle_outline,
-                                accent: const Color(0xFF2563EB),
+                                accent: Theme.of(context).primaryColor,
                               );
                             }
                             if (i == 2) {
@@ -323,24 +342,31 @@ class _DashboardPageState extends State<Supp_DashboardPage> with TickerProviderS
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Product Summary', style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700)),
+                          Text('Product Summary',
+                              style: TextStyle(
+                                  fontSize: 13.sp,
+                                  fontWeight: FontWeight.w700)),
                           TextButton(
                             onPressed: () {
-                              print('Navigating to Products page from Dashboard');
-                             /* Navigator.push(
+                              print(
+                                  'Navigating to Products page from Dashboard');
+                              /* Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (_) => const Products(),
                                 ),
                               );*/
                             },
-                            child: Text('View All', style: TextStyle(fontSize: 11.sp, color: Colors.blue)),
+                            child: Text('View All',
+                                style: TextStyle(
+                                    fontSize: 11.sp,
+                                    color: Theme.of(context).primaryColor)),
                           ),
                         ],
                       ),
                     ),
                   ),
-                  
+
                   // Stock Status Summary
                   SliverToBoxAdapter(
                     child: Padding(
@@ -369,23 +395,34 @@ class _DashboardPageState extends State<Supp_DashboardPage> with TickerProviderS
                                 children: [
                                   _StockStatusIndicator(
                                     title: 'In Stock',
-                                    value: '${totalProducts - outOfStockProducts - lowStockProducts}',
+                                    value:
+                                        '${totalProducts - outOfStockProducts - lowStockProducts}',
                                     color: Colors.green,
-                                    percentage: ((totalProducts - outOfStockProducts - lowStockProducts) / totalProducts * 100).round(),
+                                    percentage: ((totalProducts -
+                                                outOfStockProducts -
+                                                lowStockProducts) /
+                                            totalProducts *
+                                            100)
+                                        .round(),
                                   ),
                                   SizedBox(width: 12.w),
                                   _StockStatusIndicator(
                                     title: 'Low Stock',
                                     value: '$lowStockProducts',
                                     color: Colors.orange,
-                                    percentage: (lowStockProducts / totalProducts * 100).round(),
+                                    percentage:
+                                        (lowStockProducts / totalProducts * 100)
+                                            .round(),
                                   ),
                                   SizedBox(width: 12.w),
                                   _StockStatusIndicator(
                                     title: 'Out of Stock',
                                     value: '$outOfStockProducts',
                                     color: Colors.red,
-                                    percentage: (outOfStockProducts / totalProducts * 100).round(),
+                                    percentage: (outOfStockProducts /
+                                            totalProducts *
+                                            100)
+                                        .round(),
                                   ),
                                 ],
                               ),
@@ -395,9 +432,9 @@ class _DashboardPageState extends State<Supp_DashboardPage> with TickerProviderS
                       ),
                     ),
                   ),
-                  
+
                   SliverToBoxAdapter(child: SizedBox(height: 12.h)),
-                  
+
                   // Category Distribution
                   SliverToBoxAdapter(
                     child: Padding(
@@ -428,10 +465,13 @@ class _DashboardPageState extends State<Supp_DashboardPage> with TickerProviderS
                                   scrollDirection: Axis.horizontal,
                                   itemCount: categoryDistribution.length,
                                   itemBuilder: (context, index) {
-                                    final category = categoryDistribution.keys.elementAt(index);
-                                    final count = categoryDistribution[category]!;
-                                    final percentage = (count / totalProducts * 100).round();
-                                    
+                                    final category = categoryDistribution.keys
+                                        .elementAt(index);
+                                    final count =
+                                        categoryDistribution[category]!;
+                                    final percentage =
+                                        (count / totalProducts * 100).round();
+
                                     return Padding(
                                       padding: EdgeInsets.only(right: 16.w),
                                       child: Column(
@@ -450,7 +490,8 @@ class _DashboardPageState extends State<Supp_DashboardPage> with TickerProviderS
                                             style: TextStyle(
                                               fontSize: 14.sp,
                                               fontWeight: FontWeight.w800,
-                                              color: const Color(0xFF457BFF),
+                                              color: Theme.of(context)
+                                                  .primaryColor,
                                             ),
                                           ),
                                           SizedBox(height: 4.h),
@@ -458,10 +499,13 @@ class _DashboardPageState extends State<Supp_DashboardPage> with TickerProviderS
                                             width: 60.w,
                                             height: 60.w,
                                             decoration: BoxDecoration(
-                                              color: const Color(0xFF457BFF).withOpacity(0.1),
+                                              color: Theme.of(context)
+                                                  .primaryColor
+                                                  .withOpacity(0.1),
                                               shape: BoxShape.circle,
                                               border: Border.all(
-                                                color: const Color(0xFF457BFF),
+                                                color: Theme.of(context)
+                                                    .primaryColor,
                                                 width: 2.w,
                                               ),
                                             ),
@@ -471,7 +515,8 @@ class _DashboardPageState extends State<Supp_DashboardPage> with TickerProviderS
                                                 style: TextStyle(
                                                   fontSize: 10.sp,
                                                   fontWeight: FontWeight.w700,
-                                                  color: const Color(0xFF457BFF),
+                                                  color: Theme.of(context)
+                                                      .primaryColor,
                                                 ),
                                               ),
                                             ),
@@ -489,7 +534,8 @@ class _DashboardPageState extends State<Supp_DashboardPage> with TickerProviderS
                     ),
                   ),
 
-                  SliverToBoxAdapter(child: SizedBox(height: bottomSheetInitialPadding.h)),
+                  SliverToBoxAdapter(
+                      child: SizedBox(height: bottomSheetInitialPadding.h)),
                 ],
               ),
             ],
@@ -505,7 +551,7 @@ class _StockStatusIndicator extends StatelessWidget {
   final String value;
   final Color color;
   final int percentage;
-  
+
   const _StockStatusIndicator({
     required this.title,
     required this.value,
@@ -586,14 +632,16 @@ class _MiniChip extends StatefulWidget {
   State<_MiniChip> createState() => _MiniChipState();
 }
 
-class _MiniChipState extends State<_MiniChip> with SingleTickerProviderStateMixin {
+class _MiniChipState extends State<_MiniChip>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(milliseconds: 100), vsync: this);
+    _controller = AnimationController(
+        duration: const Duration(milliseconds: 100), vsync: this);
     _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
@@ -624,7 +672,8 @@ class _MiniChipState extends State<_MiniChip> with SingleTickerProviderStateMixi
             children: [
               Icon(widget.icon, size: 12, color: Colors.black87),
               SizedBox(width: 4.w),
-              Text(widget.text, style: TextStyle(fontSize: 10.sp, color: Colors.black87)),
+              Text(widget.text,
+                  style: TextStyle(fontSize: 10.sp, color: Colors.black87)),
             ],
           ),
         ),
@@ -654,14 +703,16 @@ class _KpiCard extends StatefulWidget {
   State<_KpiCard> createState() => _KpiCardState();
 }
 
-class _KpiCardState extends State<_KpiCard> with SingleTickerProviderStateMixin {
+class _KpiCardState extends State<_KpiCard>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(milliseconds: 100), vsync: this);
+    _controller = AnimationController(
+        duration: const Duration(milliseconds: 100), vsync: this);
     _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
@@ -707,7 +758,8 @@ class _KpiCardState extends State<_KpiCard> with SingleTickerProviderStateMixin 
                   Expanded(
                     child: Text(
                       widget.title,
-                      style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                          fontSize: 11.sp, fontWeight: FontWeight.w700),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -715,9 +767,12 @@ class _KpiCardState extends State<_KpiCard> with SingleTickerProviderStateMixin 
                 ],
               ),
               SizedBox(height: 8.h),
-              Text(widget.value, style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800)),
+              Text(widget.value,
+                  style:
+                      TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800)),
               SizedBox(height: 2.h),
-              Text(widget.subtitle, style: TextStyle(fontSize: 10.sp, color: Colors.grey[600])),
+              Text(widget.subtitle,
+                  style: TextStyle(fontSize: 10.sp, color: Colors.grey[600])),
               if (widget.child != null) ...[
                 SizedBox(height: 6.h),
                 Expanded(child: widget.child!),

@@ -70,7 +70,8 @@ class TotalPage extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const NotificationPage()),
+                  MaterialPageRoute(
+                      builder: (context) => const NotificationPage()),
                 );
               },
             ),
@@ -103,22 +104,21 @@ class TotalPage extends StatelessWidget {
           ],
         ),
       ),
-
       backgroundColor: Colors.white,
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-             SizedBox(height: 30),
+            SizedBox(height: 30),
             GridView.count(
               crossAxisCount: 2,
               crossAxisSpacing: 18,
               mainAxisSpacing: 22,
               childAspectRatio: 0.9,
               shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(), // disables internal scroll
+              physics:
+                  const NeverScrollableScrollPhysics(), // disables internal scroll
               children: [
                 // Total Earnings
                 Container(
@@ -140,26 +140,39 @@ class TotalPage extends StatelessWidget {
                       return SingleChildScrollView(
                         physics: const NeverScrollableScrollPhysics(),
                         child: ConstrainedBox(
-                          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                          constraints:
+                              BoxConstraints(minHeight: constraints.maxHeight),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
                                 "Total Earnings",
-                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.black),
+                                style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black),
                                 overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: 2),
                               const Text(
                                 "All Time",
-                                style: TextStyle(color: Colors.black, fontSize: 13),
+                                style: TextStyle(
+                                    color: Colors.black, fontSize: 13),
                               ),
                               const Divider(),
                               const SizedBox(height: 12),
-                              const Text("₹ 0", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black)),
+                              const Text("₹ 0",
+                                  style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black)),
                               const SizedBox(height: 8),
-                              const Text("Completed Appointment : 0", style: TextStyle(fontSize: 13, color: Colors.black87)),
-                              const Text("Total Earnings : ₹ 0", style: TextStyle(fontSize: 13, color: Colors.black87)),
+                              const Text("Completed Appointment : 0",
+                                  style: TextStyle(
+                                      fontSize: 13, color: Colors.black87)),
+                              const Text("Total Earnings : ₹ 0",
+                                  style: TextStyle(
+                                      fontSize: 13, color: Colors.black87)),
                             ],
                           ),
                         ),
@@ -188,21 +201,40 @@ class TotalPage extends StatelessWidget {
                       return SingleChildScrollView(
                         physics: const NeverScrollableScrollPhysics(),
                         child: ConstrainedBox(
-                          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                          constraints:
+                              BoxConstraints(minHeight: constraints.maxHeight),
                           child: const Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text("All Appointments", style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Colors.black)),
+                              Text("All Appointments",
+                                  style: TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black)),
                               SizedBox(height: 2),
-                              Text("Past, Current & Future", style: TextStyle(color: Colors.black, fontSize: 13)),
+                              Text("Past, Current & Future",
+                                  style: TextStyle(
+                                      color: Colors.black, fontSize: 13)),
                               Divider(),
                               SizedBox(height: 12),
-                              Text("0 Appointments", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black)),
+                              Text("0 Appointments",
+                                  style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black)),
                               SizedBox(height: 8),
-                              Text("New : 0", style: TextStyle(fontSize: 13, color: Colors.black87)),
-                              Text("Confirmed : 0", style: TextStyle(fontSize: 13, color: Colors.black87)),
-                              Text("Completed : 0", style: TextStyle(fontSize: 13, color: Colors.black87)),
-                              Text("Cancelled : 0", style: TextStyle(fontSize: 13, color: Colors.black87)),
+                              Text("New : 0",
+                                  style: TextStyle(
+                                      fontSize: 13, color: Colors.black87)),
+                              Text("Confirmed : 0",
+                                  style: TextStyle(
+                                      fontSize: 13, color: Colors.black87)),
+                              Text("Completed : 0",
+                                  style: TextStyle(
+                                      fontSize: 13, color: Colors.black87)),
+                              Text("Cancelled : 0",
+                                  style: TextStyle(
+                                      fontSize: 13, color: Colors.black87)),
                             ],
                           ),
                         ),
@@ -231,21 +263,33 @@ class TotalPage extends StatelessWidget {
                       return SingleChildScrollView(
                         physics: const NeverScrollableScrollPhysics(),
                         child: ConstrainedBox(
-                          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                          constraints:
+                              BoxConstraints(minHeight: constraints.maxHeight),
                           child: const Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text("Total Booked Hours", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.black)),
+                              Text("Total Booked Hours",
+                                  style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black)),
                               const Text(
                                 "All Time",
-                                style: TextStyle(color: Colors.black, fontSize: 13),
+                                style: TextStyle(
+                                    color: Colors.black, fontSize: 13),
                               ),
                               SizedBox(height: 2),
                               Divider(),
                               SizedBox(height: 12),
-                              Text("0h", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black)),
+                              Text("0h",
+                                  style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black)),
                               SizedBox(height: 8),
-                              Text("Total Hours Booked", style: TextStyle(fontSize: 13, color: Colors.black87)),
+                              Text("Total Hours Booked",
+                                  style: TextStyle(
+                                      fontSize: 13, color: Colors.black87)),
                             ],
                           ),
                         ),
@@ -272,7 +316,11 @@ class TotalPage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text("Top Selling Services", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.black)),
+                      const Text("Top Selling Services",
+                          style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black)),
                       const Text(
                         "All Time",
                         style: TextStyle(color: Colors.black, fontSize: 13),
@@ -281,7 +329,7 @@ class TotalPage extends StatelessWidget {
                       Divider(),
                       Expanded(
                         child: SingleChildScrollView(
-                        child: TopSellingServices(),
+                          child: TopSellingServices(),
                         ),
                       ),
                     ],
@@ -293,7 +341,6 @@ class TotalPage extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-
                 // All Appointments
                 Container(
                   width: double.infinity,
@@ -316,109 +363,128 @@ class TotalPage extends StatelessWidget {
                     children: [
                       const Text(
                         "All Appointments",
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.w600),
                       ),
                       const Divider(),
                       const SizedBox(height: 10),
                       appointments.isEmpty
                           ? Center(
-                        child: Text(
-                          "No Upcoming Appointments",
-                          style: TextStyle(color: Colors.grey, fontSize: 14),
-                        ),
-                      )
+                              child: Text(
+                                "No Upcoming Appointments",
+                                style:
+                                    TextStyle(color: Colors.grey, fontSize: 14),
+                              ),
+                            )
                           : SizedBox(
-                        height: 300,
-                        child: ListView.separated(
-                          itemCount: appointments.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 16),
-                          itemBuilder: (context, index) {
-                            final appointment = appointments[index];
-                            return Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Date Box
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: Colors.blue.shade50,
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(color: Colors.blue.shade200),
-                                  ),
-                                  child: Column(
+                              height: 300,
+                              child: ListView.separated(
+                                itemCount: appointments.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(height: 16),
+                                itemBuilder: (context, index) {
+                                  final appointment = appointments[index];
+                                  return Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        appointment['date'],
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.bold, fontSize: 16),
-                                      ),
-                                      Text(
-                                        appointment['month'],
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.w600, fontSize: 12),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                // Appointment Info
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        appointment['time'],
-                                        style: TextStyle(
-                                            color: Colors.grey[700], fontSize: 14),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        appointment['service'],
-                                        style: const TextStyle(
-                                            fontSize: 15, fontWeight: FontWeight.bold),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        "${appointment['client']}, ${appointment['duration']} with ${appointment['staff']}",
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: Colors.grey[600],
-                                          fontWeight: FontWeight.w600,
+                                      // Date Box
+                                      Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(context)
+                                              .primaryColor
+                                              .withOpacity(0.05),
+                                          borderRadius:
+                                              BorderRadius.circular(6),
+                                          border: Border.all(
+                                              color: Theme.of(context)
+                                                  .primaryColor
+                                                  .withOpacity(0.2)),
+                                        ),
+                                        child: Column(
+                                          children: [
+                                            Text(
+                                              appointment['date'],
+                                              style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16),
+                                            ),
+                                            Text(
+                                              appointment['month'],
+                                              style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 12),
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                ),
-                                // Price + Status
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Row(
-                                      children: const [
-                                        Icon(Icons.lock_clock,
-                                            color: Colors.orange, size: 16),
-                                        SizedBox(width: 4),
-                                        Text(
-                                          "New",
-                                          style: TextStyle(
-                                              color: Colors.orange,
-                                              fontWeight: FontWeight.w600),
+                                      const SizedBox(width: 12),
+                                      // Appointment Info
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              appointment['time'],
+                                              style: TextStyle(
+                                                  color: Colors.grey[700],
+                                                  fontSize: 14),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              appointment['service'],
+                                              style: const TextStyle(
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.bold),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              "${appointment['client']}, ${appointment['duration']} with ${appointment['staff']}",
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                color: Colors.grey[600],
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      "₹ ${appointment['price']}",
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.bold, fontSize: 14),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            );
-                          },
-                        ),
-                      ),
+                                      ),
+                                      // Price + Status
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          Row(
+                                            children: const [
+                                              Icon(Icons.lock_clock,
+                                                  color: Colors.orange,
+                                                  size: 16),
+                                              SizedBox(width: 4),
+                                              Text(
+                                                "New",
+                                                style: TextStyle(
+                                                    color: Colors.orange,
+                                                    fontWeight:
+                                                        FontWeight.w600),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            "₹ ${appointment['price']}",
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ),
                     ],
                   ),
                 ),
@@ -444,7 +510,8 @@ class TotalPage extends StatelessWidget {
                     children: [
                       const Text(
                         "Staff Commission",
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(height: 4),
                       const Text(
@@ -453,64 +520,70 @@ class TotalPage extends StatelessWidget {
                       ),
                       const Divider(),
                       const SizedBox(height: 8),
-
                       staffList.isEmpty
                           ? const Center(
-                        child: Text(
-                          "No staff added yet.",
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      )
+                              child: Text(
+                                "No staff added yet.",
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            )
                           : SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: DataTable(
-                          headingRowColor: MaterialStateProperty.all(Color(0xFFF5F5F5)),
-                          columnSpacing: 24,
-                          columns: const [
-                            DataColumn(label: Text("Staff Member")),
-                            DataColumn(label: Text("Appointments")),
-                            DataColumn(label: Text("Sales")),
-                            DataColumn(label: Text("Commission")),
-                          ],
-                          rows: [
-                            ...staffList.map((staff) {
-                              return DataRow(cells: [
-                                DataCell(Text(staff['name'] ?? '')),
-                                DataCell(Text("${staff['appointments']}")),
-                                DataCell(Text("₹ ${staff['sales']}")),
-                                DataCell(Text("₹ ${staff['commission']}")),
-                              ]);
-                            }).toList(),
-                            // Totals Row
-                            DataRow(
-                              color: MaterialStateProperty.all(Colors.grey.shade100),
-                              cells: [
-                                const DataCell(Text(
-                                  "Total",
-                                  style: TextStyle(fontWeight: FontWeight.bold),
-                                )),
-                                DataCell(Text(
-                                  "${getTotal('appointments')}",
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
-                                )),
-                                DataCell(Text(
-                                  "₹ ${getTotal('sales')}",
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
-                                )),
-                                DataCell(Text(
-                                  "₹ ${getTotal('commission')}",
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
-                                )),
-                              ],
+                              scrollDirection: Axis.horizontal,
+                              child: DataTable(
+                                headingRowColor: MaterialStateProperty.all(
+                                    Color(0xFFF5F5F5)),
+                                columnSpacing: 24,
+                                columns: const [
+                                  DataColumn(label: Text("Staff Member")),
+                                  DataColumn(label: Text("Appointments")),
+                                  DataColumn(label: Text("Sales")),
+                                  DataColumn(label: Text("Commission")),
+                                ],
+                                rows: [
+                                  ...staffList.map((staff) {
+                                    return DataRow(cells: [
+                                      DataCell(Text(staff['name'] ?? '')),
+                                      DataCell(
+                                          Text("${staff['appointments']}")),
+                                      DataCell(Text("₹ ${staff['sales']}")),
+                                      DataCell(
+                                          Text("₹ ${staff['commission']}")),
+                                    ]);
+                                  }).toList(),
+                                  // Totals Row
+                                  DataRow(
+                                    color: MaterialStateProperty.all(
+                                        Colors.grey.shade100),
+                                    cells: [
+                                      const DataCell(Text(
+                                        "Total",
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.bold),
+                                      )),
+                                      DataCell(Text(
+                                        "${getTotal('appointments')}",
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold),
+                                      )),
+                                      DataCell(Text(
+                                        "₹ ${getTotal('sales')}",
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold),
+                                      )),
+                                      DataCell(Text(
+                                        "₹ ${getTotal('commission')}",
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold),
+                                      )),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
-                          ],
-                        ),
-                      ),
                       const SizedBox(height: 12),
                     ],
                   ),
                 ),
-
               ],
             ),
           ],
@@ -542,7 +615,6 @@ bool isToday(DateTime date) {
       date.month == now.month &&
       date.day == now.day;
 }
-
 
 // Appointment List
 final List<Map<String, dynamic>> appointments = [
@@ -624,7 +696,6 @@ class TopSellingServices extends StatelessWidget {
     {'service': 'Manicure', 'sold': 4},
   ];
 
-
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -660,4 +731,3 @@ class TopSellingServices extends StatelessWidget {
     );
   }
 }
-

@@ -6,8 +6,8 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:async';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'services/api_service.dart';
 
 class RegisterPage extends StatefulWidget {
   final String? initialRole;
@@ -119,13 +119,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
       debugPrint("REGISTER PAYLOAD: ${jsonEncode(payload)}");
 
-      final response = await http
-          .post(
-            Uri.parse("https://partners.v2winonline.com/api/crm/auth/register"),
-            headers: {"Content-Type": "application/json"},
-            body: jsonEncode(payload),
-          )
-          .timeout(const Duration(seconds: 30));
+      final response = await ApiService.registerVendor(payload);
 
       debugPrint("STATUS CODE: ${response.statusCode}");
       debugPrint("RESPONSE BODY: ${response.body}");
@@ -191,8 +185,8 @@ class _RegisterPageState extends State<RegisterPage> {
                         child: LinearProgressIndicator(
                           value: (currentStep + 1) / 2,
                           backgroundColor: Colors.grey.shade300,
-                          valueColor:
-                              const AlwaysStoppedAnimation<Color>(Colors.blue),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                              Theme.of(context).primaryColor),
                           minHeight: 6,
                         ),
                       ),
@@ -232,7 +226,7 @@ class _RegisterPageState extends State<RegisterPage> {
               alignment: Alignment.centerLeft,
               child: IconButton(
                 icon: Icon(Icons.arrow_back,
-                    color: Colors.blue.shade700, size: 24.sp),
+                    color: Theme.of(context).primaryColor, size: 24.sp),
                 onPressed: () {
                   Navigator.pop(context);
                 },
@@ -245,7 +239,7 @@ class _RegisterPageState extends State<RegisterPage> {
             style: GoogleFonts.poppins(
               fontSize: 16.sp,
               fontWeight: FontWeight.bold,
-              color: Colors.blue.shade700,
+              color: Theme.of(context).primaryColor,
               shadows: [
                 Shadow(
                   blurRadius: 3.0,
@@ -324,7 +318,7 @@ class _RegisterPageState extends State<RegisterPage> {
               borderRadius: BorderRadius.circular(10.r),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.blue.shade100.withOpacity(0.2),
+                  color: Theme.of(context).primaryColor.withOpacity(0.1),
                   blurRadius: 4,
                   offset: const Offset(0, 1),
                 ),
@@ -453,7 +447,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 );
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue.shade700,
+                backgroundColor: Theme.of(context).primaryColor,
                 foregroundColor: Colors.white,
                 padding: EdgeInsets.symmetric(vertical: 5.h),
                 shape: RoundedRectangleBorder(
@@ -489,7 +483,7 @@ class _RegisterPageState extends State<RegisterPage> {
               alignment: Alignment.centerLeft,
               child: IconButton(
                 icon: Icon(Icons.arrow_back,
-                    color: Colors.blue.shade700, size: 24.sp),
+                    color: Theme.of(context).primaryColor, size: 24.sp),
                 onPressed: () {
                   _pageController.previousPage(
                     duration: const Duration(milliseconds: 300),
@@ -504,7 +498,7 @@ class _RegisterPageState extends State<RegisterPage> {
               style: GoogleFonts.poppins(
                 fontSize: 16.sp,
                 fontWeight: FontWeight.bold,
-                color: Colors.blue.shade700,
+                color: Theme.of(context).primaryColor,
                 shadows: [
                   Shadow(
                     blurRadius: 3.0,
@@ -632,7 +626,7 @@ class _RegisterPageState extends State<RegisterPage> {
               child: ElevatedButton(
                 onPressed: isLoading ? null : _registerUser,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue.shade700,
+                  backgroundColor: Theme.of(context).primaryColor,
                   foregroundColor: Colors.white,
                   padding: EdgeInsets.symmetric(vertical: 5.h),
                   shape: RoundedRectangleBorder(
@@ -681,7 +675,7 @@ class _RegisterPageState extends State<RegisterPage> {
         borderRadius: BorderRadius.circular(10.r),
         boxShadow: [
           BoxShadow(
-            color: Colors.blue.shade100.withOpacity(0.2),
+            color: Theme.of(context).primaryColor.withOpacity(0.1),
             blurRadius: 4,
             offset: const Offset(0, 1),
           ),
@@ -699,13 +693,13 @@ class _RegisterPageState extends State<RegisterPage> {
           label: Container(
             padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 1.h),
             decoration: BoxDecoration(
-              color: Colors.blue.shade100,
+              color: Theme.of(context).primaryColor.withOpacity(0.2),
               borderRadius: BorderRadius.circular(5.r),
             ),
             child: Text(
               label,
               style: GoogleFonts.poppins(
-                color: Colors.blue.shade700,
+                color: Theme.of(context).primaryColor,
                 fontSize: 9.sp,
                 fontWeight: FontWeight.w600,
               ),
@@ -737,7 +731,9 @@ class _RegisterPageState extends State<RegisterPage> {
       }),
       child: Container(
         decoration: BoxDecoration(
-          color: checked ? Colors.blue.shade100 : Colors.transparent,
+          color: checked
+              ? Theme.of(context).primaryColor.withOpacity(0.1)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(6.r),
         ),
         padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
@@ -753,7 +749,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   subCategories.remove(value);
                 }
               }),
-              activeColor: Colors.blue.shade700,
+              activeColor: Theme.of(context).primaryColor,
             ),
             Text(
               title,
@@ -990,7 +986,7 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                 style: GoogleFonts.poppins(
                   fontSize: 16.sp,
                   fontWeight: FontWeight.bold,
-                  color: Colors.blue.shade700,
+                  color: Theme.of(context).primaryColor,
                   shadows: [
                     Shadow(
                       blurRadius: 3.0,
@@ -1007,7 +1003,7 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                   borderRadius: BorderRadius.circular(10.r),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.blue.shade100.withOpacity(0.2),
+                      color: Theme.of(context).primaryColor.withOpacity(0.1),
                       blurRadius: 4,
                       offset: const Offset(0, 1),
                     ),
@@ -1020,7 +1016,7 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                     hintText: 'Search for a location',
                     hintStyle: GoogleFonts.poppins(fontSize: 10.sp),
                     prefixIcon: Icon(Icons.search,
-                        size: 18.sp, color: Colors.blue.shade700),
+                        size: 18.sp, color: Theme.of(context).primaryColor),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10.r),
                       borderSide: BorderSide.none,
@@ -1032,7 +1028,8 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                     suffixIcon: _searchController.text.isNotEmpty
                         ? IconButton(
                             icon: Icon(Icons.clear,
-                                size: 18.sp, color: Colors.blue.shade700),
+                                size: 18.sp,
+                                color: Theme.of(context).primaryColor),
                             onPressed: () {
                               _searchController.clear();
                               setState(() {});
@@ -1116,7 +1113,7 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                 label:
                     Text('Use Current Location', style: GoogleFonts.poppins()),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue.shade700,
+                  backgroundColor: Theme.of(context).primaryColor,
                   foregroundColor: Colors.white,
                   padding:
                       EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
@@ -1230,14 +1227,14 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                     child: Text(
                       "CANCEL",
                       style: GoogleFonts.poppins(
-                        color: Colors.blue.shade700,
+                        color: Theme.of(context).primaryColor,
                       ),
                     ),
                   ),
                   SizedBox(width: 8.w),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue.shade700,
+                      backgroundColor: Theme.of(context).primaryColor,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8.r),

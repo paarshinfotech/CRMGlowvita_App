@@ -345,7 +345,7 @@ class _DashboardPageState extends State<DashboardPage>
                                 value: '$upcomingCount',
                                 subtitle: 'Next 7 days',
                                 icon: Icons.event_available_outlined,
-                                accent: const Color(0xFF2563EB),
+                                accent: Theme.of(context).primaryColor,
                               );
                             }
                             if (i == 2) {
@@ -861,7 +861,9 @@ class _FilterChipState extends State<_FilterChip>
 
   @override
   Widget build(BuildContext context) {
-    final bg = widget.selected ? Colors.black : const Color(0xFFF3F4F6);
+    final bg = widget.selected
+        ? Theme.of(context).primaryColor
+        : const Color(0xFFF3F4F6);
     final fg = widget.selected ? Colors.white : Colors.black87;
 
     return GestureDetector(

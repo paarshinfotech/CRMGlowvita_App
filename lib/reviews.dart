@@ -21,7 +21,8 @@ class _ReviewsPageState extends State<ReviewsPage> {
       'type': 'service',
       'rating': 5,
       'date': '2025-11-15',
-      'review': 'Amazing service! The facial was very relaxing and my skin felt great afterwards. Will definitely come back.',
+      'review':
+          'Amazing service! The facial was very relaxing and my skin felt great afterwards. Will definitely come back.',
       'status': 'Approved',
     },
     {
@@ -33,7 +34,8 @@ class _ReviewsPageState extends State<ReviewsPage> {
       'type': 'product',
       'rating': 4,
       'date': '2025-11-10',
-      'review': 'Good service overall. The color turned out well, but the waiting time was a bit long.',
+      'review':
+          'Good service overall. The color turned out well, but the waiting time was a bit long.',
       'status': 'Approved',
     },
     {
@@ -45,7 +47,8 @@ class _ReviewsPageState extends State<ReviewsPage> {
       'type': 'service',
       'rating': 3,
       'date': '2025-11-05',
-      'review': 'Average experience. The nail art was nice but the polish chipped off quickly.',
+      'review':
+          'Average experience. The nail art was nice but the polish chipped off quickly.',
       'status': 'Pending',
     },
     {
@@ -57,7 +60,8 @@ class _ReviewsPageState extends State<ReviewsPage> {
       'type': 'salon',
       'rating': 5,
       'date': '2025-10-28',
-      'review': 'Outstanding service! The full spa package was very relaxing and rejuvenating. Highly recommended!',
+      'review':
+          'Outstanding service! The full spa package was very relaxing and rejuvenating. Highly recommended!',
       'status': 'Approved',
     },
     {
@@ -69,7 +73,8 @@ class _ReviewsPageState extends State<ReviewsPage> {
       'type': 'service',
       'rating': 2,
       'date': '2025-10-20',
-      'review': 'Not satisfied with the haircut. It was uneven and not what I asked for.',
+      'review':
+          'Not satisfied with the haircut. It was uneven and not what I asked for.',
       'status': 'Disapproved',
     },
   ];
@@ -81,8 +86,18 @@ class _ReviewsPageState extends State<ReviewsPage> {
   String _selectedCategory = 'All';
 
   // Filter options
-  final List<String> _statusFilters = ['All', 'Pending', 'Approved', 'Disapproved'];
-  final List<String> _categoryFilters = ['All', 'Services', 'Products', 'Salons'];
+  final List<String> _statusFilters = [
+    'All',
+    'Pending',
+    'Approved',
+    'Disapproved'
+  ];
+  final List<String> _categoryFilters = [
+    'All',
+    'Services',
+    'Products',
+    'Salons'
+  ];
 
   @override
   void dispose() {
@@ -95,17 +110,36 @@ class _ReviewsPageState extends State<ReviewsPage> {
     return reviews.where((review) {
       // Search filter
       final matchesSearch = _searchQuery.isEmpty ||
-          review['customerName'].toString().toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          (review['serviceName']?.toString().toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
-          (review['productName']?.toString().toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
-          (review['salonName']?.toString().toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
-          review['review'].toString().toLowerCase().contains(_searchQuery.toLowerCase());
+          review['customerName']
+              .toString()
+              .toLowerCase()
+              .contains(_searchQuery.toLowerCase()) ||
+          (review['serviceName']
+                  ?.toString()
+                  .toLowerCase()
+                  .contains(_searchQuery.toLowerCase()) ??
+              false) ||
+          (review['productName']
+                  ?.toString()
+                  .toLowerCase()
+                  .contains(_searchQuery.toLowerCase()) ??
+              false) ||
+          (review['salonName']
+                  ?.toString()
+                  .toLowerCase()
+                  .contains(_searchQuery.toLowerCase()) ??
+              false) ||
+          review['review']
+              .toString()
+              .toLowerCase()
+              .contains(_searchQuery.toLowerCase());
 
       // Status filter
-      final matchesStatus = _selectedStatus == 'All' || review['status'] == _selectedStatus;
+      final matchesStatus =
+          _selectedStatus == 'All' || review['status'] == _selectedStatus;
 
       // Category filter
-      final matchesCategory = _selectedCategory == 'All' || 
+      final matchesCategory = _selectedCategory == 'All' ||
           (_selectedCategory == 'Services' && review['type'] == 'service') ||
           (_selectedCategory == 'Products' && review['type'] == 'product') ||
           (_selectedCategory == 'Salons' && review['type'] == 'salon');
@@ -146,7 +180,8 @@ class _ReviewsPageState extends State<ReviewsPage> {
                 decoration: InputDecoration(
                   hintText: 'Search reviews...',
                   hintStyle: GoogleFonts.poppins(fontSize: 13),
-                  prefixIcon: const Icon(Icons.search, color: Colors.grey, size: 20),
+                  prefixIcon:
+                      const Icon(Icons.search, color: Colors.grey, size: 20),
                   suffixIcon: _searchQuery.isEmpty
                       ? null
                       : IconButton(
@@ -164,7 +199,8 @@ class _ReviewsPageState extends State<ReviewsPage> {
                     borderRadius: BorderRadius.circular(8),
                     borderSide: BorderSide.none,
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 ),
               ),
             ),
@@ -349,10 +385,11 @@ class _ReviewsPageState extends State<ReviewsPage> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
+                      color: Theme.of(context).primaryColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.rate_review, color: Colors.blue, size: 20),
+                    child: Icon(Icons.rate_review,
+                        color: Theme.of(context).primaryColor, size: 20),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -364,23 +401,24 @@ class _ReviewsPageState extends State<ReviewsPage> {
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                             )),
-                        Text('${_filteredReviews.length} reviews in total',    
+                        Text('${_filteredReviews.length} reviews in total',
                             style: GoogleFonts.poppins(
-                             fontSize: 11,
+                              fontSize: 11,
                               color: Colors.grey.shade600,
                             )),
                       ],
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
+                      color: Theme.of(context).primaryColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text('${_filteredReviews.length}',
                         style: GoogleFonts.poppins(
-                          color: Colors.blue,
+                          color: Theme.of(context).primaryColor,
                           fontWeight: FontWeight.w600,
                           fontSize: 12,
                         )),
@@ -445,7 +483,7 @@ class _ReviewsPageState extends State<ReviewsPage> {
     final rating = review['rating'] as int;
     final status = review['status'] as String;
     final type = review['type'] as String;
-    
+
     Color statusColor;
     switch (status) {
       case 'Approved':
@@ -491,16 +529,18 @@ class _ReviewsPageState extends State<ReviewsPage> {
                       ),
                       const SizedBox(height: 2),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Colors.blue.withValues(alpha: 0.1),
+                          color:
+                              Theme.of(context).primaryColor.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           'Service',
                           style: GoogleFonts.poppins(
                             fontSize: 9,
-                            color: Colors.blue,
+                            color: Theme.of(context).primaryColor,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -524,7 +564,8 @@ class _ReviewsPageState extends State<ReviewsPage> {
                     const SizedBox(height: 4),
                     // Status badge
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
                         color: statusColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
@@ -587,7 +628,8 @@ class _ReviewsPageState extends State<ReviewsPage> {
                       ),
                       const SizedBox(height: 2),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
                           color: Colors.purple.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
@@ -620,7 +662,8 @@ class _ReviewsPageState extends State<ReviewsPage> {
                     const SizedBox(height: 4),
                     // Status badge
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
                         color: statusColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
@@ -718,7 +761,8 @@ class _ReviewsPageState extends State<ReviewsPage> {
                   children: [
                     // Status badge
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
                         color: statusColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
@@ -736,13 +780,15 @@ class _ReviewsPageState extends State<ReviewsPage> {
                     // Action buttons for salon reviews
                     Row(
                       children: [
-                        if (status != 'Approved') // Show reject button only if not approved
+                        if (status !=
+                            'Approved') // Show reject button only if not approved
                           TextButton(
                             onPressed: () {
                               // Reject logic would go here
                             },
                             style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
                               minimumSize: Size.zero,
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
@@ -760,11 +806,13 @@ class _ReviewsPageState extends State<ReviewsPage> {
                           onPressed: () {
                             // Delete logic would go here
                             setState(() {
-                              reviews.removeWhere((r) => r['id'] == review['id']);
+                              reviews
+                                  .removeWhere((r) => r['id'] == review['id']);
                             });
                           },
                           style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
                             minimumSize: Size.zero,
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),

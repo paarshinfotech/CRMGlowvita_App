@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import './supp_drawer.dart'; 
+import './supp_drawer.dart';
 
 class SuppReviewsPage extends StatefulWidget {
   const SuppReviewsPage({super.key});
@@ -18,7 +18,8 @@ class _SuppReviewsPageState extends State<SuppReviewsPage> {
       'productName': 'Hydrating Face Serum',
       'rating': 5,
       'date': '2025-12-18',
-      'review': 'Excellent serum! Absorbs quickly and leaves my skin glowing. Highly recommend.',
+      'review':
+          'Excellent serum! Absorbs quickly and leaves my skin glowing. Highly recommend.',
       'status': 'Approved',
     },
     {
@@ -27,7 +28,8 @@ class _SuppReviewsPageState extends State<SuppReviewsPage> {
       'productName': 'Vitamin C Face Cream',
       'rating': 4,
       'date': '2025-12-15',
-      'review': 'Good cream, brightens skin well. A bit thick for daytime use though.',
+      'review':
+          'Good cream, brightens skin well. A bit thick for daytime use though.',
       'status': 'Approved',
     },
     {
@@ -36,7 +38,8 @@ class _SuppReviewsPageState extends State<SuppReviewsPage> {
       'productName': 'Argan Oil Hair Mask',
       'rating': 3,
       'date': '2025-12-10',
-      'review': 'Average results. Hair felt soft but not much difference after a few uses.',
+      'review':
+          'Average results. Hair felt soft but not much difference after a few uses.',
       'status': 'Pending',
     },
     {
@@ -45,7 +48,8 @@ class _SuppReviewsPageState extends State<SuppReviewsPage> {
       'productName': 'Luxury Body Butter',
       'rating': 5,
       'date': '2025-12-05',
-      'review': 'Best body butter I\'ve used! Smells amazing and keeps skin moisturized all day.',
+      'review':
+          'Best body butter I\'ve used! Smells amazing and keeps skin moisturized all day.',
       'status': 'Approved',
     },
     {
@@ -54,7 +58,8 @@ class _SuppReviewsPageState extends State<SuppReviewsPage> {
       'productName': 'Matte Lipstick Set',
       'rating': 2,
       'date': '2025-11-28',
-      'review': 'Disappointed. Colors are nice but very drying and doesn\'t last long.',
+      'review':
+          'Disappointed. Colors are nice but very drying and doesn\'t last long.',
       'status': 'Pending',
     },
     {
@@ -63,7 +68,8 @@ class _SuppReviewsPageState extends State<SuppReviewsPage> {
       'productName': 'Beard Growth Oil',
       'rating': 4,
       'date': '2025-11-20',
-      'review': 'Seeing good growth after 3 weeks. Pleasant scent and non-greasy.',
+      'review':
+          'Seeing good growth after 3 weeks. Pleasant scent and non-greasy.',
       'status': 'Approved',
     },
   ];
@@ -73,7 +79,12 @@ class _SuppReviewsPageState extends State<SuppReviewsPage> {
   String _searchQuery = '';
   String _selectedStatus = 'All';
 
-  final List<String> _statusFilters = ['All', 'Pending', 'Approved', 'Disapproved'];
+  final List<String> _statusFilters = [
+    'All',
+    'Pending',
+    'Approved',
+    'Disapproved'
+  ];
 
   @override
   void dispose() {
@@ -84,18 +95,30 @@ class _SuppReviewsPageState extends State<SuppReviewsPage> {
   List<Map<String, dynamic>> get _filteredReviews {
     return reviews.where((review) {
       final matchesSearch = _searchQuery.isEmpty ||
-          review['customerName'].toString().toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          review['productName'].toString().toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          review['review'].toString().toLowerCase().contains(_searchQuery.toLowerCase());
+          review['customerName']
+              .toString()
+              .toLowerCase()
+              .contains(_searchQuery.toLowerCase()) ||
+          review['productName']
+              .toString()
+              .toLowerCase()
+              .contains(_searchQuery.toLowerCase()) ||
+          review['review']
+              .toString()
+              .toLowerCase()
+              .contains(_searchQuery.toLowerCase());
 
-      final matchesStatus = _selectedStatus == 'All' || review['status'] == _selectedStatus;
+      final matchesStatus =
+          _selectedStatus == 'All' || review['status'] == _selectedStatus;
 
       return matchesSearch && matchesStatus;
     }).toList();
   }
 
-  int _getApprovedCount() => reviews.where((r) => r['status'] == 'Approved').length;
-  int _getPendingCount() => reviews.where((r) => r['status'] == 'Pending').length;
+  int _getApprovedCount() =>
+      reviews.where((r) => r['status'] == 'Approved').length;
+  int _getPendingCount() =>
+      reviews.where((r) => r['status'] == 'Pending').length;
 
   void _approveReview(String id) {
     setState(() {
@@ -120,7 +143,8 @@ class _SuppReviewsPageState extends State<SuppReviewsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      drawer: const SupplierDrawer(currentPage: 'Reviews'), // Updated for supplier
+      drawer:
+          const SupplierDrawer(currentPage: 'Reviews'), // Updated for supplier
       backgroundColor: const Color(0xFFF6F7FB),
       appBar: AppBar(
         elevation: 0.5,
@@ -182,7 +206,10 @@ class _SuppReviewsPageState extends State<SuppReviewsPage> {
                   isExpanded: true,
                   underline: const SizedBox(),
                   items: _statusFilters
-                      .map((s) => DropdownMenuItem(value: s, child: Text(s, style: GoogleFonts.poppins(fontSize: 13))))
+                      .map((s) => DropdownMenuItem(
+                          value: s,
+                          child: Text(s,
+                              style: GoogleFonts.poppins(fontSize: 13))))
                       .toList(),
                   onChanged: (v) => setState(() => _selectedStatus = v!),
                 ),
@@ -196,11 +223,13 @@ class _SuppReviewsPageState extends State<SuppReviewsPage> {
               child: Row(
                 children: [
                   Expanded(
-                    child: _buildStatCard('Approved', _getApprovedCount(), Colors.green),
+                    child: _buildStatCard(
+                        'Approved', _getApprovedCount(), Colors.green),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _buildStatCard('Pending', _getPendingCount(), Colors.orange),
+                    child: _buildStatCard(
+                        'Pending', _getPendingCount(), Colors.orange),
                   ),
                 ],
               ),
@@ -220,23 +249,36 @@ class _SuppReviewsPageState extends State<SuppReviewsPage> {
                 children: [
                   Container(
                     padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(10)),
-                    child: const Icon(Icons.rate_review, color: Colors.blue, size: 20),
+                    decoration: BoxDecoration(
+                        color: Theme.of(context).primaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10)),
+                    child: Icon(Icons.rate_review,
+                        color: Theme.of(context).primaryColor, size: 20),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Total Reviews', style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600)),
-                        Text('${_filteredReviews.length} reviews', style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey.shade600)),
+                        Text('Total Reviews',
+                            style: GoogleFonts.poppins(
+                                fontSize: 13, fontWeight: FontWeight.w600)),
+                        Text('${_filteredReviews.length} reviews',
+                            style: GoogleFonts.poppins(
+                                fontSize: 11, color: Colors.grey.shade600)),
                       ],
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(20)),
-                    child: Text('${_filteredReviews.length}', style: GoogleFonts.poppins(color: Colors.blue, fontWeight: FontWeight.w600)),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                        color: Theme.of(context).primaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20)),
+                    child: Text('${_filteredReviews.length}',
+                        style: GoogleFonts.poppins(
+                            color: Theme.of(context).primaryColor,
+                            fontWeight: FontWeight.w600)),
                   ),
                 ],
               ),
@@ -249,7 +291,8 @@ class _SuppReviewsPageState extends State<SuppReviewsPage> {
                   ? Center(
                       child: Text(
                         'No reviews found',
-                        style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey.shade600),
+                        style: GoogleFonts.poppins(
+                            fontSize: 14, color: Colors.grey.shade600),
                       ),
                     )
                   : ListView.builder(
@@ -277,9 +320,15 @@ class _SuppReviewsPageState extends State<SuppReviewsPage> {
       ),
       child: Column(
         children: [
-          Text(label, style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w600)),
+          Text(label,
+              style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: Colors.grey.shade700,
+                  fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
-          Text('$count', style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w700, color: color)),
+          Text('$count',
+              style: GoogleFonts.poppins(
+                  fontSize: 20, fontWeight: FontWeight.w700, color: color)),
         ],
       ),
     );
@@ -315,25 +364,30 @@ class _SuppReviewsPageState extends State<SuppReviewsPage> {
                   children: [
                     Text(
                       review['productName'],
-                      style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600),
+                      style: GoogleFonts.poppins(
+                          fontSize: 14, fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 6),
                     Row(
-                      children: List.generate(5, (i) => Icon(
-                        i < rating ? Icons.star : Icons.star_border,
-                        color: Colors.amber,
-                        size: 16,
-                      )),
+                      children: List.generate(
+                          5,
+                          (i) => Icon(
+                                i < rating ? Icons.star : Icons.star_border,
+                                color: Colors.amber,
+                                size: 16,
+                              )),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       review['review'],
-                      style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade800),
+                      style: GoogleFonts.poppins(
+                          fontSize: 12, color: Colors.grey.shade800),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'by ${review['customerName']} • ${review['date']}',
-                      style: GoogleFonts.poppins(fontSize: 10, color: Colors.grey.shade600),
+                      style: GoogleFonts.poppins(
+                          fontSize: 10, color: Colors.grey.shade600),
                     ),
                   ],
                 ),
@@ -342,14 +396,18 @@ class _SuppReviewsPageState extends State<SuppReviewsPage> {
               Column(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: statusColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       status,
-                      style: GoogleFonts.poppins(fontSize: 10, color: statusColor, fontWeight: FontWeight.w600),
+                      style: GoogleFonts.poppins(
+                          fontSize: 10,
+                          color: statusColor,
+                          fontWeight: FontWeight.w600),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -358,28 +416,38 @@ class _SuppReviewsPageState extends State<SuppReviewsPage> {
                       onPressed: () => _approveReview(review['id']),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
                         minimumSize: const Size(80, 32),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
                       ),
-                      child: Text('Approve', style: GoogleFonts.poppins(fontSize: 10, color: Colors.white)),
+                      child: Text('Approve',
+                          style: GoogleFonts.poppins(
+                              fontSize: 10, color: Colors.white)),
                     ),
                     const SizedBox(height: 6),
                     OutlinedButton(
                       onPressed: () => _rejectReview(review['id']),
                       style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
                         minimumSize: const Size(80, 32),
                         side: const BorderSide(color: Colors.red),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
                       ),
-                      child: Text('Reject', style: GoogleFonts.poppins(fontSize: 10, color: Colors.red)),
+                      child: Text('Reject',
+                          style: GoogleFonts.poppins(
+                              fontSize: 10, color: Colors.red)),
                     ),
                   ],
                   if (status != 'Pending')
                     TextButton(
                       onPressed: () => _deleteReview(review['id']),
-                      child: Text('Delete', style: GoogleFonts.poppins(fontSize: 10, color: Colors.grey.shade700)),
+                      child: Text('Delete',
+                          style: GoogleFonts.poppins(
+                              fontSize: 10, color: Colors.grey.shade700)),
                     ),
                 ],
               ),

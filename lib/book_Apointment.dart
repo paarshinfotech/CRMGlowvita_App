@@ -21,14 +21,20 @@ class _BookAppointmentState extends State<BookAppointment> {
   TimeOfDay _startTime = const TimeOfDay(hour: 10, minute: 15);
   DateTime _selectedDate = DateTime(2025, 7, 22);
 
-  final List<String> serviceList = ['Hair Cut', 'Facial', 'Hair Spa', 'Manicure', 'Pedicure'];
+  final List<String> serviceList = [
+    'Hair Cut',
+    'Facial',
+    'Hair Spa',
+    'Manicure',
+    'Pedicure'
+  ];
   final List<String> staffList = ['Shivani', 'Komal', 'Pooja'];
   final List<int> durationList = [15, 30, 45, 60];
 
   List<TimeOfDay> _generateTimeSlots({int intervalMinutes = 15}) {
     return List.generate(
       (24 * 60 ~/ intervalMinutes),
-          (index) {
+      (index) {
         final hour = index * intervalMinutes ~/ 60;
         final minute = index * intervalMinutes % 60;
         return TimeOfDay(hour: hour, minute: minute);
@@ -86,13 +92,13 @@ class _BookAppointmentState extends State<BookAppointment> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _sectionTitle("Appointment Details"),
-
                     _buildLabel("Select Date"),
                     GestureDetector(
                       onTap: () => _pickDate(context),
                       child: Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 14, horizontal: 12),
                         decoration: BoxDecoration(
                           color: Colors.white, // Changed to white
                           border: Border.all(color: Colors.black12),
@@ -105,7 +111,6 @@ class _BookAppointmentState extends State<BookAppointment> {
                       ),
                     ),
                     const SizedBox(height: 16),
-
                     _buildLabel("Start Time"),
                     DropdownButtonFormField<TimeOfDay>(
                       decoration: _fieldStyle(),
@@ -119,55 +124,58 @@ class _BookAppointmentState extends State<BookAppointment> {
                       onChanged: (val) => setState(() => _startTime = val!),
                     ),
                     const SizedBox(height: 16),
-
                     _buildLabel("Service"),
                     DropdownButtonFormField<String>(
                       decoration: _fieldStyle(),
                       value: _selectedService,
-                      items: serviceList.map((service) => DropdownMenuItem(
-                        value: service,
-                        child: Text(service),
-                      )).toList(),
-                      onChanged: (val) => setState(() => _selectedService = val),
+                      items: serviceList
+                          .map((service) => DropdownMenuItem(
+                                value: service,
+                                child: Text(service),
+                              ))
+                          .toList(),
+                      onChanged: (val) =>
+                          setState(() => _selectedService = val),
                     ),
                     const SizedBox(height: 16),
-
                     _buildLabel("Duration"),
                     DropdownButtonFormField<int>(
                       decoration: _fieldStyle(),
                       value: _selectedDuration,
-                      items: durationList.map((min) => DropdownMenuItem(
-                        value: min,
-                        child: Text("$min min"),
-                      )).toList(),
-                      onChanged: (val) => setState(() => _selectedDuration = val),
+                      items: durationList
+                          .map((min) => DropdownMenuItem(
+                                value: min,
+                                child: Text("$min min"),
+                              ))
+                          .toList(),
+                      onChanged: (val) =>
+                          setState(() => _selectedDuration = val),
                     ),
                     const SizedBox(height: 16),
-
                     _buildLabel("Staff Member"),
                     DropdownButtonFormField<String>(
                       decoration: _fieldStyle(),
                       value: _selectedStaff,
-                      items: staffList.map((staff) => DropdownMenuItem(
-                        value: staff,
-                        child: Text(staff),
-                      )).toList(),
+                      items: staffList
+                          .map((staff) => DropdownMenuItem(
+                                value: staff,
+                                child: Text(staff),
+                              ))
+                          .toList(),
                       onChanged: (val) => setState(() => _selectedStaff = val),
                     ),
                     const SizedBox(height: 16),
-
                     _buildLabel("Appointment Notes"),
                     TextFormField(
                       controller: _notesController,
                       maxLines: 4,
                       decoration: _fieldStyle(),
                     ),
-
                     const SizedBox(height: 32),
                     _sectionTitle("Client"),
-
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         border: Border.all(color: Colors.black26),
@@ -191,7 +199,6 @@ class _BookAppointmentState extends State<BookAppointment> {
                       ),
                     ),
                     const SizedBox(height: 24),
-
                     Center(
                       child: Column(
                         children: const [
@@ -205,22 +212,25 @@ class _BookAppointmentState extends State<BookAppointment> {
                       ),
                     ),
                     const SizedBox(height: 40),
-
                     Row(
                       children: [
                         Expanded(
                           child: ElevatedButton.icon(
-                            icon: const Icon(Icons.flash_on, color: Colors.white),
+                            icon:
+                                const Icon(Icons.flash_on, color: Colors.white),
                             onPressed: () {},
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue,
+                              backgroundColor: Theme.of(context).primaryColor,
                               elevation: 10,
                               padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8)),
                             ),
                             label: const Text(
                               "Express Checkout",
-                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold),
                             ),
                           ),
                         ),
@@ -231,19 +241,24 @@ class _BookAppointmentState extends State<BookAppointment> {
                             onPressed: () {
                               if (_formKey.currentState!.validate()) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Appointment saved successfully!')),
+                                  const SnackBar(
+                                      content: Text(
+                                          'Appointment saved successfully!')),
                                 );
                               }
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue,
+                              backgroundColor: Theme.of(context).primaryColor,
                               elevation: 10,
                               padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8)),
                             ),
                             label: const Text(
                               "Save Appointment",
-                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold),
                             ),
                           ),
                         ),
@@ -294,7 +309,8 @@ class _BookAppointmentState extends State<BookAppointment> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(6),
-        borderSide: const BorderSide(color: Colors.blue, width: 1.5),
+        borderSide:
+            BorderSide(color: Theme.of(context).primaryColor, width: 1.5),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
     );

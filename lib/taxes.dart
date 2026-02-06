@@ -15,13 +15,14 @@ class _TaxesState extends State<Taxes> {
   void _openAddEditDialog({Map<String, dynamic>? tax, int? index}) {
     final nameController = TextEditingController(text: tax?['name'] ?? '');
     final rateController =
-    TextEditingController(text: tax != null ? tax['rate'].toString() : '');
+        TextEditingController(text: tax != null ? tax['rate'].toString() : '');
 
     showDialog(
       context: context,
       builder: (_) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           backgroundColor: Colors.white,
           title: Text(
             tax == null ? 'Add Tax' : 'Edit Tax',
@@ -33,7 +34,8 @@ class _TaxesState extends State<Taxes> {
               children: [
                 Text(
                   'Set the tax name and percentage rate. To apply this to your products and services, adjust your tax defaults settings.',
-                  style: GoogleFonts.poppins(fontSize: 12.sp, color: Colors.grey.shade600),
+                  style: GoogleFonts.poppins(
+                      fontSize: 12.sp, color: Colors.grey.shade600),
                 ),
                 SizedBox(height: 16.h),
                 TextField(
@@ -95,7 +97,8 @@ class _TaxesState extends State<Taxes> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
         backgroundColor: Colors.white,
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -109,7 +112,8 @@ class _TaxesState extends State<Taxes> {
               ),
             ),
             IconButton(
-              icon: Icon(Icons.close, color: const Color(0xFF6B7280), size: 24.sp),
+              icon: Icon(Icons.close,
+                  color: const Color(0xFF6B7280), size: 24.sp),
               onPressed: () => Navigator.pop(context),
             ),
           ],
@@ -123,7 +127,8 @@ class _TaxesState extends State<Taxes> {
                   padding: EdgeInsets.symmetric(vertical: 16.h),
                   child: Text(
                     'No taxes added yet.',
-                    style: GoogleFonts.poppins(fontSize: 14.sp, color: const Color(0xFF6B7280)),
+                    style: GoogleFonts.poppins(
+                        fontSize: 14.sp, color: const Color(0xFF6B7280)),
                   ),
                 ),
               ...taxes.asMap().entries.map((entry) {
@@ -131,7 +136,8 @@ class _TaxesState extends State<Taxes> {
                 final tax = entry.value;
                 return Card(
                   margin: EdgeInsets.symmetric(vertical: 6.h),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.r)),
                   color: const Color(0xFFF7F9FD),
                   child: ListTile(
                     title: Text(
@@ -144,13 +150,16 @@ class _TaxesState extends State<Taxes> {
                     ),
                     subtitle: Text(
                       '${tax['rate']}%',
-                      style: GoogleFonts.poppins(fontSize: 14.sp, color: const Color(0xFF6B7280)),
+                      style: GoogleFonts.poppins(
+                          fontSize: 14.sp, color: const Color(0xFF6B7280)),
                     ),
                     trailing: PopupMenuButton<String>(
-                      icon: Icon(Icons.settings, color: const Color(0xFF457BFF), size: 20.sp),
+                      icon: Icon(Icons.settings,
+                          color: Theme.of(context).primaryColor, size: 20.sp),
                       onSelected: (value) {
                         if (value == 'Edit') {
-                          Navigator.pop(context); // close main dialog before edit
+                          Navigator.pop(
+                              context); // close main dialog before edit
                           _openAddEditDialog(tax: tax, index: index);
                         } else if (value == 'Delete') {
                           setState(() {
@@ -161,7 +170,7 @@ class _TaxesState extends State<Taxes> {
                                   'Tax deleted successfully!',
                                   style: GoogleFonts.poppins(fontSize: 14.sp),
                                 ),
-                                backgroundColor: const Color(0xFF457BFF),
+                                backgroundColor: Theme.of(context).primaryColor,
                                 duration: const Duration(seconds: 2),
                               ),
                             );
@@ -171,11 +180,13 @@ class _TaxesState extends State<Taxes> {
                       itemBuilder: (_) => [
                         PopupMenuItem(
                           value: 'Edit',
-                          child: Text('Edit', style: GoogleFonts.poppins(fontSize: 14.sp)),
+                          child: Text('Edit',
+                              style: GoogleFonts.poppins(fontSize: 14.sp)),
                         ),
                         PopupMenuItem(
                           value: 'Delete',
-                          child: Text('Delete', style: GoogleFonts.poppins(fontSize: 14.sp)),
+                          child: Text('Delete',
+                              style: GoogleFonts.poppins(fontSize: 14.sp)),
                         ),
                       ],
                     ),
@@ -187,10 +198,12 @@ class _TaxesState extends State<Taxes> {
                 alignment: Alignment.centerRight,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF457BFF),
+                    backgroundColor: Theme.of(context).primaryColor,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
-                    padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10.r)),
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
                   ),
                   onPressed: () {
                     Navigator.pop(context); // close main dialog
@@ -198,7 +211,8 @@ class _TaxesState extends State<Taxes> {
                   },
                   child: Text(
                     'Add New',
-                    style: GoogleFonts.poppins(fontSize: 16.sp, fontWeight: FontWeight.w600),
+                    style: GoogleFonts.poppins(
+                        fontSize: 16.sp, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
@@ -226,9 +240,12 @@ class _TaxesState extends State<Taxes> {
         elevation: 0,
         foregroundColor: const Color(0xFF1A1A1A),
         flexibleSpace: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Colors.white, Color(0xFFF1F6FF)],
+              colors: [
+                Colors.white,
+                Theme.of(context).primaryColor.withOpacity(0.05)
+              ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -239,15 +256,17 @@ class _TaxesState extends State<Taxes> {
         child: ElevatedButton(
           onPressed: _openTaxesPopup,
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF457BFF),
+            backgroundColor: Theme.of(context).primaryColor,
             foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10.r)),
             padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
             elevation: 2,
           ),
           child: Text(
             'Manage Taxes',
-            style: GoogleFonts.poppins(fontSize: 16.sp, fontWeight: FontWeight.w600),
+            style: GoogleFonts.poppins(
+                fontSize: 16.sp, fontWeight: FontWeight.w600),
           ),
         ),
       ),

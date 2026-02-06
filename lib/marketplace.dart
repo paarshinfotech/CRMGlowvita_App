@@ -220,7 +220,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
                         _showVerifiedOnly = selected;
                       });
                     },
-                    selectedColor: const Color(0xFF457BFF),
+                    selectedColor: Theme.of(context).primaryColor,
                     backgroundColor: Colors.white,
                     checkmarkColor: Colors.white,
                     labelStyle: GoogleFonts.poppins(
@@ -239,7 +239,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
                     ),
                     selected: true,
                     onSelected: (selected) {},
-                    selectedColor: const Color(0xFF457BFF),
+                    selectedColor: Theme.of(context).primaryColor,
                     backgroundColor: Colors.white,
                     checkmarkColor: Colors.white,
                     labelStyle: GoogleFonts.poppins(
@@ -454,9 +454,9 @@ class _MarketplacePageState extends State<MarketplacePage> {
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
-                          foregroundColor: const Color(0xFF457BFF),
+                          foregroundColor: Theme.of(context).primaryColor,
                           side: BorderSide(
-                              color: const Color(0xFF457BFF), width: 1),
+                              color: Theme.of(context).primaryColor, width: 1),
                           padding: const EdgeInsets.symmetric(vertical: 6),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(6),
@@ -481,7 +481,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
                           // Buy now functionality
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF457BFF),
+                          backgroundColor: Theme.of(context).primaryColor,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 6),
                           shape: RoundedRectangleBorder(

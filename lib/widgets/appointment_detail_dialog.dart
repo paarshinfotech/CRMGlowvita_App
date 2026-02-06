@@ -182,7 +182,7 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
           TabBar(
             controller: _tabController,
             isScrollable: false,
-            indicatorColor: const Color(0xFF673AB7),
+            indicatorColor: Theme.of(context).primaryColor,
             indicatorSize: TabBarIndicatorSize.label,
             labelColor: Colors.black,
             unselectedLabelColor: Colors.grey.shade800,
@@ -443,17 +443,17 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
         color = Colors.green.shade700;
         break;
       case 'confirmed':
-        color = Colors.blue.shade700;
+        color = Theme.of(context).primaryColor;
         break;
       case 'cancelled':
         color = Colors.red.shade700;
         break;
       case 'completed':
-        color = Colors.purple.shade700;
+        color = Theme.of(context).primaryColor;
         break;
       case 'completed_without_payment':
       case 'completed (no pay)':
-        color = Colors.purple.shade300;
+        color = Theme.of(context).primaryColor.withOpacity(0.7);
         break;
       case 'in_progress':
         color = Colors.orange.shade700;

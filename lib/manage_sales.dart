@@ -9,7 +9,8 @@ class ManageSalesPage extends StatefulWidget {
   State<ManageSalesPage> createState() => _ManageSalesPageState();
 }
 
-class _ManageSalesPageState extends State<ManageSalesPage> with SingleTickerProviderStateMixin {
+class _ManageSalesPageState extends State<ManageSalesPage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   List<Map<String, String>> services = [
@@ -17,7 +18,13 @@ class _ManageSalesPageState extends State<ManageSalesPage> with SingleTickerProv
     {'name': 'test', 'time': '25min', 'cat': 'spa', 'price': '300'},
     {'name': 'spa', 'time': '25min', 'cat': 'spa', 'price': '300'},
     {'name': 'dummy', 'time': '15min', 'cat': 'spa', 'price': '450'},
-    {'name': 'Haircut', 'time': '20min', 'cat': 'Haircut', 'price': '100', 'old': '120'},
+    {
+      'name': 'Haircut',
+      'time': '20min',
+      'cat': 'Haircut',
+      'price': '100',
+      'old': '120'
+    },
     {'name': 'nail art', 'time': '35min', 'cat': 'nail art', 'price': '300'},
     {'name': 'ABC', 'time': '20min', 'cat': '', 'price': '20', 'old': '100'},
   ];
@@ -33,7 +40,6 @@ class _ManageSalesPageState extends State<ManageSalesPage> with SingleTickerProv
   List<Map<String, dynamic>> selectedItems = [];
   List<String> staffMembers = ['Shivani', 'Siya', 'Jiya'];
 
-
   @override
   void initState() {
     super.initState();
@@ -43,12 +49,14 @@ class _ManageSalesPageState extends State<ManageSalesPage> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     final items = _tabController.index == 0 ? services : products;
-    final total = selectedItems.fold(0, (sum, item) => sum + int.parse(item['price']!));
+    final total =
+        selectedItems.fold(0, (sum, item) => sum + int.parse(item['price']!));
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text('Manage Sales', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+        title: Text('Manage Sales',
+            style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 1,
@@ -64,12 +72,13 @@ class _ManageSalesPageState extends State<ManageSalesPage> with SingleTickerProv
                   child: TabBar(
                     controller: _tabController,
                     labelColor: Colors.white,
-                    unselectedLabelColor: Colors.blue,
+                    unselectedLabelColor: Theme.of(context).primaryColor,
                     indicator: BoxDecoration(
-                      color: Colors.blue,
+                      color: Theme.of(context).primaryColor,
                       borderRadius: BorderRadius.circular(6.r),
                     ),
-                    labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w500, fontSize: 12.sp),
+                    labelStyle: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w500, fontSize: 12.sp),
                     tabs: const [
                       Tab(text: "  Services  "),
                       Tab(text: "  Products  "),
@@ -94,26 +103,30 @@ class _ManageSalesPageState extends State<ManageSalesPage> with SingleTickerProv
                 children: [
                   Expanded(flex: 3, child: _headerText('Name')),
                   Expanded(flex: 2, child: _headerText('Category')),
-                  Expanded(flex: 1, child: _headerText('Price', align: TextAlign.right)),
+                  Expanded(
+                      flex: 1,
+                      child: _headerText('Price', align: TextAlign.right)),
                 ],
               ),
             ),
             Expanded(
               child: ListView(
-                children: items.map((item) => GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      selectedItems.add({
-                        ...item,
-                        'staff': staffMembers.first,
-                        'quantity': 1,
-                        'discount': 0,
-                        'isFlatDiscount': false,
-                      });
-                    });
-                  },
-                  child: _buildItemRow(item),
-                )).toList(),
+                children: items
+                    .map((item) => GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              selectedItems.add({
+                                ...item,
+                                'staff': staffMembers.first,
+                                'quantity': 1,
+                                'discount': 0,
+                                'isFlatDiscount': false,
+                              });
+                            });
+                          },
+                          child: _buildItemRow(item),
+                        ))
+                    .toList(),
               ),
             ),
             SizedBox(height: 16.h),
@@ -128,32 +141,44 @@ class _ManageSalesPageState extends State<ManageSalesPage> with SingleTickerProv
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     ...selectedItems.map((item) => GestureDetector(
-                      onTap: () => _showEditCartItemPopup(context, item),
-                      child: Padding(
-                        padding: EdgeInsets.only(bottom: 8.h),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          onTap: () => _showEditCartItemPopup(context, item),
+                          child: Padding(
+                            padding: EdgeInsets.only(bottom: 8.h),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text("${item['name']} x${item['quantity']}", style: GoogleFonts.poppins(fontSize: 13.sp, fontWeight: FontWeight.w500)),
-                                Text("₹${item['price']}", style: GoogleFonts.poppins(fontSize: 13.sp, fontWeight: FontWeight.w500)),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text("${item['name']} x${item['quantity']}",
+                                        style: GoogleFonts.poppins(
+                                            fontSize: 13.sp,
+                                            fontWeight: FontWeight.w500)),
+                                    Text("₹${item['price']}",
+                                        style: GoogleFonts.poppins(
+                                            fontSize: 13.sp,
+                                            fontWeight: FontWeight.w500)),
+                                  ],
+                                ),
+                                SizedBox(height: 2.h),
+                                Text("${item['time']} with ${item['staff']}",
+                                    style: GoogleFonts.poppins(
+                                        fontSize: 12.sp,
+                                        color: Theme.of(context).primaryColor)),
                               ],
                             ),
-                            SizedBox(height: 2.h),
-                            Text("${item['time']} with ${item['staff']}", style: GoogleFonts.poppins(fontSize: 12.sp, color: Colors.grey[600])),
-                          ],
-                        ),
-                      ),
-                    )),
+                          ),
+                        )),
                     Divider(),
                     _rowTotal("Subtotal", "₹$total"),
                     _rowTotal("Taxes", "₹0"),
                     _rowTotal("Total", "₹$total"),
                     SizedBox(height: 6.h),
                     Divider(),
-                    Text("To pay", style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                    Text("To pay",
+                        style:
+                            GoogleFonts.poppins(fontWeight: FontWeight.w600)),
                     SizedBox(height: 12.h),
                     Row(
                       children: [
@@ -164,11 +189,17 @@ class _ManageSalesPageState extends State<ManageSalesPage> with SingleTickerProv
                             itemBuilder: (context) => [
                               PopupMenuItem(
                                 value: 'save',
-                                child: Text("Save unpaid", style: GoogleFonts.poppins(color: Colors.blue, fontWeight: FontWeight.bold)),
+                                child: Text("Save unpaid",
+                                    style: GoogleFonts.poppins(
+                                        color: Theme.of(context).primaryColor,
+                                        fontWeight: FontWeight.bold)),
                               ),
                               PopupMenuItem(
                                 value: 'cancel',
-                                child: Text("Cancel sale", style: GoogleFonts.poppins(color: Colors.red, fontWeight: FontWeight.bold)),
+                                child: Text("Cancel sale",
+                                    style: GoogleFonts.poppins(
+                                        color: Colors.red,
+                                        fontWeight: FontWeight.bold)),
                               ),
                             ],
                             icon: Icon(Icons.more_horiz),
@@ -179,11 +210,13 @@ class _ManageSalesPageState extends State<ManageSalesPage> with SingleTickerProv
                           flex: 2,
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue,
+                              backgroundColor: Theme.of(context).primaryColor,
                               padding: EdgeInsets.symmetric(vertical: 12.h),
                             ),
                             onPressed: () {},
-                            child: Text('Continue', style: GoogleFonts.poppins(color: Colors.white)),
+                            child: Text('Continue',
+                                style:
+                                    GoogleFonts.poppins(color: Colors.white)),
                           ),
                         ),
                       ],
@@ -198,9 +231,12 @@ class _ManageSalesPageState extends State<ManageSalesPage> with SingleTickerProv
   }
 
   void _showEditCartItemPopup(BuildContext context, Map<String, dynamic> item) {
-    TextEditingController priceController = TextEditingController(text: item['price'].toString());
-    TextEditingController quantityController = TextEditingController(text: item['quantity'].toString());
-    TextEditingController discountController = TextEditingController(text: item['discount'].toString());
+    TextEditingController priceController =
+        TextEditingController(text: item['price'].toString());
+    TextEditingController quantityController =
+        TextEditingController(text: item['quantity'].toString());
+    TextEditingController discountController =
+        TextEditingController(text: item['discount'].toString());
     String selectedStaff = item['staff'] ?? 'Juill Ware';
     bool isFlatDiscount = item['isFlatDiscount'] ?? false;
     if (!staffMembers.contains(selectedStaff)) {
@@ -211,15 +247,18 @@ class _ManageSalesPageState extends State<ManageSalesPage> with SingleTickerProv
       builder: (context) {
         return AlertDialog(
           backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           titlePadding: const EdgeInsets.fromLTRB(20, 16, 8, 0),
           title: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 'Edit cart item',
-                style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600),
+                style: GoogleFonts.poppins(
+                    fontSize: 16, fontWeight: FontWeight.w600),
               ),
               IconButton(
                 icon: const Icon(Icons.close, size: 22),
@@ -237,10 +276,12 @@ class _ManageSalesPageState extends State<ManageSalesPage> with SingleTickerProv
                   children: [
                     Text(
                       item['name'] ?? 'dummy',
-                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 15),
+                      style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w600, fontSize: 15),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: const Color(0xFFE6F9ED),
                         borderRadius: BorderRadius.circular(4),
@@ -275,10 +316,12 @@ class _ManageSalesPageState extends State<ManageSalesPage> with SingleTickerProv
                               color: const Color(0xFF1D2939),
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child: const Icon(Icons.currency_rupee, color: Colors.white, size: 18),
+                            child: const Icon(Icons.currency_rupee,
+                                color: Colors.white, size: 18),
                           ),
                           isDense: true,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8)),
                         ),
                       ),
                     ),
@@ -301,7 +344,8 @@ class _ManageSalesPageState extends State<ManageSalesPage> with SingleTickerProv
                           ),
                           Text(
                             '${item['quantity'] ?? 1}',
-                            style: GoogleFonts.poppins(fontWeight: FontWeight.w500, fontSize: 14),
+                            style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w500, fontSize: 14),
                           ),
                           IconButton(
                             icon: const Icon(Icons.add, size: 20),
@@ -318,7 +362,8 @@ class _ManageSalesPageState extends State<ManageSalesPage> with SingleTickerProv
 
                 // Discount toggle
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
                   margin: EdgeInsets.only(bottom: 12.h),
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -350,7 +395,7 @@ class _ManageSalesPageState extends State<ManageSalesPage> with SingleTickerProv
                             isFlatDiscount = val;
                           });
                         },
-                        activeColor: Colors.blue,
+                        activeColor: Theme.of(context).primaryColor,
                         inactiveThumbColor: Colors.grey,
                       ),
                     ],
@@ -378,10 +423,11 @@ class _ManageSalesPageState extends State<ManageSalesPage> with SingleTickerProv
                         size: 18,
                       ),
                     ),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8)),
                   ),
                 ),
-                const SizedBox(height:20),
+                const SizedBox(height: 20),
 
                 // Staff Dropdown
                 DropdownButtonFormField<String>(
@@ -389,7 +435,8 @@ class _ManageSalesPageState extends State<ManageSalesPage> with SingleTickerProv
                   isExpanded: true,
                   decoration: InputDecoration(
                     labelText: 'Staff Member',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8)),
                   ),
                   style: GoogleFonts.poppins(color: Colors.black),
                   items: staffMembers.map((String value) {
@@ -398,14 +445,16 @@ class _ManageSalesPageState extends State<ManageSalesPage> with SingleTickerProv
                       child: Text(value, style: GoogleFonts.poppins()),
                     );
                   }).toList(),
-                  onChanged: (newValue) => setState(() => selectedStaff = newValue!),
+                  onChanged: (newValue) =>
+                      setState(() => selectedStaff = newValue!),
                 ),
               ],
             ),
           ),
 
           // Action Buttons
-          actionsPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          actionsPadding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           actions: [
             TextButton(
               onPressed: () {
@@ -414,18 +463,24 @@ class _ManageSalesPageState extends State<ManageSalesPage> with SingleTickerProv
               },
               style: TextButton.styleFrom(
                 backgroundColor: const Color(0xFFEF4444),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6)),
               ),
-              child: Text('Remove', style: GoogleFonts.poppins(color: Colors.white)),
+              child: Text('Remove',
+                  style: GoogleFonts.poppins(color: Colors.white)),
             ),
             OutlinedButton(
               onPressed: () => Navigator.pop(context),
               style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6)),
               ),
-              child: Text('Cancel', style: GoogleFonts.poppins(color: Colors.black)),
+              child: Text('Cancel',
+                  style: GoogleFonts.poppins(color: Colors.black)),
             ),
             ElevatedButton(
               onPressed: () {
@@ -434,17 +489,18 @@ class _ManageSalesPageState extends State<ManageSalesPage> with SingleTickerProv
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6)),
               ),
-              child: Text('Save', style: GoogleFonts.poppins(color: Colors.white)),
+              child:
+                  Text('Save', style: GoogleFonts.poppins(color: Colors.white)),
             ),
           ],
         );
       },
     );
-
-
   }
 
   Widget _searchBox(String hint) {
@@ -496,7 +552,7 @@ class _ManageSalesPageState extends State<ManageSalesPage> with SingleTickerProv
               text: TextSpan(
                 text: s['name'],
                 style: GoogleFonts.poppins(
-                  color: Colors.blue,
+                  color: Theme.of(context).primaryColor,
                   fontSize: 12.sp,
                   fontWeight: FontWeight.w500,
                 ),
@@ -516,7 +572,8 @@ class _ManageSalesPageState extends State<ManageSalesPage> with SingleTickerProv
             flex: 2,
             child: Text(
               s['cat'] ?? '',
-              style: GoogleFonts.poppins(color: Colors.blue, fontSize: 12.sp),
+              style: GoogleFonts.poppins(
+                  color: Theme.of(context).primaryColor, fontSize: 12.sp),
             ),
           ),
           Expanded(
@@ -536,7 +593,7 @@ class _ManageSalesPageState extends State<ManageSalesPage> with SingleTickerProv
                 Text(
                   "₹${s['price']!}",
                   style: GoogleFonts.poppins(
-                    color: Colors.blue,
+                    color: Theme.of(context).primaryColor,
                     fontWeight: FontWeight.w600,
                     fontSize: 12.sp,
                   ),
@@ -548,5 +605,4 @@ class _ManageSalesPageState extends State<ManageSalesPage> with SingleTickerProv
       ),
     );
   }
-
 }

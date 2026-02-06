@@ -10,7 +10,8 @@ class SuppOrdersPage extends StatefulWidget {
   State<SuppOrdersPage> createState() => _SuppOrdersPageState();
 }
 
-class _SuppOrdersPageState extends State<SuppOrdersPage> with SingleTickerProviderStateMixin {
+class _SuppOrdersPageState extends State<SuppOrdersPage>
+    with SingleTickerProviderStateMixin {
   // Supplier-focused sample orders (orders received for their products)
   final List<Map<String, dynamic>> orders = [
     {
@@ -41,7 +42,11 @@ class _SuppOrdersPageState extends State<SuppOrdersPage> with SingleTickerProvid
       'paymentMode': 'Online',
       'orderDate': '2025-12-18',
       'status': 'Pending',
-      'products': ['Luxury Body Butter', 'Matte Lipstick Set', 'Beard Growth Oil'],
+      'products': [
+        'Luxury Body Butter',
+        'Matte Lipstick Set',
+        'Beard Growth Oil'
+      ],
     },
     {
       'orderId': '#ORD504',
@@ -82,7 +87,8 @@ class _SuppOrdersPageState extends State<SuppOrdersPage> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 1, vsync: this); // Only one tab for supplier
+    _tabController =
+        TabController(length: 1, vsync: this); // Only one tab for supplier
   }
 
   @override
@@ -96,7 +102,7 @@ class _SuppOrdersPageState extends State<SuppOrdersPage> with SingleTickerProvid
       case 'Delivered':
         return Colors.green;
       case 'Shipped':
-        return Colors.blue;
+        return Color(0xFF1B5E20); // Green for shipped too
       case 'Processing':
         return Colors.purple;
       case 'Pending':
@@ -113,7 +119,7 @@ class _SuppOrdersPageState extends State<SuppOrdersPage> with SingleTickerProvid
       case 'Delivered':
         return Colors.green.shade100;
       case 'Shipped':
-        return Colors.blue.shade100;
+        return Colors.green.shade50;
       case 'Processing':
         return Colors.purple.shade100;
       case 'Pending':
@@ -133,18 +139,29 @@ class _SuppOrdersPageState extends State<SuppOrdersPage> with SingleTickerProvid
   List<Map<String, dynamic>> get filteredOrders {
     return orders.where((order) {
       final matchesSearch = _searchQuery.isEmpty ||
-          order['orderId'].toString().toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          order['customerName'].toString().toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          (order['products'] as List).any((p) => p.toLowerCase().contains(_searchQuery.toLowerCase()));
+          order['orderId']
+              .toString()
+              .toLowerCase()
+              .contains(_searchQuery.toLowerCase()) ||
+          order['customerName']
+              .toString()
+              .toLowerCase()
+              .contains(_searchQuery.toLowerCase()) ||
+          (order['products'] as List)
+              .any((p) => p.toLowerCase().contains(_searchQuery.toLowerCase()));
 
-      final matchesStatus = _selectedStatus == 'All Statuses' || order['status'] == _selectedStatus;
+      final matchesStatus = _selectedStatus == 'All Statuses' ||
+          order['status'] == _selectedStatus;
 
       return matchesSearch && matchesStatus;
     }).toList();
   }
 
-  int get deliveredCount => orders.where((o) => o['status'] == 'Delivered').length;
-  int get pendingCount => orders.where((o) => o['status'] == 'Pending' || o['status'] == 'Processing').length;
+  int get deliveredCount =>
+      orders.where((o) => o['status'] == 'Delivered').length;
+  int get pendingCount => orders
+      .where((o) => o['status'] == 'Pending' || o['status'] == 'Processing')
+      .length;
 
   @override
   Widget build(BuildContext context) {
@@ -177,14 +194,17 @@ class _SuppOrdersPageState extends State<SuppOrdersPage> with SingleTickerProvid
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.blue.shade700, Colors.blue.shade900],
+                  colors: [
+                    Theme.of(context).primaryColor,
+                    Theme.of(context).primaryColor.withOpacity(0.8)
+                  ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.blue.withOpacity(0.3),
+                    color: Theme.of(context).primaryColor.withOpacity(0.3),
                     blurRadius: 10,
                     offset: const Offset(0, 3),
                   ),
@@ -253,7 +273,7 @@ class _SuppOrdersPageState extends State<SuppOrdersPage> with SingleTickerProvid
                           orders.length.toString(),
                           'Total',
                           Icons.shopping_bag_outlined,
-                          Colors.blue,
+                          Theme.of(context).primaryColor,
                         ),
                       ),
                     ],
@@ -264,7 +284,8 @@ class _SuppOrdersPageState extends State<SuppOrdersPage> with SingleTickerProvid
 
             // Search + Filter
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: isMobile ? 10.w : 16.w, vertical: 10.h),
+              padding: EdgeInsets.symmetric(
+                  horizontal: isMobile ? 10.w : 16.w, vertical: 10.h),
               child: Row(
                 children: [
                   Expanded(
@@ -283,9 +304,12 @@ class _SuppOrdersPageState extends State<SuppOrdersPage> with SingleTickerProvid
                       child: TextField(
                         onChanged: (val) => setState(() => _searchQuery = val),
                         decoration: InputDecoration(
-                          hintText: 'Search by order ID, customer, or product...',
-                          hintStyle: GoogleFonts.poppins(fontSize: 11.sp, color: Colors.grey.shade500),
-                          prefixIcon: Icon(Icons.search, color: Colors.grey.shade500, size: 18.sp),
+                          hintText:
+                              'Search by order ID, customer, or product...',
+                          hintStyle: GoogleFonts.poppins(
+                              fontSize: 11.sp, color: Colors.grey.shade500),
+                          prefixIcon: Icon(Icons.search,
+                              color: Colors.grey.shade500, size: 18.sp),
                           filled: true,
                           fillColor: Colors.white,
                           border: OutlineInputBorder(
@@ -296,7 +320,8 @@ class _SuppOrdersPageState extends State<SuppOrdersPage> with SingleTickerProvid
                             borderRadius: BorderRadius.circular(14),
                             borderSide: BorderSide.none,
                           ),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: 14.w, vertical: 12.h),
                         ),
                         style: TextStyle(fontSize: 11.sp),
                       ),
@@ -304,7 +329,8 @@ class _SuppOrdersPageState extends State<SuppOrdersPage> with SingleTickerProvid
                   ),
                   SizedBox(width: 8.w),
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(14),
@@ -319,8 +345,10 @@ class _SuppOrdersPageState extends State<SuppOrdersPage> with SingleTickerProvid
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         value: _selectedStatus,
-                        icon: Icon(Icons.expand_more, size: 14.sp, color: Colors.grey.shade700),
-                        style: GoogleFonts.poppins(color: Colors.black, fontSize: 10.sp),
+                        icon: Icon(Icons.expand_more,
+                            size: 14.sp, color: Colors.grey.shade700),
+                        style: GoogleFonts.poppins(
+                            color: Colors.black, fontSize: 10.sp),
                         onChanged: (String? newValue) {
                           setState(() {
                             _selectedStatus = newValue!;
@@ -336,7 +364,8 @@ class _SuppOrdersPageState extends State<SuppOrdersPage> with SingleTickerProvid
                         ].map<DropdownMenuItem<String>>((String value) {
                           return DropdownMenuItem<String>(
                             value: value,
-                            child: Text(value, style: GoogleFonts.poppins(fontSize: 10.sp)),
+                            child: Text(value,
+                                style: GoogleFonts.poppins(fontSize: 10.sp)),
                           );
                         }).toList(),
                       ),
@@ -359,7 +388,8 @@ class _SuppOrdersPageState extends State<SuppOrdersPage> with SingleTickerProvid
                               color: Colors.grey.shade100,
                               shape: BoxShape.circle,
                             ),
-                            child: Icon(Icons.shopping_bag_outlined, size: 48.sp, color: Colors.grey.shade400),
+                            child: Icon(Icons.shopping_bag_outlined,
+                                size: 48.sp, color: Colors.grey.shade400),
                           ),
                           SizedBox(height: 16.h),
                           Text(
@@ -395,7 +425,8 @@ class _SuppOrdersPageState extends State<SuppOrdersPage> with SingleTickerProvid
     );
   }
 
-  Widget _buildStatCard(String value, String label, IconData icon, Color color) {
+  Widget _buildStatCard(
+      String value, String label, IconData icon, Color color) {
     return Container(
       padding: EdgeInsets.all(10.w),
       decoration: BoxDecoration(
@@ -479,7 +510,8 @@ class _SuppOrdersPageState extends State<SuppOrdersPage> with SingleTickerProvid
                   ],
                 ),
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
                   decoration: BoxDecoration(
                     color: _getStatusBgColor(order['status']),
                     borderRadius: BorderRadius.circular(18),
@@ -496,7 +528,7 @@ class _SuppOrdersPageState extends State<SuppOrdersPage> with SingleTickerProvid
               ],
             ),
           ),
-          
+
           // Order details
           Padding(
             padding: EdgeInsets.all(14.w),
@@ -510,7 +542,7 @@ class _SuppOrdersPageState extends State<SuppOrdersPage> with SingleTickerProvid
                       width: 32.w,
                       height: 32.w,
                       decoration: BoxDecoration(
-                        color: Colors.blue.shade100,
+                        color: Theme.of(context).primaryColor.withOpacity(0.1),
                         shape: BoxShape.circle,
                       ),
                       child: Center(
@@ -519,7 +551,7 @@ class _SuppOrdersPageState extends State<SuppOrdersPage> with SingleTickerProvid
                           style: GoogleFonts.poppins(
                             fontSize: 12.sp,
                             fontWeight: FontWeight.bold,
-                            color: Colors.blue.shade700,
+                            color: Theme.of(context).primaryColor,
                           ),
                         ),
                       ),
@@ -550,9 +582,9 @@ class _SuppOrdersPageState extends State<SuppOrdersPage> with SingleTickerProvid
                     ),
                   ],
                 ),
-                
+
                 SizedBox(height: 14.h),
-                
+
                 // Products list
                 Text(
                   'Products:',
@@ -569,7 +601,8 @@ class _SuppOrdersPageState extends State<SuppOrdersPage> with SingleTickerProvid
                     padding: EdgeInsets.only(bottom: 3.h),
                     child: Row(
                       children: [
-                        Icon(Icons.circle, size: 5.sp, color: Colors.grey.shade400),
+                        Icon(Icons.circle,
+                            size: 5.sp, color: Colors.grey.shade400),
                         SizedBox(width: 6.w),
                         Expanded(
                           child: Text(
@@ -586,9 +619,9 @@ class _SuppOrdersPageState extends State<SuppOrdersPage> with SingleTickerProvid
                     ),
                   ),
                 ),
-                
+
                 SizedBox(height: 14.h),
-                
+
                 // Payment info
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,

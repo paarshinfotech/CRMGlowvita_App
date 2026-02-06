@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 
 class CreateCouponPage extends StatefulWidget {
   final List<Map<String, dynamic>> services;
-  
+
   const CreateCouponPage({super.key, required this.services});
 
   @override
@@ -13,31 +13,33 @@ class CreateCouponPage extends StatefulWidget {
 
 class _CreateCouponPageState extends State<CreateCouponPage> {
   final _formKey = GlobalKey<FormState>();
-  
+
   // Form controllers
   final TextEditingController _couponCodeController = TextEditingController();
-  final TextEditingController _discountValueController = TextEditingController();
-  
+  final TextEditingController _discountValueController =
+      TextEditingController();
+
   // Form state
   bool _useCustomCode = false;
   String _discountType = 'Percentage';
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now().add(const Duration(days: 30));
-  
+
   List<String> _selectedServices = [];
   List<String> _selectedCategories = [];
   String _selectedGender = 'All';
   String? _selectedImage;
-  
+
   // Available options
   final List<String> _discountTypes = ['Percentage', 'Fixed Amount'];
   final List<String> _genders = ['All', 'Men', 'Women', 'Unisex'];
-  
+
   @override
   void initState() {
     super.initState();
     // Initialize with all services selected
-    _selectedServices = widget.services.map((s) => s['name'] as String).toList();
+    _selectedServices =
+        widget.services.map((s) => s['name'] as String).toList();
     // Initialize with all categories selected
     final categories = <String>{};
     for (var service in widget.services) {
@@ -47,14 +49,14 @@ class _CreateCouponPageState extends State<CreateCouponPage> {
     }
     _selectedCategories = categories.toList();
   }
-  
+
   @override
   void dispose() {
     _couponCodeController.dispose();
     _discountValueController.dispose();
     super.dispose();
   }
-  
+
   List<String> get _availableCategories {
     final categories = <String>{};
     for (var service in widget.services) {
@@ -64,7 +66,7 @@ class _CreateCouponPageState extends State<CreateCouponPage> {
     }
     return categories.toList();
   }
-  
+
   Future<void> _selectStartDate() async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -78,7 +80,7 @@ class _CreateCouponPageState extends State<CreateCouponPage> {
       });
     }
   }
-  
+
   Future<void> _selectEndDate() async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -92,7 +94,7 @@ class _CreateCouponPageState extends State<CreateCouponPage> {
       });
     }
   }
-  
+
   void _toggleServiceSelection(String serviceName) {
     setState(() {
       if (_selectedServices.contains(serviceName)) {
@@ -100,12 +102,12 @@ class _CreateCouponPageState extends State<CreateCouponPage> {
       } else {
         _selectedServices.add(serviceName);
       }
-      
+
       // Update categories based on selected services
       _updateCategoriesBasedOnServices();
     });
   }
-  
+
   void _toggleCategorySelection(String category) {
     setState(() {
       if (_selectedCategories.contains(category)) {
@@ -115,7 +117,7 @@ class _CreateCouponPageState extends State<CreateCouponPage> {
       }
     });
   }
-  
+
   void _updateCategoriesBasedOnServices() {
     final categories = <String>{};
     for (var service in widget.services) {
@@ -129,35 +131,40 @@ class _CreateCouponPageState extends State<CreateCouponPage> {
       _selectedCategories = categories.toList();
     });
   }
-  
+
   void _saveCoupon() {
     if (_formKey.currentState!.validate()) {
       // Prepare coupon data
       final couponData = {
-        'code': _useCustomCode ? _couponCodeController.text : _generateUniqueCode(),
+        'code':
+            _useCustomCode ? _couponCodeController.text : _generateUniqueCode(),
         'discountType': _discountType,
         'discountValue': double.tryParse(_discountValueController.text) ?? 0.0,
         'status': _startDate.isAfter(DateTime.now()) ? 'Scheduled' : 'Active',
         'startsOn': _startDate,
         'expiresOn': _endDate,
-        'services': _selectedServices.isEmpty ? 'All Services' : _selectedServices.join(', '),
-        'categories': _selectedCategories.isEmpty ? 'All' : _selectedCategories.join(', '),
+        'services': _selectedServices.isEmpty
+            ? 'All Services'
+            : _selectedServices.join(', '),
+        'categories': _selectedCategories.isEmpty
+            ? 'All'
+            : _selectedCategories.join(', '),
         'genders': _selectedGender,
         'image': _selectedImage,
         'redeemed': 0,
       };
-      
+
       // Return the coupon data to the previous screen
       Navigator.pop(context, couponData);
     }
   }
-  
+
   String _generateUniqueCode() {
     // Simple code generation - in a real app, you might want a more robust solution
     final now = DateTime.now();
     return 'COUPON${now.millisecondsSinceEpoch.toString().substring(6)}';
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -188,7 +195,7 @@ class _CreateCouponPageState extends State<CreateCouponPage> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                
+
                 // Custom Coupon Code
                 Row(
                   children: [
@@ -209,7 +216,7 @@ class _CreateCouponPageState extends State<CreateCouponPage> {
                     ),
                   ],
                 ),
-                
+
                 if (_useCustomCode)
                   Container(
                     margin: const EdgeInsets.only(top: 8, bottom: 16),
@@ -224,16 +231,17 @@ class _CreateCouponPageState extends State<CreateCouponPage> {
                         fillColor: Colors.white,
                       ),
                       validator: (value) {
-                        if (_useCustomCode && (value == null || value.isEmpty)) {
+                        if (_useCustomCode &&
+                            (value == null || value.isEmpty)) {
                           return 'Please enter a coupon code';
                         }
                         return null;
                       },
                     ),
                   ),
-                
+
                 const SizedBox(height: 8),
-                
+
                 // Discount Type
                 Text(
                   'Discount Type',
@@ -244,7 +252,8 @@ class _CreateCouponPageState extends State<CreateCouponPage> {
                 ),
                 const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(8),
@@ -270,9 +279,9 @@ class _CreateCouponPageState extends State<CreateCouponPage> {
                     },
                   ),
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Discount Value
                 Text(
                   'Discount Value',
@@ -285,7 +294,9 @@ class _CreateCouponPageState extends State<CreateCouponPage> {
                 TextFormField(
                   controller: _discountValueController,
                   decoration: InputDecoration(
-                    labelText: _discountType == 'Percentage' ? 'Percentage (%)' : 'Amount (₹)',
+                    labelText: _discountType == 'Percentage'
+                        ? 'Percentage (%)'
+                        : 'Amount (₹)',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -304,9 +315,9 @@ class _CreateCouponPageState extends State<CreateCouponPage> {
                     return null;
                   },
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Date Range
                 Text(
                   'Validity Period',
@@ -322,7 +333,8 @@ class _CreateCouponPageState extends State<CreateCouponPage> {
                       child: InkWell(
                         onTap: _selectStartDate,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 12),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(8),
@@ -330,7 +342,8 @@ class _CreateCouponPageState extends State<CreateCouponPage> {
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.calendar_today, size: 18, color: Colors.grey),
+                              const Icon(Icons.calendar_today,
+                                  size: 18, color: Colors.grey),
                               const SizedBox(width: 8),
                               Text(
                                 DateFormat('dd/MM/yyyy').format(_startDate),
@@ -354,7 +367,8 @@ class _CreateCouponPageState extends State<CreateCouponPage> {
                       child: InkWell(
                         onTap: _selectEndDate,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 12),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(8),
@@ -362,7 +376,8 @@ class _CreateCouponPageState extends State<CreateCouponPage> {
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.calendar_today, size: 18, color: Colors.grey),
+                              const Icon(Icons.calendar_today,
+                                  size: 18, color: Colors.grey),
                               const SizedBox(width: 8),
                               Text(
                                 DateFormat('dd/MM/yyyy').format(_endDate),
@@ -375,9 +390,9 @@ class _CreateCouponPageState extends State<CreateCouponPage> {
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Applicable Services
                 Text(
                   'Applicable Services',
@@ -425,11 +440,14 @@ class _CreateCouponPageState extends State<CreateCouponPage> {
                         Row(
                           children: [
                             Checkbox(
-                              value: _selectedServices.length == widget.services.length,
+                              value: _selectedServices.length ==
+                                  widget.services.length,
                               onChanged: (value) {
                                 setState(() {
                                   if (value == true) {
-                                    _selectedServices = widget.services.map((s) => s['name'] as String).toList();
+                                    _selectedServices = widget.services
+                                        .map((s) => s['name'] as String)
+                                        .toList();
                                   } else {
                                     _selectedServices.clear();
                                   }
@@ -470,8 +488,10 @@ class _CreateCouponPageState extends State<CreateCouponPage> {
                                     color: Colors.grey.shade600,
                                   ),
                                 ),
-                                controlAffinity: ListTileControlAffinity.leading,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                                controlAffinity:
+                                    ListTileControlAffinity.leading,
+                                contentPadding:
+                                    const EdgeInsets.symmetric(horizontal: 8),
                               );
                             }).toList(),
                           ),
@@ -479,9 +499,9 @@ class _CreateCouponPageState extends State<CreateCouponPage> {
                       ],
                     ),
                   ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Applicable Categories
                 Text(
                   'Applicable Service Categories',
@@ -529,11 +549,13 @@ class _CreateCouponPageState extends State<CreateCouponPage> {
                         Row(
                           children: [
                             Checkbox(
-                              value: _selectedCategories.length == _availableCategories.length,
+                              value: _selectedCategories.length ==
+                                  _availableCategories.length,
                               onChanged: (value) {
                                 setState(() {
                                   if (value == true) {
-                                    _selectedCategories = List.from(_availableCategories);
+                                    _selectedCategories =
+                                        List.from(_availableCategories);
                                   } else {
                                     _selectedCategories.clear();
                                   }
@@ -565,18 +587,20 @@ class _CreateCouponPageState extends State<CreateCouponPage> {
                               onSelected: (selected) {
                                 _toggleCategorySelection(category);
                               },
-                              selectedColor: Colors.blue.shade100,
+                              selectedColor: Theme.of(context)
+                                  .primaryColor
+                                  .withOpacity(0.1),
                               backgroundColor: Colors.grey.shade200,
-                              checkmarkColor: Colors.blue,
+                              checkmarkColor: Theme.of(context).primaryColor,
                             );
                           }).toList(),
                         ),
                       ],
                     ),
                   ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Applicable Genders
                 Text(
                   'Applicable Genders',
@@ -587,7 +611,8 @@ class _CreateCouponPageState extends State<CreateCouponPage> {
                 ),
                 const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(8),
@@ -613,9 +638,9 @@ class _CreateCouponPageState extends State<CreateCouponPage> {
                     },
                   ),
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Offer Image
                 Text(
                   'Offer Image (Optional)',
@@ -636,7 +661,8 @@ class _CreateCouponPageState extends State<CreateCouponPage> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.image_outlined, size: 32, color: Colors.grey),
+                        const Icon(Icons.image_outlined,
+                            size: 32, color: Colors.grey),
                         const SizedBox(height: 8),
                         Text(
                           'No image selected',
@@ -649,16 +675,16 @@ class _CreateCouponPageState extends State<CreateCouponPage> {
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Save Button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: _saveCoupon,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2563EB),
+                      backgroundColor: Theme.of(context).primaryColor,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(

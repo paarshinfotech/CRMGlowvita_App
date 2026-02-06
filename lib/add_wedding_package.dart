@@ -251,7 +251,9 @@ class _CreateWeddingPackageDialogState
                 Divider(height: 1, thickness: 0.5, color: Colors.grey.shade200),
                 Expanded(
                   child: isLoading
-                      ? const Center(child: CircularProgressIndicator())
+                      ? Center(
+                          child: CircularProgressIndicator(
+                              color: Theme.of(context).primaryColor))
                       : errorMessage != null
                           ? Center(
                               child: Text(errorMessage!,
@@ -288,7 +290,7 @@ class _CreateWeddingPackageDialogState
                     FilledButton(
                       onPressed: _submitting ? null : _submitForm,
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF331F33),
+                        backgroundColor: Theme.of(context).primaryColor,
                         padding: const EdgeInsets.symmetric(
                             horizontal: 20, vertical: 8),
                         minimumSize: const Size(0, 0),
@@ -416,8 +418,8 @@ class _CreateWeddingPackageDialogState
                 borderSide: BorderSide(color: Colors.grey.shade300)),
             focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(7),
-                borderSide:
-                    const BorderSide(color: Color(0xFF331F33), width: 1)),
+                borderSide: BorderSide(
+                    color: Theme.of(context).primaryColor, width: 1)),
           ),
         ),
         if (helperText != null) ...[
@@ -484,7 +486,7 @@ class _CreateWeddingPackageDialogState
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF3E5F5),
+                  color: Theme.of(context).primaryColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
@@ -493,7 +495,7 @@ class _CreateWeddingPackageDialogState
                     Text(staff.fullName ?? 'Unknown',
                         style: GoogleFonts.poppins(
                             fontSize: 11,
-                            color: const Color(0xFF331F33),
+                            color: Theme.of(context).primaryColor,
                             fontWeight: FontWeight.w500)),
                     const SizedBox(width: 4),
                     GestureDetector(
@@ -502,8 +504,8 @@ class _CreateWeddingPackageDialogState
                           _selectedStaff.removeWhere((s) => s.id == staff.id);
                         });
                       },
-                      child: const Icon(Icons.close,
-                          size: 14, color: Color(0xFF331F33)),
+                      child: Icon(Icons.close,
+                          size: 14, color: Theme.of(context).primaryColor),
                     ),
                   ],
                 ),
@@ -765,7 +767,7 @@ class _CreateWeddingPackageDialogState
                 children: [
                   Checkbox(
                       value: _reqStaffForAdd,
-                      activeColor: const Color(0xFF331F33),
+                      activeColor: Theme.of(context).primaryColor,
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       visualDensity: VisualDensity.compact,
                       onChanged: (v) {
@@ -857,8 +859,8 @@ class _CreateWeddingPackageDialogState
                   GestureDetector(
                     onTap: () =>
                         setState(() => selectedServices.removeAt(index)),
-                    child: const Icon(Icons.close,
-                        size: 14, color: Colors.redAccent),
+                    child: Icon(Icons.close,
+                        size: 14, color: Theme.of(context).primaryColor),
                   ),
                   const SizedBox(width: 12),
                   Column(

@@ -21,11 +21,12 @@ class _UpdateAppointmentPageState extends State<UpdateAppointmentPage> {
 
   final List<String> timeSlots = List.generate(
     9,
-        (i) => DateFormat('hh:mm a').format(DateTime(2023, 1, 1, 10, i * 15)),
+    (i) => DateFormat('hh:mm a').format(DateTime(2023, 1, 1, 10, i * 15)),
   ); // From 10:00 AM to 12:00 PM
 
   final List<String> services = ['Haircut', 'Shave', 'Facial', 'Massage'];
-  final List<String> durations = List.generate(12, (i) => '${(i + 1) * 5} mins');
+  final List<String> durations =
+      List.generate(12, (i) => '${(i + 1) * 5} mins');
   final List<String> staffMembers = ['Priya', 'Amit', 'Neha', 'Ravi'];
 
   @override
@@ -36,7 +37,8 @@ class _UpdateAppointmentPageState extends State<UpdateAppointmentPage> {
     selectedService = services.first;
     selectedDuration = durations.first;
     selectedStaff = staffMembers.first;
-    notesController = TextEditingController(text: widget.appointment['notes'] ?? '');
+    notesController =
+        TextEditingController(text: widget.appointment['notes'] ?? '');
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -57,8 +59,8 @@ class _UpdateAppointmentPageState extends State<UpdateAppointmentPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title:
-        Text("Update Appointment", style: GoogleFonts.poppins(color: Colors.black)),
+        title: Text("Update Appointment",
+            style: GoogleFonts.poppins(color: Colors.black)),
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0.5,
@@ -72,7 +74,8 @@ class _UpdateAppointmentPageState extends State<UpdateAppointmentPage> {
           children: [
             // Client Info Card
             Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
               elevation: 8,
               color: Colors.white,
               child: Padding(
@@ -81,15 +84,18 @@ class _UpdateAppointmentPageState extends State<UpdateAppointmentPage> {
                   children: [
                     CircleAvatar(
                       radius: 28,
-                      backgroundColor: Colors.blue.shade100,
-                      child: const Icon(Icons.person, size: 30, color: Colors.blue),
+                      backgroundColor:
+                          Theme.of(context).primaryColor.withOpacity(0.1),
+                      child: Icon(Icons.person,
+                          size: 30, color: Theme.of(context).primaryColor),
                     ),
                     const SizedBox(width: 15),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(widget.appointment['clientName'] ?? "Client Name",
+                          Text(
+                              widget.appointment['clientName'] ?? "Client Name",
                               style: const TextStyle(
                                   fontSize: 16, fontWeight: FontWeight.bold)),
                           Text(widget.appointment['email'] ?? "Email",
@@ -119,7 +125,8 @@ class _UpdateAppointmentPageState extends State<UpdateAppointmentPage> {
                       GestureDetector(
                         onTap: () => _selectDate(context),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 16),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             border: Border.all(color: Colors.grey),
@@ -157,7 +164,9 @@ class _UpdateAppointmentPageState extends State<UpdateAppointmentPage> {
                             items: timeSlots.map((String value) {
                               return DropdownMenuItem<String>(
                                 value: value,
-                                child: Text(value, style: const TextStyle(color: Colors.black)),
+                                child: Text(value,
+                                    style:
+                                        const TextStyle(color: Colors.black)),
                               );
                             }).toList(),
                             onChanged: (String? newValue) {
@@ -200,12 +209,14 @@ class _UpdateAppointmentPageState extends State<UpdateAppointmentPage> {
                           ),
                           items: services
                               .map((service) => DropdownMenuItem(
-                            value: service,
-                            child: Text(service, style: TextStyle(color: Colors.black)),
-                          ))
+                                    value: service,
+                                    child: Text(service,
+                                        style: TextStyle(color: Colors.black)),
+                                  ))
                               .toList(),
                           onChanged: (value) {
-                            if (value != null) setState(() => selectedService = value);
+                            if (value != null)
+                              setState(() => selectedService = value);
                           },
                         ),
                       ),
@@ -235,12 +246,14 @@ class _UpdateAppointmentPageState extends State<UpdateAppointmentPage> {
                           ),
                           items: durations
                               .map((dur) => DropdownMenuItem(
-                            value: dur,
-                            child: Text(dur, style: TextStyle(color: Colors.black)),
-                          ))
+                                    value: dur,
+                                    child: Text(dur,
+                                        style: TextStyle(color: Colors.black)),
+                                  ))
                               .toList(),
                           onChanged: (value) {
-                            if (value != null) setState(() => selectedDuration = value);
+                            if (value != null)
+                              setState(() => selectedDuration = value);
                           },
                         ),
                       ),
@@ -258,9 +271,9 @@ class _UpdateAppointmentPageState extends State<UpdateAppointmentPage> {
               value: selectedStaff,
               items: staffMembers
                   .map((staff) => DropdownMenuItem(
-                value: staff,
-                child: Text(staff),
-              ))
+                        value: staff,
+                        child: Text(staff),
+                      ))
                   .toList(),
               onChanged: (value) {
                 if (value != null) setState(() => selectedStaff = value);
@@ -290,21 +303,26 @@ class _UpdateAppointmentPageState extends State<UpdateAppointmentPage> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                style: ElevatedButton.styleFrom(elevation: 8,
+                style: ElevatedButton.styleFrom(
+                  elevation: 8,
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  backgroundColor: Colors.blue,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  backgroundColor: Theme.of(context).primaryColor,
                 ),
                 onPressed: () {
                   // Save logic
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Appointment updated successfully!")),
+                    const SnackBar(
+                        content: Text("Appointment updated successfully!")),
                   );
                 },
                 child: const Text(
                   "Save Appointment",
-                  style:
-                  TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Colors.white),
                 ),
               ),
             ),

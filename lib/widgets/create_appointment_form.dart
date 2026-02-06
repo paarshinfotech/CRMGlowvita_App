@@ -486,7 +486,7 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                 child: ElevatedButton(
                   onPressed: () => Navigator.of(context).pop(),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
+                    backgroundColor: Theme.of(context).primaryColor,
                     minimumSize: Size(double.infinity, 30.h),
                   ),
                   child: Text('Done',
@@ -540,7 +540,7 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                 child: ElevatedButton(
                   onPressed: () => Navigator.of(context).pop(),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
+                    backgroundColor: Theme.of(context).primaryColor,
                     minimumSize: Size(double.infinity, 30.h),
                   ),
                   child: Text('Done',
@@ -1060,7 +1060,7 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                         onPressed: _addToQueue,
                         style: ElevatedButton.styleFrom(
                           padding: EdgeInsets.zero,
-                          backgroundColor: const Color(0xFF1A2B4C),
+                          backgroundColor: Theme.of(context).primaryColor,
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8.r)),
                           elevation: 0,
@@ -1110,8 +1110,7 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                         padding: EdgeInsets.symmetric(
                             horizontal: 10.w, vertical: 8.h),
                         decoration: BoxDecoration(
-                          color:
-                              const Color(0xFFF8F9FD), // Very light blue/grey
+                          color: const Color(0xFFF6F0F2), // Light brand maroon
                           borderRadius: BorderRadius.circular(8.r),
                           border: Border.all(color: Colors.grey[200]!),
                         ),
@@ -1120,8 +1119,8 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                             Container(
                               width: 20.h,
                               height: 20.h,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF1A2B4C),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).primaryColor,
                                 shape: BoxShape.circle,
                               ),
                               child: Center(
@@ -1205,8 +1204,13 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                           child: Container(
                             margin: EdgeInsets.symmetric(horizontal: 1.w),
                             decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF1A2B4C), Color(0xFF91A6FF)],
+                              gradient: LinearGradient(
+                                colors: [
+                                  Theme.of(context).primaryColor,
+                                  Theme.of(context)
+                                      .primaryColor
+                                      .withOpacity(0.5)
+                                ],
                                 begin: Alignment.centerLeft,
                                 end: Alignment.centerRight,
                               ),
@@ -1285,7 +1289,7 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                             Text(
                               '${DateFormat('HH:mm').format(_queuedServices.first.startTime)} - ${DateFormat('HH:mm').format(_queuedServices.last.endTime)}',
                               style: TextStyle(
-                                  color: const Color(0xFF1A2B4C),
+                                  color: Theme.of(context).primaryColor,
                                   fontSize: 10.sp,
                                   fontWeight: FontWeight.bold),
                             ),
@@ -1388,7 +1392,7 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                     Expanded(
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.black,
+                          backgroundColor: Theme.of(context).primaryColor,
                           padding: EdgeInsets.symmetric(vertical: 12.h),
                         ),
                         onPressed: _isSaving ? null : _saveAppointment,

@@ -97,7 +97,6 @@ class _SalesCommissionState extends State<SalesCommission> {
   double totalSettlementAmt = 0;
   double totalPayoutAmt = 0;
 
-
   @override
   void initState() {
     super.initState();
@@ -124,9 +123,12 @@ class _SalesCommissionState extends State<SalesCommission> {
       totalTax += service['tax'] ?? 0.0;
       totalSales += service['totalSales'] ?? 0.0;
 
-      totalCommissionAmt += double.tryParse(service['commissionamount'] ?? '0.0') ?? 0.0;
-      totalSettlementAmt += double.tryParse(service['settlementAmount'] ?? '0.0') ?? 0.0;
-      totalPayoutAmt += double.tryParse(service['payoutAmount'] ?? '0.0') ?? 0.0;
+      totalCommissionAmt +=
+          double.tryParse(service['commissionamount'] ?? '0.0') ?? 0.0;
+      totalSettlementAmt +=
+          double.tryParse(service['settlementAmount'] ?? '0.0') ?? 0.0;
+      totalPayoutAmt +=
+          double.tryParse(service['payoutAmount'] ?? '0.0') ?? 0.0;
     }
   }
 
@@ -139,8 +141,10 @@ class _SalesCommissionState extends State<SalesCommission> {
             .contains(searchText.toLowerCase());
 
         final matchesDate = _selectedDateRange == null ||
-            (service['date'].isAfter(_selectedDateRange!.start.subtract(const Duration(days: 1))) &&
-                service['date'].isBefore(_selectedDateRange!.end.add(const Duration(days: 1))));
+            (service['date'].isAfter(_selectedDateRange!.start
+                    .subtract(const Duration(days: 1))) &&
+                service['date'].isBefore(
+                    _selectedDateRange!.end.add(const Duration(days: 1))));
 
         return matchesSearch && matchesDate;
       }).toList();
@@ -220,8 +224,10 @@ class _SalesCommissionState extends State<SalesCommission> {
                     backgroundColor: Colors.white,
                     foregroundColor: Colors.black87,
                     side: BorderSide(color: Colors.black54),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
                     elevation: 0,
                   ),
                 ),
@@ -229,7 +235,8 @@ class _SalesCommissionState extends State<SalesCommission> {
                 // Payout Button
                 ElevatedButton.icon(
                   onPressed: () {},
-                  icon: const Icon(Icons.payments_outlined, size: 20, color: Colors.white),
+                  icon: const Icon(Icons.payments_outlined,
+                      size: 20, color: Colors.white),
                   label: Text(
                     "Payout: ${_currencyFormat(totalPayoutAmt)}",
                     style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
@@ -237,8 +244,10 @@ class _SalesCommissionState extends State<SalesCommission> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
                     elevation: 0,
                   ),
                 ),
@@ -252,7 +261,8 @@ class _SalesCommissionState extends State<SalesCommission> {
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
-                      icon: const Icon(Icons.file_download_outlined, color: Colors.black),
+                      icon: const Icon(Icons.file_download_outlined,
+                          color: Colors.black),
                       items: const [
                         DropdownMenuItem(value: 'csv', child: Text('CSV')),
                         DropdownMenuItem(value: 'pdf', child: Text('PDF')),
@@ -278,7 +288,8 @@ class _SalesCommissionState extends State<SalesCommission> {
               child: Card(
                 color: Colors.white,
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: SingleChildScrollView(
@@ -286,11 +297,14 @@ class _SalesCommissionState extends State<SalesCommission> {
                     child: SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: DataTable(
-                        headingRowColor: MaterialStateColor.resolveWith((states) => Colors.grey.shade200),
+                        headingRowColor: MaterialStateColor.resolveWith(
+                            (states) => Colors.grey.shade200),
                         columnSpacing: 24,
                         dataRowHeight: 60,
-                        headingTextStyle: const TextStyle(fontWeight: FontWeight.bold),
-                        border: TableBorder.all(color: Colors.black26, width: 0.6),
+                        headingTextStyle:
+                            const TextStyle(fontWeight: FontWeight.bold),
+                        border:
+                            TableBorder.all(color: Colors.black26, width: 0.6),
                         columns: const [
                           DataColumn(label: Text("Invoice")),
                           DataColumn(label: Text("Mode")),
@@ -316,78 +330,105 @@ class _SalesCommissionState extends State<SalesCommission> {
                                 DataCell(Text(service['mode'] ?? '')),
                                 DataCell(
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 6),
                                     decoration: BoxDecoration(
                                       color: _getStatusColor(service['status']),
                                       borderRadius: BorderRadius.circular(20),
                                     ),
                                     child: Text(
                                       service['status'] ?? '',
-                                      style: const TextStyle(color: Colors.white),
+                                      style:
+                                          const TextStyle(color: Colors.white),
                                     ),
                                   ),
                                 ),
-                                DataCell(Text(DateFormat('dd MMM yyyy, hh:mm a').format(service['date']))),
+                                DataCell(Text(DateFormat('dd MMM yyyy, hh:mm a')
+                                    .format(service['date']))),
                                 DataCell(Text(service['customer'] ?? '')),
                                 DataCell(Text(service['qty'].toString())),
-                                DataCell(Text(_currencyFormat(service['grossSale']))),
-                                DataCell(Text(_currencyFormat(service['discount']))),
-                                DataCell(Text(_currencyFormat(service['netSale']))),
+                                DataCell(Text(
+                                    _currencyFormat(service['grossSale']))),
+                                DataCell(
+                                    Text(_currencyFormat(service['discount']))),
+                                DataCell(
+                                    Text(_currencyFormat(service['netSale']))),
                                 DataCell(Text(_currencyFormat(service['tax']))),
-                                DataCell(Text(_currencyFormat(service['totalSales']))),
-                                DataCell(Text(service['commissionRate'] ?? '0.00%')),
-                                DataCell(Text(_currencyFormat(double.tryParse(service['commissionamount']) ?? 0.0))),
-                                DataCell(Text(_currencyFormat(double.tryParse(service['settlementAmount']) ?? 0.0))),
-                                DataCell(Text(_currencyFormat(double.tryParse(service['payoutAmount']) ?? 0.0))),
+                                DataCell(Text(
+                                    _currencyFormat(service['totalSales']))),
+                                DataCell(
+                                    Text(service['commissionRate'] ?? '0.00%')),
+                                DataCell(Text(_currencyFormat(double.tryParse(
+                                        service['commissionamount']) ??
+                                    0.0))),
+                                DataCell(Text(_currencyFormat(double.tryParse(
+                                        service['settlementAmount']) ??
+                                    0.0))),
+                                DataCell(Text(_currencyFormat(
+                                    double.tryParse(service['payoutAmount']) ??
+                                        0.0))),
                               ],
                             );
                           }).toList(),
 
                           // Total Row
                           DataRow(
-                            color: MaterialStateColor.resolveWith((states) => Colors.yellow.shade50),
+                            color: MaterialStateColor.resolveWith(
+                                (states) => Colors.yellow.shade50),
                             cells: [
-                              const DataCell(Text("Total", style: TextStyle(fontWeight: FontWeight.bold))),
+                              const DataCell(Text("Total",
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.bold))),
                               const DataCell(Text("")),
                               const DataCell(Text("")),
                               const DataCell(Text("")),
                               const DataCell(Text("")),
                               DataCell(Text(
                                 totalQty.toString(),
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
                               )),
                               DataCell(Text(
                                 _currencyFormat(totalGrossSale),
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
                               )),
                               DataCell(Text(
                                 _currencyFormat(totalDiscount),
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
                               )),
                               DataCell(Text(
                                 _currencyFormat(totalNetSale),
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
                               )),
                               DataCell(Text(
                                 _currencyFormat(totalTax),
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
                               )),
                               DataCell(Text(
                                 _currencyFormat(totalSales),
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
                               )),
-                              const DataCell(Text("")), // Commission % not summed
+                              const DataCell(
+                                  Text("")), // Commission % not summed
                               DataCell(Text(
                                 _currencyFormat(totalCommissionAmt),
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
                               )),
                               DataCell(Text(
                                 _currencyFormat(totalSettlementAmt),
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
                               )),
                               DataCell(Text(
                                 _currencyFormat(totalPayoutAmt),
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
                               )),
                             ],
                           ),
@@ -430,10 +471,12 @@ class _SalesCommissionState extends State<SalesCommission> {
           ),
           IconButton(
             icon: const Icon(Icons.notifications),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationPage())),
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const NotificationPage())),
           ),
           GestureDetector(
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilePage())),
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const ProfilePage())),
             child: Padding(
               padding: EdgeInsets.only(right: 10.w),
               child: Container(
@@ -458,13 +501,13 @@ class _SalesCommissionState extends State<SalesCommission> {
   Color _getStatusColor(String? status) {
     switch (status?.toLowerCase()) {
       case 'paid':
-        return Colors.blue;
+        return Theme.of(context).primaryColor;
       case 'pending':
         return Colors.orange;
       case 'cancelled':
         return Colors.red;
       case 'unpaid':
-        return Colors.blueGrey;
+        return Theme.of(context).primaryColor;
       default:
         return Colors.grey;
     }

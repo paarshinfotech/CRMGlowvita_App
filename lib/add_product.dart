@@ -219,7 +219,7 @@ class _AddProductPageState extends State<AddProductPage> {
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
+              backgroundColor: Theme.of(context).primaryColor,
               foregroundColor: Colors.white,
             ),
             child: Text('Add', style: GoogleFonts.poppins()),
@@ -560,7 +560,7 @@ class _AddProductPageState extends State<AddProductPage> {
                         ),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
+                        backgroundColor: Theme.of(context).primaryColor,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
@@ -759,7 +759,7 @@ class _AddProductPageState extends State<AddProductPage> {
                   child: ElevatedButton(
                     onPressed: _submitProduct,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
+                      backgroundColor: Theme.of(context).primaryColor,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -834,7 +834,8 @@ class _AddProductPageState extends State<AddProductPage> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Colors.blue, width: 2),
+          borderSide:
+              BorderSide(color: Theme.of(context).primaryColor, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 12,

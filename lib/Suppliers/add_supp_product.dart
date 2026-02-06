@@ -24,7 +24,8 @@ class _AddSuppProductPageState extends State<AddSuppProductPage> {
   final TextEditingController _sizeMetricController = TextEditingController();
   final TextEditingController _bodyPartController = TextEditingController();
   final TextEditingController _bodyPartTypeController = TextEditingController();
-  final TextEditingController _keyIngredientsController = TextEditingController();
+  final TextEditingController _keyIngredientsController =
+      TextEditingController();
 
   String? selectedCategory;
   List<XFile> images = [];
@@ -138,13 +139,15 @@ class _AddSuppProductPageState extends State<AddSuppProductPage> {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Category "${nameController.text}" added successfully!'),
+                    content: Text(
+                        'Category "${nameController.text}" added successfully!'),
                     backgroundColor: Colors.green,
                   ),
                 );
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).primaryColor),
             child: Text('Add', style: GoogleFonts.poppins(color: Colors.white)),
           ),
         ],
@@ -193,7 +196,9 @@ class _AddSuppProductPageState extends State<AddSuppProductPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.existingProduct == null ? 'Add Supplier Product' : 'Edit Supplier Product',
+          widget.existingProduct == null
+              ? 'Add Supplier Product'
+              : 'Edit Supplier Product',
           style: GoogleFonts.poppins(
             fontWeight: FontWeight.w600,
             color: Colors.black,
@@ -294,7 +299,8 @@ class _AddSuppProductPageState extends State<AddSuppProductPage> {
                                     icon: const CircleAvatar(
                                       radius: 10,
                                       backgroundColor: Colors.red,
-                                      child: Icon(Icons.close, size: 14, color: Colors.white),
+                                      child: Icon(Icons.close,
+                                          size: 14, color: Colors.white),
                                     ),
                                   ),
                                 )
@@ -354,16 +360,19 @@ class _AddSuppProductPageState extends State<AddSuppProductPage> {
                         value: selectedCategory,
                         hint: Text(
                           'Select Category',
-                          style: GoogleFonts.poppins(color: Colors.grey.shade600, fontSize: 13),
+                          style: GoogleFonts.poppins(
+                              color: Colors.grey.shade600, fontSize: 13),
                         ),
                         isExpanded: true,
                         items: categories
                             .map((category) => DropdownMenuItem(
                                   value: category,
-                                  child: Text(category, style: GoogleFonts.poppins(fontSize: 13)),
+                                  child: Text(category,
+                                      style: GoogleFonts.poppins(fontSize: 13)),
                                 ))
                             .toList(),
-                        onChanged: (value) => setState(() => selectedCategory = value),
+                        onChanged: (value) =>
+                            setState(() => selectedCategory = value),
                       ),
                     ),
                   ),
@@ -372,12 +381,16 @@ class _AddSuppProductPageState extends State<AddSuppProductPage> {
                 ElevatedButton.icon(
                   onPressed: _showAddCategoryDialog,
                   icon: const Icon(Icons.add, size: 16),
-                  label: Text('Add', style: GoogleFonts.poppins(fontWeight: FontWeight.w500, fontSize: 12)),
+                  label: Text('Add',
+                      style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w500, fontSize: 12)),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
+                    backgroundColor: Theme.of(context).primaryColor,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
                   ),
                 ),
               ],
@@ -526,12 +539,15 @@ class _AddSuppProductPageState extends State<AddSuppProductPage> {
               child: ElevatedButton(
                 onPressed: _submitProduct,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
+                  backgroundColor: Theme.of(context).primaryColor,
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
                 ),
                 child: Text(
-                  widget.existingProduct == null ? 'Save Product' : 'Update Product',
+                  widget.existingProduct == null
+                      ? 'Save Product'
+                      : 'Update Product',
                   style: GoogleFonts.poppins(
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
@@ -571,7 +587,8 @@ class _AddSuppProductPageState extends State<AddSuppProductPage> {
       keyboardType: keyboardType,
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: GoogleFonts.poppins(color: Colors.grey.shade500, fontSize: 13),
+        hintStyle:
+            GoogleFonts.poppins(color: Colors.grey.shade500, fontSize: 13),
         prefixIcon: Icon(icon, color: Colors.grey.shade600, size: 20),
         filled: true,
         fillColor: Colors.white,
@@ -585,9 +602,11 @@ class _AddSuppProductPageState extends State<AddSuppProductPage> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Colors.blue, width: 2),
+          borderSide:
+              BorderSide(color: Theme.of(context).primaryColor, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       ),
     );
   }
@@ -608,7 +627,9 @@ class _AddSuppProductPageState extends State<AddSuppProductPage> {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: value,
-          hint: Text(hint, style: GoogleFonts.poppins(color: Colors.grey.shade600, fontSize: 13)),
+          hint: Text(hint,
+              style: GoogleFonts.poppins(
+                  color: Colors.grey.shade600, fontSize: 13)),
           isExpanded: true,
           items: items
               .map((item) => DropdownMenuItem(

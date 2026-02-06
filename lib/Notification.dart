@@ -67,7 +67,7 @@ class _NotificationPageState extends State<NotificationPage> {
               child: ElevatedButton(
                 onPressed: () => _showCreateNotificationDialog(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF457BFF),
+                  backgroundColor: Theme.of(context).primaryColor,
                   foregroundColor: Colors.white,
                   padding:
                       const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
@@ -104,126 +104,124 @@ class _NotificationPageState extends State<NotificationPage> {
     );
   }
 
-
   // ---------- Stats section (SMS + Most Targeted on second line) ----------
 
-Widget _buildStatsSection() {
-  final totalSent = notifications.where((n) => n['status'] == 'Sent').length;
-  final pushSent = notifications
-      .where((n) => n['channels'].contains('Push') && n['status'] == 'Sent')
-      .length;
-  final smsSent = notifications
-      .where((n) => n['channels'].contains('SMS') && n['status'] == 'Sent')
-      .length;
+  Widget _buildStatsSection() {
+    final totalSent = notifications.where((n) => n['status'] == 'Sent').length;
+    final pushSent = notifications
+        .where((n) => n['channels'].contains('Push') && n['status'] == 'Sent')
+        .length;
+    final smsSent = notifications
+        .where((n) => n['channels'].contains('SMS') && n['status'] == 'Sent')
+        .length;
 
-  String mostTargeted = 'None';
-  if (notifications.isNotEmpty) {
-    final targetCounts = <String, int>{};
-    for (var notification in notifications) {
-      final target = notification['target'] as String;
-      targetCounts[target] = (targetCounts[target] ?? 0) + 1;
+    String mostTargeted = 'None';
+    if (notifications.isNotEmpty) {
+      final targetCounts = <String, int>{};
+      for (var notification in notifications) {
+        final target = notification['target'] as String;
+        targetCounts[target] = (targetCounts[target] ?? 0) + 1;
+      }
+      if (targetCounts.isNotEmpty) {
+        mostTargeted = targetCounts.entries
+            .reduce((a, b) => a.value > b.value ? a : b)
+            .key;
+      }
     }
-    if (targetCounts.isNotEmpty) {
-      mostTargeted = targetCounts.entries
-          .reduce((a, b) => a.value > b.value ? a : b)
-          .key;
-    }
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          // first row – Total + Push
+          SizedBox(
+            height: 120,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                _buildStatCard('Total Sent', '$totalSent', Icons.send),
+                const SizedBox(width: 10),
+                _buildStatCard(
+                  'Push Sent',
+                  '$pushSent',
+                  Icons.notifications_active,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          // second row – SMS + Most Targeted side‑by‑side
+          SizedBox(
+            height: 120,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                _buildStatCard('SMS Sent', '$smsSent', Icons.sms),
+                const SizedBox(width: 10),
+                _buildStatCard(
+                  'Most Targeted',
+                  mostTargeted,
+                  Icons.group,
+                  isMostTargeted: true,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
-  return Container(
-    margin: const EdgeInsets.all(16),
-    child: Column(
-      children: [
-        // first row – Total + Push
-        SizedBox(
-          height: 120,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            children: [
-              _buildStatCard('Total Sent', '$totalSent', Icons.send),
-              const SizedBox(width: 10),
-              _buildStatCard(
-                'Push Sent',
-                '$pushSent',
-                Icons.notifications_active,
-              ),
-            ],
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon, {
+    bool isMostTargeted = false,
+  }) {
+    return Container(
+      width: 150,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-        ),
-        const SizedBox(height: 8),
-        // second row – SMS + Most Targeted side‑by‑side
-        SizedBox(
-          height: 120,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            children: [
-              _buildStatCard('SMS Sent', '$smsSent', Icons.sms),
-              const SizedBox(width: 10),
-              _buildStatCard(
-                'Most Targeted',
-                mostTargeted,
-                Icons.group,
-                isMostTargeted: true,
-              ),
-            ],
+        ],
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: Theme.of(context).primaryColor, size: 20),
+          const SizedBox(height: 6),
+          Text(
+            title,
+            style: GoogleFonts.poppins(
+              fontSize: 11,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
           ),
-        ),
-      ],
-    ),
-  );
-}
-
-Widget _buildStatCard(
-  String title,
-  String value,
-  IconData icon, {
-  bool isMostTargeted = false,
-}) {
-  return Container(
-    width: 150,
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(12),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.04),
-          blurRadius: 10,
-          offset: const Offset(0, 4),
-        ),
-      ],
-    ),
-    padding: const EdgeInsets.all(12),
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(icon, color: const Color(0xFF457BFF), size: 20),
-        const SizedBox(height: 6),
-        Text(
-          title,
-          style: GoogleFonts.poppins(
-            fontSize: 11,
-            color: Colors.grey.shade600,
-            fontWeight: FontWeight.w500,
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: GoogleFonts.poppins(
+              fontSize: isMostTargeted ? 11 : 13,
+              fontWeight: FontWeight.w700,
+              color: Colors.black,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: GoogleFonts.poppins(
-            fontSize: isMostTargeted ? 11 : 13,
-            fontWeight: FontWeight.w700,
-            color: Colors.black,
-          ),
-          textAlign: TextAlign.center,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ],
-    ),
-  );
-}
-
+        ],
+      ),
+    );
+  }
 
   // ---------- Notification history ----------
 
@@ -245,7 +243,7 @@ Widget _buildStatCard(
     Color statusColor;
     switch (status) {
       case 'Sent':
-        statusColor = const Color(0xFF457BFF); // active blue
+        statusColor = Theme.of(context).primaryColor; // active brand color
         break;
       case 'Scheduled':
         statusColor = Colors.orange;
@@ -339,7 +337,7 @@ Widget _buildStatCard(
                     'Edit',
                     style: GoogleFonts.poppins(
                       fontSize: 11,
-                      color: const Color(0xFF457BFF),
+                      color: Theme.of(context).primaryColor,
                     ),
                   ),
                 ),
@@ -533,8 +531,7 @@ class _NotificationDialogState extends State<NotificationDialog> {
   Widget build(BuildContext context) {
     final dialogTitle =
         _isEdit ? 'Edit Notification' : 'Create New Notification';
-    final primaryLabel =
-        _isEdit ? 'Save Changes' : 'Send Notification';
+    final primaryLabel = _isEdit ? 'Save Changes' : 'Send Notification';
     final subtitle = _isEdit
         ? 'Update and resend this notification.'
         : 'Compose and send a new notification to your audience.';
@@ -604,15 +601,13 @@ class _NotificationDialogState extends State<NotificationDialog> {
                 _channelCheckbox(
                   label: 'Push Notification',
                   value: _pushSelected,
-                  onChanged: (v) =>
-                      setState(() => _pushSelected = v ?? false),
+                  onChanged: (v) => setState(() => _pushSelected = v ?? false),
                 ),
                 const SizedBox(width: 16),
                 _channelCheckbox(
                   label: 'SMS',
                   value: _smsSelected,
-                  onChanged: (v) =>
-                      setState(() => _smsSelected = v ?? false),
+                  onChanged: (v) => setState(() => _smsSelected = v ?? false),
                 ),
               ],
             ),
@@ -643,9 +638,9 @@ class _NotificationDialogState extends State<NotificationDialog> {
                 enabledBorder: const UnderlineInputBorder(
                   borderSide: BorderSide(color: Color(0xFFE5E7EB)),
                 ),
-                focusedBorder: const UnderlineInputBorder(
-                  borderSide:
-                      BorderSide(color: Color(0xFF457BFF), width: 1.4),
+                focusedBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(
+                      color: Theme.of(context).primaryColor, width: 1.4),
                 ),
               ),
               style: GoogleFonts.poppins(fontSize: 12),
@@ -678,9 +673,9 @@ class _NotificationDialogState extends State<NotificationDialog> {
                 enabledBorder: const UnderlineInputBorder(
                   borderSide: BorderSide(color: Color(0xFFE5E7EB)),
                 ),
-                focusedBorder: const UnderlineInputBorder(
-                  borderSide:
-                      BorderSide(color: Color(0xFF457BFF), width: 1.4),
+                focusedBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(
+                      color: Theme.of(context).primaryColor, width: 1.4),
                 ),
               ),
               style: GoogleFonts.poppins(fontSize: 12),
@@ -705,29 +700,25 @@ class _NotificationDialogState extends State<NotificationDialog> {
                   label: 'All Online',
                   value: 'All Online',
                   groupValue: _target,
-                  onChanged: (v) =>
-                      setState(() => _target = v ?? 'All Online'),
+                  onChanged: (v) => setState(() => _target = v ?? 'All Online'),
                 ),
                 _audienceRadio(
                   label: 'All Offline',
                   value: 'All Offline',
                   groupValue: _target,
-                  onChanged: (v) =>
-                      setState(() => _target = v ?? 'All Online'),
+                  onChanged: (v) => setState(() => _target = v ?? 'All Online'),
                 ),
                 _audienceRadio(
                   label: 'Specific Clients',
                   value: 'Specific Clients',
                   groupValue: _target,
-                  onChanged: (v) =>
-                      setState(() => _target = v ?? 'All Online'),
+                  onChanged: (v) => setState(() => _target = v ?? 'All Online'),
                 ),
                 _audienceRadio(
                   label: 'All Staffs',
                   value: 'All Staffs',
                   groupValue: _target,
-                  onChanged: (v) =>
-                      setState(() => _target = v ?? 'All Online'),
+                  onChanged: (v) => setState(() => _target = v ?? 'All Online'),
                 ),
               ],
             ),
@@ -750,7 +741,7 @@ class _NotificationDialogState extends State<NotificationDialog> {
                 ElevatedButton(
                   onPressed: _submit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF457BFF),
+                    backgroundColor: Theme.of(context).primaryColor,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 14,
@@ -790,8 +781,7 @@ class _NotificationDialogState extends State<NotificationDialog> {
 
     final base = widget.initialNotification ?? {};
     final data = {
-      'id': base['id'] ??
-          DateTime.now().millisecondsSinceEpoch.toString(),
+      'id': base['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
       'title': _titleController.text.trim(),
       'channels': channels,
       'target': _target,

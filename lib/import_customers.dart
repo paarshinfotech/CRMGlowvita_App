@@ -84,7 +84,9 @@ class _ImportCustomersState extends State<ImportCustomers> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Import Customers', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.black)),
+        title: Text('Import Customers',
+            style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w600, color: Colors.black)),
         backgroundColor: Colors.white,
         elevation: 1,
         foregroundColor: Colors.black,
@@ -96,7 +98,8 @@ class _ImportCustomersState extends State<ImportCustomers> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Center(
-              child: Icon(Icons.cloud_upload_outlined, size: 60, color: Colors.grey),
+              child: Icon(Icons.cloud_upload_outlined,
+                  size: 60, color: Colors.grey),
             ),
             const SizedBox(height: 16),
             const Text(
@@ -115,7 +118,8 @@ class _ImportCustomersState extends State<ImportCustomers> {
             _buildSectionTitle("1. Select File Type"),
             Card(
               elevation: 5,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
               child: Column(
                 children: [
                   RadioListTile<String>(
@@ -123,15 +127,15 @@ class _ImportCustomersState extends State<ImportCustomers> {
                     value: 'CSV',
                     groupValue: _importType,
                     onChanged: (value) => setState(() => _importType = value!),
-                    activeColor: Colors.blue,
+                    activeColor: Theme.of(context).primaryColor,
                   ),
-                   Divider(height: 1, indent: 16, endIndent: 16),
+                  Divider(height: 1, indent: 16, endIndent: 16),
                   RadioListTile<String>(
                     title: const Text('vCard / .vcf (Standard)'),
                     value: 'vCard',
                     groupValue: _importType,
                     onChanged: (value) => setState(() => _importType = value!),
-                    activeColor: Colors.blue,
+                    activeColor: Theme.of(context).primaryColor,
                   ),
                 ],
               ),
@@ -141,24 +145,31 @@ class _ImportCustomersState extends State<ImportCustomers> {
             _buildSectionTitle("2. Choose File"),
             ElevatedButton.icon(
               onPressed: _pickFile,
-              icon: const Icon(Icons.attach_file, color: Colors.blue,),
+              icon: Icon(
+                Icons.attach_file,
+                color: Theme.of(context).primaryColor,
+              ),
               label: Text("Select File..."),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
             ),
             if (_pickedFile != null)
               Padding(
                 padding: const EdgeInsets.only(top: 16.0),
                 child: Material(
-                  color: Colors.teal.withOpacity(0.1),
+                  color: Theme.of(context).primaryColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                   child: ListTile(
-                    leading: const Icon(Icons.check_circle, color: Colors.teal),
-                    title: Text(_pickedFile!.name, style: const TextStyle(fontWeight: FontWeight.w500)),
-                    subtitle: Text('${(_pickedFile!.size / 1024).toStringAsFixed(2)} KB'),
+                    leading: Icon(Icons.check_circle,
+                        color: Theme.of(context).primaryColor),
+                    title: Text(_pickedFile!.name,
+                        style: const TextStyle(fontWeight: FontWeight.w500)),
+                    subtitle: Text(
+                        '${(_pickedFile!.size / 1024).toStringAsFixed(2)} KB'),
                     trailing: IconButton(
                       icon: const Icon(Icons.close, color: Colors.red),
                       onPressed: () => setState(() => _pickedFile = null),
@@ -171,29 +182,35 @@ class _ImportCustomersState extends State<ImportCustomers> {
 
             // --- Step 3: Import Button ---
             ElevatedButton(
-              onPressed: canImport ? _startImport : null, // Disables button if conditions aren't met
+              onPressed: canImport
+                  ? _startImport
+                  : null, // Disables button if conditions aren't met
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
+                backgroundColor: Theme.of(context).primaryColor,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
                 elevation: 5,
                 // Apply a different style when disabled
                 disabledBackgroundColor: Colors.grey.shade400,
               ),
               child: _isImporting
-                  ? const SizedBox(
-                height: 24,
-                width: 24,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 3,
-                ),
-              )
+                  ? SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: CircularProgressIndicator(
+                        color: Theme.of(context).primaryColor,
+                        strokeWidth: 3,
+                      ),
+                    )
                   : const Text(
-                "IMPORT CUSTOMERS",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-              ),
+                      "IMPORT CUSTOMERS",
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white),
+                    ),
             ),
           ],
         ),

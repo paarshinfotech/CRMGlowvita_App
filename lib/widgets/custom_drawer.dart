@@ -93,7 +93,7 @@ class CustomDrawer extends StatelessWidget {
                             style: GoogleFonts.poppins(
                               fontSize: 20 * baseFontScale,
                               fontWeight: FontWeight.w600,
-                              color: const Color(0xFF457BFF),
+                              color: Colors.black,
                             ),
                           ),
                         ],
@@ -119,45 +119,54 @@ class CustomDrawer extends StatelessWidget {
                 horizontal: 16 * scale,
                 vertical: 16 * scale,
               ),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 20 * scale,
-                    backgroundColor: Colors.grey[200],
-                    backgroundImage: profileImageUrl.isNotEmpty
-                        ? NetworkImage(profileImageUrl)
-                        : null,
-                    child: profileImageUrl.isEmpty
-                        ? Icon(Icons.person,
-                            size: 20 * scale, color: Colors.grey)
-                        : null,
-                  ),
-                  SizedBox(width: 12 * scale),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          userName,
-                          style: GoogleFonts.poppins(
-                            fontSize: 14 * baseFontScale,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+              child: Container(
+                padding: EdgeInsets.all(12 * scale),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12 * scale),
+                  border: Border.all(color: Colors.grey[200]!),
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 20 * scale,
+                      backgroundColor: const Color(0xFFF6F0F2),
+                      child: Text(
+                        'G',
+                        style: GoogleFonts.poppins(
+                          color: Theme.of(context).primaryColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18 * scale,
                         ),
-                        Text(
-                          userType,
-                          style: GoogleFonts.poppins(
-                            fontSize: 11 * baseFontScale,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                ],
+                    SizedBox(width: 12 * scale),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            userName,
+                            style: GoogleFonts.poppins(
+                              fontSize: 14 * baseFontScale,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            userType,
+                            style: GoogleFonts.poppins(
+                              fontSize: 11 * baseFontScale,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
 
@@ -474,16 +483,8 @@ class CustomDrawer extends StatelessWidget {
     return Container(
       margin: EdgeInsets.symmetric(vertical: 2 * scale),
       decoration: BoxDecoration(
-        color: isSelected ? const Color(0xFFE8F0FF) : Colors.transparent,
+        color: isSelected ? Theme.of(context).primaryColor : Colors.transparent,
         borderRadius: BorderRadius.circular(12 * scale),
-        border: isSelected
-            ? Border(
-                right: BorderSide(
-                  color: const Color(0xFF457BFF),
-                  width: 3,
-                ),
-              )
-            : null,
       ),
       child: ListTile(
         onTap: onTap,
@@ -494,14 +495,14 @@ class CustomDrawer extends StatelessWidget {
         leading: Icon(
           icon,
           size: 20 * baseFontScale,
-          color: isSelected ? const Color(0xFF457BFF) : Colors.black54,
+          color: isSelected ? Colors.white : Colors.black54,
         ),
         title: Text(
           title,
           style: GoogleFonts.poppins(
             fontSize: 14 * baseFontScale,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            color: isSelected ? const Color(0xFF457BFF) : Colors.black87,
+            color: isSelected ? Colors.white : Colors.black87,
           ),
         ),
         trailing: hasNotification
@@ -581,7 +582,7 @@ class CustomDrawer extends StatelessWidget {
                 );
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF457BFF),
+                backgroundColor: Theme.of(context).primaryColor,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8 * scale),
                 ),

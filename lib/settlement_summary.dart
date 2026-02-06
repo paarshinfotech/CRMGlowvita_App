@@ -81,7 +81,8 @@ class _SettlementSummaryState extends State<SettlementSummary> {
       }
     }
 
-    totalCommission = commissionCount == 0 ? 0 : totalCommissionRate / commissionCount;
+    totalCommission =
+        commissionCount == 0 ? 0 : totalCommissionRate / commissionCount;
   }
 
   void _filterData() {
@@ -144,8 +145,8 @@ class _SettlementSummaryState extends State<SettlementSummary> {
             ),
             IconButton(
               icon: const Icon(Icons.notifications),
-              onPressed: () => Navigator.push(
-                  context, MaterialPageRoute(builder: (_) => NotificationPage())),
+              onPressed: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => NotificationPage())),
             ),
             GestureDetector(
               onTap: () => Navigator.push(
@@ -179,7 +180,8 @@ class _SettlementSummaryState extends State<SettlementSummary> {
               decoration: InputDecoration(
                 hintText: "Search Settlement ID...",
                 prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
               ),
               onChanged: (val) {
                 searchText = val;
@@ -202,15 +204,18 @@ class _SettlementSummaryState extends State<SettlementSummary> {
                     backgroundColor: Colors.white,
                     foregroundColor: Colors.black87,
                     side: BorderSide(color: Colors.black54),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
                     elevation: 0,
                   ),
                 ),
                 SizedBox(width: 8),
                 ElevatedButton.icon(
                   onPressed: () {},
-                  icon: const Icon(Icons.payments_outlined, size: 20, color: Colors.white),
+                  icon: const Icon(Icons.payments_outlined,
+                      size: 20, color: Colors.white),
                   label: Text(
                     "Payout: ${_currencyFormat(totalPayout)}",
                     style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
@@ -218,8 +223,10 @@ class _SettlementSummaryState extends State<SettlementSummary> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
                     elevation: 0,
                   ),
                 ),
@@ -232,7 +239,8 @@ class _SettlementSummaryState extends State<SettlementSummary> {
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
-                      icon: const Icon(Icons.file_download_outlined, color: Colors.black),
+                      icon: const Icon(Icons.file_download_outlined,
+                          color: Colors.black),
                       items: const [
                         DropdownMenuItem(value: 'csv', child: Text('CSV')),
                         DropdownMenuItem(value: 'pdf', child: Text('PDF')),
@@ -256,7 +264,8 @@ class _SettlementSummaryState extends State<SettlementSummary> {
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
-                  headingRowColor: MaterialStateProperty.all(Colors.grey.shade200),
+                  headingRowColor:
+                      MaterialStateProperty.all(Colors.grey.shade200),
                   columns: const [
                     DataColumn(label: Text("Settlement ID")),
                     DataColumn(label: Text("Invoice")),
@@ -277,10 +286,13 @@ class _SettlementSummaryState extends State<SettlementSummary> {
                         DataCell(Text(data['settlementId'] ?? '')),
                         DataCell(Text(data['invoice'] ?? '')),
                         DataCell(Container(
-                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: _getStatusColor(data['status']).withOpacity(0.1),
-                            border: Border.all(color: _getStatusColor(data['status'])),
+                            color: _getStatusColor(data['status'])
+                                .withOpacity(0.1),
+                            border: Border.all(
+                                color: _getStatusColor(data['status'])),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -294,19 +306,25 @@ class _SettlementSummaryState extends State<SettlementSummary> {
                         DataCell(Text(data['orderType'] ?? '')),
                         DataCell(Text(data['settlementType'] ?? '')),
                         DataCell(Text(data['transactionType'] ?? '')),
-                        DataCell(Text(DateFormat('dd MMM yyyy').format(data['date']))),
-                        DataCell(Text(DateFormat('dd MMM').format(data['settlementDate']))),
-                        DataCell(Text(DateFormat('dd MMM').format(data['orderDate']))),
-                        DataCell(Text(_currencyFormat(double.tryParse(data['orderTotal']) ?? 0.0))),
+                        DataCell(Text(
+                            DateFormat('dd MMM yyyy').format(data['date']))),
+                        DataCell(Text(DateFormat('dd MMM')
+                            .format(data['settlementDate']))),
+                        DataCell(Text(
+                            DateFormat('dd MMM').format(data['orderDate']))),
+                        DataCell(Text(_currencyFormat(
+                            double.tryParse(data['orderTotal']) ?? 0.0))),
                         DataCell(Text(data['commissionRate'] ?? '')),
-                        DataCell(Text(_currencyFormat(double.tryParse(data['payoutAmount']) ?? 0.0))),
+                        DataCell(Text(_currencyFormat(
+                            double.tryParse(data['payoutAmount']) ?? 0.0))),
                       ]);
                     }),
                     // Total Row
                     DataRow(
                       color: MaterialStateProperty.all(Colors.yellow.shade100),
                       cells: [
-                        const DataCell(Text("Total", style: TextStyle(fontWeight: FontWeight.bold))),
+                        const DataCell(Text("Total",
+                            style: TextStyle(fontWeight: FontWeight.bold))),
                         for (int i = 0; i < 6; i++) const DataCell(Text("")),
                         const DataCell(Text("")),
                         const DataCell(Text("")),
@@ -361,10 +379,12 @@ PreferredSizeWidget _buildAppBar(BuildContext context) {
         ),
         IconButton(
           icon: const Icon(Icons.notifications),
-          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationPage())),
+          onPressed: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const NotificationPage())),
         ),
         GestureDetector(
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilePage())),
+          onTap: () => Navigator.push(
+              context, MaterialPageRoute(builder: (_) => const ProfilePage())),
           child: Padding(
             padding: EdgeInsets.only(right: 10.w),
             child: Container(
