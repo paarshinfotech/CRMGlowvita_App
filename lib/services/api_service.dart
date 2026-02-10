@@ -347,6 +347,30 @@ class ApiService {
     }
   }
 
+  // Get online clients
+  static Future<List<Customer>> getOnlineClients() async {
+    try {
+      final response = await _get('$baseUrl$clientsEndpoint?source=online');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          List<dynamic> clientsData = data['data'];
+          return clientsData.map((json) => Customer.fromJson(json)).toList();
+        } else {
+          throw Exception(
+              'Failed to load online clients: ${data['message'] ?? 'Unknown error'}');
+        }
+      } else {
+        throw Exception(
+            'Failed to load online clients: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching online clients: $e');
+      rethrow;
+    }
+  }
+
   // Get all staff members
   // Get all products
   static Future<List<Product>> getProducts() async {

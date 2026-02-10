@@ -46,9 +46,16 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
-      setState(() {
-        _currentTabIndex = _tabController.index;
-      });
+      if (_tabController.index != _currentTabIndex) {
+        setState(() {
+          _currentTabIndex = _tabController.index;
+        });
+        if (_currentTabIndex == 1) {
+          _loadOnlineCustomers();
+        } else {
+          _loadCustomers();
+        }
+      }
     });
 
     // Load customers from API
@@ -80,6 +87,34 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
       });
       // Log error to console only, don't show on screen
       print('Error loading customers: ${e.toString()}');
+    }
+  }
+
+  Future<void> _loadOnlineCustomers() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final loadedCustomers = await ApiService.getOnlineClients();
+      setState(() {
+        customers = loadedCustomers;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+
+        // Check if it's an auth token error
+        if (e.toString().contains('No authentication token found')) {
+          print('Please log in to access customer data.');
+        } else {
+          print('Error loading online customers: ${e.toString()}');
+        }
+      });
+      // Log error to console only, don't show on screen
+      print('Error loading online customers: ${e.toString()}');
     }
   }
 
