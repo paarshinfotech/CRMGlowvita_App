@@ -29,6 +29,17 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
     _fetchData();
   }
 
+  bool _robustBool(dynamic value) {
+    if (value == null) return false;
+    if (value is bool) return value;
+    if (value is int) return value == 1;
+    if (value is String) {
+      final s = value.toLowerCase();
+      return s == 'true' || s == '1';
+    }
+    return false;
+  }
+
   Future<void> _fetchData() async {
     setState(() => _isLoading = true);
     try {
@@ -90,11 +101,16 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
                 : 'All',
             'genders': (o.applicableCategories != null &&
                     o.applicableCategories!.isNotEmpty)
-                ? o.applicableCategories!.join(', ')
-                : 'All',
+                ? (o.applicableCategories!.contains('Unisex') ||
+                        (o.applicableCategories!.contains('Men') &&
+                            o.applicableCategories!.contains('Women')))
+                    ? 'Unisex'
+                    : o.applicableCategories!.join(', ')
+                : 'Unisex',
             'image': o.offerImage,
             'redeemed': o.redeemed ?? 0,
-            'isCustomCode': o.isCustomCode ?? false,
+            'isCustomCode': _robustBool(o.isCustomCode ?? false),
+
             'minOrderAmount': o.minOrderAmount ?? 0,
             'api_data': o.toJson(), // Store original data for edit/view
           };
@@ -122,7 +138,7 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
     for (final c in coupons) {
       final redeemed = c['redeemed'] as int;
       final val = (c['discountValue'] as num).toDouble();
-      if (c['discountType'] == 'Flat') {
+      if (c['discountType'] == 'Fixed Amount') {
         total += val * redeemed;
       } else {
         total += 500 * (val / 100) * redeemed; // assume avg bill 500
@@ -258,6 +274,7 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
       }
 
       final payload = {
+        "id": id,
         "type": (updatedCoupon['discountType'] == 'Fixed Amount')
             ? 'fixed'
             : (updatedCoupon['discountType'] as String).toLowerCase(),
@@ -316,10 +333,10 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
     final appCategories = apiData['applicableServiceCategories'] as List?;
     if (appCategories != null && appCategories.isNotEmpty) {
       final names = appCategories.map((id) {
-        // Find category name from services
-        final svc =
-            services.firstWhere((s) => s['categoryId'] == id, orElse: () => {});
-        return svc['category'] ?? id;
+        // Find category name from categories list
+        final cat = categories.firstWhere((c) => (c['_id'] ?? c['id']) == id,
+            orElse: () => {'name': id});
+        return cat['name'] ?? id;
       }).toList();
       categoriesDisplay = names.join(', ');
     }
@@ -340,8 +357,16 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
           (raw['expires'] != null
               ? DateTime.parse(raw['expires'])
               : DateTime.now()),
-      'isCustomCode': raw['isCustomCode'] ?? false,
+      'isCustomCode': _robustBool(raw['isCustomCode']),
       'minOrderAmount': raw['minOrderAmount'] ?? 0,
+      'genders': (raw['genders'] == 'All' ||
+              raw['genders'] == 'Unisex' ||
+              (raw['applicableCategories'] is List &&
+                  (raw['applicableCategories'].contains('Unisex') ||
+                      (raw['applicableCategories'].contains('Men') &&
+                          raw['applicableCategories'].contains('Women')))))
+          ? 'Unisex'
+          : (raw['genders'] ?? 'Unisex'),
     };
   }
 
@@ -444,10 +469,11 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
                   const SizedBox(height: 20),
                   _detailRow('Code', c['code'] as String),
                   _detailRow(
-                      'Code Type',
-                      c['isCustomCode'] == true
-                          ? '● Custom Code'
-                          : '● Auto-gen Code'),
+                    'Code Type',
+                    c['isCustomCode'] == true
+                        ? '● Custom Code'
+                        : '● Auto-generated',
+                  ),
                   _detailRow(
                       'Discount',
                       c['discountType'] == 'Fixed Amount'
@@ -1213,7 +1239,6 @@ class _CouponDialogState extends State<CouponDialog> {
 
   late final TextEditingController _couponCodeController;
   late final TextEditingController _discountValueController;
-  late final TextEditingController _minOrderAmountController;
 
   late bool _useCustomCode;
   late String _discountType;
@@ -1230,6 +1255,18 @@ class _CouponDialogState extends State<CouponDialog> {
   bool get _isEdit => widget.mode == CouponDialogMode.edit;
 
   @override
+  bool _robustBool(dynamic value) {
+    if (value == null) return false;
+    if (value is bool) return value;
+    if (value is int) return value == 1;
+    if (value is String) {
+      final s = value.toLowerCase();
+      return s == 'true' || s == '1';
+    }
+    return false;
+  }
+
+  @override
   void initState() {
     super.initState();
 
@@ -1240,13 +1277,8 @@ class _CouponDialogState extends State<CouponDialog> {
     _discountValueController = TextEditingController(
       text: c != null ? (c['discountValue'] as num).toString() : '',
     );
-    _minOrderAmountController = TextEditingController(
-      text: c != null && c['minOrderAmount'] != null
-          ? (c['minOrderAmount'] as num).toString()
-          : '',
-    );
 
-    _useCustomCode = true;
+    _useCustomCode = c != null ? _robustBool(c['isCustomCode']) : false;
     _discountType = c != null ? c['discountType'] as String : 'Percentage';
     _startDate = c != null ? c['startsOn'] as DateTime : DateTime.now();
     _endDate = c != null
@@ -1297,7 +1329,6 @@ class _CouponDialogState extends State<CouponDialog> {
   void dispose() {
     _couponCodeController.dispose();
     _discountValueController.dispose();
-    _minOrderAmountController.dispose();
     super.dispose();
   }
 
@@ -1396,7 +1427,9 @@ class _CouponDialogState extends State<CouponDialog> {
         'redeemed': _isEdit ? (base['redeemed'] ?? 0) : 0,
         'code': _useCustomCode
             ? _couponCodeController.text.trim()
-            : _generateUniqueCode(),
+            : (_isEdit
+                ? (base['code'] ?? _generateUniqueCode())
+                : _generateUniqueCode()),
         'discountType': _discountType,
         'discountValue':
             double.tryParse(_discountValueController.text.trim()) ?? 0.0,
@@ -1406,17 +1439,14 @@ class _CouponDialogState extends State<CouponDialog> {
         'genders': _selectedGender,
         'image': _selectedImages,
         'isCustomCode': _useCustomCode,
-        'minOrderAmount':
-            double.tryParse(_minOrderAmountController.text.trim()) ?? 0.0,
         'api_data': {
           'applicableServices': _selectedServices,
           'applicableServiceCategories': _selectedCategories,
-          'applicableCategories': _selectedGender == 'Unisex'
-              ? ['Men', 'Women', 'Unisex']
-              : [_selectedGender],
+          'applicableCategories': [_selectedGender],
         }
       };
-
+      couponData['codeType'] =
+          _useCustomCode ? 'Custom Code' : 'Auto-generated';
       widget.onSubmit(couponData);
       Navigator.of(context).pop();
     }
@@ -1690,21 +1720,6 @@ class _CouponDialogState extends State<CouponDialog> {
                                 }
                                 return null;
                               },
-                            ),
-                            const SizedBox(height: 16),
-                            _sectionLabel('Min Order Amount'),
-                            const SizedBox(height: 6),
-                            TextFormField(
-                              controller: _minOrderAmountController,
-                              decoration: _inputDecoration('0').copyWith(
-                                prefixText: '₹ ',
-                                prefixStyle: GoogleFonts.poppins(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF374151)),
-                              ),
-                              style: GoogleFonts.poppins(fontSize: 11),
-                              keyboardType: TextInputType.number,
                             ),
                             const SizedBox(height: 16),
                             Row(
@@ -1993,6 +2008,7 @@ class _CouponDialogState extends State<CouponDialog> {
         borderRadius: BorderRadius.circular(4),
       ),
       child: ExpansionTile(
+        initiallyExpanded: true,
         title: Text(
           'Legacy Compatibility Settings',
           style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w500),
@@ -2000,19 +2016,108 @@ class _CouponDialogState extends State<CouponDialog> {
         tilePadding: const EdgeInsets.symmetric(horizontal: 12),
         childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         children: [
-          _sectionLabel('Applicable Genders'),
-          const SizedBox(height: 6),
-          _customDropdown<String>(
-            value: _selectedGender,
-            items: _genders,
-            onChanged: (value) {
-              setState(() {
-                _selectedGender = value ?? 'Unisex';
-              });
-            },
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _sectionLabel(
+                'Applicable Genders (for backward compatibility)'),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _genderRadioButton('Men'),
+                _genderRadioButton('Women'),
+                _genderRadioButton('Unisex'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Selected: 1',
+              style: GoogleFonts.poppins(
+                fontSize: 10,
+                color: const Color(0xFF9CA3AF),
+              ),
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _genderRadioButton(String gender) {
+    final isSelected = _selectedGender == gender;
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _selectedGender = gender;
+        });
+      },
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            height: 24,
+            width: 24,
+            child: Radio<String>(
+              value: gender,
+              groupValue: _selectedGender,
+              onChanged: (String? value) {
+                if (value != null) {
+                  setState(() {
+                    _selectedGender = value;
+                  });
+                }
+              },
+              activeColor: const Color(0xFF45273E),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            gender,
+            style: GoogleFonts.poppins(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF1F2937),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDialogImage(String path) {
+    if (path.startsWith('http')) {
+      return Image.network(path,
+          fit: BoxFit.cover, errorBuilder: (_, __, ___) => _dialogErrorImage());
+    } else if (path.startsWith('data:image')) {
+      try {
+        final base64Data = path.split(',').last;
+        return Image.memory(base64Decode(base64Data),
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => _dialogErrorImage());
+      } catch (e) {
+        return _dialogErrorImage();
+      }
+    } else {
+      return Image.file(File(path),
+          fit: BoxFit.cover, errorBuilder: (_, __, ___) => _dialogErrorImage());
+    }
+  }
+
+  Widget _dialogErrorImage() {
+    return Container(
+      color: Colors.grey.shade100,
+      child:
+          const Icon(Icons.broken_image_outlined, size: 32, color: Colors.grey),
     );
   }
 
@@ -2057,10 +2162,7 @@ class _CouponDialogState extends State<CouponDialog> {
               Positioned.fill(
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.file(
-                    File(_selectedImages![0]),
-                    fit: BoxFit.cover,
-                  ),
+                  child: _buildDialogImage(_selectedImages![0]),
                 ),
               ),
           ],

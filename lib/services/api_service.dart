@@ -1420,7 +1420,13 @@ class ApiService {
       String id, Map<String, dynamic> data) async {
     try {
       print('🔄 Updating offer with ID: $id...');
-      final response = await _put('$baseUrl/crm/offers?id=$id', data);
+      // Merge ID into data as requested
+      final Map<String, dynamic> payload = {
+        ...data,
+        'id': id,
+      };
+
+      final response = await _put('$baseUrl/crm/offers', payload);
       print(
           '📥 Update Offer Response [${response.statusCode}]: ${response.body}');
       return response;
@@ -1876,6 +1882,17 @@ class OfferModel {
   final String? businessId;
   final String? regionId;
 
+  static bool _parseBool(dynamic value) {
+    if (value == null) return false;
+    if (value is bool) return value;
+    if (value is int) return value == 1;
+    if (value is String) {
+      final s = value.toLowerCase();
+      return s == 'true' || s == '1';
+    }
+    return false;
+  }
+
   OfferModel({
     this.id,
     this.code,
@@ -1913,7 +1930,7 @@ class OfferModel {
       applicableServices: json['applicableServices'],
       applicableServiceCategories: json['applicableServiceCategories'],
       offerImage: json['offerImage'],
-      isCustomCode: json['isCustomCode'],
+      isCustomCode: _parseBool(json['isCustomCode']),
       minOrderAmount: json['minOrderAmount'],
       businessType: json['businessType'],
       businessId: json['businessId'],
