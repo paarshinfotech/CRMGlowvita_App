@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:glowvita/billing_invoice_model.dart';
 import 'package:glowvita/widgets/collect_payment_dialog.dart';
 import 'package:glowvita/widgets/create_appointment_form.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -897,42 +898,65 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
   void _showInvoice() {
     if (_appointment == null) return;
 
-    final invoiceData = {
-      'id': _appointment!.id ?? 'N/A',
-      'customer': _appointment!.clientName ?? 'Customer',
-      'email': _appointment!.client?.email ?? 'N/A',
-      'amount': _appointment!.totalAmount ?? _appointment!.amount ?? 0.0,
-      'date': _appointment!.date != null
-          ? DateFormat('yyyy-MM-dd').format(_appointment!.date!)
-          : DateFormat('yyyy-MM-dd').format(DateTime.now()),
-      'status': 'Paid',
-      'dueDate': '',
-      'services': _appointment!.serviceItems
-              ?.map((s) => {
-                    'name': s.serviceName ?? 'Unknown',
-                    'quantity': 1,
-                    'price': s.amount ?? 0.0,
-                    'tax': 0.0
-                  })
+    final billingInvoice = BillingInvoice(
+      id: _appointment!.id ?? '',
+      invoiceNumber: _appointment!.id ?? 'N/A',
+      vendorId: _appointment!.vendorId ?? '',
+      clientId: _appointment!.client?.id ?? '',
+      clientInfo: ClientInfo(
+        fullName: _appointment!.clientName ?? 'Customer',
+        email: _appointment!.client?.email ?? 'N/A',
+        phone: _appointment!.client?.phone ?? 'N/A',
+        profilePicture: '',
+        address: '',
+      ),
+      items: _appointment!.serviceItems
+              ?.map((s) => BillingItem(
+                    itemId: '',
+                    itemType: 'Service',
+                    name: s.serviceName ?? 'Unknown',
+                    description: '',
+                    price: s.amount ?? 0.0,
+                    quantity: 1,
+                    totalPrice: s.amount ?? 0.0,
+                    duration: s.duration ?? 0,
+                    addOns: [],
+                    discount: 0.0,
+                    discountType: 'flat',
+                  ))
               .toList() ??
           [
-            {
-              'name': _appointment!.serviceName ?? 'Unknown',
-              'quantity': 1,
-              'price': _appointment!.amount ?? 0.0,
-              'tax': 0.0
-            }
+            BillingItem(
+              itemId: '',
+              itemType: 'Service',
+              name: _appointment!.serviceName ?? 'Unknown',
+              description: '',
+              price: _appointment!.amount ?? 0.0,
+              quantity: 1,
+              totalPrice: _appointment!.amount ?? 0.0,
+              duration: _appointment!.duration ?? 0,
+              addOns: [],
+              discount: 0.0,
+              discountType: 'flat',
+            )
           ],
-      'products': [],
-      'paymentMethod': _appointment!.paymentMethod ?? 'Cash',
-      'discount': _appointment!.discount ?? 0.0,
-      'platformFee': 0.0,
-    };
+      subtotal: _appointment!.totalAmount ?? _appointment!.amount ?? 0.0,
+      taxRate: 0.0,
+      taxAmount: 0.0,
+      platformFee: 0.0,
+      totalAmount: _appointment!.totalAmount ?? _appointment!.amount ?? 0.0,
+      balance: 0.0,
+      paymentMethod: _appointment!.paymentMethod ?? 'Cash',
+      paymentStatus: 'Paid',
+      billingType: 'Appointment',
+      createdAt: _appointment!.date ?? DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => InvoiceDetailsDialog(invoice: invoiceData),
+      builder: (ctx) => InvoiceDetailsDialog(invoice: billingInvoice),
     );
   }
 

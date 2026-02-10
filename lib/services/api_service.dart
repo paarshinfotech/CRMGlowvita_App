@@ -7,6 +7,7 @@ import '../customer_model.dart';
 import '../appointment_model.dart';
 import '../addon_model.dart';
 import '../vendor_model.dart';
+import '../billing_invoice_model.dart';
 
 class StaffMember {
   final String? id;
@@ -1550,6 +1551,32 @@ class ApiService {
       }
     } catch (e) {
       print('❌ Error updating working hours: $e');
+      rethrow;
+    }
+  }
+
+  // Get all invoices
+  static Future<List<BillingInvoice>> getInvoices() async {
+    try {
+      final response = await _get('$baseUrl/crm/billing');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          List<dynamic> invoicesData = data['data'];
+          return invoicesData
+              .map((json) => BillingInvoice.fromJson(json))
+              .toList();
+        } else {
+          throw Exception(
+              'Failed to load invoices: ${data['message'] ?? 'Unknown error'}');
+        }
+      } else {
+        throw Exception(
+            'Failed to load invoices: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching invoices: $e');
       rethrow;
     }
   }

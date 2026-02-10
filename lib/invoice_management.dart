@@ -1,6 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'widgets/custom_drawer.dart';
+import 'services/api_service.dart';
+import 'billing_invoice_model.dart';
+import 'package:intl/intl.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
 
 class InvoiceManagementPage extends StatefulWidget {
   const InvoiceManagementPage({super.key});
@@ -13,239 +22,34 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage> {
   static const double _radius = 12;
   static const double _gap = 12;
 
-  final List<Map<String, dynamic>> invoices = [
-    {
-      'id': 'INV-001',
-      'customer': 'Rahul Sharma',
-      'email': 'rahul.sharma@example.com',
-      'amount': 150,
-      'date': '2025-11-22',
-      'status': 'Paid',
-      'dueDate': '2025-12-22',
-      'services': [
-        {'name': 'Soldier Cut', 'quantity': 1, 'price': 150.0, 'tax': 0.0},
-      ],
-      'products': [],
-      'paymentMethod': 'Debit Card',
-      'discount': 0.0,
-      'platformFee': 0.0,
-    },
-    {
-      'id': 'INV-002',
-      'customer': 'Priya Patel',
-      'email': 'priya.patel@example.com',
-      'amount': 250,
-      'date': '2025-11-20',
-      'status': 'Pending',
-      'dueDate': '2025-12-20',
-      'services': [
-        {'name': 'Hair Spa', 'quantity': 1, 'price': 180.0, 'tax': 0.0},
-        {'name': 'Face Massage', 'quantity': 1, 'price': 70.0, 'tax': 0.0},
-      ],
-      'products': [
-        {'name': 'Hair Oil', 'quantity': 1, 'price': 50.0, 'tax': 0.0},
-      ],
-      'paymentMethod': 'Cash',
-      'discount': 50.0,
-      'platformFee': 0.0,
-    },
-    {
-      'id': 'INV-003',
-      'customer': 'Amit Kumar',
-      'email': 'amit.kumar@example.com',
-      'amount': 180,
-      'date': '2025-11-18',
-      'status': 'Overdue',
-      'dueDate': '2025-11-18',
-      'services': [],
-      'products': [
-        {'name': 'Shampoo', 'quantity': 2, 'price': 40.0, 'tax': 0.0},
-        {'name': 'Conditioner', 'quantity': 1, 'price': 50.0, 'tax': 0.0},
-        {'name': 'Hair Serum', 'quantity': 1, 'price': 90.0, 'tax': 0.0},
-      ],
-      'paymentMethod': 'Net Banking',
-      'discount': 0.0,
-      'platformFee': 0.0,
-    },
-    {
-      'id': 'INV-004',
-      'customer': 'Sneha Reddy',
-      'email': 'sneha.reddy@example.com',
-      'amount': 320,
-      'date': '2025-11-15',
-      'status': 'Paid',
-      'dueDate': '2025-12-15',
-      'services': [
-        {
-          'name': 'Full Body Massage',
-          'quantity': 1,
-          'price': 250.0,
-          'tax': 0.0
-        },
-      ],
-      'products': [
-        {'name': 'Body Lotion', 'quantity': 1, 'price': 40.0, 'tax': 0.0},
-        {'name': 'Face Wash', 'quantity': 2, 'price': 15.0, 'tax': 0.0},
-      ],
-      'paymentMethod': 'Debit Card',
-      'discount': 0.0,
-      'platformFee': 0.0,
-    },
-    {
-      'id': 'INV-005',
-      'customer': 'Vikram Singh',
-      'email': 'vikram.singh@example.com',
-      'amount': 95,
-      'date': '2025-11-12',
-      'status': 'Paid',
-      'dueDate': '2025-12-12',
-      'services': [
-        {'name': 'Beard Trim', 'quantity': 1, 'price': 95.0, 'tax': 0.0},
-      ],
-      'products': [],
-      'paymentMethod': 'Cash',
-      'discount': 0.0,
-      'platformFee': 0.0,
-    },
-    {
-      'id': 'INV-006',
-      'customer': 'Anjali Mehta',
-      'email': 'anjali.mehta@example.com',
-      'amount': 420,
-      'date': '2025-11-10',
-      'status': 'Pending',
-      'dueDate': '2025-12-10',
-      'services': [
-        {'name': 'Hair Coloring', 'quantity': 1, 'price': 250.0, 'tax': 0.0},
-        {'name': 'Hair Treatment', 'quantity': 1, 'price': 120.0, 'tax': 0.0},
-      ],
-      'products': [
-        {'name': 'Hair Color Kit', 'quantity': 1, 'price': 30.0, 'tax': 0.0},
-        {'name': 'Hair Mask', 'quantity': 2, 'price': 10.0, 'tax': 0.0},
-      ],
-      'paymentMethod': 'Net Banking',
-      'discount': 0.0,
-      'platformFee': 0.0,
-    },
-    {
-      'id': 'INV-007',
-      'customer': 'Rajesh Gupta',
-      'email': 'rajesh.gupta@example.com',
-      'amount': 175,
-      'date': '2025-11-08',
-      'status': 'Paid',
-      'dueDate': '2025-12-08',
-      'services': [],
-      'products': [
-        {'name': 'Shampoo', 'quantity': 1, 'price': 40.0, 'tax': 0.0},
-        {'name': 'Conditioner', 'quantity': 1, 'price': 50.0, 'tax': 0.0},
-        {'name': 'Hair Gel', 'quantity': 2, 'price': 42.5, 'tax': 0.0},
-      ],
-      'paymentMethod': 'Debit Card',
-      'discount': 0.0,
-      'platformFee': 0.0,
-    },
-    {
-      'id': 'INV-008',
-      'customer': 'Kavita Desai',
-      'email': 'kavita.desai@example.com',
-      'amount': 280,
-      'date': '2025-11-05',
-      'status': 'Overdue',
-      'dueDate': '2025-11-05',
-      'services': [
-        {'name': 'Manicure', 'quantity': 1, 'price': 120.0, 'tax': 0.0},
-        {'name': 'Pedicure', 'quantity': 1, 'price': 160.0, 'tax': 0.0},
-      ],
-      'products': [
-        {'name': 'Nail Polish', 'quantity': 3, 'price': 0.0, 'tax': 0.0},
-      ],
-      'paymentMethod': 'Cash',
-      'discount': 0.0,
-      'platformFee': 0.0,
-    },
-    {
-      'id': 'INV-009',
-      'customer': 'Arjun Verma',
-      'email': 'arjun.verma@example.com',
-      'amount': 350,
-      'date': '2025-11-03',
-      'status': 'Paid',
-      'dueDate': '2025-12-03',
-      'services': [
-        {'name': 'Hair Spa', 'quantity': 1, 'price': 180.0, 'tax': 0.0},
-        {'name': 'Facial', 'quantity': 1, 'price': 120.0, 'tax': 0.0},
-        {'name': 'Head Massage', 'quantity': 1, 'price': 50.0, 'tax': 0.0},
-      ],
-      'products': [],
-      'paymentMethod': 'Debit Card',
-      'discount': 0.0,
-      'platformFee': 0.0,
-    },
-    {
-      'id': 'INV-010',
-      'customer': 'Neha Kapoor',
-      'email': 'neha.kapoor@example.com',
-      'amount': 195,
-      'date': '2025-11-01',
-      'status': 'Pending',
-      'dueDate': '2025-12-01',
-      'services': [
-        {'name': 'Hair Cut', 'quantity': 1, 'price': 150.0, 'tax': 0.0},
-      ],
-      'products': [
-        {'name': 'Hair Serum', 'quantity': 1, 'price': 45.0, 'tax': 0.0},
-      ],
-      'paymentMethod': 'Net Banking',
-      'discount': 0.0,
-      'platformFee': 0.0,
-    },
-    {
-      'id': 'INV-011',
-      'customer': 'Deepak Nair',
-      'email': 'deepak.nair@example.com',
-      'amount': 220,
-      'date': '2025-10-28',
-      'status': 'Paid',
-      'dueDate': '2025-11-28',
-      'services': [
-        {'name': 'Beard Styling', 'quantity': 1, 'price': 80.0, 'tax': 0.0},
-        {'name': 'Face Massage', 'quantity': 1, 'price': 70.0, 'tax': 0.0},
-      ],
-      'products': [
-        {'name': 'Face Wash', 'quantity': 2, 'price': 15.0, 'tax': 0.0},
-        {'name': 'Moisturizer', 'quantity': 1, 'price': 40.0, 'tax': 0.0},
-      ],
-      'paymentMethod': 'Cash',
-      'discount': 0.0,
-      'platformFee': 0.0,
-    },
-    {
-      'id': 'INV-012',
-      'customer': 'Pooja Iyer',
-      'email': 'pooja.iyer@example.com',
-      'amount': 480,
-      'date': '2025-10-25',
-      'status': 'Overdue',
-      'dueDate': '2025-10-25',
-      'services': [
-        {
-          'name': 'Full Body Massage',
-          'quantity': 1,
-          'price': 250.0,
-          'tax': 0.0
-        },
-        {'name': 'Spa Treatment', 'quantity': 1, 'price': 180.0, 'tax': 0.0},
-      ],
-      'products': [
-        {'name': 'Body Lotion', 'quantity': 1, 'price': 40.0, 'tax': 0.0},
-        {'name': 'Essential Oil', 'quantity': 1, 'price': 10.0, 'tax': 0.0},
-      ],
-      'paymentMethod': 'Debit Card',
-      'discount': 0.0,
-      'platformFee': 0.0,
-    },
-  ];
+  List<BillingInvoice> invoices = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchInvoices();
+  }
+
+  Future<void> _fetchInvoices() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final fetchedInvoices = await ApiService.getInvoices();
+      setState(() {
+        invoices = fetchedInvoices;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
 
   String _searchQuery = '';
   String _selectedPaymentMethod = 'All Payment Methods';
@@ -256,35 +60,54 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage> {
 
   int get totalBills => invoices.length;
   double get totalRevenue =>
-      invoices.fold(0.0, (sum, i) => sum + (i['amount'] as num).toDouble());
-  int get totalServicesSold =>
-      invoices.fold(0, (sum, i) => sum + (i['services'] as List).length);
-  int get totalProductsSold =>
-      invoices.fold(0, (sum, i) => sum + (i['products'] as List).length);
+      invoices.fold(0.0, (sum, i) => sum + i.totalAmount);
+  int get totalServicesSold => invoices.fold(
+      0,
+      (sum, i) =>
+          sum + i.items.where((item) => item.itemType == 'Service').length);
+  int get totalProductsSold => invoices.fold(
+      0,
+      (sum, i) =>
+          sum +
+          i.items
+              .where((item) =>
+                  item.itemType == 'Product' || item.itemType == 'Item')
+              .length);
 
-  List<Map<String, dynamic>> get filteredInvoices {
+  List<BillingInvoice> get filteredInvoices {
     return invoices.where((invoice) {
       final matchesSearch = _searchQuery.isEmpty ||
-          invoice['id'].toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          invoice['customer']
+          invoice.invoiceNumber
               .toLowerCase()
               .contains(_searchQuery.toLowerCase()) ||
-          invoice['email'].toLowerCase().contains(_searchQuery.toLowerCase());
+          invoice.clientInfo.fullName
+              .toLowerCase()
+              .contains(_searchQuery.toLowerCase()) ||
+          invoice.clientInfo.email
+              .toLowerCase()
+              .contains(_searchQuery.toLowerCase());
+
       final matchesPaymentMethod =
           _selectedPaymentMethod == 'All Payment Methods' ||
-              invoice['paymentMethod'] == _selectedPaymentMethod;
-      final hasServices = (invoice['services'] as List).isNotEmpty;
-      final hasProducts = (invoice['products'] as List).isNotEmpty;
+              invoice.paymentMethod == _selectedPaymentMethod;
+
+      final hasServices =
+          invoice.items.any((item) => item.itemType == 'Service');
+      final hasProducts = invoice.items
+          .any((item) => item.itemType == 'Product' || item.itemType == 'Item');
+
       final matchesItemType = _selectedItemType == 'All Item Types' ||
           (_selectedItemType == 'Services' && hasServices) ||
           (_selectedItemType == 'Products' && hasProducts);
+
       bool matchesDateRange = true;
       if (_startDate != null || _endDate != null) {
-        final invoiceDate = DateTime.parse(invoice['date']);
+        final invoiceDate = invoice.createdAt;
         if (_startDate != null && invoiceDate.isBefore(_startDate!)) {
           matchesDateRange = false;
         }
-        if (_endDate != null && invoiceDate.isAfter(_endDate!)) {
+        if (_endDate != null &&
+            invoiceDate.isAfter(_endDate!.add(const Duration(days: 1)))) {
           matchesDateRange = false;
         }
       }
@@ -315,7 +138,7 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage> {
 
   void _deleteInvoice(String invoiceId) {
     setState(() {
-      invoices.removeWhere((invoice) => invoice['id'] == invoiceId);
+      invoices.removeWhere((invoice) => invoice.id == invoiceId);
     });
   }
 
@@ -354,7 +177,7 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage> {
     super.dispose();
   }
 
-  void _showInvoiceDialog(Map<String, dynamic> invoice) {
+  void _showInvoiceDialog(BillingInvoice invoice) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -537,24 +360,6 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage> {
                                     const SizedBox(width: 8),
                                     Text(
                                       'All Payment Methods',
-                                      style: GoogleFonts.poppins(fontSize: 11),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            DropdownMenuItem(
-                              value: 'Debit Card',
-                              child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 3),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.credit_card,
-                                        size: 16, color: Colors.green),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Debit Card',
                                       style: GoogleFonts.poppins(fontSize: 11),
                                     ),
                                   ],
@@ -792,7 +597,7 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage> {
                         invoice: filteredInvoices[idx],
                         onView: () => _showInvoiceDialog(filteredInvoices[idx]),
                         onDelete: () =>
-                            _confirmDeleteInvoice(filteredInvoices[idx]['id']),
+                            _confirmDeleteInvoice(filteredInvoices[idx].id),
                       ),
                     ),
             ),
@@ -805,36 +610,30 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage> {
 
 // DIALOG WIDGET
 class InvoiceDetailsDialog extends StatelessWidget {
-  final Map<String, dynamic> invoice;
+  final BillingInvoice invoice;
 
   const InvoiceDetailsDialog({super.key, required this.invoice});
 
   @override
   Widget build(BuildContext context) {
-    final List services = invoice['services'] as List? ?? [];
-    final List products = invoice['products'] as List? ?? [];
-    final List<Map<String, dynamic>> items = [
-      ...services.map((e) => {
-            'name': e['name'],
-            'qty': e['quantity'],
-            'price': e['price'] ?? 0.0,
-            'tax': e['tax'] ?? 0.0
-          }),
-      ...products.map((e) => {
-            'name': e['name'],
-            'qty': e['quantity'],
-            'price': e['price'] ?? 0.0,
-            'tax': e['tax'] ?? 0.0
-          }),
-    ];
+    final List<Map<String, dynamic>> items = invoice.items
+        .map((e) => {
+              'name': e.name,
+              'qty': e.quantity,
+              'price': e.price,
+              'tax':
+                  0.0, // Tax is now part of BillingInvoice top level or item?
+              // The model has taxRate/taxAmount at top level.
+              // items have price and totalPrice.
+            })
+        .toList();
 
-    final double subtotal = items.fold(
-        0.0, (a, b) => a + ((b['price'] as num) * (b['qty'] as num)));
-    final double discount = invoice['discount'] ?? 0.0;
-    final double tax =
-        items.fold(0.0, (a, b) => a + ((b['tax'] as num) * (b['qty'] as num)));
-    final double platformFee = invoice['platformFee'] ?? 0.0;
-    final double total = subtotal - discount + tax + platformFee;
+    final double subtotal = invoice.subtotal;
+    final double discount =
+        invoice.items.fold(0.0, (sum, item) => sum + item.discount);
+    final double tax = invoice.taxAmount;
+    final double platformFee = invoice.platformFee;
+    final double total = invoice.totalAmount;
 
     final isMobile = MediaQuery.of(context).size.width < 600;
 
@@ -875,6 +674,57 @@ class InvoiceDetailsDialog extends StatelessWidget {
                   ],
                 ),
               ),
+              // Dark Header with Icon
+              Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1F2937),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Icon(
+                        Icons.layers,
+                        color: Color(0xFF1F2937),
+                        size: 16,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "GlowVita Salon",
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          "Professional Salon Management Platform",
+                          style: GoogleFonts.poppins(
+                            color: Colors.white70,
+                            fontSize: 8,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Company Info
               Padding(
                 padding: const EdgeInsets.only(bottom: 2),
                 child: Row(
@@ -886,7 +736,7 @@ class InvoiceDetailsDialog extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            "HarshalSpa",
+                            "GlowVita Salon & Spa",
                             style: TextStyle(
                               fontFamily: "Georgia",
                               fontWeight: FontWeight.bold,
@@ -895,9 +745,9 @@ class InvoiceDetailsDialog extends StatelessWidget {
                             ),
                           ),
                           SizedBox(height: 2),
-                          Text("Nashik, Maharashtra, India",
+                          Text("Baner Road, Pune, Pune, Maharashtra, 411045",
                               style: GoogleFonts.poppins(fontSize: 10)),
-                          Text("Phone: 9996281728",
+                          Text("Phone: 9876543210",
                               style: GoogleFonts.poppins(fontSize: 10)),
                         ],
                       ),
@@ -934,7 +784,7 @@ class InvoiceDetailsDialog extends StatelessWidget {
                                 fontSize: 10, fontWeight: FontWeight.w600),
                           ),
                           TextSpan(
-                            text: _invoiceFormatDate(invoice['date']),
+                            text: _invoiceFormatDate(invoice.createdAt),
                             style: GoogleFonts.poppins(fontSize: 10),
                           ),
                         ],
@@ -953,7 +803,7 @@ class InvoiceDetailsDialog extends StatelessWidget {
                                   fontSize: 10, fontWeight: FontWeight.w600),
                             ),
                             TextSpan(
-                              text: "#${invoice['id']}",
+                              text: "#${invoice.invoiceNumber}",
                               style: GoogleFonts.poppins(
                                   fontSize: 10,
                                   color: Theme.of(context).primaryColor,
@@ -983,7 +833,7 @@ class InvoiceDetailsDialog extends StatelessWidget {
                               fontWeight: FontWeight.w600, fontSize: 10),
                         ),
                         TextSpan(
-                          text: invoice['customer'],
+                          text: invoice.clientInfo.fullName,
                           style: GoogleFonts.poppins(fontSize: 10),
                         ),
                       ],
@@ -1131,7 +981,7 @@ class InvoiceDetailsDialog extends StatelessWidget {
               const SizedBox(height: 10),
               Center(
                 child: Text(
-                  "Payment Of ₹${total.toStringAsFixed(2)} Received By ${invoice['paymentMethod']}",
+                  "Payment Of ₹${total.toStringAsFixed(2)} Received By ${invoice.paymentMethod}",
                   style: GoogleFonts.poppins(
                       fontWeight: FontWeight.w600, fontSize: 10),
                 ),
@@ -1152,9 +1002,15 @@ class InvoiceDetailsDialog extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   OutlinedButton.icon(
+                    icon: const Icon(Icons.print, size: 18),
+                    label: const Text("Print"),
+                    onPressed: () => _handlePrint(invoice, context),
+                  ),
+                  const SizedBox(width: 12),
+                  OutlinedButton.icon(
                     icon: const Icon(Icons.download, size: 18),
                     label: const Text("Download"),
-                    onPressed: () {}, // download logic
+                    onPressed: () => _handlePdfDownload(invoice, context),
                   ),
                   const SizedBox(width: 12),
                   ElevatedButton(
@@ -1196,8 +1052,7 @@ class InvoiceDetailsDialog extends StatelessWidget {
         ),
       );
 
-  String _invoiceFormatDate(String date) {
-    final dt = DateTime.parse(date);
+  String _invoiceFormatDate(DateTime dt) {
     return "${_weekday(dt.weekday)}, ${_month(dt.month)} ${dt.day}, ${dt.year}";
   }
 
@@ -1223,10 +1078,514 @@ class InvoiceDetailsDialog extends StatelessWidget {
     ];
     return months[(month - 1) % 12];
   }
+
+  Future<void> _handlePrint(
+      BillingInvoice invoice, BuildContext context) async {
+    try {
+      final pdf = await _generatePdfDocument(invoice);
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdf.save(),
+      );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error printing PDF: $e"),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handlePdfDownload(
+      BillingInvoice invoice, BuildContext context) async {
+    try {
+      final pdf = await _generatePdfDocument(invoice);
+      final bytes = await pdf.save();
+
+      // Get the downloads directory
+      Directory? downloadsDir;
+
+      if (Platform.isWindows) {
+        // For Windows, use the Downloads folder in user's home directory
+        final home =
+            Platform.environment['USERPROFILE'] ?? Platform.environment['HOME'];
+        if (home != null) {
+          downloadsDir = Directory('$home\\Downloads');
+        }
+      } else if (Platform.isAndroid) {
+        downloadsDir = Directory('/storage/emulated/0/Download');
+      } else {
+        // For other platforms (iOS, macOS, Linux)
+        downloadsDir = await getDownloadsDirectory();
+      }
+
+      // Fallback to app documents directory if downloads not available
+      if (downloadsDir == null || !await downloadsDir.exists()) {
+        downloadsDir = await getApplicationDocumentsDirectory();
+      }
+
+      final fileName =
+          "invoice_${invoice.invoiceNumber.replaceAll(RegExp(r'[^\w-]'), '_')}.pdf";
+      final filePath = "${downloadsDir.path}${Platform.pathSeparator}$fileName";
+      final file = File(filePath);
+      await file.writeAsBytes(bytes);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Invoice saved to: $filePath"),
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: "Open",
+              onPressed: () => OpenFile.open(filePath),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error saving PDF: $e"),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<pw.Document> _generatePdfDocument(BillingInvoice invoice) async {
+    final pdf = pw.Document();
+
+    final font = await PdfGoogleFonts.poppinsRegular();
+    final boldFont = await PdfGoogleFonts.poppinsBold();
+    final iconFont = await PdfGoogleFonts.materialIcons();
+
+    final double subtotal = invoice.subtotal;
+    final double discount =
+        invoice.items.fold(0.0, (sum, item) => sum + item.discount);
+    final double tax = invoice.taxAmount;
+    final double platformFee = invoice.platformFee;
+    final double total = invoice.totalAmount;
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(32),
+        build: (pw.Context context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              // Header with dark background and icon
+              pw.Container(
+                width: double.infinity,
+                padding:
+                    const pw.EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                decoration: pw.BoxDecoration(
+                  color: PdfColor.fromHex('#1F2937'),
+                  borderRadius: pw.BorderRadius.circular(4),
+                ),
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.center,
+                  children: [
+                    // Icon
+                    pw.Container(
+                      width: 24,
+                      height: 24,
+                      decoration: pw.BoxDecoration(
+                        color: PdfColors.white,
+                        borderRadius: pw.BorderRadius.circular(4),
+                      ),
+                      child: pw.Center(
+                        child: pw.Icon(
+                          pw.IconData(Icons.layers.codePoint),
+                          color: PdfColor.fromHex('#1F2937'),
+                          size: 16,
+                          font: iconFont,
+                        ),
+                      ),
+                    ),
+                    pw.SizedBox(width: 10),
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(
+                          "GlowVita Salon",
+                          style: pw.TextStyle(
+                            color: PdfColors.white,
+                            fontSize: 16,
+                            fontWeight: pw.FontWeight.bold,
+                            font: boldFont,
+                          ),
+                        ),
+                        pw.SizedBox(height: 2),
+                        pw.Text(
+                          "Professional Salon Management Platform",
+                          style: pw.TextStyle(
+                            color: PdfColors.white,
+                            fontSize: 10,
+                            font: font,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 24),
+
+              // Company Info & Invoice Label
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        "GlowVita Salon & Spa",
+                        style: pw.TextStyle(
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.bold,
+                          font: boldFont, // Use bold font
+                        ),
+                      ),
+                      pw.SizedBox(height: 4),
+                      pw.Text(
+                        "Baner Road, Pune, Maharashtra, 411045",
+                        style: pw.TextStyle(fontSize: 10, font: font),
+                      ),
+                      pw.Text(
+                        "Phone: 9876543210",
+                        style: pw.TextStyle(fontSize: 10, font: font),
+                      ),
+                    ],
+                  ),
+                  pw.Text(
+                    "INVOICE",
+                    style: pw.TextStyle(
+                      fontSize: 20,
+                      fontWeight: pw.FontWeight.bold,
+                      letterSpacing: 1.2,
+                      font: boldFont,
+                    ),
+                  ),
+                ],
+              ),
+              pw.SizedBox(height: 12),
+              pw.Divider(thickness: 1),
+
+              // Date & Invoice Number
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.RichText(
+                    text: pw.TextSpan(
+                      children: [
+                        pw.TextSpan(
+                          text: "Date: ",
+                          style: pw.TextStyle(
+                            fontSize: 10,
+                            fontWeight: pw.FontWeight.bold,
+                            font: boldFont,
+                          ),
+                        ),
+                        pw.TextSpan(
+                          text: DateFormat('EEEE, MMM dd, yyyy')
+                              .format(invoice.createdAt),
+                          style: pw.TextStyle(fontSize: 10, font: font),
+                        ),
+                      ],
+                    ),
+                  ),
+                  pw.RichText(
+                    text: pw.TextSpan(
+                      children: [
+                        pw.TextSpan(
+                          text: "Invoice No: ",
+                          style: pw.TextStyle(
+                            fontSize: 10,
+                            fontWeight: pw.FontWeight.bold,
+                            font: boldFont,
+                          ),
+                        ),
+                        pw.TextSpan(
+                          text: invoice.invoiceNumber,
+                          style: pw.TextStyle(fontSize: 10, font: font),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              pw.Divider(thickness: 1),
+              pw.SizedBox(height: 12),
+
+              // Invoice To
+              pw.RichText(
+                text: pw.TextSpan(
+                  children: [
+                    pw.TextSpan(
+                      text: "Invoice To: ",
+                      style: pw.TextStyle(
+                        fontSize: 11,
+                        fontWeight: pw.FontWeight.bold,
+                        font: boldFont,
+                      ),
+                    ),
+                    pw.TextSpan(
+                      text: invoice.clientInfo.fullName,
+                      style: pw.TextStyle(fontSize: 11, font: font),
+                    ),
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 16),
+
+              // Items Table
+              pw.Table(
+                border: pw.TableBorder.all(color: PdfColors.black, width: 1),
+                columnWidths: {
+                  0: const pw.FlexColumnWidth(3),
+                  1: const pw.FlexColumnWidth(1.5),
+                  2: const pw.FlexColumnWidth(1),
+                  3: const pw.FlexColumnWidth(1.2),
+                  4: const pw.FlexColumnWidth(1.5),
+                },
+                children: [
+                  // Header row
+                  pw.TableRow(
+                    decoration: pw.BoxDecoration(
+                      color: PdfColors.grey300,
+                    ),
+                    children: [
+                      _pdfCell('ITEM DESCRIPTION',
+                          bold: true, font: font, boldFont: boldFont),
+                      _pdfCell('₹ PRICE',
+                          bold: true,
+                          align: pw.TextAlign.right,
+                          font: font,
+                          boldFont: boldFont),
+                      _pdfCell('QTY',
+                          bold: true,
+                          align: pw.TextAlign.center,
+                          font: font,
+                          boldFont: boldFont),
+                      _pdfCell('₹ TAX',
+                          bold: true,
+                          align: pw.TextAlign.right,
+                          font: font,
+                          boldFont: boldFont),
+                      _pdfCell('₹ AMOUNT',
+                          bold: true,
+                          align: pw.TextAlign.right,
+                          font: font,
+                          boldFont: boldFont),
+                    ],
+                  ),
+                  // Item rows
+                  ...invoice.items.map((item) => pw.TableRow(
+                        children: [
+                          _pdfCell(item.name, font: font, boldFont: boldFont),
+                          _pdfCell('₹${item.price.toStringAsFixed(2)}',
+                              align: pw.TextAlign.right,
+                              font: font,
+                              boldFont: boldFont),
+                          _pdfCell('${item.quantity}',
+                              align: pw.TextAlign.center,
+                              font: font,
+                              boldFont: boldFont),
+                          _pdfCell('₹0.00',
+                              align: pw.TextAlign.right,
+                              font: font,
+                              boldFont: boldFont),
+                          _pdfCell('₹${item.totalPrice.toStringAsFixed(2)}',
+                              align: pw.TextAlign.right,
+                              font: font,
+                              boldFont: boldFont),
+                        ],
+                      )),
+                  // Summary rows
+                  pw.TableRow(
+                    children: [
+                      _pdfCell('', font: font, boldFont: boldFont),
+                      _pdfCell('', font: font, boldFont: boldFont),
+                      _pdfCell('', font: font, boldFont: boldFont),
+                      _pdfCell('Subtotal:',
+                          bold: true,
+                          align: pw.TextAlign.right,
+                          font: font,
+                          boldFont: boldFont),
+                      _pdfCell('₹${subtotal.toStringAsFixed(2)}',
+                          align: pw.TextAlign.right,
+                          font: font,
+                          boldFont: boldFont),
+                    ],
+                  ),
+                  pw.TableRow(
+                    children: [
+                      _pdfCell('', font: font, boldFont: boldFont),
+                      _pdfCell('', font: font, boldFont: boldFont),
+                      _pdfCell('', font: font, boldFont: boldFont),
+                      _pdfCell('Discount:',
+                          bold: true,
+                          align: pw.TextAlign.right,
+                          color: PdfColor.fromHex('#15803D'),
+                          font: font,
+                          boldFont: boldFont),
+                      _pdfCell('-₹${discount.toStringAsFixed(2)}',
+                          align: pw.TextAlign.right,
+                          color: PdfColor.fromHex('#15803D'),
+                          font: font,
+                          boldFont: boldFont),
+                    ],
+                  ),
+                  pw.TableRow(
+                    children: [
+                      _pdfCell('', font: font, boldFont: boldFont),
+                      _pdfCell('', font: font, boldFont: boldFont),
+                      _pdfCell('', font: font, boldFont: boldFont),
+                      _pdfCell('Tax (0%):',
+                          bold: true,
+                          align: pw.TextAlign.right,
+                          font: font,
+                          boldFont: boldFont),
+                      _pdfCell('₹${tax.toStringAsFixed(2)}',
+                          align: pw.TextAlign.right,
+                          font: font,
+                          boldFont: boldFont),
+                    ],
+                  ),
+                  pw.TableRow(
+                    children: [
+                      _pdfCell('', font: font, boldFont: boldFont),
+                      _pdfCell('', font: font, boldFont: boldFont),
+                      _pdfCell('', font: font, boldFont: boldFont),
+                      _pdfCell('Platform Fee:',
+                          bold: true,
+                          align: pw.TextAlign.right,
+                          font: font,
+                          boldFont: boldFont),
+                      _pdfCell('₹${platformFee.toStringAsFixed(2)}',
+                          align: pw.TextAlign.right,
+                          font: font,
+                          boldFont: boldFont),
+                    ],
+                  ),
+                  pw.TableRow(
+                    children: [
+                      _pdfCell('', font: font, boldFont: boldFont),
+                      _pdfCell('', font: font, boldFont: boldFont),
+                      _pdfCell('', font: font, boldFont: boldFont),
+                      _pdfCell('Total:',
+                          bold: true,
+                          align: pw.TextAlign.right,
+                          font: font,
+                          boldFont: boldFont),
+                      _pdfCell('₹${total.toStringAsFixed(2)}',
+                          bold: true,
+                          align: pw.TextAlign.right,
+                          font: font,
+                          boldFont: boldFont),
+                    ],
+                  ),
+                ],
+              ),
+              pw.SizedBox(height: 24),
+              pw.Divider(thickness: 2, color: PdfColors.black),
+              pw.SizedBox(height: 12),
+
+              // Payment Note
+              pw.Center(
+                child: pw.Text(
+                  "Payment Of ₹${total.toStringAsFixed(2)} Received By ${invoice.paymentMethod}",
+                  style: pw.TextStyle(
+                    fontSize: 10,
+                    fontWeight: pw.FontWeight.bold,
+                    font: boldFont,
+                  ),
+                ),
+              ),
+              pw.SizedBox(height: 8),
+              pw.Center(
+                child: pw.Text(
+                  "NOTE: THIS IS COMPUTER GENERATED RECEIPT AND DOES NOT REQUIRE PHYSICAL SIGNATURE.",
+                  style: pw.TextStyle(
+                    fontSize: 8,
+                    color: PdfColor.fromHex('#6B7280'),
+                    font: font,
+                  ),
+                  textAlign: pw.TextAlign.center,
+                ),
+              ),
+              pw.Spacer(),
+
+              // Footer
+              pw.Center(
+                child: pw.Column(
+                  children: [
+                    pw.Text(
+                      "Powered by GlowVita Salon",
+                      style: pw.TextStyle(
+                        fontSize: 10,
+                        fontWeight: pw.FontWeight.bold,
+                        font: boldFont,
+                      ),
+                    ),
+                    pw.Text(
+                      "Professional Salon Management Platform",
+                      style: pw.TextStyle(
+                        fontSize: 8,
+                        color: PdfColor.fromHex('#6B7280'),
+                        font: font,
+                      ),
+                    ),
+                    pw.Text(
+                      "www.glowvitasalon.com",
+                      style: pw.TextStyle(
+                        fontSize: 8,
+                        color: PdfColor.fromHex('#9CA3AF'),
+                        font: font,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    return pdf;
+  }
+
+  // Helper method for PDF table cells
+  pw.Widget _pdfCell(String text,
+      {bool bold = false,
+      pw.TextAlign align = pw.TextAlign.left,
+      PdfColor? color,
+      required pw.Font font,
+      required pw.Font boldFont}) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.all(6),
+      child: pw.Text(
+        text,
+        style: pw.TextStyle(
+          fontSize: 10,
+          fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
+          color: color,
+          font: bold ? boldFont : font,
+        ),
+        textAlign: align,
+      ),
+    );
+  }
 }
 
 class InvoiceCard extends StatelessWidget {
-  final Map<String, dynamic> invoice;
+  final BillingInvoice invoice;
   final VoidCallback? onView;
   final VoidCallback? onDelete;
 
@@ -1239,22 +1598,19 @@ class InvoiceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final services =
-        (invoice['services'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-    final products =
-        (invoice['products'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-    final firstItem = services.isNotEmpty
-        ? services.first
-        : (products.isNotEmpty ? products.first : null);
-    final itemType = services.isNotEmpty
-        ? "Service"
-        : (products.isNotEmpty ? "Product" : "Item");
-    final itemIcon = services.isNotEmpty
+    final firstItem = invoice.items.isNotEmpty ? invoice.items.first : null;
+    final hasServices = invoice.items.any((i) => i.itemType == 'Service');
+    final hasProducts = invoice.items
+        .any((i) => i.itemType == 'Product' || i.itemType == 'Item');
+
+    final itemType =
+        hasServices ? "Service" : (hasProducts ? "Product" : "Item");
+    final itemIcon = hasServices
         ? Icons.cut
-        : (products.isNotEmpty ? Icons.shopping_cart : Icons.category);
-    final itemColor = services.isNotEmpty
+        : (hasProducts ? Icons.shopping_cart : Icons.category);
+    final itemColor = hasServices
         ? Theme.of(context).primaryColor
-        : (products.isNotEmpty ? Colors.green : Colors.grey);
+        : (hasProducts ? Colors.green : Colors.grey);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1277,7 +1633,7 @@ class InvoiceCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "#${invoice['id']}",
+                        "#${invoice.invoiceNumber}",
                         style: GoogleFonts.poppins(
                           color: Theme.of(context).primaryColor,
                           fontWeight: FontWeight.w600,
@@ -1287,7 +1643,7 @@ class InvoiceCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        invoice['date'],
+                        DateFormat('yyyy-MM-dd').format(invoice.createdAt),
                         style: GoogleFonts.poppins(
                           color: Colors.grey[600],
                           fontSize: 9,
@@ -1301,11 +1657,13 @@ class InvoiceCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      invoice['status'] == 'Paid'
+                      invoice.paymentStatus == 'Paid'
                           ? 'Completed'
-                          : invoice['status'],
+                          : invoice.paymentStatus,
                       style: GoogleFonts.poppins(
-                        color: Colors.green,
+                        color: invoice.paymentStatus == 'Paid'
+                            ? Colors.green
+                            : Colors.orange,
                         fontWeight: FontWeight.w500,
                         fontSize: 11,
                       ),
@@ -1317,7 +1675,7 @@ class InvoiceCard extends StatelessWidget {
             const SizedBox(height: 5),
             // name and email
             Text(
-              invoice['customer'],
+              invoice.clientInfo.fullName,
               style: GoogleFonts.poppins(
                 fontSize: 11,
                 color: Colors.black,
@@ -1325,7 +1683,7 @@ class InvoiceCard extends StatelessWidget {
               ),
             ),
             Text(
-              invoice['email'],
+              invoice.clientInfo.email,
               style: GoogleFonts.poppins(
                 fontSize: 10,
                 color: Colors.grey[700],
@@ -1352,16 +1710,16 @@ class InvoiceCard extends StatelessWidget {
                       fontWeight: FontWeight.w600),
                 ),
                 Text(
-                  " : ${firstItem?['name'] ?? '-'} ",
+                  " : ${firstItem?.name ?? '-'} ",
                   style: GoogleFonts.poppins(fontSize: 10, color: Colors.black),
                 ),
                 Text(
-                  "(x${firstItem?['quantity'] ?? '1'})",
+                  "(x${firstItem?.quantity ?? '1'})",
                   style: GoogleFonts.poppins(fontSize: 10, color: Colors.black),
                 ),
                 const Spacer(),
                 Text(
-                  "1",
+                  invoice.items.length.toString(),
                   style: GoogleFonts.poppins(
                       fontSize: 10,
                       fontWeight: FontWeight.w500,
@@ -1380,10 +1738,12 @@ class InvoiceCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 5),
                 Text(
-                  invoice['status'] == 'Paid' ? 'Completed' : invoice['status'],
+                  invoice.paymentStatus == 'Paid'
+                      ? 'Completed'
+                      : invoice.paymentStatus,
                   style: GoogleFonts.poppins(
                       fontSize: 10,
-                      color: invoice['status'] == 'Paid'
+                      color: invoice.paymentStatus == 'Paid'
                           ? Colors.green
                           : Colors.orange,
                       fontWeight: FontWeight.w600),
@@ -1397,7 +1757,7 @@ class InvoiceCard extends StatelessWidget {
               children: [
                 RichText(
                   text: TextSpan(
-                    text: '₹${invoice['amount']}',
+                    text: '₹${invoice.totalAmount}',
                     style: GoogleFonts.poppins(
                         color: Theme.of(context).primaryColor,
                         fontSize: 15,
