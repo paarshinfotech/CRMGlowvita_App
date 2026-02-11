@@ -45,6 +45,8 @@ class QueuedService {
 }
 
 class CreateAppointmentForm extends StatefulWidget {
+  final List<Appointments>
+      dailyAppointments; // New field for conflict detection
   final Function(List<Appointments>)? onAppointmentCreated;
   final AppointmentModel? existingAppointment;
 
@@ -52,6 +54,7 @@ class CreateAppointmentForm extends StatefulWidget {
     super.key,
     this.onAppointmentCreated,
     this.existingAppointment,
+    this.dailyAppointments = const [],
   });
 
   @override
@@ -261,13 +264,8 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
         final List<dynamic> data = json.decode(response.body);
         setState(() {
           _staff = data.map<StaffMember>((item) {
-            final map = item as Map<String, dynamic>;
-            return StaffMember(
-              id: map['_id']?.toString() ?? 'unknown',
-              fullName: (map['fullName'] ?? 'Unknown Staff').toString().trim(),
-              email: map['emailAddress']?.toString(),
-              mobile: map['mobileNo']?.toString(),
-            );
+            // Updated to use StaffMember.fromJson to ensure consistency
+            return StaffMember.fromJson(item as Map<String, dynamic>);
           }).toList();
         });
       } else {
@@ -377,6 +375,14 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
       final duration = qs.service.duration ?? 0;
       final endTime = currentStartTime.add(Duration(minutes: duration));
 
+      // Check conflict for this item in the queue
+      final conflict = _hasConflict(currentStartTime, endTime, qs.staff);
+      if (conflict) {
+        _showConflictDialog(qs.staff, qs.service, currentStartTime, endTime);
+        // We still add it to the queue visually but the user has been warned
+        // Or we could stop here.
+      }
+
       updatedQueue.add(QueuedService(
         service: qs.service,
         staff: qs.staff,
@@ -391,6 +397,47 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
       _queuedServices = updatedQueue;
     });
     _recalculatePricingAndTimes();
+  }
+
+  bool _hasConflict(DateTime start, DateTime end, StaffMember staff) {
+    for (var appt in widget.dailyAppointments) {
+      // Exclude current appointment if editing
+      if (widget.existingAppointment != null &&
+          appt.id == widget.existingAppointment!.id) {
+        continue;
+      }
+
+      // Check staff match
+      // Assuming staffNames are consistent.
+      // Ideally should match IDs if possible, but existing 'Appointments' model might not have IDs populated from calendar yet.
+      // let's try to match name.
+      if (appt.staffName != staff.fullName) continue;
+
+      // Check overlap
+      // Overlap if (StartA < EndB) and (EndA > StartB)
+      if (appt.startTime.isBefore(end) && appt.endTime.isAfter(start)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void _showConflictDialog(
+      StaffMember staff, Service service, DateTime start, DateTime end) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Slot Unavailable'),
+        content: Text(
+            '${staff.fullName} is already booked between ${DateFormat('HH:mm').format(start)} and ${DateFormat('HH:mm').format(end)}.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _addToQueue() {
@@ -410,6 +457,13 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
 
     final duration = _selectedService!.duration ?? 0;
     final endTime = currentStartTime.add(Duration(minutes: duration));
+
+    // Check conflict BEFORE adding
+    if (_hasConflict(currentStartTime, endTime, _selectedStaff!)) {
+      _showConflictDialog(
+          _selectedStaff!, _selectedService!, currentStartTime, endTime);
+      return; // Do not add to queue
+    }
 
     setState(() {
       _queuedServices.add(QueuedService(
@@ -552,19 +606,6 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
         );
       },
     );
-  }
-
-  // -------- Staff Add Dialog --------
-  Future<void> _openAddStaffDialog() async {
-    // Since we don't have an AddStaffPage, we'll just show a snackbar for now
-    // In a real implementation, you would navigate to the AddStaffPage
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-          content: Text('Add Staff functionality not implemented yet')),
-    );
-
-    // Refresh the staff list after adding a new staff member
-    await _refreshStaff();
   }
 
   // -------- Client Add Dialog --------

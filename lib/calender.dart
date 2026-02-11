@@ -10,7 +10,6 @@ import 'widgets/custom_drawer.dart';
 import 'widgets/appointment_detail_dialog.dart';
 import 'Notification.dart';
 import 'Profile.dart';
-import 'shared_data.dart';
 
 class Appointments {
   final String id; // Added ID
@@ -61,14 +60,9 @@ class _CalendarState extends State<Calendar> {
   double get staffColumnWidth => staffColumnBaseWidth.w;
 
   // DYNAMIC STAFF DATA - fetched from API
-  List<Map<String, dynamic>> staffList = [];
+  List<StaffMember> staffList = [];
   bool isStaffLoading = false;
-  Map<String, bool> selectedStaff = {};
   List<Appointments> _appointments = [];
-
-  // WORKING HOURS DATA
-  Map<String, dynamic> workingHours = {};
-  bool isWorkingHoursLoading = false;
 
   DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
@@ -145,10 +139,9 @@ class _CalendarState extends State<Calendar> {
     _horizontalScrollController = ScrollController();
     _staffHeaderScrollController = ScrollController();
 
-    // This will now actually fetch real staff, appointments, and working hours
+    // This will now actually fetch real staff, appointments
     _loadStaff();
     _loadAppointments();
-    _loadWorkingHours();
 
     // Timer and scroll sync...
     _horizontalScrollController.addListener(() {
@@ -173,32 +166,8 @@ class _CalendarState extends State<Calendar> {
       final List<StaffMember> staffMembers = await ApiService.getStaff();
 
       setState(() {
-        staffList = staffMembers.map<Map<String, dynamic>>((member) {
-          final fullName = (member.fullName ?? 'Unknown Staff').trim();
-          return {
-            'id': member.id ?? 'unknown',
-            'fullName': fullName.isEmpty ? 'No Name' : fullName,
-            'position': member.position ?? 'Staff',
-            'status': member.status ?? 'Active',
-            'photo': member.photo,
-          };
-        }).toList();
-
-        // Auto-select first 2 staff
-        selectedStaff.clear();
-        for (int i = 0; i < staffList.length && i < 2; i++) {
-          final name = staffList[i]['fullName'] as String;
-          selectedStaff[name] = true;
-        }
-        // Ensure others are false
-        for (int i = 2; i < staffList.length; i++) {
-          final name = staffList[i]['fullName'] as String;
-          selectedStaff[name] = false;
-        }
-
+        staffList = staffMembers;
         debugPrint('Loaded ${staffList.length} staff members');
-        debugPrint(
-            'Selected: ${selectedStaff.keys.where((k) => selectedStaff[k]!).toList()}');
       });
     } catch (e, stack) {
       debugPrint('ERROR loading staff: $e');
@@ -212,81 +181,11 @@ class _CalendarState extends State<Calendar> {
           ),
         );
       }
-
-      // Fallback to shared data
-      setState(() {
-        staffList = sharedDataService.staffMembers
-            .map((s) => {
-                  'id': s.name,
-                  'fullName': s.name,
-                  'position': s.role,
-                  'status': s.availability,
-                  'photo': null,
-                })
-            .toList();
-
-        selectedStaff.clear();
-        for (int i = 0; i < staffList.length && i < 2; i++) {
-          selectedStaff[staffList[i]['fullName']] = true;
-        }
-      });
+      // Fallback or empty logic if needed
     } finally {
       if (mounted) {
         setState(() => isStaffLoading = false);
       }
-    }
-  }
-
-  Future<void> _loadWorkingHours() async {
-    setState(() {
-      isWorkingHoursLoading = true;
-    });
-
-    try {
-      final data = await ApiService.getWorkingHours();
-      setState(() {
-        workingHours = data;
-        isWorkingHoursLoading = false;
-      });
-      debugPrint('Loaded working hours: ${workingHours['workingHoursArray']}');
-    } catch (e) {
-      debugPrint('Error loading working hours: $e');
-      setState(() {
-        isWorkingHoursLoading = false;
-      });
-    }
-  }
-
-  String _getWorkingHoursForDay(DateTime date) {
-    if (workingHours.isEmpty || workingHours['workingHoursArray'] == null) {
-      return 'Loading...';
-    }
-
-    final dayName = DateFormat('EEEE').format(date);
-    final List<dynamic> hoursArray = workingHours['workingHoursArray'];
-
-    try {
-      final dayData = hoursArray.firstWhere(
-        (item) =>
-            item['day']?.toString().toLowerCase() == dayName.toLowerCase(),
-        orElse: () => null,
-      );
-
-      if (dayData == null || dayData['isOpen'] == false) {
-        return 'Closed';
-      }
-
-      final openTime = dayData['open'] ?? '';
-      final closeTime = dayData['close'] ?? '';
-
-      if (openTime.isEmpty || closeTime.isEmpty) {
-        return 'Closed';
-      }
-
-      return '$openTime - $closeTime';
-    } catch (e) {
-      debugPrint('Error getting working hours: $e');
-      return 'Closed';
     }
   }
 
@@ -368,136 +267,7 @@ class _CalendarState extends State<Calendar> {
         });
   }
 
-  void _showStaffSelection() {
-    final tempSelectedStaff = Map<String, bool>.from(selectedStaff);
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
-      ),
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-            builder: (BuildContext context, StateSetter setModalState) {
-          return SizedBox(
-            height: 300.h,
-            child: Column(
-              children: [
-                Container(
-                  margin: EdgeInsets.all(8.h),
-                  width: 40.w,
-                  height: 4.h,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2.r),
-                  ),
-                ),
-                Padding(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Select Staff',
-                          style: TextStyle(
-                              fontSize: 16.sp, fontWeight: FontWeight.bold)),
-                      Text('${staffList.length} available',
-                          style: TextStyle(
-                              fontSize: 12.sp, color: Colors.grey[600])),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: ListView.builder(
-                    padding: EdgeInsets.symmetric(horizontal: 16.w),
-                    itemCount: staffList.length,
-                    itemBuilder: (context, index) {
-                      final staff = staffList[index]['fullName'];
-                      return Container(
-                        margin: EdgeInsets.only(bottom: 4.h),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[50],
-                          borderRadius: BorderRadius.circular(8.r),
-                        ),
-                        child: ListTile(
-                          contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12.w, vertical: 4.h),
-                          title: Text(staff,
-                              style: TextStyle(
-                                  fontSize: 14.sp,
-                                  fontWeight: FontWeight.w500)),
-                          trailing: Checkbox(
-                            value: tempSelectedStaff[staff] ?? false,
-                            onChanged: (value) {
-                              setModalState(() {
-                                tempSelectedStaff[staff] = value ?? false;
-                              });
-                            },
-                            materialTapTargetSize:
-                                MaterialTapTargetSize.shrinkWrap,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                Padding(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () {
-                            setModalState(() {
-                              tempSelectedStaff
-                                  .updateAll((key, value) => false);
-                            });
-                          },
-                          style: OutlinedButton.styleFrom(
-                            padding: EdgeInsets.symmetric(vertical: 12.h),
-                            side: BorderSide(color: Colors.grey[300]!),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8.r)),
-                          ),
-                          child: Text('Clear All',
-                              style: TextStyle(fontSize: 14.sp)),
-                        ),
-                      ),
-                      SizedBox(width: 10.w),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            setState(() {
-                              selectedStaff
-                                ..clear()
-                                ..addAll(tempSelectedStaff);
-                            });
-                            Navigator.of(context).pop();
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).primaryColor,
-                            padding: EdgeInsets.symmetric(vertical: 12.h),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8.r)),
-                          ),
-                          child: Text('Apply',
-                              style: TextStyle(
-                                  color: Colors.white, fontSize: 14.sp)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          );
-        });
-      },
-    );
-  }
+  // _showStaffSelection removed
 
   void _showCreateAppointmentForm() {
     showModalBottomSheet(
@@ -507,6 +277,7 @@ class _CalendarState extends State<Calendar> {
         return SizedBox(
           height: MediaQuery.of(context).size.height * 0.8,
           child: CreateAppointmentForm(
+            dailyAppointments: _appointments, // Pass current appointments
             onAppointmentCreated: (appointments) {
               setState(() {
                 _appointments.addAll(appointments);
@@ -521,14 +292,14 @@ class _CalendarState extends State<Calendar> {
   @override
   Widget build(BuildContext context) {
     final quarterSlot = slotHeight / 4;
-    final selectedStaffList =
-        selectedStaff.entries.where((e) => e.value).map((e) => e.key).toList();
+    // We display ALL staff now
+    final displayingStaff = staffList;
 
     final Map<String, List<Appointments>> staffAppts = {};
-    for (final staff in selectedStaffList) {
-      staffAppts[staff] = _appointments
+    for (final staff in displayingStaff) {
+      staffAppts[staff.fullName ?? ''] = _appointments
           .where((a) =>
-              a.staffName == staff &&
+              a.staffName == staff.fullName &&
               DateUtils.isSameDay(a.startTime, _selectedDate))
           .toList();
     }
@@ -646,13 +417,14 @@ class _CalendarState extends State<Calendar> {
               physics: const NeverScrollableScrollPhysics(),
               child: isStaffLoading
                   ? SizedBox(
-                      width:
-                          60.w + (selectedStaffList.length * staffColumnWidth),
+                      width: 60.w + (displayingStaff.length * staffColumnWidth),
                       child: Row(
                         children: [
                           SizedBox(width: 60.w),
                           ...List.generate(
-                              selectedStaffList.length,
+                              displayingStaff.length > 0
+                                  ? displayingStaff.length
+                                  : 1,
                               (i) => Container(
                                   width: staffColumnWidth,
                                   height: 40.h,
@@ -668,16 +440,7 @@ class _CalendarState extends State<Calendar> {
                   : Row(
                       children: [
                         SizedBox(width: 60.w),
-                        ...selectedStaffList.map((staffName) {
-                          final staff = staffList.firstWhere(
-                            (s) => s['fullName'] == staffName,
-                            orElse: () => <String, String?>{
-                              'position': 'Unknown',
-                              'status': 'Active',
-                              'fullName': staffName,
-                              'id': ''
-                            },
-                          );
+                        ...displayingStaff.map((staff) {
                           return Container(
                             width: staffColumnWidth,
                             padding: EdgeInsets.symmetric(horizontal: 8.w),
@@ -685,7 +448,7 @@ class _CalendarState extends State<Calendar> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  staffName,
+                                  staff.fullName ?? 'Unknown',
                                   style: TextStyle(
                                       fontSize: 10.sp,
                                       fontWeight: FontWeight.w600),
@@ -694,16 +457,17 @@ class _CalendarState extends State<Calendar> {
                                 ),
                                 SizedBox(height: 2.h),
                                 Text(
-                                  staff['position'] ?? 'Staff',
+                                  staff.position ?? 'Staff',
                                   style: TextStyle(
                                       fontSize: 8.sp, color: Colors.grey[700]),
                                 ),
                                 SizedBox(height: 1.h),
                                 Text(
-                                  _getWorkingHoursForDay(_selectedDate),
+                                  // Use staff-specific working hours
+                                  staff.getWorkingHours(_selectedDate),
                                   style: TextStyle(
                                       fontSize: 7.sp,
-                                      color: _getWorkingHoursForDay(
+                                      color: staff.getWorkingHours(
                                                   _selectedDate) ==
                                               'Closed'
                                           ? Colors.red[700]
@@ -767,24 +531,15 @@ class _CalendarState extends State<Calendar> {
                         scrollDirection: Axis.horizontal,
                         child: SizedBox(
                           height: 24 * slotHeight,
-                          width: selectedStaffList.isEmpty
+                          width: displayingStaff.isEmpty
                               ? 0
-                              : (selectedStaffList.length * staffColumnWidth),
-                          child: selectedStaffList.isEmpty
+                              : (displayingStaff.length * staffColumnWidth),
+                          child: displayingStaff.isEmpty
                               ? const SizedBox()
                               : Row(
-                                  children: selectedStaffList.map((staffName) {
-                                    final appts = staffAppts[staffName] ?? [];
-                                    final staff = staffList.firstWhere(
-                                      (s) => s['fullName'] == staffName,
-                                      orElse: () => <String, String?>{
-                                        'photo': null,
-                                        'fullName': staffName,
-                                        'id': '',
-                                        'position': '',
-                                        'status': ''
-                                      },
-                                    );
+                                  children: displayingStaff.map((staff) {
+                                    final appts =
+                                        staffAppts[staff.fullName] ?? [];
                                     return SizedBox(
                                       width: staffColumnWidth,
                                       height: 24 * slotHeight,
@@ -1071,7 +826,7 @@ class _CalendarState extends State<Calendar> {
                     ),
 
                     // Empty state
-                    if (totalApptsForDay == 0 && selectedStaffList.isNotEmpty)
+                    if (totalApptsForDay == 0 && displayingStaff.isNotEmpty)
                       Positioned(
                         top: 50.h,
                         left: 70.w,
@@ -1125,30 +880,6 @@ class _CalendarState extends State<Calendar> {
             icon: const Icon(Icons.add, color: Colors.white),
             label: Text('New Appointment',
                 style: TextStyle(color: Colors.white, fontSize: 12.sp)),
-          ),
-          SizedBox(height: 12.h),
-          Stack(
-            children: [
-              FloatingActionButton(
-                backgroundColor: Theme.of(context).primaryColor,
-                elevation: 6,
-                heroTag: 'staff_select',
-                onPressed: _showStaffSelection,
-                tooltip: '${selectedStaffList.length} staff selected',
-                child: Text(
-                  '${selectedStaffList.length}',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.bold),
-                ),
-              ),
-              Positioned(
-                right: 4.w,
-                bottom: 4.h,
-                child: Icon(Icons.group, color: Colors.white, size: 14.sp),
-              ),
-            ],
           ),
         ],
       ),

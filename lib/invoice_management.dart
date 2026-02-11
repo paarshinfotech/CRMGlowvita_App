@@ -878,25 +878,64 @@ class InvoiceDetailsDialog extends StatelessWidget {
                             weight: FontWeight.w600, isHeader: true),
                       ],
                     ),
-                    ...items.map((e) => TableRow(
-                          decoration: BoxDecoration(
-                            border: Border(
-                              bottom: BorderSide(
-                                  color: Colors.grey[600]!, width: 1),
+                    ...invoice.items.map((item) {
+                      return TableRow(
+                        decoration: BoxDecoration(
+                          border: Border(
+                            bottom:
+                                BorderSide(color: Colors.grey[600]!, width: 1),
+                          ),
+                        ),
+                        children: [
+                          // Item Description with Add-ons
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 8, horizontal: 4),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item.name,
+                                  style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 10),
+                                ),
+                                if (item.addOns.isNotEmpty) ...[
+                                  const SizedBox(height: 2),
+                                  ...item.addOns.map((addon) => Padding(
+                                        padding: const EdgeInsets.only(left: 0),
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Text(
+                                              "+ ${addon.name}",
+                                              style: GoogleFonts.poppins(
+                                                  fontSize: 9,
+                                                  color: Colors.grey[700]),
+                                            ),
+                                            Text(
+                                              "₹${addon.price.toStringAsFixed(0)}",
+                                              style: GoogleFonts.poppins(
+                                                  fontSize: 9,
+                                                  color: Colors.grey[700]),
+                                            ),
+                                          ],
+                                        ),
+                                      )),
+                                ]
+                              ],
                             ),
                           ),
-                          children: [
-                            _cellTxt(e['name'], weight: FontWeight.w500),
-                            _cellTxt(
-                                "₹${(e['price'] as num).toStringAsFixed(2)}"),
-                            _cellTxt("${e['qty']}"),
-                            _cellTxt(
-                                '₹${(e['tax'] as num).toStringAsFixed(2)}'),
-                            _cellTxt(
-                                "₹${((e['qty'] as num) * (e['price'] as num) + (e['qty'] as num) * (e['tax'] as num)).toStringAsFixed(2)}",
-                                align: TextAlign.right),
-                          ],
-                        )),
+                          _cellTxt("₹${item.price.toStringAsFixed(2)}"),
+                          _cellTxt("${item.quantity}"),
+                          _cellTxt(
+                              "₹${(item.totalPrice * invoice.taxRate / 100).toStringAsFixed(2)}"),
+                          _cellTxt("₹${item.totalPrice.toStringAsFixed(2)}",
+                              align: TextAlign.right),
+                        ],
+                      );
+                    }),
                     // empty row for look
                     ...List.generate(
                         1,
@@ -1388,7 +1427,50 @@ class InvoiceDetailsDialog extends StatelessWidget {
                   // Item rows
                   ...invoice.items.map((item) => pw.TableRow(
                         children: [
-                          _pdfCell(item.name, font: font, boldFont: boldFont),
+                          // Custom cell for name and add-ons
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.all(6),
+                            child: pw.Column(
+                              crossAxisAlignment: pw.CrossAxisAlignment.start,
+                              children: [
+                                pw.Text(
+                                  item.name,
+                                  style: pw.TextStyle(
+                                    fontSize: 10,
+                                    font:
+                                        boldFont, // Use bold font for item name
+                                  ),
+                                ),
+                                if (item.addOns.isNotEmpty) ...[
+                                  pw.SizedBox(height: 2),
+                                  ...item.addOns.map((addon) => pw.Row(
+                                        mainAxisAlignment:
+                                            pw.MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          pw.Text(
+                                            "+ ${addon.name}",
+                                            style: pw.TextStyle(
+                                              fontSize: 9,
+                                              color:
+                                                  PdfColor.fromHex('#6B7280'),
+                                              font: font,
+                                            ),
+                                          ),
+                                          pw.Text(
+                                            "₹${addon.price.toStringAsFixed(0)}",
+                                            style: pw.TextStyle(
+                                              fontSize: 9,
+                                              color:
+                                                  PdfColor.fromHex('#6B7280'),
+                                              font: font,
+                                            ),
+                                          ),
+                                        ],
+                                      )),
+                                ]
+                              ],
+                            ),
+                          ),
                           _pdfCell('₹${item.price.toStringAsFixed(2)}',
                               align: pw.TextAlign.right,
                               font: font,
@@ -1397,7 +1479,8 @@ class InvoiceDetailsDialog extends StatelessWidget {
                               align: pw.TextAlign.center,
                               font: font,
                               boldFont: boldFont),
-                          _pdfCell('₹0.00',
+                          _pdfCell(
+                              '₹${(item.totalPrice * invoice.taxRate / 100).toStringAsFixed(2)}',
                               align: pw.TextAlign.right,
                               font: font,
                               boldFont: boldFont),

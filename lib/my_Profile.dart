@@ -32,6 +32,7 @@ class _My_ProfileState extends State<My_Profile>
   final _descriptionController = TextEditingController();
   final _passwordController = TextEditingController();
   final _profileImageController = TextEditingController();
+  final _taxRateController = TextEditingController();
 
   // Bank details controllers
   final _bankNameController = TextEditingController();
@@ -240,6 +241,7 @@ class _My_ProfileState extends State<My_Profile>
         'vendorType': vendorTypeApi,
         'travelRadius': int.tryParse(_radiusController.text) ?? 0,
         'travelSpeed': int.tryParse(_speedController.text) ?? 30,
+        'taxRate': double.tryParse(_taxRateController.text) ?? 0.0,
         'openingHours': updatedOpeningHours.map((e) => e.toJson()).toList(),
         'bankDetails': {
           'bankName': _bankNameController.text,
@@ -377,6 +379,7 @@ class _My_ProfileState extends State<My_Profile>
     _descriptionController.text = profile.description;
     _profileImageController.text = profile.profileImage;
     _selectedCategory = profile.category;
+    _taxRateController.text = profile.taxes?.taxValue.toString() ?? "0.0";
 
     if (profile.bankDetails != null) {
       _bankNameController.text = profile.bankDetails!.bankName ?? "";
@@ -564,6 +567,7 @@ class _My_ProfileState extends State<My_Profile>
     _speedController.dispose();
     _latController.dispose();
     _lngController.dispose();
+    _taxRateController.dispose();
     super.dispose();
   }
 
@@ -825,6 +829,69 @@ class _My_ProfileState extends State<My_Profile>
               _checkbox("Custom Location", _customLocation,
                   (v) => setState(() => _customLocation = v!)),
             ],
+          ),
+          SizedBox(height: 20.h),
+          SizedBox(height: 20.h),
+          // Tax Information Card (Read-only as per design)
+          Container(
+            padding: EdgeInsets.all(16.w),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(10.w),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    "₹",
+                    style: GoogleFonts.inter(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+                SizedBox(width: 16.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "ACTIVE TAX RATE",
+                        style: GoogleFonts.inter(
+                          fontSize: 10.sp,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.grey.shade500,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      SizedBox(height: 4.h),
+                      Text(
+                        "${_profile?.taxes?.taxValue ?? 0}% (${_profile?.taxes?.taxType ?? 'percentage'})",
+                        style: GoogleFonts.inter(
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
           SizedBox(height: 28.h),
           _saveButton(),

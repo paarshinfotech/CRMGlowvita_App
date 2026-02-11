@@ -149,6 +149,10 @@ class _SalesPageState extends State<SalesPage>
 
   // Selected client
   Customer? selectedClient;
+  StaffMember? selectedStaff;
+  bool applyTax = false;
+  double profileTaxRate = 0.0;
+  String paymentMethod = 'Cash';
 
   // Search controllers
   final TextEditingController _serviceProductSearchController =
@@ -206,9 +210,17 @@ class _SalesPageState extends State<SalesPage>
         clients = fetchedClients;
         allAddOns = fetchedAddOns;
         vendorId = fetchedVendor.id;
+        profileTaxRate = (fetchedVendor.taxes?.taxValue ?? 0).toDouble();
         // Also fetch staff to fix 400 error for direct sales
         ApiService.getStaff().then((list) {
-          if (mounted) setState(() => staffList = list);
+          if (mounted) {
+            setState(() {
+              staffList = list;
+              if (staffList.isNotEmpty && selectedStaff == null) {
+                selectedStaff = staffList.first;
+              }
+            });
+          }
         });
         isLoading = false;
       });
@@ -484,7 +496,7 @@ class _SalesPageState extends State<SalesPage>
     });
   }
 
-  double get tax => 0.0;
+  double get tax => applyTax ? (subtotal * (profileTaxRate / 100)) : 0.0;
   double get total => subtotal + tax;
 
   void _clearBilling() {
@@ -537,8 +549,76 @@ class _SalesPageState extends State<SalesPage>
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () {
-                        // Logic for "Save Order" - maybe just creates appointment without payment
+                      onPressed: () async {
+                        if (selectedClient == null) return;
+
+                        setDialogState(() => isProcessing = true);
+
+                        try {
+                          final payload = {
+                            "clientId": selectedClient!.id,
+                            "clientInfo": {
+                              "fullName": selectedClient!.fullName,
+                              "phone": selectedClient!.mobile,
+                            },
+                            "paymentMethod": selectedMethod ?? paymentMethod,
+                            "subtotal": subtotal,
+                            "taxRate": applyTax ? profileTaxRate : 0.0,
+                            "taxAmount": tax,
+                            "platformFee": 0,
+                            "totalAmount": total,
+                            "items": selectedItems.map((item) {
+                              return {
+                                "itemId": item['sourceId'],
+                                "itemType": (item['isService'] ?? true)
+                                    ? "Service"
+                                    : "Product",
+                                "name": item['name'],
+                                "price": item['price'],
+                                "quantity": item['quantity'],
+                                "totalPrice": (item['price'] as num) *
+                                    (item['quantity'] as num),
+                                "staffMember": {
+                                  "id": selectedStaff?.id ?? "",
+                                  "name": selectedStaff?.fullName ?? "No Staff"
+                                },
+                                "addOns": (item['addons'] as List)
+                                    .map((a) => {
+                                          "id": a['id'],
+                                          "name": a['name'],
+                                          "price": a['price']
+                                        })
+                                    .toList(),
+                              };
+                            }).toList(),
+                            "status": "completed",
+                            "billingDate": DateTime.now().toIso8601String(),
+                          };
+
+                          final result =
+                              await ApiService.createBilling(payload);
+
+                          if (result['success'] == true) {
+                            if (context.mounted) {
+                              Navigator.pop(context); // Close dialog
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text('Order saved successfully')),
+                              );
+                              _clearBilling();
+                            }
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error saving order: $e')),
+                            );
+                          }
+                        } finally {
+                          if (context.mounted) {
+                            setDialogState(() => isProcessing = false);
+                          }
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF9F8F9F),
@@ -593,12 +673,11 @@ class _SalesPageState extends State<SalesPage>
                           setDialogState,
                           selectedMethod,
                           (m) => selectedMethod = m),
-                      _paymentMethodButton(
-                          'Net Banking',
-                          Icons.account_balance,
-                          setDialogState,
-                          selectedMethod,
-                          (m) => selectedMethod = m),
+                      _paymentMethodButton('Net Banking', Icons.account_balance,
+                          setDialogState, selectedMethod, (m) {
+                        selectedMethod = m;
+                        setState(() => paymentMethod = m);
+                      }),
                     ],
                   ),
                   if (isProcessing) ...[
@@ -674,7 +753,9 @@ class _SalesPageState extends State<SalesPage>
         "vendorId": vendorId,
         "service": firstService['sourceId'],
         "serviceName": firstService['name'],
-        "staff": defaultStaff?.id ?? vendorId, // Use vendorId as fallback staff
+        "staff": defaultStaff?.id ??
+            vendorId ??
+            "", // Use vendorId as fallback staff
         "staffName": defaultStaff?.fullName ?? "Staff Member",
         "date": DateTime.now().toIso8601String().split('T')[0],
         "startTime":
@@ -1057,6 +1138,55 @@ class _SalesPageState extends State<SalesPage>
               ],
             ),
           ),
+          const SizedBox(height: 12),
+          // Staff Selection Dropdown
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.badge_outlined,
+                      size: 16, color: Color(0xFF6366F1)),
+                  const SizedBox(width: 6),
+                  Text('Assign Staff Member',
+                      style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: _text)),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: _border, width: 0.8),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<StaffMember?>(
+                    value: selectedStaff,
+                    isExpanded: true,
+                    icon: const Icon(Icons.arrow_drop_down, color: _muted),
+                    hint: Text('Select Staff',
+                        style:
+                            GoogleFonts.poppins(fontSize: 12, color: _muted)),
+                    items: staffList.map((staff) {
+                      return DropdownMenuItem<StaffMember?>(
+                        value: staff,
+                        child: Text(staff.fullName ?? '',
+                            style: GoogleFonts.poppins(
+                                fontSize: 12, color: _text)),
+                      );
+                    }).toList(),
+                    onChanged: (StaffMember? value) {
+                      setState(() => selectedStaff = value);
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 10),
         ],
 
@@ -1165,16 +1295,24 @@ class _SalesPageState extends State<SalesPage>
                                     children: [
                                       _qtyButton(
                                         icon: Icons.remove,
-                                        onTap: () => _updateItemQuantity(
-                                            item['id'], qty - 1),
+                                        onTap: () {
+                                          if (item['id'] != null) {
+                                            _updateItemQuantity(
+                                                item['id'], qty - 1);
+                                          }
+                                        },
                                       ),
                                       const SizedBox(width: 8),
                                       Text('$qty', style: _td),
                                       const SizedBox(width: 8),
                                       _qtyButton(
                                         icon: Icons.add,
-                                        onTap: () => _updateItemQuantity(
-                                            item['id'], qty + 1),
+                                        onTap: () {
+                                          if (item['id'] != null) {
+                                            _updateItemQuantity(
+                                                item['id'], qty + 1);
+                                          }
+                                        },
                                       ),
                                     ],
                                   ),
@@ -1189,8 +1327,11 @@ class _SalesPageState extends State<SalesPage>
                                   child: IconButton(
                                     icon: const Icon(Icons.delete_outline,
                                         color: Colors.red, size: 16),
-                                    onPressed: () =>
-                                        _removeItemFromBilling(item['id']),
+                                    onPressed: () {
+                                      if (item['id'] != null) {
+                                        _removeItemFromBilling(item['id']);
+                                      }
+                                    },
                                     padding: EdgeInsets.zero,
                                     constraints: const BoxConstraints(),
                                   ),
@@ -1212,7 +1353,53 @@ class _SalesPageState extends State<SalesPage>
           child: Column(
             children: [
               _billingLine('Subtotal', '₹${subtotal.toStringAsFixed(2)}'),
-              _billingLine('Tax (0%)', '₹${tax.toStringAsFixed(2)}'),
+              // Tax Toggle Row
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: Checkbox(
+                            value: applyTax,
+                            activeColor: _primary,
+                            onChanged: (val) {
+                              setState(() => applyTax = val ?? false);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                                'Apply Taxes (${profileTaxRate.toStringAsFixed(1)}%)',
+                                style: GoogleFonts.poppins(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: _text)),
+                            Text('Configured in Profile',
+                                style: GoogleFonts.poppins(
+                                    fontSize: 11,
+                                    color: _muted,
+                                    fontWeight: FontWeight.w400)),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Text('₹${tax.toStringAsFixed(2)}',
+                        style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: _text)),
+                  ],
+                ),
+              ),
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 8),
                 child: Divider(height: 1, color: Color(0xFFF1F5F9)),

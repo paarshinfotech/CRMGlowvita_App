@@ -33,6 +33,7 @@ class VendorProfile {
   final int currentSmsBalance;
   final List<OpeningHour> openingHours;
   final String timezone;
+  final Taxes? taxes;
 
   VendorProfile({
     required this.id,
@@ -69,6 +70,7 @@ class VendorProfile {
     required this.currentSmsBalance,
     required this.openingHours,
     required this.timezone,
+    this.taxes,
   });
 
   factory VendorProfile.fromJson(Map<String, dynamic> json) {
@@ -120,6 +122,7 @@ class VendorProfile {
           .map((i) => OpeningHour.fromJson(i))
           .toList(),
       timezone: json['timezone'] ?? '',
+      taxes: json['taxes'] != null ? Taxes.fromJson(json['taxes']) : null,
     );
   }
 
@@ -156,6 +159,7 @@ class VendorProfile {
       'currentSmsBalance': currentSmsBalance,
       'openingHours': openingHours.map((e) => e.toJson()).toList(),
       'timezone': timezone,
+      'taxes': taxes?.toJson(),
     };
   }
 }
@@ -476,6 +480,27 @@ class OpeningHour {
       'open': open,
       'close': close,
       'isOpen': isOpen,
+    };
+  }
+}
+
+class Taxes {
+  final double taxValue;
+  final String taxType;
+
+  Taxes({required this.taxValue, required this.taxType});
+
+  factory Taxes.fromJson(Map<String, dynamic> json) {
+    return Taxes(
+      taxValue: (json['taxValue'] as num?)?.toDouble() ?? 0.0,
+      taxType: json['taxType'] ?? 'percentage',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'taxValue': taxValue,
+      'taxType': taxType,
     };
   }
 }

@@ -56,6 +56,35 @@ class StaffMember {
   });
 
   factory StaffMember.fromJson(Map<String, dynamic> json) {
+    // Construct availability map from root fields if 'availability' is missing
+    Map<String, dynamic>? availabilityMap = json['availability'] != null
+        ? Map<String, dynamic>.from(json['availability'])
+        : null;
+
+    if (availabilityMap == null) {
+      final days = [
+        'monday',
+        'tuesday',
+        'wednesday',
+        'thursday',
+        'friday',
+        'saturday',
+        'sunday'
+      ];
+      availabilityMap = {};
+      for (var day in days) {
+        if (json.containsKey('${day}Available')) {
+          availabilityMap['${day}Available'] = json['${day}Available'];
+        }
+        if (json.containsKey('${day}Slots')) {
+          availabilityMap['${day}Slots'] = json['${day}Slots'];
+        }
+      }
+      if (json.containsKey('timezone')) {
+        availabilityMap['timezone'] = json['timezone'];
+      }
+    }
+
     return StaffMember(
       id: json['_id'],
       vendorId: json['vendorId'],
@@ -66,9 +95,7 @@ class StaffMember {
       photo: json['photo'],
       status: json['status'] ?? 'Active',
       permissions: json['permissions']?.cast<dynamic>() ?? [],
-      availability: json['availability'] != null
-          ? Map<String, dynamic>.from(json['availability'])
-          : null,
+      availability: availabilityMap,
       blockedTimes: json['blockedTimes']?.cast<dynamic>() ?? [],
       bankDetails: json['bankDetails'] != null
           ? Map<String, dynamic>.from(json['bankDetails'])
@@ -106,6 +133,38 @@ class StaffMember {
       'endDate': endDate?.toIso8601String(),
       'description': description,
     };
+  }
+
+  String getWorkingHours(DateTime date) {
+    if (availability == null) return 'Closed';
+
+    // date.weekday: 1 = Mon, 7 = Sun
+    final days = [
+      'monday',
+      'tuesday',
+      'wednesday',
+      'thursday',
+      'friday',
+      'saturday',
+      'sunday'
+    ];
+    final dayName = days[date.weekday - 1]; // 0-indexed for array
+
+    final isAvailable = availability?['${dayName}Available'] == true;
+    if (!isAvailable) return 'Closed';
+
+    final slots = availability?['${dayName}Slots'] as List<dynamic>?;
+    if (slots == null || slots.isEmpty) return 'Closed';
+
+    // Taking the first slot for simplicity as per requirements usually,
+    // or join them if multiple. For display "09:00 - 18:30" is typical.
+    final firstSlot = slots.first;
+    final start = firstSlot['startTime'] ?? '';
+    final end = firstSlot['endTime'] ?? '';
+
+    if (start.isEmpty || end.isEmpty) return 'Closed';
+
+    return '$start - $end';
   }
 }
 
@@ -1577,6 +1636,29 @@ class ApiService {
       }
     } catch (e) {
       print('Error fetching invoices: $e');
+      rethrow;
+    }
+  }
+
+  // Create a new bill
+  static Future<Map<String, dynamic>> createBilling(
+      Map<String, dynamic> payload) async {
+    try {
+      final response = await _post('$baseUrl/crm/billing', payload);
+
+      print(
+          '📥 Create Billing Response [${response.statusCode}]: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        return data;
+      } else {
+        final data = json.decode(response.body);
+        throw Exception(
+            'Failed to create bill: ${data['message'] ?? response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Error creating bill: $e');
       rethrow;
     }
   }
