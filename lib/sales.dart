@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'widgets/custom_drawer.dart';
 import 'customer_model.dart';
 import 'add_customer.dart';
@@ -600,11 +602,12 @@ class _SalesPageState extends State<SalesPage>
 
                           if (result['success'] == true) {
                             if (context.mounted) {
-                              Navigator.pop(context); // Close dialog
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text('Order saved successfully')),
-                              );
+                              Navigator.pop(context); // Close checkout dialog
+
+                              // Show Invoice Summary Dialog
+                              _showInvoiceSummaryDialog(
+                                  context, result['data']);
+
                               _clearBilling();
                             }
                           }
@@ -1830,6 +1833,398 @@ class _SalesPageState extends State<SalesPage>
                   fontSize: isTotal ? 15 : 12,
                   fontWeight: isTotal ? FontWeight.bold : FontWeight.w600,
                   color: _text)),
+        ],
+      ),
+    );
+  }
+
+  void _showInvoiceSummaryDialog(
+      BuildContext context, Map<String, dynamic> data) {
+    final dateFormat = DateFormat('EEE, MMM dd, yyyy');
+    final createdAt =
+        DateTime.tryParse(data['createdAt'] ?? '') ?? DateTime.now();
+    final clientInfo = data['clientInfo'] ?? {};
+    final items = data['items'] as List? ?? [];
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        insetPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 16.h),
+        child: Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(12.w),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Text(
+                    'Invoice Summary',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.bold,
+                      color: _text,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: Icon(Icons.close, color: _muted, size: 16),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+              Divider(color: Colors.grey.shade100, height: 12.h),
+
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Banner Section
+                      Container(
+                        padding: EdgeInsets.all(12.w),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF2E5BFF), Color(0xFF1B3BBE)],
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  data['invoiceNumber'] ?? 'N/A',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 6.w, vertical: 2.h),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF22C55E),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    'Completed',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 8.sp,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 4.h),
+                            Text(
+                              '${dateFormat.format(createdAt)} by ${clientInfo['fullName'] ?? 'Guest'}',
+                              style: GoogleFonts.poppins(
+                                fontSize: 9.sp,
+                                color: Colors.white.withOpacity(0.9),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 12.h),
+
+                      // Quick Actions
+                      _buildSummarySection(
+                        title: 'Quick Actions',
+                        child: Column(
+                          children: [
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: () {},
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF43303F),
+                                  padding: EdgeInsets.symmetric(vertical: 8.h),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(6)),
+                                ),
+                                icon: const Icon(Icons.calendar_today,
+                                    size: 12, color: Colors.white),
+                                label: Text('Rebook Client',
+                                    style: GoogleFonts.poppins(
+                                        color: Colors.white, fontSize: 11.sp)),
+                              ),
+                            ),
+                            SizedBox(height: 8.h),
+                            Row(
+                              children: [
+                                _summaryActionBtn(
+                                    Icons.email_outlined, 'Email'),
+                                SizedBox(width: 6.w),
+                                _summaryActionBtn(
+                                    Icons.print_outlined, 'Download'),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 12.h),
+
+                      // Client Information
+                      _buildSummarySection(
+                        title: 'Client Information',
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(8.w),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(Icons.person_outline,
+                                  color: _muted, size: 18),
+                            ),
+                            SizedBox(width: 10.w),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    clientInfo['fullName'] ?? 'N/A',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12.sp,
+                                      fontWeight: FontWeight.w600,
+                                      color: _text,
+                                    ),
+                                  ),
+                                  Text(
+                                    '${clientInfo['phone'] ?? 'N/A'} • ${clientInfo['email'] ?? 'N/A'}',
+                                    style: GoogleFonts.poppins(
+                                        fontSize: 10.sp, color: _muted),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 12.h),
+
+                      // Invoice Details
+                      _buildSummarySection(
+                        title: 'Invoice Details',
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                _infoCard(
+                                    'Payment', data['paymentMethod'] ?? 'Cash'),
+                                SizedBox(width: 8.w),
+                                _infoCard('Status', 'Paid', isStatus: true),
+                              ],
+                            ),
+                            SizedBox(height: 12.h),
+                            Text('Services',
+                                style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 11.sp)),
+                            Divider(color: Colors.grey.shade100, height: 8.h),
+                            ...items.map((item) => Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 2.h),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(item['name'] ?? 'N/A',
+                                          style: GoogleFonts.poppins(
+                                              fontSize: 10.sp,
+                                              fontWeight: FontWeight.w600,
+                                              color: const Color(0xFF1E293B))),
+                                      Text(
+                                          '₹${(item['price'] ?? 0).toStringAsFixed(2)}',
+                                          style: GoogleFonts.poppins(
+                                              fontSize: 10.sp,
+                                              fontWeight: FontWeight.w600)),
+                                    ],
+                                  ),
+                                )),
+                            SizedBox(height: 12.h),
+                            Container(
+                              padding: EdgeInsets.all(10.w),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8F9FA),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Column(
+                                children: [
+                                  _priceLine('Subtotal',
+                                      '₹${(data['subtotal'] ?? 0).toStringAsFixed(2)}'),
+                                  _priceLine('Discount',
+                                      '-₹${(data['discountAmount'] ?? 0).toStringAsFixed(2)}',
+                                      color: const Color(0xFF22C55E)),
+                                  _priceLine('Tax (${data['taxRate'] ?? 0}%)',
+                                      '₹${(data['taxAmount'] ?? 0).toStringAsFixed(2)}'),
+                                  _priceLine('Platform Fee',
+                                      '₹${(data['platformFee'] ?? 0).toStringAsFixed(2)}'),
+                                  Divider(
+                                      height: 12.h,
+                                      color: Colors.grey.withOpacity(0.2)),
+                                  _priceLine('Total',
+                                      '₹${(data['totalAmount'] ?? 0).toStringAsFixed(2)}',
+                                      isBold: true),
+                                  _priceLine('Balance',
+                                      '₹${(data['totalAmount'] ?? 0).toStringAsFixed(2)}',
+                                      isBold: true,
+                                      color: const Color(0xFFEF4444)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              SizedBox(height: 16.h),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF43303F),
+                    padding: EdgeInsets.symmetric(vertical: 10.h),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6)),
+                  ),
+                  child: Text('Close',
+                      style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummarySection({required String title, required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title,
+              style: GoogleFonts.poppins(
+                  fontSize: 12.sp, fontWeight: FontWeight.bold, color: _text)),
+          SizedBox(height: 4.h),
+          Divider(color: Colors.grey.shade100),
+          SizedBox(height: 8.h),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryActionBtn(IconData icon, String label) {
+    return Expanded(
+      child: OutlinedButton(
+        onPressed: () {},
+        style: OutlinedButton.styleFrom(
+          padding: EdgeInsets.symmetric(vertical: 10.h),
+          side: BorderSide(color: Colors.grey.shade300),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 18, color: _text),
+            SizedBox(height: 4.h),
+            Text(label,
+                style: GoogleFonts.poppins(fontSize: 9.sp, color: _text)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _infoCard(String label, String value, {bool isStatus = false}) {
+    return Expanded(
+      child: Container(
+        padding: EdgeInsets.all(12.w),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label,
+                style: GoogleFonts.poppins(
+                    fontSize: 9.sp,
+                    color: _muted,
+                    fontWeight: FontWeight.w500)),
+            SizedBox(height: 4.h),
+            isStatus
+                ? Container(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+                    decoration: BoxDecoration(
+                        color: const Color(0xFFDCFCE7),
+                        borderRadius: BorderRadius.circular(4)),
+                    child: Text(value,
+                        style: GoogleFonts.poppins(
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF166534))),
+                  )
+                : Text(value,
+                    style: GoogleFonts.poppins(
+                        fontSize: 10.sp,
+                        fontWeight: FontWeight.bold,
+                        color: _text)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _priceLine(String label, String value,
+      {bool isBold = false, Color? color}) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 2.h),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style: GoogleFonts.poppins(
+                  fontSize: isBold ? 11.sp : 10.sp,
+                  color: color ?? (isBold ? _text : _muted),
+                  fontWeight: isBold ? FontWeight.bold : FontWeight.w500)),
+          Text(value,
+              style: GoogleFonts.poppins(
+                  fontSize: isBold ? 12.sp : 10.sp,
+                  fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
+                  color: color ?? _text)),
         ],
       ),
     );

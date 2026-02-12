@@ -136,41 +136,6 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage> {
     }
   }
 
-  void _deleteInvoice(String invoiceId) {
-    setState(() {
-      invoices.removeWhere((invoice) => invoice.id == invoiceId);
-    });
-  }
-
-  void _confirmDeleteInvoice(String invoiceId) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Confirm Delete',
-              style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-          content: Text('Are you sure you want to delete this invoice?',
-              style: GoogleFonts.poppins()),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text('Cancel',
-                  style: GoogleFonts.poppins(color: Colors.grey)),
-            ),
-            TextButton(
-              onPressed: () {
-                _deleteInvoice(invoiceId);
-                Navigator.of(context).pop();
-              },
-              child:
-                  Text('Delete', style: GoogleFonts.poppins(color: Colors.red)),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   @override
   void dispose() {
     _searchController.dispose();
@@ -596,8 +561,6 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage> {
                       itemBuilder: (ctx, idx) => InvoiceCard(
                         invoice: filteredInvoices[idx],
                         onView: () => _showInvoiceDialog(filteredInvoices[idx]),
-                        onDelete: () =>
-                            _confirmDeleteInvoice(filteredInvoices[idx].id),
                       ),
                     ),
             ),
@@ -1670,13 +1633,11 @@ class InvoiceDetailsDialog extends StatelessWidget {
 class InvoiceCard extends StatelessWidget {
   final BillingInvoice invoice;
   final VoidCallback? onView;
-  final VoidCallback? onDelete;
 
   const InvoiceCard({
     super.key,
     required this.invoice,
     this.onView,
-    this.onDelete,
   });
 
   @override
@@ -1876,26 +1837,6 @@ class InvoiceCard extends StatelessWidget {
                               fontWeight: FontWeight.w500,
                               color: Theme.of(context).primaryColor)),
                       onPressed: onView,
-                    ),
-                    const SizedBox(width: 6),
-                    TextButton.icon(
-                      style: TextButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        side: BorderSide(color: Colors.grey.shade200),
-                        backgroundColor: Colors.white,
-                        minimumSize: const Size(0, 0),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      icon: const Icon(Icons.delete_outline,
-                          size: 15, color: Color(0xFFDC2626)),
-                      label: Text("Delete",
-                          style: GoogleFonts.poppins(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                              color: Color(0xFFDC2626))),
-                      onPressed: onDelete,
                     ),
                   ],
                 ),
