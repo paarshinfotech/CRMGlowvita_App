@@ -302,6 +302,18 @@ class _SalesPageState extends State<SalesPage>
   // Add item to billing
   void _addItemToBilling(dynamic item,
       {bool isService = false, List<AddOn>? selectedAddOns}) {
+    // Prevent adding out of stock products
+    if (!isService && (item as Product).stock == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This product is out of stock'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
     if (isService && selectedAddOns == null) {
       final serviceId = (item as Service).id;
       final relevantAddOns = allAddOns
@@ -1642,6 +1654,8 @@ class _SalesPageState extends State<SalesPage>
                                       ? '${(item as Service).duration} min'
                                       : null;
 
+                                  final bool isOutOfStock = !isService &&
+                                      (item as Product).stock == 0;
                                   final selected = _isItemSelected(name, price);
 
                                   return Container(
@@ -1706,13 +1720,17 @@ class _SalesPageState extends State<SalesPage>
                                         else
                                           const Spacer(flex: 2),
                                         ElevatedButton(
-                                          onPressed: () => _addItemToBilling(
-                                              item,
-                                              isService: isService),
+                                          onPressed: isOutOfStock
+                                              ? null
+                                              : () => _addItemToBilling(item,
+                                                  isService: isService),
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor:
-                                                const Color(0xFF3F2B3E),
-                                            foregroundColor: Colors.white,
+                                            backgroundColor: isOutOfStock
+                                                ? Colors.grey.shade300
+                                                : const Color(0xFF3F2B3E),
+                                            foregroundColor: isOutOfStock
+                                                ? Colors.grey.shade600
+                                                : Colors.white,
                                             shape: RoundedRectangleBorder(
                                               borderRadius:
                                                   BorderRadius.circular(8),
@@ -1723,10 +1741,14 @@ class _SalesPageState extends State<SalesPage>
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              const Icon(Icons.add, size: 16),
-                                              const SizedBox(width: 4),
+                                              if (!isOutOfStock) ...[
+                                                const Icon(Icons.add, size: 16),
+                                                const SizedBox(width: 4),
+                                              ],
                                               Text(
-                                                'Add',
+                                                isOutOfStock
+                                                    ? 'Out of Stock'
+                                                    : 'Add',
                                                 style: GoogleFonts.poppins(
                                                     fontSize: 13,
                                                     fontWeight:
