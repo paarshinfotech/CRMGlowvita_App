@@ -1466,6 +1466,73 @@ class ApiService {
     }
   }
 
+  // ==================== EXPENSES ==================== //
+
+  static Future<List<Map<String, dynamic>>> getExpenses() async {
+    try {
+      final response = await _get('$baseUrl/crm/expenses');
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded is List) return List<Map<String, dynamic>>.from(decoded);
+        if (decoded is Map && decoded['data'] != null) {
+          return List<Map<String, dynamic>>.from(decoded['data']);
+        }
+        return [];
+      } else {
+        throw Exception('Failed to load expenses: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching expenses: $e');
+      rethrow;
+    }
+  }
+
+  static Future<bool> addExpense(Map<String, dynamic> data) async {
+    try {
+      final response = await _post('$baseUrl/crm/expenses', data);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true;
+      } else {
+        throw Exception('Failed to add expense: ${response.body}');
+      }
+    } catch (e) {
+      print('Error adding expense: $e');
+      rethrow;
+    }
+  }
+
+  static Future<bool> updateExpense(
+      String id, Map<String, dynamic> data) async {
+    try {
+      final response = await _put('$baseUrl/crm/expenses?id=$id', {
+        ...data,
+        'id': id,
+      });
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        throw Exception('Failed to update expense: ${response.body}');
+      }
+    } catch (e) {
+      print('Error updating expense: $e');
+      rethrow;
+    }
+  }
+
+  static Future<bool> deleteExpense(String id) async {
+    try {
+      final response = await _delete('$baseUrl/crm/expenses', body: {'id': id});
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        return true;
+      } else {
+        throw Exception('Failed to delete expense: ${response.body}');
+      }
+    } catch (e) {
+      print('Error deleting expense: $e');
+      rethrow;
+    }
+  }
+
   static Future<List<OfferModel>> getOffers() async {
     try {
       print('🔍 Fetching all offers...');
@@ -1659,6 +1726,71 @@ class ApiService {
       }
     } catch (e) {
       print('❌ Error creating bill: $e');
+      rethrow;
+    }
+  }
+
+  // ==================== REVIEWS ==================== //
+
+  static Future<List<Map<String, dynamic>>> getReviews() async {
+    try {
+      final response = await _get('$baseUrl/crm/reviews');
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['reviews'] != null) {
+          return List<Map<String, dynamic>>.from(data['reviews']);
+        }
+        return [];
+      } else {
+        throw Exception('Failed to load reviews: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching reviews: $e');
+      rethrow;
+    }
+  }
+
+  static Future<bool> updateReviewStatus(
+      String reviewId, bool isApproved) async {
+    try {
+      print('📤 Updating review $reviewId status to isApproved: $isApproved');
+      final response = await _patch(
+        '$baseUrl/crm/reviews/$reviewId',
+        {'isApproved': isApproved},
+      );
+
+      print('📥 Response Status: ${response.statusCode}');
+      print('📥 Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        print('✅ Review Status Updated: ${data['message']}');
+        return data['success'] == true;
+      } else {
+        throw Exception(
+            'Failed to update review status [${response.statusCode}]: ${response.body}');
+      }
+    } catch (e) {
+      print('❌ Error updating review status: $e');
+      rethrow;
+    }
+  }
+
+  static Future<bool> deleteReview(String reviewId) async {
+    try {
+      final response = await _delete('$baseUrl/crm/reviews/$reviewId');
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        // Many APIs return success in a field if 200
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          return data['success'] == true;
+        }
+        return true;
+      } else {
+        throw Exception('Failed to delete review: ${response.body}');
+      }
+    } catch (e) {
+      print('Error deleting review: $e');
       rethrow;
     }
   }

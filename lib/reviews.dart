@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'widgets/custom_drawer.dart';
+import 'services/api_service.dart';
+import 'package:intl/intl.dart';
 
 class ReviewsPage extends StatefulWidget {
   const ReviewsPage({super.key});
@@ -10,74 +12,8 @@ class ReviewsPage extends StatefulWidget {
 }
 
 class _ReviewsPageState extends State<ReviewsPage> {
-  // Sample reviews data
-  final List<Map<String, dynamic>> reviews = [
-    {
-      'id': '1',
-      'customerName': 'Priya Sharma',
-      'serviceName': 'Facial Treatment',
-      'productName': null,
-      'salonName': null,
-      'type': 'service',
-      'rating': 5,
-      'date': '2025-11-15',
-      'review':
-          'Amazing service! The facial was very relaxing and my skin felt great afterwards. Will definitely come back.',
-      'status': 'Approved',
-    },
-    {
-      'id': '2',
-      'customerName': 'Rahul Mehta',
-      'serviceName': null,
-      'productName': 'Hydrating Face Serum',
-      'salonName': null,
-      'type': 'product',
-      'rating': 4,
-      'date': '2025-11-10',
-      'review':
-          'Good service overall. The color turned out well, but the waiting time was a bit long.',
-      'status': 'Approved',
-    },
-    {
-      'id': '3',
-      'customerName': 'Anjali Patel',
-      'serviceName': 'Manicure',
-      'productName': null,
-      'salonName': null,
-      'type': 'service',
-      'rating': 3,
-      'date': '2025-11-05',
-      'review':
-          'Average experience. The nail art was nice but the polish chipped off quickly.',
-      'status': 'Pending',
-    },
-    {
-      'id': '4',
-      'customerName': 'Vikram Singh',
-      'serviceName': null,
-      'productName': null,
-      'salonName': 'GlowVita Salon',
-      'type': 'salon',
-      'rating': 5,
-      'date': '2025-10-28',
-      'review':
-          'Outstanding service! The full spa package was very relaxing and rejuvenating. Highly recommended!',
-      'status': 'Approved',
-    },
-    {
-      'id': '5',
-      'customerName': 'Sneha Reddy',
-      'serviceName': 'Basic Haircut',
-      'productName': null,
-      'salonName': null,
-      'type': 'service',
-      'rating': 2,
-      'date': '2025-10-20',
-      'review':
-          'Not satisfied with the haircut. It was uneven and not what I asked for.',
-      'status': 'Disapproved',
-    },
-  ];
+  List<Map<String, dynamic>> reviews = [];
+  bool _isLoading = true;
 
   // Search and filter variables
   final TextEditingController _searchController = TextEditingController();
@@ -86,12 +22,7 @@ class _ReviewsPageState extends State<ReviewsPage> {
   String _selectedCategory = 'All';
 
   // Filter options
-  final List<String> _statusFilters = [
-    'All',
-    'Pending',
-    'Approved',
-    'Disapproved'
-  ];
+  final List<String> _statusFilters = ['All', 'Pending', 'Approved'];
   final List<String> _categoryFilters = [
     'All',
     'Services',
@@ -100,49 +31,115 @@ class _ReviewsPageState extends State<ReviewsPage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _fetchReviews();
+  }
+
+  Future<void> _fetchReviews() async {
+    setState(() => _isLoading = true);
+    try {
+      final fetchedReviews = await ApiService.getReviews();
+      setState(() {
+        reviews = fetchedReviews;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _updateStatus(String reviewId, bool isApproved) async {
+    try {
+      final success = await ApiService.updateReviewStatus(reviewId, isApproved);
+      if (success) {
+        _fetchReviews();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content:
+                    Text(isApproved ? 'Review Approved' : 'Review Rejected ')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteReview(String reviewId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm Delete'),
+        content: const Text('Are you sure you want to delete this review?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        final success = await ApiService.deleteReview(reviewId);
+        if (success) {
+          _fetchReviews();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
 
-  // Filtered reviews getter
   List<Map<String, dynamic>> get _filteredReviews {
     return reviews.where((review) {
-      // Search filter
+      final userName = review['userName']?.toString().toLowerCase() ?? '';
+      final comment = review['comment']?.toString().toLowerCase() ?? '';
+      final entityName =
+          review['entityDetails']?['salonName']?.toString().toLowerCase() ?? '';
+
       final matchesSearch = _searchQuery.isEmpty ||
-          review['customerName']
-              .toString()
-              .toLowerCase()
-              .contains(_searchQuery.toLowerCase()) ||
-          (review['serviceName']
-                  ?.toString()
-                  .toLowerCase()
-                  .contains(_searchQuery.toLowerCase()) ??
-              false) ||
-          (review['productName']
-                  ?.toString()
-                  .toLowerCase()
-                  .contains(_searchQuery.toLowerCase()) ??
-              false) ||
-          (review['salonName']
-                  ?.toString()
-                  .toLowerCase()
-                  .contains(_searchQuery.toLowerCase()) ??
-              false) ||
-          review['review']
-              .toString()
-              .toLowerCase()
-              .contains(_searchQuery.toLowerCase());
+          userName.contains(_searchQuery.toLowerCase()) ||
+          comment.contains(_searchQuery.toLowerCase()) ||
+          entityName.contains(_searchQuery.toLowerCase());
 
-      // Status filter
+      final isApproved = review['isApproved'] as bool?;
+      String status = 'Pending';
+      if (isApproved == true) status = 'Approved';
+
       final matchesStatus =
-          _selectedStatus == 'All' || review['status'] == _selectedStatus;
+          _selectedStatus == 'All' || status == _selectedStatus;
 
-      // Category filter
+      final type = review['entityType']?.toString() ?? '';
       final matchesCategory = _selectedCategory == 'All' ||
-          (_selectedCategory == 'Services' && review['type'] == 'service') ||
-          (_selectedCategory == 'Products' && review['type'] == 'product') ||
-          (_selectedCategory == 'Salons' && review['type'] == 'salon');
+          (_selectedCategory == 'Services' && type == 'service') ||
+          (_selectedCategory == 'Products' && type == 'product') ||
+          (_selectedCategory == 'Salons' && type == 'salon');
 
       return matchesSearch && matchesStatus && matchesCategory;
     }).toList();
@@ -447,14 +444,20 @@ class _ReviewsPageState extends State<ReviewsPage> {
             const SizedBox(height: 12),
             // Reviews list
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: _filteredReviews.length,
-                itemBuilder: (context, index) {
-                  final review = _filteredReviews[index];
-                  return _buildReviewCard(review);
-                },
-              ),
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _filteredReviews.isEmpty
+                      ? Center(
+                          child: Text('No reviews found',
+                              style: GoogleFonts.poppins()))
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: _filteredReviews.length,
+                          itemBuilder: (context, index) {
+                            final review = _filteredReviews[index];
+                            return _buildReviewCard(review);
+                          },
+                        ),
             ),
           ],
         ),
@@ -463,40 +466,50 @@ class _ReviewsPageState extends State<ReviewsPage> {
   }
 
   int _getApprovedCount() {
-    return reviews.where((review) => review['status'] == 'Approved').length;
+    return reviews.where((review) => review['isApproved'] == true).length;
   }
 
   int _getPendingCount() {
-    return reviews.where((review) => review['status'] == 'Pending').length;
+    return reviews.where((review) => review['isApproved'] == null).length;
   }
 
   double _calculateAverageRating() {
     if (reviews.isEmpty) return 0.0;
     double total = 0;
     for (final review in reviews) {
-      total += review['rating'] as int;
+      total += (review['rating'] as num? ?? 0).toDouble();
     }
     return total / reviews.length;
   }
 
   Widget _buildReviewCard(Map<String, dynamic> review) {
-    final rating = review['rating'] as int;
-    final status = review['status'] as String;
-    final type = review['type'] as String;
+    final rating = (review['rating'] as num? ?? 0).toInt();
+    final isApproved = review['isApproved'] as bool?;
+    final type = review['entityType']?.toString() ?? 'salon';
+    final String reviewId = review['_id'] ?? '';
 
-    Color statusColor;
-    switch (status) {
-      case 'Approved':
-        statusColor = Colors.green;
-        break;
-      case 'Pending':
-        statusColor = Colors.orange;
-        break;
-      case 'Disapproved':
-        statusColor = Colors.red;
-        break;
-      default:
-        statusColor = Colors.grey;
+    String statusStr = 'Pending';
+    Color statusColor = Colors.orange;
+
+    if (isApproved == true) {
+      statusStr = 'Approved';
+      statusColor = Colors.green;
+    }
+
+    String entityName = review['entityDetails']?['salonName'] ??
+        review['entityDetails']?['productName'] ??
+        review['entityDetails']?['serviceName'] ??
+        (type.isNotEmpty ? type.toUpperCase() : 'General');
+    String customerName = review['userName'] ?? 'Anonymous';
+    String comment = review['comment'] ?? '';
+    String dateStr = '';
+    if (review['createdAt'] != null) {
+      try {
+        final dt = DateTime.parse(review['createdAt']);
+        dateStr = DateFormat('MMM dd, yyyy').format(dt);
+      } catch (_) {
+        dateStr = review['createdAt'].toString();
+      }
     }
 
     return Container(
@@ -510,328 +523,153 @@ class _ReviewsPageState extends State<ReviewsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Different display based on review type
-          if (type == 'service') ...[
-            // Service review
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        review['serviceName'] as String,
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color:
-                              Theme.of(context).primaryColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          'Service',
-                          style: GoogleFonts.poppins(
-                            fontSize: 9,
-                            color: Theme.of(context).primaryColor,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Rating stars
-                    Row(
-                      children: List.generate(5, (i) {
-                        return Icon(
-                          i < rating ? Icons.star : Icons.star_border,
-                          color: i < rating ? Colors.amber : Colors.grey,
-                          size: 16,
-                        );
-                      }),
+                    Text(
+                      entityName,
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                    const SizedBox(height: 4),
-                    // Status badge
+                    const SizedBox(height: 2),
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: statusColor.withValues(alpha: 0.1),
+                        color: type == 'service'
+                            ? Theme.of(context).primaryColor.withOpacity(0.1)
+                            : (type == 'product'
+                                ? Colors.purple.withOpacity(0.1)
+                                : Colors.blue.withOpacity(0.1)),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        status,
+                        type.toUpperCase(),
                         style: GoogleFonts.poppins(
                           fontSize: 9,
-                          color: statusColor,
+                          color: type == 'service'
+                              ? Theme.of(context).primaryColor
+                              : (type == 'product'
+                                  ? Colors.purple
+                                  : Colors.blue),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
                   ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // Customer name
-            Text(
-              'by ${review['customerName']}',
-              style: GoogleFonts.poppins(
-                fontSize: 11,
-                color: Colors.grey.shade700,
               ),
-            ),
-            const SizedBox(height: 8),
-            // Review text
-            Text(
-              review['review'] as String,
-              style: GoogleFonts.poppins(
-                fontSize: 11,
-                color: Colors.grey.shade800,
-              ),
-            ),
-            const SizedBox(height: 12),
-            // Date
-            Text(
-              review['date'] as String,
-              style: GoogleFonts.poppins(
-                fontSize: 10,
-                color: Colors.grey.shade500,
-              ),
-            ),
-          ] else if (type == 'product') ...[
-            // Product review
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        review['productName'] as String,
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.purple.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          'Product',
-                          style: GoogleFonts.poppins(
-                            fontSize: 9,
-                            color: Colors.purple,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Row(
+                    children: List.generate(5, (i) {
+                      return Icon(
+                        i < rating ? Icons.star : Icons.star_border,
+                        color: i < rating ? Colors.amber : Colors.grey,
+                        size: 16,
+                      );
+                    }),
                   ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    // Rating stars
-                    Row(
-                      children: List.generate(5, (i) {
-                        return Icon(
-                          i < rating ? Icons.star : Icons.star_border,
-                          color: i < rating ? Colors.amber : Colors.grey,
-                          size: 16,
-                        );
-                      }),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    const SizedBox(height: 4),
-                    // Status badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: statusColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        status,
-                        style: GoogleFonts.poppins(
-                          fontSize: 9,
-                          color: statusColor,
-                          fontWeight: FontWeight.w500,
-                        ),
+                    child: Text(
+                      statusStr,
+                      style: GoogleFonts.poppins(
+                        fontSize: 9,
+                        color: statusColor,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                  ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'by $customerName',
+            style: GoogleFonts.poppins(
+              fontSize: 11,
+              color: Colors.grey.shade700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            comment,
+            style: GoogleFonts.poppins(
+              fontSize: 11,
+              color: Colors.grey.shade800,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                dateStr,
+                style: GoogleFonts.poppins(
+                  fontSize: 10,
+                  color: Colors.grey.shade500,
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // Customer name
-            Text(
-              'by ${review['customerName']}',
-              style: GoogleFonts.poppins(
-                fontSize: 11,
-                color: Colors.grey.shade700,
               ),
-            ),
-            const SizedBox(height: 8),
-            // Review text
-            Text(
-              review['review'] as String,
-              style: GoogleFonts.poppins(
-                fontSize: 11,
-                color: Colors.grey.shade800,
-              ),
-            ),
-            const SizedBox(height: 12),
-            // Date
-            Text(
-              review['date'] as String,
-              style: GoogleFonts.poppins(
-                fontSize: 10,
-                color: Colors.grey.shade500,
-              ),
-            ),
-          ] else ...[
-            // Salon review
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
+                children: [
+                  Row(
                     children: [
                       Text(
-                        review['customerName'] as String,
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      // Rating stars
-                      Row(
-                        children: List.generate(5, (i) {
-                          return Icon(
-                            i < rating ? Icons.star : Icons.star_border,
-                            color: i < rating ? Colors.amber : Colors.grey,
-                            size: 16,
-                          );
-                        }),
-                      ),
-                      const SizedBox(height: 12),
-                      // Review text
-                      Text(
-                        review['review'] as String,
-                        style: GoogleFonts.poppins(
-                          fontSize: 11,
-                          color: Colors.grey.shade800,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      // Date
-                      Text(
-                        review['date'] as String,
+                        isApproved == true ? 'Approved' : 'Pending',
                         style: GoogleFonts.poppins(
                           fontSize: 10,
-                          color: Colors.grey.shade500,
+                          color:
+                              isApproved == true ? Colors.green : Colors.orange,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Transform.scale(
+                        scale: 0.7,
+                        child: Switch(
+                          value: isApproved == true,
+                          activeColor: Colors.green,
+                          activeTrackColor: Colors.green.withOpacity(0.3),
+                          inactiveThumbColor: Colors.grey.shade400,
+                          inactiveTrackColor: Colors.grey.shade200,
+                          onChanged: (value) => _updateStatus(reviewId, value),
                         ),
                       ),
                     ],
                   ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    // Status badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () => _deleteReview(reviewId),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: statusColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.grey.shade50,
+                        border: Border.all(color: Colors.grey.shade200),
+                        borderRadius: BorderRadius.circular(6),
                       ),
-                      child: Text(
-                        status,
-                        style: GoogleFonts.poppins(
-                          fontSize: 9,
-                          color: statusColor,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
+                      child: Icon(Icons.delete_outline,
+                          size: 16, color: Colors.grey.shade600),
                     ),
-                    const SizedBox(height: 8),
-                    // Action buttons for salon reviews
-                    Row(
-                      children: [
-                        if (status !=
-                            'Approved') // Show reject button only if not approved
-                          TextButton(
-                            onPressed: () {
-                              // Reject logic would go here
-                            },
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            child: Text(
-                              'Reject',
-                              style: GoogleFonts.poppins(
-                                fontSize: 10,
-                                color: Colors.red,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        const SizedBox(width: 4),
-                        TextButton(
-                          onPressed: () {
-                            // Delete logic would go here
-                            setState(() {
-                              reviews
-                                  .removeWhere((r) => r['id'] == review['id']);
-                            });
-                          },
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: Text(
-                            'Delete',
-                            style: GoogleFonts.poppins(
-                              fontSize: 10,
-                              color: Colors.grey.shade700,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ],
+                  ),
+                ],
+              ),
+            ],
+          ),
         ],
       ),
     );
