@@ -1,6 +1,14 @@
+import 'package:csv/csv.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
 import 'widgets/custom_drawer.dart';
+import 'services/api_service.dart';
+import 'package:intl/intl.dart';
+import 'dart:io';
+import 'dart:convert';
+import 'package:file_picker/file_picker.dart';
 
 class ExpensesPage extends StatefulWidget {
   const ExpensesPage({super.key});
@@ -11,24 +19,38 @@ class ExpensesPage extends StatefulWidget {
 class _ExpensesPageState extends State<ExpensesPage> {
   static const double _radius = 14, _gap = 15;
 
-  // Sample, start with at least one so user sees structure
-  final List<Map<String, dynamic>> expenses = [
-    {
-      'id': 'EXP-001',
-      'type': 'Office Supplies',
-      'date': '2025-11-22',
-      'amount': 150.0,
-      'paymentMode': 'Debit Card',
-      'invoiceNo': 'INV-001',
-      'note': 'Purchased stationery items',
-    },
-  ];
+  List<Map<String, dynamic>> expenses = [];
+  bool _isLoading = true;
 
   String _searchQuery = '';
   String _selectedPaymentMode = 'All Payment Modes';
   DateTime? _startDate, _endDate;
   double? _minAmount = 0, _maxAmount;
   final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchExpenses();
+  }
+
+  Future<void> _fetchExpenses() async {
+    setState(() => _isLoading = true);
+    try {
+      final fetchedExpenses = await ApiService.getExpenses();
+      setState(() {
+        expenses = fetchedExpenses;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
 
   int get totalRecords => expenses.length;
   double get totalExpenses =>
@@ -47,11 +69,11 @@ class _ExpensesPageState extends State<ExpensesPage> {
 
   List<Map<String, dynamic>> get filteredExpenses => expenses.where((expense) {
         final matchesSearch = _searchQuery.isEmpty ||
-            (expense['id']
+            (expense['_id']
                     ?.toLowerCase()
                     .contains(_searchQuery.toLowerCase()) ??
                 false) ||
-            (expense['type']
+            ((expense['expenseType'] ?? expense['type'])
                     ?.toLowerCase()
                     .contains(_searchQuery.toLowerCase()) ??
                 false) ||
@@ -105,10 +127,111 @@ class _ExpensesPageState extends State<ExpensesPage> {
   }
 
   void _openAddExpenseDialog() async {
-    await showDialog(
+    final result = await showDialog(
       context: context,
-      builder: (_) => AddExpenseDialog(invoiceNumber: 'INV-001'),
+      builder: (_) => const AddExpenseDialog(),
     );
+    if (result == true) {
+      _fetchExpenses();
+    }
+  }
+
+  void _openEditExpenseDialog(Map<String, dynamic> expense) async {
+    final result = await showDialog(
+      context: context,
+      builder: (_) => AddExpenseDialog(
+        expense: expense,
+        isEdit: true,
+      ),
+    );
+    if (result == true) {
+      _fetchExpenses();
+    }
+  }
+
+  void _deleteExpense(String id) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm Delete'),
+        content: const Text('Are you sure you want to delete this expense?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        final success = await ApiService.deleteExpense(id);
+        if (success) {
+          _fetchExpenses();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _exportToCSV() async {
+    try {
+      final List<List<dynamic>> rows = [];
+      // Header
+      rows.add([
+        "ID",
+        "Date",
+        "Expense Type",
+        "Amount",
+        "Payment Mode",
+        "Invoice No",
+        "Note",
+        "Status"
+      ]);
+
+      // Data
+      for (var expense in filteredExpenses) {
+        rows.add([
+          expense['_id'] ?? "",
+          expense['date'] ?? "",
+          expense['expenseType'] ?? expense['type'] ?? "",
+          expense['amount'] ?? 0,
+          expense['paymentMode'] ?? "",
+          expense['invoiceNo'] ?? "",
+          expense['note'] ?? "",
+          expense['status'] ?? "",
+        ]);
+      }
+
+      String csvData = const ListToCsvConverter().convert(rows);
+      final directory = await getApplicationDocumentsDirectory();
+      final path =
+          "${directory.path}/expenses_export_${DateTime.now().millisecondsSinceEpoch}.csv";
+      final file = File(path);
+      await file.writeAsString(csvData);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('CSV exported to $path')),
+        );
+        OpenFile.open(path);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Export failed: $e')),
+        );
+      }
+    }
   }
 
   @override
@@ -312,20 +435,24 @@ class _ExpensesPageState extends State<ExpensesPage> {
             ),
             const SizedBox(height: 13),
             Expanded(
-              child: filteredExpenses.isEmpty
-                  ? Center(
-                      child: Text('No expenses found',
-                          style: GoogleFonts.poppins(fontSize: 13)))
-                  : ListView.builder(
-                      padding: const EdgeInsets.only(bottom: 11, top: 3),
-                      itemCount: filteredExpenses.length,
-                      itemBuilder: (ctx, idx) => ExpenseCard(
-                        expense: filteredExpenses[idx],
-                        onView: () {},
-                        onDelete: () {},
-                        fontSize: 13,
-                      ),
-                    ),
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : filteredExpenses.isEmpty
+                      ? Center(
+                          child: Text('No expenses found',
+                              style: GoogleFonts.poppins(fontSize: 13)))
+                      : ListView.builder(
+                          padding: const EdgeInsets.only(bottom: 11, top: 3),
+                          itemCount: filteredExpenses.length,
+                          itemBuilder: (ctx, idx) => ExpenseCard(
+                            expense: filteredExpenses[idx],
+                            onEdit: () =>
+                                _openEditExpenseDialog(filteredExpenses[idx]),
+                            onDelete: () => _deleteExpense(
+                                filteredExpenses[idx]['_id'] ?? ''),
+                            fontSize: 13,
+                          ),
+                        ),
             ),
           ],
         ),
@@ -336,15 +463,26 @@ class _ExpensesPageState extends State<ExpensesPage> {
 
 class ExpenseCard extends StatelessWidget {
   final Map<String, dynamic> expense;
-  final VoidCallback? onView;
+  final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final double fontSize;
   const ExpenseCard(
       {super.key,
       required this.expense,
-      this.onView,
+      this.onEdit,
       this.onDelete,
       this.fontSize = 13});
+
+  String _formatDate(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return "";
+    try {
+      final dt = DateTime.parse(dateStr);
+      return DateFormat('dd-MM-yyyy').format(dt);
+    } catch (_) {
+      return dateStr;
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Container(
         margin: const EdgeInsets.only(bottom: 13),
@@ -366,18 +504,9 @@ class ExpenseCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "#${expense['id'] ?? ''}",
+                          _formatDate(expense['date']),
                           style: GoogleFonts.poppins(
-                              color: Theme.of(context).primaryColor,
-                              fontWeight: FontWeight.w600,
-                              decoration: TextDecoration.underline,
-                              fontSize: fontSize - 2),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          expense['date'] ?? "",
-                          style: GoogleFonts.poppins(
-                              color: Colors.grey[600], fontSize: fontSize - 5),
+                              color: Colors.grey[600], fontSize: fontSize - 3),
                         ),
                       ],
                     ),
@@ -400,17 +529,17 @@ class ExpenseCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          expense['type'] ?? "",
+                          expense['expenseType'] ?? expense['type'] ?? "",
                           style: GoogleFonts.poppins(
                               color: Colors.black,
                               fontWeight: FontWeight.w500,
-                              fontSize: fontSize - 2),
+                              fontSize: fontSize - 1),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           expense['paymentMode'] ?? "",
                           style: GoogleFonts.poppins(
-                              color: Colors.grey[600], fontSize: fontSize - 4),
+                              color: Colors.grey[600], fontSize: fontSize - 3),
                         ),
                       ],
                     ),
@@ -419,16 +548,19 @@ class ExpenseCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text(
-                          "Invoice: ${expense['invoiceNo'] ?? ''}",
-                          style: GoogleFonts.poppins(
-                              color: Colors.grey[700], fontSize: fontSize - 4),
-                        ),
+                        if (expense['invoiceNo'] != null &&
+                            expense['invoiceNo'].toString().isNotEmpty)
+                          Text(
+                            "Invoice: ${expense['invoiceNo'] ?? ''}",
+                            style: GoogleFonts.poppins(
+                                color: Colors.grey[700],
+                                fontSize: fontSize - 3),
+                          ),
                         const SizedBox(height: 2),
                         Text(
                           expense['note'] ?? "",
                           style: GoogleFonts.poppins(
-                              color: Colors.grey[600], fontSize: fontSize - 5),
+                              color: Colors.grey[600], fontSize: fontSize - 4),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
@@ -441,24 +573,24 @@ class ExpenseCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton(
-                    onPressed: onView,
+                    onPressed: onEdit,
                     style: TextButton.styleFrom(
-                        textStyle: GoogleFonts.poppins(fontSize: fontSize - 4)),
-                    child: Text("View",
+                        textStyle: GoogleFonts.poppins(fontSize: fontSize - 3)),
+                    child: Text("Edit",
                         style: GoogleFonts.poppins(
                             color: Theme.of(context).primaryColor,
-                            fontSize: fontSize - 4,
+                            fontSize: fontSize - 3,
                             fontWeight: FontWeight.w500)),
                   ),
                   const SizedBox(width: 8),
                   TextButton(
                     onPressed: onDelete,
                     style: TextButton.styleFrom(
-                        textStyle: GoogleFonts.poppins(fontSize: fontSize - 4)),
+                        textStyle: GoogleFonts.poppins(fontSize: fontSize - 3)),
                     child: Text("Delete",
                         style: GoogleFonts.poppins(
                             color: Colors.red,
-                            fontSize: fontSize - 4,
+                            fontSize: fontSize - 3,
                             fontWeight: FontWeight.w500)),
                   ),
                 ],
@@ -873,6 +1005,8 @@ class _FilterOptionsDialogState extends State<FilterOptionsDialog> {
 }
 
 class AddExpenseDialog extends StatefulWidget {
+  final Map<String, dynamic>? expense;
+  final bool isEdit;
   final List<String> expenseTypes;
   final List<String> paymentModes;
   final String? invoiceNumber;
@@ -880,21 +1014,23 @@ class AddExpenseDialog extends StatefulWidget {
 
   const AddExpenseDialog({
     Key? key,
+    this.expense,
+    this.isEdit = false,
     this.expenseTypes = const [
-      "Office Supplies",
-      "Travel",
-      "Marketing",
-      "Utilities",
-      "Maintenance",
-      "Salaries",
-      "Rent",
-      "Insurance",
-      "Training",
-      "Software",
-      "Meals",
-      "Equipment"
+      "Customs Charges",
+      "Equipment Purchase",
+      "Freight Charges",
+      "Handling Charges",
+      "Import/Export Duty",
+      "Logistics & Shipping",
+      "Machine Maintenance",
+      "Office Rent",
+      "Raw Material Purchase",
+      "Repair Charges",
+      "Salaries & Wages",
+      "Stock Purchase"
     ],
-    this.paymentModes = const ["Cash", "Debit Card", "Net Banking"],
+    this.paymentModes = const ["Cash On Delivery", "Pay at Shop", "Pay online"],
     this.invoiceNumber,
     this.initialDate,
   }) : super(key: key);
@@ -910,12 +1046,107 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
   DateTime _selectedDate = DateTime.now();
   final TextEditingController _noteCtrl = TextEditingController();
   String? _fileName;
+  String? _invoiceBase64;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _invoiceCtrl.text = widget.invoiceNumber ?? "";
-    _selectedDate = widget.initialDate ?? DateTime.now();
+    if (widget.isEdit && widget.expense != null) {
+      _expenseType = widget.expense!['expenseType'] ?? widget.expense!['type'];
+      _paymentMode = widget.expense!['paymentMode'];
+      _amountCtrl.text = (widget.expense!['amount'] ?? 0).toString();
+      _invoiceCtrl.text = widget.expense!['invoiceNo'] ?? "";
+      _noteCtrl.text = widget.expense!['note'] ?? "";
+      if (widget.expense!['date'] != null) {
+        try {
+          _selectedDate = DateTime.parse(widget.expense!['date']);
+        } catch (_) {
+          _selectedDate = DateTime.now();
+        }
+      }
+    } else {
+      _invoiceCtrl.text = widget.invoiceNumber ?? "";
+      _selectedDate = widget.initialDate ?? DateTime.now();
+    }
+  }
+
+  Future<void> _pickInvoice() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'pdf', 'png', 'jpeg'],
+      );
+
+      if (result != null) {
+        final file = result.files.first;
+        final bytes = file.bytes ?? await File(file.path!).readAsBytes();
+
+        String mimeType = "image/${file.extension ?? 'jpeg'}";
+        if (file.extension?.toLowerCase() == 'pdf') {
+          mimeType = "application/pdf";
+        }
+
+        final base64String = "data:$mimeType;base64,${base64Encode(bytes)}";
+
+        setState(() {
+          _invoiceBase64 = base64String;
+          _fileName = file.name;
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error picking file: $e')),
+      );
+    }
+  }
+
+  Future<void> _handleSave() async {
+    if (_expenseType == null ||
+        _paymentMode == null ||
+        _amountCtrl.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill all required fields')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    final payload = {
+      if (widget.isEdit && widget.expense != null)
+        "_id": widget.expense!['_id'],
+      "expenseType": _expenseType,
+      "date": DateFormat('yyyy-MM-dd').format(_selectedDate),
+      "amount": double.tryParse(_amountCtrl.text) ?? 0,
+      "paymentMode": _paymentMode,
+      "invoiceNo": _invoiceCtrl.text,
+      "note": _noteCtrl.text,
+      "invoice":
+          _invoiceBase64 ?? (widget.isEdit ? widget.expense!['invoice'] : ""),
+      "status": "Active",
+    };
+
+    try {
+      bool success;
+      if (widget.isEdit && widget.expense != null) {
+        success =
+            await ApiService.updateExpense(widget.expense!['_id'], payload);
+      } else {
+        success = await ApiService.addExpense(payload);
+      }
+
+      if (success) {
+        Navigator.of(context).pop(true);
+      } else {
+        throw Exception("Unknown error occurred");
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
   }
 
   @override
@@ -926,342 +1157,380 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
       insetPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 11),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
       backgroundColor: Colors.white,
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 13),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text("Add New Expense",
-                  style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w700, fontSize: 13.5)),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6, top: 2),
-                child: Text("Fill in the details to add a new expense",
-                    style: GoogleFonts.poppins(
-                        fontSize: minFont, color: Colors.grey[600])),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(top: 4, bottom: 2),
-                child: RichText(
-                  text: TextSpan(
-                    text: "Expense Type ",
-                    style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.w500,
-                        fontSize: minFont,
-                        color: Colors.black),
-                    children: [
-                      TextSpan(
-                          text: "*",
-                          style:
-                              TextStyle(color: Colors.red, fontSize: minFont)),
-                    ],
-                  ),
-                ),
-              ),
-              DropdownButtonFormField<String>(
-                value: _expenseType,
-                onChanged: (v) => setState(() => _expenseType = v),
-                items: widget.expenseTypes
-                    .map((e) => DropdownMenuItem(
-                        value: e,
-                        child: Text(e,
-                            style: GoogleFonts.poppins(fontSize: minFont))))
-                    .toList(),
-                decoration: InputDecoration(
-                  isDense: true,
-                  hintText: "Select expense type",
-                  hintStyle: GoogleFonts.poppins(
-                      fontSize: minFont, color: Colors.grey),
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 7, vertical: 10),
-                  border: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.grey.shade400),
-                      borderRadius: BorderRadius.circular(6)),
-                ),
-                style:
-                    GoogleFonts.poppins(fontSize: minFont, color: Colors.black),
-                dropdownColor: Colors.white,
-                icon: const Icon(Icons.keyboard_arrow_down_rounded),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(top: 9),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          RichText(
-                            text: TextSpan(
-                                text: "Date ",
-                                style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: minFont,
-                                    color: Colors.black),
-                                children: [
-                                  TextSpan(
-                                      text: "*",
-                                      style: TextStyle(
-                                          color: Colors.red, fontSize: minFont))
-                                ]),
-                          ),
-                          const SizedBox(height: 2),
-                          InkWell(
-                            onTap: () async {
-                              var date = await showDatePicker(
-                                context: context,
-                                initialDate: _selectedDate,
-                                firstDate: DateTime(2020),
-                                lastDate: DateTime(2035),
-                              );
-                              if (date != null)
-                                setState(() => _selectedDate = date);
-                            },
-                            child: Container(
-                              height: 32,
-                              decoration: BoxDecoration(
-                                  border:
-                                      Border.all(color: Colors.grey.shade400),
-                                  borderRadius: BorderRadius.circular(6)),
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 7),
-                              alignment: Alignment.centerLeft,
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                      child: Text(
-                                          "${_selectedDate.day.toString().padLeft(2, '0')}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.year}",
-                                          style: GoogleFonts.poppins(
-                                              fontSize: minFont))),
-                                  Icon(Icons.calendar_today_outlined,
-                                      color: Colors.grey[600], size: 14),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          RichText(
-                            text: TextSpan(
-                                text: "Amount (₹) ",
-                                style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: minFont,
-                                    color: Colors.black),
-                                children: [
-                                  TextSpan(
-                                      text: "*",
-                                      style: TextStyle(
-                                          color: Colors.red, fontSize: minFont))
-                                ]),
-                          ),
-                          const SizedBox(height: 2),
-                          SizedBox(
-                            height: 32,
-                            child: TextFormField(
-                              controller: _amountCtrl,
-                              keyboardType: TextInputType.numberWithOptions(
-                                  decimal: true),
-                              decoration: InputDecoration(
-                                hintText: '0.00',
-                                hintStyle: GoogleFonts.poppins(
-                                    fontSize: minFont, color: Colors.grey),
-                                isDense: true,
-                                contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 7),
-                                border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(6),
-                                    borderSide: BorderSide(
-                                        color: Colors.grey.shade400)),
-                              ),
-                              style: GoogleFonts.poppins(fontSize: minFont),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(top: 9, bottom: 2),
-                child: RichText(
-                  text: TextSpan(
-                    text: "Payment Mode ",
-                    style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.w500,
-                        fontSize: minFont,
-                        color: Colors.black),
-                    children: [
-                      TextSpan(
-                          text: "*",
-                          style:
-                              TextStyle(color: Colors.red, fontSize: minFont))
-                    ],
-                  ),
-                ),
-              ),
-              DropdownButtonFormField<String>(
-                value: _paymentMode,
-                onChanged: (v) => setState(() => _paymentMode = v),
-                items: widget.paymentModes
-                    .map((e) => DropdownMenuItem(
-                          value: e,
-                          child: Text(e,
-                              style: GoogleFonts.poppins(fontSize: minFont)),
-                        ))
-                    .toList(),
-                decoration: InputDecoration(
-                  isDense: true,
-                  hintText: "Select payment mode",
-                  hintStyle: GoogleFonts.poppins(
-                      fontSize: minFont, color: Colors.grey),
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 9, vertical: 10),
-                  border: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.grey.shade400),
-                      borderRadius: BorderRadius.circular(6)),
-                ),
-                style:
-                    GoogleFonts.poppins(fontSize: minFont, color: Colors.black),
-                dropdownColor: Colors.white,
-                icon: const Icon(Icons.keyboard_arrow_down_rounded),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(top: 9),
-                child: Text("Invoice Number (Optional)",
-                    style: GoogleFonts.poppins(
-                        fontSize: minFont, fontWeight: FontWeight.w500)),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(top: 3),
-                child: TextFormField(
-                  controller: _invoiceCtrl,
-                  decoration: InputDecoration(
-                    hintText: 'INV-001',
-                    hintStyle: GoogleFonts.poppins(
-                        fontSize: minFont, color: Colors.grey),
-                    filled: true,
-                    fillColor: Colors.white,
-                    isDense: true,
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(6),
-                        borderSide: BorderSide(color: Colors.grey.shade400)),
-                  ),
-                  style: GoogleFonts.poppins(fontSize: minFont),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(top: 9, bottom: 3),
-                child: Text("Expense Invoice (Optional)",
-                    style: GoogleFonts.poppins(
-                        fontSize: minFont, fontWeight: FontWeight.w500)),
-              ),
-              Row(
+      child: Stack(
+        children: [
+          SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 13),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      setState(() => _fileName = "No file chosen");
-                    },
-                    style: ElevatedButton.styleFrom(
-                      foregroundColor: Colors.black,
-                      backgroundColor: const Color(0xFFE8EAF1),
-                      elevation: 0,
-                      minimumSize: const Size(0, 26),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5),
-                          side: BorderSide(color: Colors.grey.shade400)),
+                  Text(widget.isEdit ? "Edit Expense" : "Add New Expense",
+                      style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w700, fontSize: 13.5)),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6, top: 2),
+                    child: Text(
+                        widget.isEdit
+                            ? "Update expense details below"
+                            : "Fill in the details to add a new expense",
+                        style: GoogleFonts.poppins(
+                            fontSize: minFont, color: Colors.grey[600])),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4, bottom: 2),
+                    child: RichText(
+                      text: TextSpan(
+                        text: "Expense Type ",
+                        style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w500,
+                            fontSize: minFont,
+                            color: Colors.black),
+                        children: [
+                          TextSpan(
+                              text: "*",
+                              style: TextStyle(
+                                  color: Colors.red, fontSize: minFont)),
+                        ],
+                      ),
                     ),
-                    child: Text("Choose File",
+                  ),
+                  DropdownButtonFormField<String>(
+                    value: _expenseType,
+                    onChanged: (v) => setState(() => _expenseType = v),
+                    items: widget.expenseTypes
+                        .map((e) => DropdownMenuItem(
+                            value: e,
+                            child: Text(e,
+                                style: GoogleFonts.poppins(fontSize: minFont))))
+                        .toList(),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      hintText: "Select expense type",
+                      hintStyle: GoogleFonts.poppins(
+                          fontSize: minFont, color: Colors.grey),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 10),
+                      border: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.grey.shade400),
+                          borderRadius: BorderRadius.circular(6)),
+                    ),
+                    style: GoogleFonts.poppins(
+                        fontSize: minFont, color: Colors.black),
+                    dropdownColor: Colors.white,
+                    icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 9),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              RichText(
+                                text: TextSpan(
+                                    text: "Date ",
+                                    style: GoogleFonts.poppins(
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: minFont,
+                                        color: Colors.black),
+                                    children: [
+                                      TextSpan(
+                                          text: "*",
+                                          style: TextStyle(
+                                              color: Colors.red,
+                                              fontSize: minFont))
+                                    ]),
+                              ),
+                              const SizedBox(height: 2),
+                              InkWell(
+                                onTap: () async {
+                                  var date = await showDatePicker(
+                                    context: context,
+                                    initialDate: _selectedDate,
+                                    firstDate: DateTime(2020),
+                                    lastDate: DateTime(2035),
+                                  );
+                                  if (date != null)
+                                    setState(() => _selectedDate = date);
+                                },
+                                child: Container(
+                                  height: 32,
+                                  decoration: BoxDecoration(
+                                      border: Border.all(
+                                          color: Colors.grey.shade400),
+                                      borderRadius: BorderRadius.circular(6)),
+                                  padding:
+                                      const EdgeInsets.symmetric(horizontal: 7),
+                                  alignment: Alignment.centerLeft,
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                          child: Text(
+                                              "${_selectedDate.day.toString().padLeft(2, '0')}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.year}",
+                                              style: GoogleFonts.poppins(
+                                                  fontSize: minFont))),
+                                      Icon(Icons.calendar_today_outlined,
+                                          color: Colors.grey[600], size: 14),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              RichText(
+                                text: TextSpan(
+                                    text: "Amount (₹) ",
+                                    style: GoogleFonts.poppins(
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: minFont,
+                                        color: Colors.black),
+                                    children: [
+                                      TextSpan(
+                                          text: "*",
+                                          style: TextStyle(
+                                              color: Colors.red,
+                                              fontSize: minFont))
+                                    ]),
+                              ),
+                              const SizedBox(height: 2),
+                              SizedBox(
+                                height: 32,
+                                child: TextFormField(
+                                  controller: _amountCtrl,
+                                  keyboardType: TextInputType.numberWithOptions(
+                                      decimal: true),
+                                  decoration: InputDecoration(
+                                    hintText: '0.00',
+                                    hintStyle: GoogleFonts.poppins(
+                                        fontSize: minFont, color: Colors.grey),
+                                    isDense: true,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 7),
+                                    border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(6),
+                                        borderSide: BorderSide(
+                                            color: Colors.grey.shade400)),
+                                  ),
+                                  style: GoogleFonts.poppins(fontSize: minFont),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 9, bottom: 2),
+                    child: RichText(
+                      text: TextSpan(
+                        text: "Payment Mode ",
+                        style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w500,
+                            fontSize: minFont,
+                            color: Colors.black),
+                        children: [
+                          TextSpan(
+                              text: "*",
+                              style: TextStyle(
+                                  color: Colors.red, fontSize: minFont))
+                        ],
+                      ),
+                    ),
+                  ),
+                  DropdownButtonFormField<String>(
+                    value: _paymentMode,
+                    onChanged: (v) => setState(() => _paymentMode = v),
+                    items: widget.paymentModes
+                        .map((e) => DropdownMenuItem(
+                              value: e,
+                              child: Text(e,
+                                  style:
+                                      GoogleFonts.poppins(fontSize: minFont)),
+                            ))
+                        .toList(),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      hintText: "Select payment mode",
+                      hintStyle: GoogleFonts.poppins(
+                          fontSize: minFont, color: Colors.grey),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 9, vertical: 10),
+                      border: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.grey.shade400),
+                          borderRadius: BorderRadius.circular(6)),
+                    ),
+                    style: GoogleFonts.poppins(
+                        fontSize: minFont, color: Colors.black),
+                    dropdownColor: Colors.white,
+                    icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 9),
+                    child: Text("Invoice Number (Optional)",
                         style: GoogleFonts.poppins(
                             fontSize: minFont, fontWeight: FontWeight.w500)),
                   ),
-                  const SizedBox(width: 7),
-                  Flexible(
-                      child: Text(_fileName ?? "No file chosen",
-                          style: GoogleFonts.poppins(
-                              fontSize: minFont - 1, color: Colors.grey[700]))),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 3),
+                    child: TextFormField(
+                      controller: _invoiceCtrl,
+                      decoration: InputDecoration(
+                        hintText: 'INV-001',
+                        hintStyle: GoogleFonts.poppins(
+                            fontSize: minFont, color: Colors.grey),
+                        filled: true,
+                        fillColor: Colors.white,
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 9, vertical: 7),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(6),
+                            borderSide:
+                                BorderSide(color: Colors.grey.shade400)),
+                      ),
+                      style: GoogleFonts.poppins(fontSize: minFont),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 9, bottom: 3),
+                    child: Text("Expense Invoice (Optional)",
+                        style: GoogleFonts.poppins(
+                            fontSize: minFont, fontWeight: FontWeight.w500)),
+                  ),
+                  Row(
+                    children: [
+                      ElevatedButton(
+                        onPressed: _pickInvoice,
+                        style: ElevatedButton.styleFrom(
+                          foregroundColor: Colors.black,
+                          backgroundColor: const Color(0xFFE8EAF1),
+                          elevation: 0,
+                          minimumSize: const Size(0, 26),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(5),
+                              side: BorderSide(color: Colors.grey.shade400)),
+                        ),
+                        child: Text("Choose File",
+                            style: GoogleFonts.poppins(
+                                fontSize: minFont,
+                                fontWeight: FontWeight.w500)),
+                      ),
+                      const SizedBox(width: 7),
+                      Flexible(
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(_fileName ?? "No file chosen",
+                                  style: GoogleFonts.poppins(
+                                      fontSize: minFont - 1,
+                                      color: Colors.grey[700]),
+                                  overflow: TextOverflow.ellipsis),
+                            ),
+                            if (_fileName != null &&
+                                _fileName != "No file chosen")
+                              IconButton(
+                                icon: const Icon(Icons.close,
+                                    size: 14, color: Colors.red),
+                                onPressed: () {
+                                  setState(() {
+                                    _invoiceBase64 = null;
+                                    _fileName = null;
+                                  });
+                                },
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 2, top: 2, bottom: 2),
+                    child: Text("Accepted formats: Images, PDF (Max 5MB)",
+                        style: GoogleFonts.poppins(
+                            fontSize: minFont - 2, color: Colors.grey[600])),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 7, bottom: 2),
+                    child: Text("Note (Optional)",
+                        style: GoogleFonts.poppins(
+                            fontSize: minFont, fontWeight: FontWeight.w500)),
+                  ),
+                  TextFormField(
+                    controller: _noteCtrl,
+                    minLines: 2,
+                    maxLines: 5,
+                    decoration: InputDecoration(
+                      hintText:
+                          "Add any additional notes about this expense...",
+                      hintStyle: GoogleFonts.poppins(
+                          fontSize: minFont - 1, color: Colors.grey),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 9, vertical: 9),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(6),
+                          borderSide: BorderSide(color: Colors.grey.shade400)),
+                    ),
+                    style: GoogleFonts.poppins(fontSize: minFont),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16, bottom: 6),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          style: TextButton.styleFrom(
+                            minimumSize: const Size(68, 29),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 7),
+                            textStyle:
+                                GoogleFonts.poppins(fontSize: minFont - 1),
+                          ),
+                          child: const Text("Cancel"),
+                        ),
+                        const SizedBox(width: 5),
+                        ElevatedButton(
+                          onPressed: _isLoading ? null : _handleSave,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(context).primaryColor,
+                            minimumSize: const Size(74, 29),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 9, vertical: 7),
+                            textStyle: GoogleFonts.poppins(
+                                fontSize: minFont - 1,
+                                fontWeight: FontWeight.w500),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(5)),
+                          ),
+                          child: Text(widget.isEdit ? "Update" : "Add Expense"),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
-              Padding(
-                padding: const EdgeInsets.only(left: 2, top: 2, bottom: 2),
-                child: Text("Accepted formats: Images, PDF (Max 5MB)",
-                    style: GoogleFonts.poppins(
-                        fontSize: minFont - 2, color: Colors.grey[600])),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(top: 7, bottom: 2),
-                child: Text("Note (Optional)",
-                    style: GoogleFonts.poppins(
-                        fontSize: minFont, fontWeight: FontWeight.w500)),
-              ),
-              TextFormField(
-                controller: _noteCtrl,
-                minLines: 2,
-                maxLines: 5,
-                decoration: InputDecoration(
-                  hintText: "Add any additional notes about this expense...",
-                  hintStyle: GoogleFonts.poppins(
-                      fontSize: minFont - 1, color: Colors.grey),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 9, vertical: 9),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(6),
-                      borderSide: BorderSide(color: Colors.grey.shade400)),
-                ),
-                style: GoogleFonts.poppins(fontSize: minFont),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(top: 16, bottom: 6),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: TextButton.styleFrom(
-                        minimumSize: const Size(68, 29),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 7),
-                        textStyle: GoogleFonts.poppins(fontSize: minFont - 1),
-                      ),
-                      child: const Text("Cancel"),
-                    ),
-                    const SizedBox(width: 5),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).primaryColor,
-                        minimumSize: const Size(74, 29),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 9, vertical: 7),
-                        textStyle: GoogleFonts.poppins(
-                            fontSize: minFont - 1, fontWeight: FontWeight.w500),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(5)),
-                      ),
-                      child: const Text("Add Expense"),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+          if (_isLoading)
+            const Positioned.fill(
+              child: Center(child: CircularProgressIndicator()),
+            ),
+        ],
       ),
     );
   }
