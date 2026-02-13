@@ -327,17 +327,30 @@ class _SalesPageState extends State<SalesPage>
     }
 
     setState(() {
-      final String name = isService
-          ? (item as Service).name ?? ''
-          : (item as Product).productName ?? '';
-      final String category = isService
-          ? (item as Service).category ?? 'Uncategorized'
-          : (item as Product).category ?? 'Uncategorized';
-      final double price = isService
-          ? ((item as Service).price ?? 0).toDouble()
-          : ((item as Product).price ?? 0).toDouble();
-      final String? duration =
-          isService ? '${(item as Service).duration} min' : null;
+      final String name;
+      final String category;
+      final double price;
+      final String? duration;
+
+      if (isService) {
+        final s = item as Service;
+        name = s.name ?? '';
+        category = s.category ?? 'Uncategorized';
+        price = ((s.discountedPrice != null && s.discountedPrice! > 0)
+                ? s.discountedPrice!
+                : (s.price ?? 0))
+            .toDouble();
+        duration = '${s.duration} min';
+      } else {
+        final p = item as Product;
+        name = p.productName ?? '';
+        category = p.category ?? 'Uncategorized';
+        price = ((p.salePrice != null && p.salePrice! > 0)
+                ? p.salePrice!
+                : (p.price ?? 0))
+            .toDouble();
+        duration = null;
+      }
 
       selectedItems.add({
         'id': DateTime.now().millisecondsSinceEpoch,
@@ -1637,22 +1650,41 @@ class _SalesPageState extends State<SalesPage>
                                 itemBuilder: (context, index) {
                                   final item = items[index];
                                   final isService = _tabController.index == 0;
-                                  final String name = isService
-                                      ? (item as Service).name ?? ''
-                                      : (item as Product).productName ?? '';
-                                  final String category = isService
-                                      ? (item as Service).category ??
-                                          'Uncategorized'
-                                      : (item as Product).category ??
-                                          'Uncategorized';
-                                  final double price = isService
-                                      ? ((item as Service).price ?? 0)
-                                          .toDouble()
-                                      : ((item as Product).price ?? 0)
-                                          .toDouble();
-                                  final String? duration = isService
-                                      ? '${(item as Service).duration} min'
-                                      : null;
+                                  final String name;
+                                  final String category;
+                                  final double price;
+                                  final double? regularPrice;
+                                  final String? duration;
+
+                                  if (isService) {
+                                    final s = item as Service;
+                                    name = s.name ?? '';
+                                    category = s.category ?? 'Uncategorized';
+                                    price = ((s.discountedPrice != null &&
+                                                s.discountedPrice! > 0)
+                                            ? s.discountedPrice!
+                                            : (s.price ?? 0))
+                                        .toDouble();
+                                    regularPrice = (s.discountedPrice != null &&
+                                            s.discountedPrice! > 0)
+                                        ? (s.price ?? 0).toDouble()
+                                        : null;
+                                    duration = '${s.duration} min';
+                                  } else {
+                                    final p = item as Product;
+                                    name = p.productName ?? '';
+                                    category = p.category ?? 'Uncategorized';
+                                    price = ((p.salePrice != null &&
+                                                p.salePrice! > 0)
+                                            ? p.salePrice!
+                                            : (p.price ?? 0))
+                                        .toDouble();
+                                    regularPrice = (p.salePrice != null &&
+                                            p.salePrice! > 0)
+                                        ? (p.price ?? 0).toDouble()
+                                        : null;
+                                    duration = null;
+                                  }
 
                                   final bool isOutOfStock = !isService &&
                                       (item as Product).stock == 0;
@@ -1697,13 +1729,32 @@ class _SalesPageState extends State<SalesPage>
                                         ),
                                         Expanded(
                                           flex: 2,
-                                          child: Text(
-                                            '₹${price.toStringAsFixed(2)}',
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w500,
-                                              color: const Color(0xFF1E293B),
-                                            ),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Text(
+                                                '₹${price.toStringAsFixed(2)}',
+                                                style: GoogleFonts.poppins(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w500,
+                                                  color:
+                                                      const Color(0xFF1E293B),
+                                                ),
+                                              ),
+                                              if (regularPrice != null)
+                                                Text(
+                                                  '₹${regularPrice.toStringAsFixed(2)}',
+                                                  style: GoogleFonts.poppins(
+                                                    fontSize: 11,
+                                                    color: _muted,
+                                                    decoration: TextDecoration
+                                                        .lineThrough,
+                                                  ),
+                                                ),
+                                            ],
                                           ),
                                         ),
                                         if (isService)
