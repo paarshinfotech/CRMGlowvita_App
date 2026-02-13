@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -641,7 +640,7 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
   String address = '';
   final TextEditingController _searchController = TextEditingController();
   bool _isLoading = false;
-  final MapController _mapController = MapController();
+  GoogleMapController? _mapController;
 
   @override
   void initState() {
@@ -656,36 +655,138 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
       if (placemarks.isNotEmpty) {
         final p = placemarks.first;
         setState(() {
-          address = [
+          // Robust full address construction with Plus Code filtering
+          final parts = [
+            p.name,
             p.street,
             p.subLocality,
             p.locality,
             p.administrativeArea,
-            p.postalCode
-          ].where((e) => e != null && e.isNotEmpty).join(', ').trim();
+            p.postalCode,
+            p.country
+          ];
+
+          List<String> filteredParts = [];
+          for (var part in parts) {
+            if (part == null || part.isEmpty) continue;
+
+            // Simple Plus Code detection: contains '+' and is relatively short
+            if (part.contains('+') && part.length < 15) continue;
+
+            // Avoid adding same text twice consecutively
+            if (filteredParts.isNotEmpty && filteredParts.last == part)
+              continue;
+
+            filteredParts.add(part);
+          }
+
+          // Special check: sometimes 'name' is just a redundant street number or the street itself
+          if (filteredParts.length > 1 &&
+              filteredParts[1].contains(filteredParts[0])) {
+            filteredParts.removeAt(0);
+          }
+
+          address = filteredParts.join(', ').trim();
+
+          // Handle common formatting issues
+          address = address.replaceAll(RegExp(r',\s*,'), ',').trim();
+          if (address.startsWith(',')) address = address.substring(1).trim();
+          if (address.endsWith(',')) {
+            address = address.substring(0, address.length - 1).trim();
+          }
+
           _searchController.text = address;
         });
       }
     } catch (e) {
-      setState(() {
-        address =
-            '${point.latitude.toStringAsFixed(6)}, ${point.longitude.toStringAsFixed(6)}';
-      });
+      debugPrint('Error getting address: $e');
+      if (mounted) {
+        setState(() {
+          address =
+              '${point.latitude.toStringAsFixed(6)}, ${point.longitude.toStringAsFixed(6)}';
+          _searchController.text = address;
+        });
+      }
     }
   }
 
   Future<void> _getCurrentLocation() async {
     if (_isLoading) return;
+
     setState(() => _isLoading = true);
 
     try {
+      // Check if location services are enabled
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) {
+          bool? openSettings = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Location Services Disabled'),
+              content: const Text(
+                  'Please enable location services to find your current location.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('CANCEL'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Geolocator.openLocationSettings();
+                    Navigator.pop(context, true);
+                  },
+                  child: const Text('OPEN SETTINGS'),
+                ),
+              ],
+            ),
+          );
+          if (openSettings != true) return;
+        }
+      }
+
       LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied)
+      if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Location permissions are denied')),
+            );
+          }
+          return;
+        }
+      }
+
       if (permission == LocationPermission.deniedForever) {
-        if (mounted)
-          ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Location permissions required')));
+        if (mounted) {
+          bool? openSettings = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Location Permission Required'),
+              content: const Text(
+                'Location permissions are permanently denied. Please enable them in app settings.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('CANCEL'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Geolocator.openAppSettings();
+                    Navigator.pop(context, true);
+                  },
+                  child: const Text('OPEN SETTINGS'),
+                ),
+              ],
+            ),
+          );
+          if (openSettings == true) {
+            await Future.delayed(const Duration(seconds: 1));
+            _getCurrentLocation();
+          }
+        }
         return;
       }
 
@@ -693,16 +794,23 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
               desiredAccuracy: LocationAccuracy.high)
           .timeout(const Duration(seconds: 15));
       final newLocation = LatLng(position.latitude, position.longitude);
+
       if (mounted) {
         setState(() => selectedLocation = newLocation);
-        _mapController.move(newLocation, 16.0);
+        _mapController?.animateCamera(
+          CameraUpdate.newLatLngZoom(newLocation, 16.0),
+        );
+        // Small delay to let map animation start
         await Future.delayed(const Duration(milliseconds: 500));
         await _updateAddress(newLocation);
       }
     } catch (e) {
-      if (mounted)
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Location error: $e')));
+      debugPrint('Location error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error getting location: $e')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -735,11 +843,64 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
               child: TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
-                    hintText: 'Search location...',
-                    prefixIcon: Icon(Icons.search, color: Colors.grey.shade600),
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.all(16.w)),
-                onSubmitted: (_) {},
+                  hintText: 'Search location...',
+                  prefixIcon: Icon(Icons.search, color: Colors.grey.shade600),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: Icon(Icons.clear,
+                              color: Theme.of(context).primaryColor),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {});
+                          },
+                        )
+                      : null,
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.all(16.w),
+                ),
+                onChanged: (value) => setState(() {}),
+                onSubmitted: (value) async {
+                  if (value.isEmpty) return;
+
+                  setState(() => _isLoading = true);
+
+                  try {
+                    List<Location> locations = await locationFromAddress(value)
+                        .timeout(const Duration(seconds: 10));
+
+                    if (locations.isEmpty) {
+                      throw Exception('No matching locations found');
+                    }
+
+                    final location = locations.first;
+                    final newLocation =
+                        LatLng(location.latitude, location.longitude);
+
+                    setState(() {
+                      selectedLocation = newLocation;
+                    });
+
+                    _mapController?.animateCamera(
+                      CameraUpdate.newLatLngZoom(newLocation, 16.0),
+                    );
+
+                    await Future.delayed(const Duration(milliseconds: 300));
+                    await _updateAddress(newLocation);
+                  } catch (e) {
+                    debugPrint('Search error: $e');
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content: Text(
+                                'Could not find the location. Please try again.')),
+                      );
+                    }
+                  } finally {
+                    if (mounted) {
+                      setState(() => _isLoading = false);
+                    }
+                  }
+                },
               ),
             ),
             SizedBox(height: 16.h),
@@ -768,31 +929,27 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                     border: Border.all(color: Colors.grey.shade300)),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12.r),
-                  child: FlutterMap(
-                    mapController: _mapController,
-                    options: MapOptions(
-                      initialCenter: selectedLocation,
-                      initialZoom: 16.0,
-                      onTap: (tapPosition, point) {
-                        setState(() => selectedLocation = point);
-                        _mapController.move(point, 16.0);
-                        _updateAddress(point);
-                      },
+                  child: GoogleMap(
+                    initialCameraPosition: CameraPosition(
+                      target: selectedLocation,
+                      zoom: 16.0,
                     ),
-                    children: [
-                      TileLayer(
-                          urlTemplate:
-                              'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                          subdomains: const ['a', 'b', 'c']),
-                      MarkerLayer(markers: [
-                        Marker(
-                            width: 40.0,
-                            height: 40.0,
-                            point: selectedLocation,
-                            child: Icon(Icons.location_pin,
-                                color: Colors.red, size: 40))
-                      ]),
-                    ],
+                    onMapCreated: (controller) => _mapController = controller,
+                    onTap: (point) {
+                      setState(() => selectedLocation = point);
+                      _updateAddress(point);
+                    },
+                    markers: {
+                      Marker(
+                        markerId: const MarkerId('selectedLocation'),
+                        position: selectedLocation,
+                        icon: BitmapDescriptor.defaultMarkerWithHue(
+                            BitmapDescriptor.hueRed),
+                      ),
+                    },
+                    myLocationEnabled: true,
+                    myLocationButtonEnabled: false,
+                    zoomControlsEnabled: false,
                   ),
                 ),
               ),

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:async';
@@ -773,11 +772,11 @@ class LocationPickerDialog extends StatefulWidget {
 }
 
 class _LocationPickerDialogState extends State<LocationPickerDialog> {
-  LatLng selectedLocation = LatLng(28.598392, 77.163469);
+  LatLng selectedLocation = const LatLng(28.598392, 77.163469);
   String address = '';
   final TextEditingController _searchController = TextEditingController();
   bool _isLoading = false;
-  final MapController _mapController = MapController();
+  GoogleMapController? _mapController;
 
   Future<void> _updateAddress(LatLng point) async {
     try {
@@ -786,23 +785,61 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
       if (placemarks.isNotEmpty) {
         final p = placemarks.first;
         setState(() {
-          address =
-              '${p.street ?? ''} ${p.subLocality ?? ''}, ${p.locality ?? ''}, ${p.administrativeArea ?? ''} ${p.postalCode ?? ''}'
-                  .replaceAll('  ', ' ')
-                  .trim();
+          // Robust full address construction with Plus Code filtering
+          final parts = [
+            p.name,
+            p.street,
+            p.subLocality,
+            p.locality,
+            p.administrativeArea,
+            p.postalCode,
+            p.country
+          ];
+
+          // 1. Filter out null/empty
+          // 2. Filter out Plus Codes (alphabest/numbers with +)
+          // 3. Filter out redundant parts (e.g. name same as street)
+          List<String> filteredParts = [];
+          for (var part in parts) {
+            if (part == null || part.isEmpty) continue;
+
+            // Simple Plus Code detection: contains '+' and is relatively short or looks like a code
+            if (part.contains('+') && part.length < 15) continue;
+
+            // Avoid adding same text twice consecutively
+            if (filteredParts.isNotEmpty && filteredParts.last == part)
+              continue;
+
+            filteredParts.add(part);
+          }
+
+          // Special check: sometimes 'name' is just a redundant street number or the street itself
+          if (filteredParts.length > 1 &&
+              filteredParts[1].contains(filteredParts[0])) {
+            filteredParts.removeAt(0);
+          }
+
+          address = filteredParts.join(', ').trim();
+
+          // Handle common formatting issues
+          address = address.replaceAll(RegExp(r',\s*,'), ',').trim();
+          if (address.startsWith(',')) address = address.substring(1).trim();
           if (address.endsWith(',')) {
             address = address.substring(0, address.length - 1).trim();
           }
+
           _searchController.text = address;
         });
       }
     } catch (e) {
       debugPrint('Error getting address: $e');
-      setState(() {
-        address =
-            '${point.latitude.toStringAsFixed(6)}, ${point.longitude.toStringAsFixed(6)}';
-        _searchController.text = address;
-      });
+      if (mounted) {
+        setState(() {
+          address =
+              '${point.latitude.toStringAsFixed(6)}, ${point.longitude.toStringAsFixed(6)}';
+          _searchController.text = address;
+        });
+      }
     }
   }
 
@@ -931,7 +968,9 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
           });
 
           // Animate map to the new location
-          _mapController.move(newLocation, 15.0);
+          _mapController?.animateCamera(
+            CameraUpdate.newLatLngZoom(newLocation, 15.0),
+          );
 
           // Update address after a short delay to ensure map has moved
           await Future.delayed(const Duration(milliseconds: 300));
@@ -1037,6 +1076,7 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                           )
                         : null,
                   ),
+                  onChanged: (value) => setState(() {}),
                   onSubmitted: (value) async {
                     if (value.isEmpty) return;
 
@@ -1064,7 +1104,9 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                       });
 
                       // Animate map to the new location
-                      _mapController.move(newLocation, 15.0);
+                      _mapController?.animateCamera(
+                        CameraUpdate.newLatLngZoom(newLocation, 15.0),
+                      );
 
                       // Update address after a short delay to ensure map has moved
                       await Future.delayed(const Duration(milliseconds: 300));
@@ -1135,42 +1177,27 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: FlutterMap(
-                    mapController: _mapController,
-                    options: MapOptions(
-                      center: selectedLocation,
+                  child: GoogleMap(
+                    initialCameraPosition: CameraPosition(
+                      target: selectedLocation,
                       zoom: 15.0,
-                      onTap: (tapPosition, point) {
-                        setState(() => selectedLocation = point);
-                        _updateAddress(point);
-                      },
-                      onMapReady: () {
-                        // Ensure map is properly centered on the selected location
-                        if (_mapController.camera.center != selectedLocation) {
-                          _mapController.move(
-                              selectedLocation, _mapController.camera.zoom);
-                        }
-                      },
                     ),
-                    children: [
-                      TileLayer(
-                        urlTemplate:
-                            'https://{s}.tile.openstreetmap.de/{z}/{x}/{y}.png',
-                        subdomains: const ['a', 'b', 'c'],
-                        userAgentPackageName: 'com.glowvita.app',
+                    onMapCreated: (controller) => _mapController = controller,
+                    onTap: (point) {
+                      setState(() => selectedLocation = point);
+                      _updateAddress(point);
+                    },
+                    markers: {
+                      Marker(
+                        markerId: const MarkerId('selectedLocation'),
+                        position: selectedLocation,
+                        icon: BitmapDescriptor.defaultMarkerWithHue(
+                            BitmapDescriptor.hueRed),
                       ),
-                      MarkerLayer(
-                        markers: [
-                          Marker(
-                            width: 40,
-                            height: 40,
-                            point: selectedLocation,
-                            child: const Icon(Icons.location_pin,
-                                color: Colors.red, size: 40),
-                          ),
-                        ],
-                      ),
-                    ],
+                    },
+                    myLocationEnabled: true,
+                    myLocationButtonEnabled: false,
+                    zoomControlsEnabled: false,
                   ),
                 ),
               ),
