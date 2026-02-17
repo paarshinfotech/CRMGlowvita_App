@@ -598,15 +598,12 @@ class _AppointmentState extends State<Appointment>
   }
 
   void _editAppointment(AppointmentModel appt) {
-    Navigator.of(context)
-        .push(
-          MaterialPageRoute(
-            builder: (context) => CreateAppointmentForm(
-              existingAppointment: appt,
-            ),
-          ),
-        )
-        .then((_) => _fetchAppointments());
+    showDialog(
+      context: context,
+      builder: (context) => CreateAppointmentForm(
+        existingAppointment: appt,
+      ),
+    ).then((_) => _fetchAppointments());
   }
 
   void _confirmDelete(AppointmentModel appt) {
@@ -1149,10 +1146,10 @@ class _AppointmentState extends State<Appointment>
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const CreateAppointmentForm()),
-          );
+          showDialog(
+            context: context,
+            builder: (context) => const CreateAppointmentForm(),
+          ).then((_) => _fetchAppointments());
         },
         backgroundColor: Theme.of(context).primaryColor,
         child: const Icon(Icons.add, size: 26, color: Colors.white),

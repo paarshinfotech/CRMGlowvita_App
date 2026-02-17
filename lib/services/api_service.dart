@@ -729,6 +729,35 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> getWeddingStaffAndServices() async {
+    try {
+      final response = await _get('$baseUrl/crm/wedding-packages');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          final staffData = data['data']['staff'] as List? ?? [];
+          final servicesData = data['data']['services'] as List? ?? [];
+
+          return {
+            'staff':
+                staffData.map((json) => StaffMember.fromJson(json)).toList(),
+            'services':
+                servicesData.map((json) => Service.fromJson(json)).toList(),
+          };
+        } else {
+          return {'staff': [], 'services': []};
+        }
+      } else {
+        throw Exception(
+            'Failed to load wedding packages: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching wedding packages: $e');
+      rethrow;
+    }
+  }
+
   // ==================== SERVICE CATEGORIES ==================== //
   static Future<List<Map<String, dynamic>>> getServiceCategories() async {
     try {

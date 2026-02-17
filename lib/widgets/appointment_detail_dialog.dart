@@ -4,6 +4,7 @@ import 'package:glowvita/widgets/collect_payment_dialog.dart';
 import 'package:glowvita/widgets/create_appointment_form.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import '../addon_model.dart';
 import '../appointment_model.dart';
 import '../services/api_service.dart';
 import '../utils/string_extensions.dart';
@@ -262,16 +263,12 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                                 Icons.calendar_month_rounded, 'Reschedule',
                                 onTap: () {
                               if (_appointment == null) return;
-                              Navigator.of(context)
-                                  .push(
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          CreateAppointmentForm(
-                                        existingAppointment: _appointment,
-                                      ),
-                                    ),
-                                  )
-                                  .then((_) => _fetchAppointmentDetails());
+                              showDialog(
+                                context: context,
+                                builder: (context) => CreateAppointmentForm(
+                                  existingAppointment: _appointment,
+                                ),
+                              ).then((_) => _fetchAppointmentDetails());
                             }),
                           ),
                         ],
@@ -339,6 +336,37 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                       ),
                     ],
                   ),
+                  if (_appointment?.notes != null &&
+                      _appointment!.notes!.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade50,
+                        border: Border.all(color: Colors.amber.shade200),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Notes / Cancellation Reason:',
+                            style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.amber.shade900),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _appointment!.notes!,
+                            style: GoogleFonts.poppins(
+                                fontSize: 11, color: Colors.amber.shade900),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
 
                   const SizedBox(height: 20),
                   const Divider(height: 1, thickness: 1, color: Colors.black),
@@ -355,16 +383,23 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                   const SizedBox(height: 10),
                   _paymentDetailRow(
                       'Service Amount:', _appointment?.amount ?? 0),
-                  _paymentDetailRow('Add-on Amount:', 0.0),
-                  _paymentDetailRow('Service Tax (GST):', 0.0),
-                  _paymentDetailRow('Platform Fee:', 0.0),
+                  _paymentDetailRow(
+                      'Add-on Amount:', _appointment?.addOnsAmount ?? 0),
+                  _paymentDetailRow(
+                      'Service Tax (GST):', _appointment?.serviceTax ?? 0),
+                  _paymentDetailRow(
+                      'Platform Fee:', _appointment?.platformFee ?? 0),
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 6),
                     child:
                         Divider(height: 1, thickness: 1, color: Colors.black12),
                   ),
-                  _paymentDetailRow('Total Amount:',
-                      _appointment?.totalAmount ?? _appointment?.amount ?? 0,
+                  _paymentDetailRow(
+                      'Total Amount:',
+                      _appointment?.finalAmount ??
+                          _appointment?.totalAmount ??
+                          _appointment?.amount ??
+                          0,
                       bold: true),
                   _paymentDetailRow(
                       'Amount Paid:', _appointment?.amountPaid ?? 0),
@@ -743,22 +778,31 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                 _appointment!.serviceName ?? 'Unknown',
                 _appointment!.amount ?? 0,
                 _appointment!.staffName ?? '—',
-                '${_appointment!.startTime}-${_appointment!.endTime} (${_appointment!.duration} min)')
+                '${_appointment!.startTime}-${_appointment!.endTime} (${_appointment!.duration} min)',
+                addOns: _appointment!.addOns)
           else
-            ...items
-                .map((it) => _serviceItemDetail(
-                    it.serviceName ?? '—',
-                    it.amount ?? 0,
-                    it.staffName ?? '—',
-                    '${it.startTime}-${it.endTime} (${it.duration} min)'))
-                .toList(),
+            ...items.map((it) {
+              // Fallback: if item has no add-ons but there is only 1 service and appointment has add-ons, use them
+              final effectiveAddOns =
+                  (it.addOns != null && it.addOns!.isNotEmpty)
+                      ? it.addOns
+                      : (items.length == 1 ? _appointment!.addOns : null);
+
+              return _serviceItemDetail(
+                  it.serviceName ?? '—',
+                  (it.amount ?? 0).toDouble(),
+                  it.staffName ?? '—',
+                  '${it.startTime}-${it.endTime} (${it.duration ?? 0} min)',
+                  addOns: effectiveAddOns);
+            }).toList(),
         ],
       ),
     );
   }
 
   Widget _serviceItemDetail(
-      String name, double price, String staff, String time) {
+      String name, double price, String staff, String time,
+      {List<AddOn>? addOns}) {
     return Container(
       margin: const EdgeInsets.only(top: 6),
       padding: const EdgeInsets.all(8),
@@ -773,11 +817,15 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(name,
-                  style: GoogleFonts.poppins(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black)),
+              Expanded(
+                child: Text(name,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.poppins(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black)),
+              ),
+              SizedBox(width: 8),
               Text('₹${price.toStringAsFixed(2)}',
                   style: GoogleFonts.poppins(
                       fontSize: 11.5,
@@ -791,6 +839,33 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                   fontSize: 10,
                   color: Colors.grey.shade800,
                   fontWeight: FontWeight.w500)),
+          if (addOns != null && addOns.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            const Divider(height: 1, thickness: 0.5),
+            const SizedBox(height: 4),
+            ...addOns.map((addon) => Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text('+ ${addon.name ?? 'Add-on'}',
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.poppins(
+                                fontSize: 9.5,
+                                color: Colors.grey.shade700,
+                                fontWeight: FontWeight.w500)),
+                      ),
+                      SizedBox(width: 8),
+                      Text('₹${(addon.price ?? 0).toStringAsFixed(2)}',
+                          style: GoogleFonts.poppins(
+                              fontSize: 9.5,
+                              color: Colors.grey.shade700,
+                              fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                )),
+          ],
         ],
       ),
     );
@@ -916,11 +991,19 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                     itemType: 'Service',
                     name: s.serviceName ?? 'Unknown',
                     description: '',
-                    price: s.amount ?? 0.0,
+                    price: (s.amount ?? 0.0).toDouble(),
                     quantity: 1,
-                    totalPrice: s.amount ?? 0.0,
+                    totalPrice: (s.amount ?? 0.0).toDouble(),
                     duration: s.duration ?? 0,
-                    addOns: [],
+                    addOns: s.addOns
+                            ?.map((a) => AddOnItem(
+                                  id: a.id ?? '',
+                                  name: a.name ?? 'Add-on',
+                                  price: (a.price ?? 0.0).toDouble(),
+                                  duration: a.duration ?? 0,
+                                ))
+                            .toList() ??
+                        [],
                     discount: 0.0,
                     discountType: 'flat',
                   ))
@@ -1053,14 +1136,28 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
     } catch (e) {
       print('❌ Error updating status: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update status: $e')),
-        );
+        _showErrorDialog('Failed to update status: $e');
       }
     } finally {
       if (mounted) {
         setState(() => _isUpdatingStatus = false);
       }
     }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 }

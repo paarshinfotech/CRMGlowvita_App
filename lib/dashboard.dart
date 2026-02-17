@@ -251,18 +251,10 @@ class _DashboardPageState extends State<DashboardPage>
                                     label: 'New booking',
                                     icon: Icons.add,
                                     onTap: () {
-                                      showModalBottomSheet(
+                                      showDialog(
                                         context: context,
-                                        isScrollControlled: true,
                                         builder: (BuildContext context) {
-                                          return SizedBox(
-                                            height: MediaQuery.of(context)
-                                                    .size
-                                                    .height *
-                                                0.8,
-                                            child:
-                                                const CreateAppointmentForm(),
-                                          );
+                                          return const CreateAppointmentForm();
                                         },
                                       );
                                     },

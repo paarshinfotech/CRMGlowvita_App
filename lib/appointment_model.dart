@@ -1,3 +1,5 @@
+import 'addon_model.dart';
+
 class AppointmentModel {
   final String? id;
   final String? vendorId;
@@ -30,6 +32,12 @@ class AppointmentModel {
   final WeddingPackageDetails? weddingPackageDetails;
   final HomeServiceLocation? homeServiceLocation;
 
+  final String? cancellationReason;
+  final double? addOnsAmount;
+  final List<AddOn>? addOns;
+  final double? serviceTax;
+  final double? platformFee;
+
   AppointmentModel({
     this.id,
     this.vendorId,
@@ -59,11 +67,16 @@ class AppointmentModel {
     this.serviceItems,
     this.weddingPackageDetails,
     this.homeServiceLocation,
+    this.cancellationReason,
+    this.addOnsAmount,
+    this.addOns,
+    this.serviceTax,
+    this.platformFee,
   });
 
   factory AppointmentModel.fromJson(Map<String, dynamic> json) {
     return AppointmentModel(
-      id: json['_id'],
+      id: json['_id'] ?? json['id'],
       vendorId: json['vendorId'],
       staffName: json['staffName'],
       serviceName: json['serviceName'],
@@ -96,8 +109,7 @@ class AppointmentModel {
           .map((e) => PaymentRecord.fromJson(e))
           .toList(),
       serviceItems: (json['serviceItems'] as List?)
-          ?.whereType<Map<String, dynamic>>()
-          .map((e) => ServiceItem.fromJson(e))
+          ?.map((e) => ServiceItem.fromJson(Map<String, dynamic>.from(e)))
           .toList(),
       weddingPackageDetails:
           json['weddingPackageDetails'] is Map<String, dynamic>
@@ -105,6 +117,13 @@ class AppointmentModel {
               : null,
       homeServiceLocation: json['homeServiceLocation'] is Map<String, dynamic>
           ? HomeServiceLocation.fromJson(json['homeServiceLocation'])
+          : null,
+      cancellationReason: json['cancellationReason'],
+      addOnsAmount: (json['addOnsAmount'] as num?)?.toDouble(),
+      addOns: (json['addOns'] ?? json['addons']) != null
+          ? ((json['addOns'] ?? json['addons']) as List)
+              .map((e) => AddOn.fromJson(Map<String, dynamic>.from(e)))
+              .toList()
           : null,
     );
   }
@@ -172,6 +191,7 @@ class ServiceItem {
   final String? endTime;
   final int? duration;
   final double? amount;
+  final List<AddOn>? addOns;
 
   ServiceItem({
     this.serviceName,
@@ -180,6 +200,7 @@ class ServiceItem {
     this.endTime,
     this.duration,
     this.amount,
+    this.addOns,
   });
 
   factory ServiceItem.fromJson(Map<String, dynamic> json) {
@@ -190,6 +211,11 @@ class ServiceItem {
       endTime: json['endTime'],
       duration: (json['duration'] as num?)?.toInt(),
       amount: (json['amount'] as num?)?.toDouble(),
+      addOns: (json['addOns'] ?? json['addons']) != null
+          ? ((json['addOns'] ?? json['addons']) as List)
+              .map((e) => AddOn.fromJson(Map<String, dynamic>.from(e)))
+              .toList()
+          : null,
     );
   }
 }

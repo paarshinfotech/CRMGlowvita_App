@@ -21,6 +21,8 @@ class Appointments {
   final String status;
   final bool isWebBooking;
   final String mode;
+  final bool hasAddOns;
+  final int addOnCount;
 
   Appointments({
     this.id = '', // Default empty
@@ -32,6 +34,8 @@ class Appointments {
     this.status = 'New',
     this.isWebBooking = false,
     this.mode = 'offline',
+    this.hasAddOns = false,
+    this.addOnCount = 0,
   });
 
   DateTime get endTime => startTime.add(duration);
@@ -109,6 +113,8 @@ class _CalendarState extends State<Calendar> {
           String mappedStaffName =
               m.staff?.fullName ?? m.staffName ?? 'Unassigned';
 
+          print('📅 Mapping Appointment: ${m.clientName}, Model ID: ${m.id}');
+
           return Appointments(
             id: m.id ?? '',
             startTime: start,
@@ -119,6 +125,12 @@ class _CalendarState extends State<Calendar> {
             status: m.status ?? 'New',
             isWebBooking: m.isMultiService ?? false,
             mode: m.mode ?? 'offline',
+            hasAddOns:
+                m.serviceItems?.any((s) => s.addOns?.isNotEmpty ?? false) ??
+                    false,
+            addOnCount: m.serviceItems
+                    ?.fold<int>(0, (sum, s) => sum + (s.addOns?.length ?? 0)) ??
+                0,
           );
         }).toList();
       });
@@ -267,23 +279,17 @@ class _CalendarState extends State<Calendar> {
         });
   }
 
-  // _showStaffSelection removed
-
   void _showCreateAppointmentForm() {
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      isScrollControlled: true,
       builder: (BuildContext context) {
-        return SizedBox(
-          height: MediaQuery.of(context).size.height * 0.8,
-          child: CreateAppointmentForm(
-            dailyAppointments: _appointments, // Pass current appointments
-            onAppointmentCreated: (appointments) {
-              setState(() {
-                _appointments.addAll(appointments);
-              });
-            },
-          ),
+        return CreateAppointmentForm(
+          dailyAppointments: _appointments, // Pass current appointments
+          onAppointmentCreated: (appointments) {
+            setState(() {
+              _appointments.addAll(appointments);
+            });
+          },
         );
       },
     );
@@ -741,38 +747,54 @@ class _CalendarState extends State<Calendar> {
                                                                           height:
                                                                               4.h),
                                                                       // Booking Mode Chip
-                                                                      Container(
-                                                                        padding: EdgeInsets.symmetric(
-                                                                            horizontal:
-                                                                                8.w,
-                                                                            vertical: 3.h),
-                                                                        decoration:
-                                                                            BoxDecoration(
-                                                                          color: Theme.of(context)
-                                                                              .primaryColor
-                                                                              .withOpacity(0.08),
-                                                                          borderRadius:
-                                                                              BorderRadius.circular(6.r),
-                                                                          border:
-                                                                              Border.all(color: Theme.of(context).primaryColor.withOpacity(0.2)),
-                                                                        ),
-                                                                        child:
-                                                                            Row(
-                                                                          mainAxisSize:
-                                                                              MainAxisSize.min,
-                                                                          children: [
-                                                                            Icon(
-                                                                              appt.mode.toLowerCase() == 'online' ? Icons.language : Icons.store,
-                                                                              size: 9.sp,
-                                                                              color: Theme.of(context).primaryColor,
+                                                                      Row(
+                                                                        children: [
+                                                                          Container(
+                                                                            padding:
+                                                                                EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                                                                            decoration:
+                                                                                BoxDecoration(
+                                                                              color: Theme.of(context).primaryColor.withOpacity(0.08),
+                                                                              borderRadius: BorderRadius.circular(6.r),
+                                                                              border: Border.all(color: Theme.of(context).primaryColor.withOpacity(0.2)),
                                                                             ),
+                                                                            child:
+                                                                                Row(
+                                                                              mainAxisSize: MainAxisSize.min,
+                                                                              children: [
+                                                                                Icon(
+                                                                                  appt.mode.toLowerCase() == 'online' ? Icons.language : Icons.store,
+                                                                                  size: 9.sp,
+                                                                                  color: Theme.of(context).primaryColor,
+                                                                                ),
+                                                                                SizedBox(width: 4.w),
+                                                                                Text(
+                                                                                  appt.mode.toLowerCase() == 'online' ? 'Web' : 'Offline',
+                                                                                  style: TextStyle(fontSize: 7.sp, fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor),
+                                                                                ),
+                                                                              ],
+                                                                            ),
+                                                                          ),
+                                                                          if (appt
+                                                                              .hasAddOns) ...[
                                                                             SizedBox(width: 4.w),
-                                                                            Text(
-                                                                              appt.mode.toLowerCase() == 'online' ? 'Web Booking' : 'Offline Booking',
-                                                                              style: TextStyle(fontSize: 7.sp, fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor),
+                                                                            Container(
+                                                                              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.h),
+                                                                              decoration: BoxDecoration(
+                                                                                color: Colors.orange.withOpacity(0.12),
+                                                                                borderRadius: BorderRadius.circular(6.r),
+                                                                                border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                                                                              ),
+                                                                              child: Row(
+                                                                                children: [
+                                                                                  Icon(Icons.add_circle_outline, size: 8.sp, color: Colors.orange[800]),
+                                                                                  SizedBox(width: 2.w),
+                                                                                  Text('+${appt.addOnCount}', style: TextStyle(fontSize: 7.sp, fontWeight: FontWeight.bold, color: Colors.orange[800])),
+                                                                                ],
+                                                                              ),
                                                                             ),
                                                                           ],
-                                                                        ),
+                                                                        ],
                                                                       ),
                                                                     ],
                                                                   ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:glowvita/addon_model.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../add_customer.dart';
@@ -35,12 +36,16 @@ class QueuedService {
   final StaffMember staff;
   final DateTime startTime;
   final DateTime endTime;
+  final List<AddOn> selectedAddOns;
+  final bool isFromPackage; // New field
 
   QueuedService({
     required this.service,
     required this.staff,
     required this.startTime,
     required this.endTime,
+    this.selectedAddOns = const [],
+    this.isFromPackage = false, // Default to false
   });
 }
 
@@ -67,8 +72,13 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
   // Client search (Autocomplete)
   final TextEditingController _clientSearchCtrl = TextEditingController();
 
-  // Notes
-  final TextEditingController _notesCtrl = TextEditingController();
+  // Home Service fields
+  final TextEditingController _homeAddressCtrl = TextEditingController();
+  final TextEditingController _cityCtrl = TextEditingController();
+  final TextEditingController _pincodeCtrl = TextEditingController();
+
+  // Wedding Service fields
+  final TextEditingController _venueAddressCtrl = TextEditingController();
 
   // Auto-calculated fields (kept as text for simple UI)
   final TextEditingController _amountCtrl = TextEditingController();
@@ -77,6 +87,8 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
   final TextEditingController _totalCtrl = TextEditingController();
   final TextEditingController _durationCtrl = TextEditingController();
   final TextEditingController _endTimeCtrl = TextEditingController();
+  // Notes
+  final TextEditingController _notesCtrl = TextEditingController();
 
   Client? _selectedClient;
   StaffMember? _selectedStaff;
@@ -87,8 +99,19 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
   List<Service> _availableServices = [];
   bool _isLoadingServices = true;
 
+  WeddingPackage? _selectedWeddingPackage;
+  List<WeddingPackage> _weddingPackages = [];
+
   List<QueuedService> _queuedServices = [];
   bool _isSaving = false;
+
+  List<AddOn> _allAddOns = [];
+  List<AddOn> _availableAddOns = [];
+  List<AddOn> _selectedAddOns = [];
+  bool _isLoadingAddOns = true;
+
+  // Appointment type: 'regular', 'wedding', 'home'
+  String _appointmentType = 'regular';
 
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _startTime = TimeOfDay.now();
@@ -99,22 +122,44 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
   @override
   void initState() {
     super.initState();
-    _initializeData();
+    _loadData();
 
     // Add listeners for real-time pricing updates
     _discountCtrl.addListener(_recalculatePricingAndTimes);
     _taxCtrl.addListener(_recalculatePricingAndTimes);
   }
 
-  Future<void> _initializeData() async {
+  Future<void> _loadData() async {
+    // Basic shared data
     await Future.wait([
       _loadClients(),
-      _loadStaff(),
-      _loadServices(),
+      if (_appointmentType != 'wedding') _loadStaff(),
+      if (_appointmentType != 'wedding') _loadServices(),
+      _loadAddOns(),
     ]);
 
-    if (widget.existingAppointment != null) {
+    if (_appointmentType == 'wedding') {
+      await _loadWeddingPackages();
+    }
+
+    if (widget.existingAppointment != null && _queuedServices.isEmpty) {
       _prefillForm();
+    }
+  }
+
+  Future<void> _loadWeddingPackages() async {
+    setState(() => _isLoadingServices = true);
+    try {
+      final packages = await ApiService.getWeddingPackages();
+      setState(() {
+        _weddingPackages = packages;
+        // Map wedding packages to Service model for the dropdown?
+        // Actually the image shows a SEPARATE "Wedding Package" dropdown.
+        _isLoadingServices = false;
+      });
+    } catch (e) {
+      debugPrint('Wedding packages load error: $e');
+      setState(() => _isLoadingServices = false);
     }
   }
 
@@ -130,8 +175,19 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
 
       _notesCtrl.text = appt.notes ?? '';
       _discountCtrl.text = appt.discount?.toString() ?? '0';
-      // Internal logic for tax if needed
-      _taxCtrl.text = '0';
+      _taxCtrl.text = (appt.serviceTax ?? 0).toString();
+
+      // Prefill Type
+      if (appt.isHomeService == true || appt.mode == 'home') {
+        _appointmentType = 'home';
+        _homeAddressCtrl.text = appt.homeServiceLocation?.address ?? '';
+      } else if (appt.isWeddingService == true || appt.mode == 'wedding') {
+        _appointmentType = 'wedding';
+        _venueAddressCtrl.text = appt.weddingPackageDetails?.packageName ??
+            ''; // This might need better mapping
+      } else {
+        _appointmentType = 'regular';
+      }
 
       // Prefill Client
       if (appt.client != null) {
@@ -289,21 +345,41 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
   Future<void> _loadServices() async {
     setState(() => _isLoadingServices = true);
     try {
-      final services = await ApiService.getServices();
-      setState(() {
-        _availableServices = services;
-      });
+      List<Service> fetchedServices = await ApiService.getServices();
+      if (mounted) {
+        setState(() {
+          _availableServices = fetchedServices;
+          _isLoadingServices = false;
+        });
+      }
     } catch (e) {
-      debugPrint('Services load error: $e');
+      print('Error loading services: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text('Failed to load services'),
               backgroundColor: Colors.red),
         );
+        setState(() => _isLoadingServices = false);
       }
-    } finally {
-      setState(() => _isLoadingServices = false);
+    }
+  }
+
+  Future<void> _loadAddOns() async {
+    setState(() => _isLoadingAddOns = true);
+    try {
+      List<AddOn> fetchedAddOns = await ApiService.getAddOns();
+      if (mounted) {
+        setState(() {
+          _allAddOns = fetchedAddOns;
+          _isLoadingAddOns = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading add-ons: $e');
+      if (mounted) {
+        setState(() => _isLoadingAddOns = false);
+      }
     }
   }
 
@@ -319,7 +395,71 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
     _taxCtrl.dispose();
     _totalCtrl.dispose();
     _durationCtrl.dispose();
+    _homeAddressCtrl.dispose();
+    _cityCtrl.dispose();
+    _pincodeCtrl.dispose();
+    _venueAddressCtrl.dispose();
     super.dispose();
+  }
+
+  void _onWeddingPackageSelected(WeddingPackage? pkg) {
+    setState(() {
+      _selectedWeddingPackage = pkg;
+      _discountCtrl.text = '0';
+
+      // Remove existing services that were from a package
+      _queuedServices.removeWhere((qs) => qs.isFromPackage);
+
+      if (pkg != null && pkg.services != null) {
+        DateTime currentStartTime = _combine(_selectedDate, _startTime);
+
+        for (var sItem in pkg.services!) {
+          final serviceId = sItem['serviceId'];
+          final serviceName = sItem['serviceName'];
+
+          // Find service in available services or create fallback
+          final service = _availableServices.firstWhere(
+            (s) => s.id == serviceId,
+            orElse: () => Service(
+              id: serviceId,
+              name: serviceName,
+              price: (sItem['price'] as num?)?.toInt(),
+              duration: (sItem['duration'] as num?)?.toInt(),
+            ),
+          );
+
+          // Find a default staff if available
+          StaffMember? staff;
+          if (pkg.assignedStaff != null && pkg.assignedStaff!.isNotEmpty) {
+            final staffId = pkg.assignedStaff![0];
+            staff = _staff.firstWhere(
+              (s) => s.id == staffId,
+              orElse: () => _staff.isNotEmpty
+                  ? _staff[0]
+                  : StaffMember(fullName: 'Unknown'),
+            );
+          } else if (_staff.isNotEmpty) {
+            staff = _staff[0];
+          } else {
+            staff = StaffMember(fullName: 'No Staff');
+          }
+
+          final duration = service.duration ?? 0;
+          final endTime = currentStartTime.add(Duration(minutes: duration));
+
+          _queuedServices.add(QueuedService(
+            service: service,
+            staff: staff!,
+            startTime: currentStartTime,
+            endTime: endTime,
+            isFromPackage: true,
+          ));
+
+          currentStartTime = endTime;
+        }
+      }
+      _recalculatePricingAndTimes();
+    });
   }
 
   // -------- Helpers --------
@@ -342,9 +482,25 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
     double totalAmount = 0;
     int totalDuration = 0;
 
+    if (_appointmentType == 'wedding' && _selectedWeddingPackage != null) {
+      totalAmount += (_selectedWeddingPackage!.discountedPrice ??
+          _selectedWeddingPackage!.totalPrice ??
+          0);
+      totalDuration += _selectedWeddingPackage!.duration ?? 0;
+    }
+
     for (var qs in _queuedServices) {
-      totalAmount += (qs.service.price ?? 0).toDouble();
-      totalDuration += qs.service.duration ?? 0;
+      // Only add price/duration if NOT part of the package (custom/extra services)
+      if (!qs.isFromPackage) {
+        totalAmount += (qs.service.price ?? 0).toDouble();
+        totalDuration += qs.service.duration ?? 0;
+      }
+
+      // Add add-ons price and duration (Add-ons are always extra)
+      for (var addon in qs.selectedAddOns) {
+        totalAmount += (addon.price ?? 0).toDouble();
+        totalDuration += addon.duration ?? 0;
+      }
     }
 
     final discount = _parseMoney(_discountCtrl.text);
@@ -372,8 +528,13 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
     DateTime currentStartTime = _combine(_selectedDate, _startTime);
 
     for (var qs in _queuedServices) {
-      final duration = qs.service.duration ?? 0;
-      final endTime = currentStartTime.add(Duration(minutes: duration));
+      // Calculate total duration including add-ons
+      final serviceDuration = qs.service.duration ?? 0;
+      final addOnsDuration = qs.selectedAddOns
+          .fold<int>(0, (sum, addon) => sum + (addon.duration ?? 0));
+      final totalDuration = serviceDuration + addOnsDuration;
+
+      final endTime = currentStartTime.add(Duration(minutes: totalDuration));
 
       // Check conflict for this item in the queue
       final conflict = _hasConflict(currentStartTime, endTime, qs.staff);
@@ -388,6 +549,7 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
         staff: qs.staff,
         startTime: currentStartTime,
         endTime: endTime,
+        selectedAddOns: qs.selectedAddOns, // Preserve add-ons
       ));
 
       currentStartTime = endTime;
@@ -455,10 +617,14 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
       currentStartTime = _queuedServices.last.endTime;
     }
 
-    final duration = _selectedService!.duration ?? 0;
-    final endTime = currentStartTime.add(Duration(minutes: duration));
+    // Calculate total duration including add-ons
+    final serviceDuration = _selectedService!.duration ?? 0;
+    final addOnsDuration = _selectedAddOns.fold<int>(
+        0, (sum, addon) => sum + (addon.duration ?? 0));
+    final totalDuration = serviceDuration + addOnsDuration;
+    final endTime = currentStartTime.add(Duration(minutes: totalDuration));
 
-    // Check conflict BEFORE adding
+    // Check conflict BEFORE adding (now with correct end time including add-ons)
     if (_hasConflict(currentStartTime, endTime, _selectedStaff!)) {
       _showConflictDialog(
           _selectedStaff!, _selectedService!, currentStartTime, endTime);
@@ -471,9 +637,12 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
         staff: _selectedStaff!,
         startTime: currentStartTime,
         endTime: endTime,
+        selectedAddOns: List.from(_selectedAddOns),
       ));
       // Clear selection buffers
       _selectedService = null;
+      _selectedAddOns = [];
+      _availableAddOns = [];
       // Note: We keep _selectedStaff for easier multiple additions
     });
 
@@ -488,13 +657,38 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
   }
 
   double _calculateTotalAmount() {
-    return _queuedServices.fold(
-        0.0, (sum, item) => sum + (item.service.price ?? 0).toDouble());
+    double total = _queuedServices.fold(0.0, (sum, item) {
+      // Add service price
+      double sTotal = sum + (item.service.price ?? 0).toDouble();
+      // Add add-on prices
+      for (var addon in item.selectedAddOns) {
+        sTotal += (addon.price ?? 0).toDouble();
+      }
+      return sTotal;
+    });
+
+    if (_appointmentType == 'wedding' && _selectedWeddingPackage != null) {
+      total += (_selectedWeddingPackage!.discountedPrice ??
+          _selectedWeddingPackage!.totalPrice ??
+          0);
+    }
+
+    return total;
   }
 
   int _calculateTotalDuration() {
-    return _queuedServices.fold<int>(
-        0, (sum, item) => sum + (item.service.duration ?? 0));
+    int duration = _queuedServices.fold<int>(
+        0,
+        (sum, item) =>
+            sum +
+            (item.service.duration ?? 0) +
+            item.selectedAddOns.fold<int>(0, (s, a) => s + (a.duration ?? 0)));
+
+    if (_appointmentType == 'wedding' && _selectedWeddingPackage != null) {
+      duration += _selectedWeddingPackage!.duration ?? 0;
+    }
+
+    return duration;
   }
 
   // -------- Pickers --------
@@ -686,7 +880,15 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
         "paymentStatus":
             widget.existingAppointment?.status == 'paid' ? 'paid' : 'pending',
         "status": "scheduled",
-        "mode": "offline",
+        "mode": _appointmentType == 'home' ? 'home' : 'offline',
+        "appointmentType": _appointmentType, // 'regular', 'home', 'wedding'
+        "homeAddress": _appointmentType == 'home' ? _homeAddressCtrl.text : "",
+        "city": _appointmentType == 'home' ? _cityCtrl.text : "",
+        "pincode": _appointmentType == 'home' ? _pincodeCtrl.text : "",
+        "weddingPackage":
+            _appointmentType == 'wedding' ? _selectedWeddingPackage?.id : null,
+        "venueAddress":
+            _appointmentType == 'wedding' ? _venueAddressCtrl.text : "",
         "isMultiService": _queuedServices.length > 1,
         "notes": _notesCtrl.text,
         "internalNotes": "",
@@ -702,17 +904,40 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
             "endTime": DateFormat('HH:mm').format(item.endTime),
             "duration": item.service.duration,
             "amount": item.service.price,
-            "addOns": [],
+            "addOns": item.selectedAddOns
+                .map((a) => {
+                      "id": a.id ?? '',
+                      "name": a.name ?? '',
+                      "price": a.price ?? 0.0,
+                      "duration": a.duration ?? 0,
+                    })
+                .toList(),
           };
         }).toList(),
       };
 
+      Map<String, dynamic> result;
       if (widget.existingAppointment != null) {
-        await ApiService.updateAppointment(
+        result = await ApiService.updateAppointment(
             widget.existingAppointment!.id!, appointmentData);
       } else {
-        await ApiService.createAppointment(appointmentData);
+        result = await ApiService.createAppointment(appointmentData);
       }
+
+      // Extract details from response
+      // The API might return the object directly or wrapped in 'data'
+      Map<String, dynamic> appointmentDetails = result;
+      if (result.containsKey('data') && result['data'] is Map) {
+        appointmentDetails = result['data'];
+      } else if (result.containsKey('appointment') &&
+          result['appointment'] is Map) {
+        appointmentDetails = result['appointment'];
+      }
+
+      final String newId = appointmentDetails['_id'] ??
+          appointmentDetails['id'] ??
+          widget.existingAppointment?.id ??
+          '';
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -737,6 +962,9 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
             status: 'scheduled',
             isWebBooking: _queuedServices.length > 1,
             mode: 'offline',
+            id: newId, // Pass the ID from API
+            hasAddOns: qs.selectedAddOns.isNotEmpty,
+            addOnCount: qs.selectedAddOns.length,
           );
         }).toList();
 
@@ -748,11 +976,18 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Error'),
             content: Text(
                 'Error ${widget.existingAppointment != null ? 'updating' : 'creating'} appointment: $e'),
-            backgroundColor: Colors.red,
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('OK'),
+              ),
+            ],
           ),
         );
       }
@@ -772,14 +1007,77 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
   }) {
     return InputDecoration(
       labelText: label,
-      labelStyle: TextStyle(fontSize: 10.sp), // Reduced font size
-      prefixIcon: prefix,
-      suffixIcon: suffix,
+      labelStyle: GoogleFonts.poppins(fontSize: 8.sp), // Reduced font size
+      prefixIcon:
+          prefix != null ? Transform.scale(scale: 0.7, child: prefix) : null,
+      suffixIcon:
+          suffix != null ? Transform.scale(scale: 0.7, child: suffix) : null,
       isDense: true,
       border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8.r)), // Reduced radius
+          borderRadius: BorderRadius.circular(6.r)), // Reduced radius
       contentPadding: EdgeInsets.symmetric(
-          horizontal: 10.w, vertical: 10.h), // Reduced padding
+          horizontal: 8.w, vertical: 4.h), // Further reduced padding
+    );
+  }
+
+  // Helper to build the appointment type cards
+  Widget _buildTypeTab(String label, String type, IconData icon) {
+    final bool isSelected = _appointmentType == type;
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _appointmentType = type;
+            // Clear selections when switching types as services/staff might differ
+            _selectedService = null;
+            _selectedStaff = null;
+            _selectedAddOns = [];
+            _queuedServices = [];
+          });
+          // Re-load data based on new type
+          _loadData();
+        },
+        child: Container(
+          padding: EdgeInsets.symmetric(vertical: 12.h),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFF2E66E7) : Colors.white,
+            borderRadius: BorderRadius.circular(10.r),
+            border: Border.all(
+              color: isSelected ? const Color(0xFF2E66E7) : Colors.grey[300]!,
+              width: 1,
+            ),
+            boxShadow: [
+              if (isSelected)
+                BoxShadow(
+                  color: const Color(0xFF2E66E7).withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: isSelected ? Colors.white : Colors.grey[600],
+              ),
+              SizedBox(height: 6.h),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontSize: 7.5.sp,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  color: isSelected ? Colors.white : Colors.grey[700],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -789,15 +1087,19 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
         .format(_selectedDate); // Changed format to match calendar
     final startText = _formatTime(_startTime);
 
-    return Material(
-      color: Colors.white,
-      child: SafeArea(
-        top: false,
+    return Dialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+      insetPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 24.h),
+      child: Container(
+        width: double.infinity,
+        constraints: BoxConstraints(maxWidth: 400.w),
+        padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 16.h),
         child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 24.h),
           child: Form(
             key: _formKey,
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Header
@@ -807,25 +1109,146 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                       child: Text(
                         'New Appointment',
                         style: GoogleFonts.poppins(
-                            fontSize: 16.sp, fontWeight: FontWeight.w600),
+                            fontSize: 12.sp, fontWeight: FontWeight.w600),
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close),
+                      icon: const Icon(Icons.close, size: 18),
                       onPressed: () => Navigator.of(context).pop(),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
                   ],
                 ),
                 Text(
                   'Create a new appointment',
-                  style: TextStyle(fontSize: 10.sp, color: Colors.grey[700]),
+                  style: GoogleFonts.poppins(
+                      fontSize: 8.sp, color: Colors.grey[700]),
+                ),
+                SizedBox(height: 12.h),
+
+                // Appointment Type Cards
+                Row(
+                  children: [
+                    _buildTypeTab('Regular (In-Salon)', 'regular', Icons.chair),
+                    SizedBox(width: 8.w),
+                    _buildTypeTab('Home Service', 'home', Icons.home),
+                    SizedBox(width: 8.w),
+                    _buildTypeTab(
+                        'Wedding Service', 'wedding', Icons.favorite_border),
+                  ],
                 ),
                 SizedBox(height: 16.h),
 
+                // Wedding Service Fields (Conditional)
+                if (_appointmentType == 'wedding') ...[
+                  Text('Wedding Package *',
+                      style: GoogleFonts.poppins(
+                          fontSize: 8.sp, fontWeight: FontWeight.w600)),
+                  SizedBox(height: 6.h),
+                  DropdownButtonFormField<WeddingPackage>(
+                    value: _selectedWeddingPackage,
+                    isExpanded: true,
+                    iconEnabledColor: const Color(0xFFE91E63), // Pink
+                    decoration:
+                        _inputDecoration(label: 'Select a wedding package'),
+                    style: GoogleFonts.poppins(
+                        fontSize: 9.sp, color: const Color(0xFFE91E63)),
+                    items: _weddingPackages
+                        .map((pkg) => DropdownMenuItem(
+                              value: pkg,
+                              child: Text(
+                                '${pkg.name} (₹${pkg.discountedPrice ?? pkg.totalPrice})',
+                                style: TextStyle(
+                                    fontSize: 10.sp,
+                                    color: const Color(0xFFE91E63)),
+                              ),
+                            ))
+                        .toList(),
+                    onChanged: (pkg) {
+                      _onWeddingPackageSelected(pkg);
+                    },
+                  ),
+                  SizedBox(height: 4.h),
+                  Text(
+                    'Select a predefined package to auto-fill details',
+                    style: GoogleFonts.poppins(
+                        fontSize: 7.sp, color: Colors.grey[600]),
+                  ),
+                  SizedBox(height: 12.h),
+                  Text('Venue Address *',
+                      style: GoogleFonts.poppins(
+                          fontSize: 8.sp, fontWeight: FontWeight.w600)),
+                  SizedBox(height: 6.h),
+                  TextFormField(
+                    controller: _venueAddressCtrl,
+                    maxLines: 3,
+                    decoration: _inputDecoration(label: 'Enter venue address'),
+                    style: GoogleFonts.poppins(fontSize: 9.sp),
+                  ),
+                  SizedBox(height: 16.h),
+                ],
+
+                // Home Service Fields (Conditional)
+                if (_appointmentType == 'home') ...[
+                  Text('Home Address *',
+                      style: GoogleFonts.poppins(
+                          fontSize: 8.sp, fontWeight: FontWeight.w600)),
+                  SizedBox(height: 6.h),
+                  TextFormField(
+                    controller: _homeAddressCtrl,
+                    maxLines: 3,
+                    decoration: _inputDecoration(label: 'Enter full address'),
+                    style: GoogleFonts.poppins(fontSize: 9.sp),
+                  ),
+                  SizedBox(height: 10.h),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('City',
+                                style: GoogleFonts.poppins(
+                                    fontSize: 8.sp,
+                                    fontWeight: FontWeight.w600)),
+                            SizedBox(height: 4.h),
+                            TextFormField(
+                              controller: _cityCtrl,
+                              decoration: _inputDecoration(label: 'City'),
+                              style: GoogleFonts.poppins(fontSize: 9.sp),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(width: 8.w),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Pincode',
+                                style: GoogleFonts.poppins(
+                                    fontSize: 8.sp,
+                                    fontWeight: FontWeight.w600)),
+                            SizedBox(height: 4.h),
+                            TextFormField(
+                              controller: _pincodeCtrl,
+                              keyboardType: TextInputType.number,
+                              decoration: _inputDecoration(label: 'Pincode'),
+                              style: GoogleFonts.poppins(fontSize: 9.sp),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 16.h),
+                ],
+
                 // Client (search + add)
                 Text('Client *',
-                    style: TextStyle(
-                        fontSize: 10.sp, fontWeight: FontWeight.w600)),
+                    style: GoogleFonts.poppins(
+                        fontSize: 8.sp, fontWeight: FontWeight.w600)),
                 SizedBox(height: 6.h),
                 Row(
                   children: [
@@ -862,8 +1285,8 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                                     final client = options.elementAt(index);
                                     return ListTile(
                                       title: Text(client.name,
-                                          style: TextStyle(
-                                              fontSize: 10.sp,
+                                          style: GoogleFonts.poppins(
+                                              fontSize: 9.sp,
                                               fontWeight: FontWeight.bold,
                                               color: Colors.black)),
                                       subtitle: Column(
@@ -906,7 +1329,7 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                               label: 'Search for a client...',
                               prefix: const Icon(Icons.search, size: 18),
                             ),
-                            style: TextStyle(fontSize: 10.sp),
+                            style: GoogleFonts.poppins(fontSize: 9.sp),
                             validator: (_) => (_selectedClient == null &&
                                     widget.existingAppointment == null)
                                 ? 'Select a client'
@@ -937,177 +1360,78 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
 
                 SizedBox(height: 12.h),
 
-                // Date / Start / End / Duration Row
+                // Date / Start / End Row
                 Row(
                   children: [
                     Expanded(
-                      flex: 2,
-                      child: InkWell(
-                        onTap: _pickDate,
-                        child: InputDecorator(
-                          decoration: _inputDecoration(
-                            label: 'Date *',
-                            prefix: const Icon(Icons.calendar_month_outlined,
-                                size: 14),
-                          ),
-                          child:
-                              Text(dateText, style: TextStyle(fontSize: 9.sp)),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 4.w),
-                    Expanded(
-                      flex: 2,
-                      child: InkWell(
-                        onTap: _pickStartTime,
-                        child: InputDecorator(
-                          decoration: _inputDecoration(
-                            label: 'Start *',
-                            prefix: const Icon(Icons.access_time, size: 14),
-                          ),
-                          child:
-                              Text(startText, style: TextStyle(fontSize: 9.sp)),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 4.w),
-                    Expanded(
-                      flex: 2,
-                      child: InputDecorator(
-                        decoration: _inputDecoration(
-                          label: 'End',
-                          prefix:
-                              const Icon(Icons.timer_off_outlined, size: 14),
-                        ),
-                        child: Text(
-                            _endTimeCtrl.text.isEmpty
-                                ? '--:--'
-                                : _endTimeCtrl.text,
-                            style: TextStyle(fontSize: 9.sp)),
-                      ),
-                    ),
-                    SizedBox(width: 4.w),
-                    Expanded(
-                      flex: 2,
-                      child: InputDecorator(
-                        decoration: _inputDecoration(
-                          label: 'Min',
-                          prefix: const Icon(Icons.timer_outlined, size: 14),
-                        ),
-                        child: Text(_durationCtrl.text.replaceAll(' min', ''),
-                            style: TextStyle(fontSize: 9.sp)),
-                      ),
-                    ),
-                  ],
-                ),
-
-                SizedBox(height: 12.h),
-
-                // Staff Selection FIRST
-                Text('Select Staff *',
-                    style: TextStyle(
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey[600])),
-                SizedBox(height: 6.h),
-                DropdownButtonFormField<StaffMember>(
-                  value: _selectedStaff,
-                  isExpanded: true,
-                  decoration: _inputDecoration(label: '').copyWith(
-                    hintText: _isLoadingStaff
-                        ? 'Loading staff...'
-                        : 'Select staff member',
-                  ),
-                  items: _staff
-                      .map((staff) => DropdownMenuItem(
-                            value: staff,
-                            child: Text(
-                              staff.fullName ?? 'Unknown',
-                              style: TextStyle(fontSize: 11.sp),
-                              overflow: TextOverflow.ellipsis,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Date *',
+                              style: GoogleFonts.poppins(
+                                  fontSize: 8.sp, fontWeight: FontWeight.w600)),
+                          SizedBox(height: 4.h),
+                          InkWell(
+                            onTap: _pickDate,
+                            child: InputDecorator(
+                              decoration: _inputDecoration(
+                                label: '',
+                                suffix: const Icon(
+                                    Icons.calendar_month_outlined,
+                                    size: 14),
+                              ),
+                              child: Text(dateText,
+                                  style: GoogleFonts.poppins(fontSize: 8.sp)),
                             ),
-                          ))
-                      .toList(),
-                  onChanged: (staff) {
-                    setState(() {
-                      _selectedStaff = staff;
-                      // Staff Update Fix: If this is a single-service appointment,
-                      // update the staff for the item in the queue immediately.
-                      if (_queuedServices.length == 1 && staff != null) {
-                        _queuedServices[0] = QueuedService(
-                          service: _queuedServices[0].service,
-                          staff: staff,
-                          startTime: _queuedServices[0].startTime,
-                          endTime: _queuedServices[0].endTime,
-                        );
-                      }
-                    });
-                  },
-                ),
-
-                SizedBox(height: 12.h),
-
-                // Service Selection SECOND
-                Text('Select Service *',
-                    style: TextStyle(
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey[600])),
-                SizedBox(height: 6.h),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<Service>(
-                        value: _selectedService,
-                        isExpanded: true,
-                        decoration: _inputDecoration(label: '').copyWith(
-                          hintText: _isLoadingServices
-                              ? 'Loading services...'
-                              : 'Pick a service',
-                        ),
-                        items: _availableServices
-                            .map((s) => DropdownMenuItem(
-                                  value: s,
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          s.name ?? 'Unknown',
-                                          style: TextStyle(fontSize: 11.sp),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                      Text(
-                                        '₹${s.price} · ${s.duration}m',
-                                        style: TextStyle(
-                                            fontSize: 9.sp,
-                                            color: Colors.grey[500]),
-                                      ),
-                                    ],
-                                  ),
-                                ))
-                            .toList(),
-                        onChanged: (s) => setState(() => _selectedService = s),
+                          ),
+                        ],
                       ),
                     ),
                     SizedBox(width: 8.w),
-                    SizedBox(
-                      height: 42.h,
-                      width: 42.h,
-                      child: ElevatedButton(
-                        onPressed: _addToQueue,
-                        style: ElevatedButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          backgroundColor: Theme.of(context).primaryColor,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8.r)),
-                          elevation: 0,
-                        ),
-                        child: const Icon(Icons.add,
-                            color: Colors.white, size: 20),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Start Time *',
+                              style: GoogleFonts.poppins(
+                                  fontSize: 8.sp, fontWeight: FontWeight.w600)),
+                          SizedBox(height: 4.h),
+                          InkWell(
+                            onTap: _pickStartTime,
+                            child: InputDecorator(
+                              decoration: _inputDecoration(
+                                label: '',
+                                suffix: const Icon(Icons.access_time, size: 14),
+                              ),
+                              child: Text(startText,
+                                  style: TextStyle(fontSize: 9.sp)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(width: 8.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('End Time *',
+                              style: GoogleFonts.poppins(
+                                  fontSize: 8.sp, fontWeight: FontWeight.w600)),
+                          SizedBox(height: 4.h),
+                          InputDecorator(
+                            decoration: _inputDecoration(
+                              label: '',
+                              suffix: const Icon(Icons.timer_off_outlined,
+                                  size: 14),
+                            ),
+                            child: Text(
+                                _endTimeCtrl.text.isEmpty
+                                    ? '--:--'
+                                    : _endTimeCtrl.text,
+                                style: TextStyle(fontSize: 9.sp)),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -1115,17 +1439,257 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
 
                 SizedBox(height: 12.h),
 
-                // Helper Steps and Selected Info
-                Text(
-                  'Step 1: Select staff · Step 2: Select service · Step 3: Click + to add',
-                  style: TextStyle(fontSize: 9.sp, color: Colors.grey[500]),
+                // Service and Staff Selection Row (Now Column for responsiveness)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Service Selection
+                    Text('Service *',
+                        style: TextStyle(
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[600])),
+                    SizedBox(height: 6.h),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<Service>(
+                            value: _selectedService,
+                            isExpanded: true,
+                            decoration: _inputDecoration(label: '').copyWith(
+                              hintText: _isLoadingServices
+                                  ? 'Loading services...'
+                                  : 'Pick a service',
+                            ),
+                            items: _availableServices
+                                .map((s) => DropdownMenuItem(
+                                      value: s,
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              s.name ?? 'Unknown',
+                                              style: TextStyle(fontSize: 10.sp),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          Text(
+                                            '₹${s.price}',
+                                            style: TextStyle(
+                                                fontSize: 9.sp,
+                                                color: Colors.grey[500]),
+                                          ),
+                                        ],
+                                      ),
+                                    ))
+                                .toList(),
+                            onChanged: (s) {
+                              setState(() {
+                                _selectedService = s;
+                                _selectedAddOns = [];
+                                if (s != null) {
+                                  _availableAddOns = _allAddOns.where((addon) {
+                                    return addon.mappedServices
+                                            ?.contains(s.id ?? '') ??
+                                        false;
+                                  }).toList();
+                                } else {
+                                  _availableAddOns = [];
+                                }
+                              });
+                            },
+                          ),
+                        ),
+                        SizedBox(width: 8.w),
+                        // Circular Add Button
+                        SizedBox(
+                          height: 42.h,
+                          width: 42.h,
+                          child: ElevatedButton(
+                            onPressed: _addToQueue,
+                            style: ElevatedButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              backgroundColor: Colors.white,
+                              foregroundColor: Theme.of(context).primaryColor,
+                              shape: const CircleBorder(),
+                              side: BorderSide(color: Colors.grey[300]!),
+                              elevation: 0,
+                            ),
+                            child: const Icon(
+                                Icons.center_focus_strong_outlined,
+                                size: 20),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 12.h),
+                    // Staff Selection
+                    Text('Staff *',
+                        style: TextStyle(
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[600])),
+                    SizedBox(height: 6.h),
+                    DropdownButtonFormField<StaffMember>(
+                      value: _selectedStaff,
+                      isExpanded: true,
+                      decoration: _inputDecoration(label: '').copyWith(
+                        hintText: _isLoadingStaff
+                            ? 'Loading staff...'
+                            : 'Select staff',
+                      ),
+                      items: (_appointmentType == 'wedding' &&
+                              _selectedWeddingPackage != null)
+                          ? _staff
+                              .where((s) {
+                                final assignedStaff =
+                                    _selectedWeddingPackage!.assignedStaff;
+                                if (assignedStaff == null) return true;
+                                return assignedStaff.any((assigned) {
+                                  if (assigned is String)
+                                    return assigned == s.id;
+                                  if (assigned is Map)
+                                    return assigned['_id'] == s.id ||
+                                        assigned['id'] == s.id;
+                                  return false;
+                                });
+                              })
+                              .map((staff) => DropdownMenuItem(
+                                    value: staff,
+                                    child: Text(
+                                      staff.fullName ?? 'Unknown',
+                                      style: TextStyle(fontSize: 10.sp),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ))
+                              .toList()
+                          : _staff
+                              .map((staff) => DropdownMenuItem(
+                                    value: staff,
+                                    child: Text(
+                                      staff.fullName ?? 'Unknown',
+                                      style: TextStyle(fontSize: 10.sp),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ))
+                              .toList(),
+                      onChanged: (staff) {
+                        setState(() {
+                          _selectedStaff = staff;
+                          if (_queuedServices.length == 1 && staff != null) {
+                            _queuedServices[0] = QueuedService(
+                              service: _queuedServices[0].service,
+                              staff: staff,
+                              startTime: _queuedServices[0].startTime,
+                              endTime: _queuedServices[0].endTime,
+                              selectedAddOns: _queuedServices[0].selectedAddOns,
+                            );
+                          }
+                        });
+                      },
+                    ),
+                  ],
+                ),
+
+                SizedBox(height: 8.h),
+
+                // Helper Steps
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Step 1: Select service ·\n Step 2: Select staff ·\n Step 3: Click + to add',
+                      style: TextStyle(fontSize: 8.sp, color: Colors.grey[500]),
+                    ),
+                    Text(
+                      'Select staff member for each\n service when adding',
+                      style: TextStyle(fontSize: 8.sp, color: Colors.grey[500]),
+                    ),
+                  ],
                 ),
                 if (_selectedService != null) ...[
                   SizedBox(height: 4.h),
                   Text(
-                    'Selected: ${_selectedService!.name} · ${_selectedService!.duration ?? 0} min · ₹${_selectedService!.price ?? 0}',
+                    'Selected: ${_selectedService?.name ?? ''} · ${_selectedService?.duration ?? 0} min · ₹${_selectedService?.price ?? 0}',
                     style: TextStyle(fontSize: 9.sp, color: Colors.grey[600]),
                   ),
+                  if (_availableAddOns.isNotEmpty) ...[
+                    SizedBox(height: 12.h),
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(12.w),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFBF4FF), // Very light purple
+                        borderRadius: BorderRadius.circular(8.r),
+                        border: Border.all(color: const Color(0xFFE8D5FF)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.add_circle_outline,
+                                  color: const Color(0xFF9145EE), size: 16.sp),
+                              SizedBox(width: 8.w),
+                              Text(
+                                'Available Add-ons (Optional)',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 9.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF9145EE),
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 10.h),
+                          Wrap(
+                            spacing: 8.w,
+                            runSpacing: 8.h,
+                            children: _availableAddOns.map((addon) {
+                              final isSelected =
+                                  _selectedAddOns.contains(addon);
+                              return InkWell(
+                                onTap: () {
+                                  setState(() {
+                                    if (isSelected) {
+                                      _selectedAddOns.remove(addon);
+                                    } else {
+                                      _selectedAddOns.add(addon);
+                                    }
+                                  });
+                                },
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 10.w, vertical: 6.h),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(6.r),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? const Color(0xFF9145EE)
+                                          : Colors.grey[300]!,
+                                      style: BorderStyle.solid,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    '${addon.name} (+₹${addon.price})',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 8.sp,
+                                      color: isSelected
+                                          ? const Color(0xFF9145EE)
+                                          : Colors.grey[700],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
 
                 SizedBox(height: 16.h),
@@ -1134,7 +1698,7 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                 if (_queuedServices.isNotEmpty) ...[
                   Text(
                     'Service sequence (queued back-to-back):',
-                    style: TextStyle(fontSize: 10.sp, color: Colors.grey[600]),
+                    style: TextStyle(fontSize: 8.sp, color: Colors.grey[600]),
                   ),
                   SizedBox(height: 12.h),
                   ListView.builder(
@@ -1206,6 +1770,35 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                                         color: Colors.grey[600],
                                         fontSize: 9.sp),
                                   ),
+                                  // Display add-ons if any
+                                  if (qs.selectedAddOns.isNotEmpty) ...[
+                                    SizedBox(height: 4.h),
+                                    ...qs.selectedAddOns.map((addon) => Padding(
+                                          padding: EdgeInsets.only(top: 2.h),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                '  + ${addon.name}',
+                                                style: TextStyle(
+                                                    color: Colors.grey[700],
+                                                    fontSize: 9.sp,
+                                                    fontStyle:
+                                                        FontStyle.italic),
+                                              ),
+                                              Text(
+                                                '+₹${addon.price} · ${addon.duration}m',
+                                                style: TextStyle(
+                                                    color: Colors.grey[700],
+                                                    fontSize: 9.sp,
+                                                    fontStyle:
+                                                        FontStyle.italic),
+                                              ),
+                                            ],
+                                          ),
+                                        )),
+                                  ],
                                 ],
                               ),
                             ),
@@ -1282,14 +1875,14 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                               'Total Services (${_queuedServices.length})',
                               style: TextStyle(
                                   color: Colors.grey[600],
-                                  fontSize: 10.sp,
+                                  fontSize: 8.sp,
                                   fontWeight: FontWeight.w600),
                             ),
                             Text(
                               '₹${_calculateTotalAmount().toStringAsFixed(2)}',
                               style: TextStyle(
                                   color: Colors.black,
-                                  fontSize: 12.sp,
+                                  fontSize: 9.sp,
                                   fontWeight: FontWeight.bold),
                             ),
                           ],
@@ -1304,14 +1897,14 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                               'Total Duration',
                               style: TextStyle(
                                   color: Colors.grey[600],
-                                  fontSize: 10.sp,
+                                  fontSize: 8.sp,
                                   fontWeight: FontWeight.w600),
                             ),
                             Text(
                               '${_calculateTotalDuration()} min',
                               style: TextStyle(
                                   color: Colors.black,
-                                  fontSize: 10.sp,
+                                  fontSize: 8.sp,
                                   fontWeight: FontWeight.w600),
                             ),
                           ],
@@ -1322,16 +1915,16 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                           children: [
                             Text(
                               'Time Slot',
-                              style: TextStyle(
+                              style: GoogleFonts.poppins(
                                   color: Colors.grey[600],
-                                  fontSize: 10.sp,
+                                  fontSize: 8.sp,
                                   fontWeight: FontWeight.w600),
                             ),
                             Text(
                               '${DateFormat('HH:mm').format(_queuedServices.first.startTime)} - ${DateFormat('HH:mm').format(_queuedServices.last.endTime)}',
-                              style: TextStyle(
+                              style: GoogleFonts.poppins(
                                   color: Theme.of(context).primaryColor,
-                                  fontSize: 10.sp,
+                                  fontSize: 9.sp,
                                   fontWeight: FontWeight.bold),
                             ),
                           ],
@@ -1346,46 +1939,86 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
 
                 SizedBox(height: 12.h),
 
-                // Amount / Discount / Tax / Total
+                // Pricing Row (Compact)
                 Row(
                   children: [
                     Expanded(
-                      child: TextFormField(
-                        controller: _amountCtrl,
-                        readOnly: true,
-                        decoration: _inputDecoration(label: 'Amount'),
-                        style: TextStyle(fontSize: 10.sp),
+                      flex: 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Amount (₹)',
+                              style: GoogleFonts.poppins(
+                                  fontSize: 8.sp, fontWeight: FontWeight.w600)),
+                          SizedBox(height: 4.h),
+                          TextFormField(
+                            controller: _amountCtrl,
+                            readOnly: true,
+                            decoration: _inputDecoration(label: ''),
+                            style: GoogleFonts.poppins(fontSize: 9.sp),
+                          ),
+                        ],
                       ),
                     ),
-                    SizedBox(width: 8.w),
+                    SizedBox(width: 4.w),
                     Expanded(
-                      child: TextFormField(
-                        controller: _discountCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: _inputDecoration(label: 'Discount'),
-                        style: TextStyle(fontSize: 10.sp),
+                      flex: 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Discount (₹)',
+                              style: GoogleFonts.poppins(
+                                  fontSize: 8.sp, fontWeight: FontWeight.w600)),
+                          SizedBox(height: 4.h),
+                          TextFormField(
+                            controller: _discountCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: _inputDecoration(label: ''),
+                            style: GoogleFonts.poppins(fontSize: 9.sp),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-                SizedBox(height: 10.h),
-                Row(
-                  children: [
+                    SizedBox(width: 4.w),
                     Expanded(
-                      child: TextFormField(
-                        controller: _taxCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: _inputDecoration(label: 'Tax'),
-                        style: TextStyle(fontSize: 10.sp),
+                      flex: 1,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Tax (₹)',
+                              style: GoogleFonts.poppins(
+                                  fontSize: 8.sp, fontWeight: FontWeight.w600)),
+                          SizedBox(height: 4.h),
+                          TextFormField(
+                            controller: _taxCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: _inputDecoration(label: ''),
+                            style: GoogleFonts.poppins(fontSize: 9.sp),
+                          ),
+                        ],
                       ),
                     ),
-                    SizedBox(width: 8.w),
+                    SizedBox(width: 4.w),
                     Expanded(
-                      child: TextFormField(
-                        controller: _totalCtrl,
-                        readOnly: true,
-                        decoration: _inputDecoration(label: 'Total Amount'),
-                        style: TextStyle(fontSize: 10.sp),
+                      flex: 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Total Amount (₹)',
+                              style: GoogleFonts.poppins(
+                                  fontSize: 8.sp, fontWeight: FontWeight.w600)),
+                          SizedBox(height: 4.h),
+                          TextFormField(
+                            controller: _totalCtrl,
+                            readOnly: true,
+                            decoration: _inputDecoration(label: '').copyWith(
+                              fillColor: Colors.grey[100],
+                              filled: true,
+                            ),
+                            style: GoogleFonts.poppins(
+                                fontSize: 9.sp, fontWeight: FontWeight.bold),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -1401,7 +2034,7 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                         controller: _durationCtrl,
                         readOnly: true,
                         decoration: _inputDecoration(label: 'Duration'),
-                        style: TextStyle(fontSize: 10.sp),
+                        style: GoogleFonts.poppins(fontSize: 9.sp),
                       ),
                     ),
                     SizedBox(width: 8.w),
@@ -1411,30 +2044,42 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                         minLines: 1,
                         maxLines: 2,
                         decoration: _inputDecoration(label: 'Notes'),
-                        style: TextStyle(fontSize: 10.sp),
+                        style: GoogleFonts.poppins(fontSize: 9.sp),
                       ),
                     ),
                   ],
                 ),
 
-                SizedBox(height: 18.h),
+                SizedBox(height: 12.h),
 
                 // Actions
                 Row(
                   children: [
                     Expanded(
                       child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(vertical: 12.h),
+                          side: BorderSide(color: Colors.grey[300]!),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.r)),
+                        ),
                         onPressed: () => Navigator.of(context).pop(),
-                        child:
-                            Text('Cancel', style: TextStyle(fontSize: 12.sp)),
+                        child: Text('Cancel',
+                            style: GoogleFonts.poppins(
+                                fontSize: 10.sp,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey[700])),
                       ),
                     ),
-                    SizedBox(width: 8.w),
+                    SizedBox(width: 12.w),
                     Expanded(
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).primaryColor,
+                          backgroundColor: const Color(0xFF2E66E7),
                           padding: EdgeInsets.symmetric(vertical: 12.h),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.r)),
+                          elevation: 0,
                         ),
                         onPressed: _isSaving ? null : _saveAppointment,
                         child: _isSaving
@@ -1447,8 +2092,10 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                                 ),
                               )
                             : Text('Create',
-                                style: TextStyle(
-                                    color: Colors.white, fontSize: 12.sp)),
+                                style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontSize: 10.sp,
+                                    fontWeight: FontWeight.w600)),
                       ),
                     ),
                   ],
