@@ -1741,10 +1741,8 @@ class ApiService {
       Map<String, dynamic> payload) async {
     try {
       final response = await _post('$baseUrl/crm/billing', payload);
-
       print(
           '📥 Create Billing Response [${response.statusCode}]: ${response.body}');
-
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
         return data;
