@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
-import 'Notification.dart';
-import 'Profile.dart';
+import '../Notification.dart';
+import '../Profile.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class SalesByCustomers extends StatefulWidget {
+class SalesByService extends StatefulWidget {
   @override
-  State<SalesByCustomers> createState() => _SalesByCustomersState();
+  State<SalesByService> createState() => _SalesByServiceState();
 }
 
-class _SalesByCustomersState extends State<SalesByCustomers> {
+class _SalesByServiceState extends State<SalesByService> {
   DateTimeRange? _selectedDateRange;
   Future<void> _selectDateRange() async {
     final picked = await showDateRangePicker(
@@ -29,41 +29,39 @@ class _SalesByCustomersState extends State<SalesByCustomers> {
     });
   }
 
-  final List<Map<String, dynamic>> allServices = [
+  final List<Map<String, dynamic>> services = [
     {
-      'customer': 'Shivani',
-      'sales': 30,
+      'service': 'Haircut',
+      'sold': 30,
       'grossSale': 3000,
       'discount': 200,
       'offers': 100,
       'netSale': 2700,
       'tax': 135,
       'totalSales': 2835,
-      'date': DateTime(2025, 7, 25),
     },
     {
-      'customer': 'Om',
-      'sales': 18,
+      'service': 'Hair Styling',
+      'sold': 18,
       'grossSale': 3600,
       'discount': 300,
       'offers': 200,
       'netSale': 3100,
       'tax': 155,
       'totalSales': 3255,
-      'date': DateTime(2025, 7, 20),
     },
     {
-      'customer': 'Siddhi',
-      'sales': 12,
+      'service': 'Nail Art',
+      'sold': 12,
       'grossSale': 1800,
       'discount': 150,
       'offers': 50,
       'netSale': 1600,
       'tax': 80,
       'totalSales': 1680,
-      'date': DateTime(2025, 7, 22),
     },
   ];
+
 
   List<Map<String, dynamic>> filteredServices = [];
   String searchText = '';
@@ -71,12 +69,12 @@ class _SalesByCustomersState extends State<SalesByCustomers> {
   @override
   void initState() {
     super.initState();
-    filteredServices = List.from(allServices);
+    filteredServices = List.from(services);
   }
 
   void _filterData() {
     setState(() {
-      filteredServices = allServices.where((service) {
+      filteredServices = services.where((service) {
         final matchesSearch = service['customer']
             .toString()
             .toLowerCase()
@@ -126,7 +124,7 @@ class _SalesByCustomersState extends State<SalesByCustomers> {
             const SizedBox(width: 20),
             Expanded(
               child: Text(
-                'Sales by Customer',
+                'Sales by Services',
                 style: GoogleFonts.poppins(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
@@ -176,7 +174,7 @@ class _SalesByCustomersState extends State<SalesByCustomers> {
         child: Column(
           children: [
             Text(
-              "View Sales Reports by Each Customer",
+              "View Sales Reports by Each Service",
               style: TextStyle(fontSize: 16, color: Colors.black),
             ),
             const SizedBox(height: 4),
@@ -187,7 +185,7 @@ class _SalesByCustomersState extends State<SalesByCustomers> {
             TextField(
               decoration: InputDecoration(
                 prefixIcon: const Icon(Icons.search),
-                hintText: "Search customer",
+                hintText: "Search Services",
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide: const BorderSide(color: Colors.black12),
@@ -256,14 +254,14 @@ class _SalesByCustomersState extends State<SalesByCustomers> {
               child: Card(
                 elevation: 0,
                 color: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: DataTable(
-                      headingRowColor: MaterialStateColor.resolveWith(
-                              (states) => Colors.grey.shade200),
+                      headingRowColor: MaterialStateColor.resolveWith((states) => Colors.grey.shade200),
                       columnSpacing: 24,
                       dataRowHeight: 60,
                       headingTextStyle: const TextStyle(
@@ -271,8 +269,8 @@ class _SalesByCustomersState extends State<SalesByCustomers> {
                         color: Colors.black87,
                       ),
                       columns: const [
-                        DataColumn(label: Text("Customer")),
-                        DataColumn(label: Text("Sales QTY")),
+                        DataColumn(label: Text("Service")),
+                        DataColumn(label: Text("Sold")),
                         DataColumn(label: Text("Gross Sale")),
                         DataColumn(label: Text("Discounts")),
                         DataColumn(label: Text("Offers")),
@@ -281,30 +279,30 @@ class _SalesByCustomersState extends State<SalesByCustomers> {
                         DataColumn(label: Text("Total Sales")),
                       ],
                       rows: [
-                        ...List.generate(filteredServices.length, (index) {
-                          final service = filteredServices[index];
+                        ...services.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final service = entry.value;
                           final isEven = index % 2 == 0;
                           return DataRow(
-                            color: MaterialStateColor.resolveWith(
-                                    (states) => isEven ? Colors.grey.shade50 : Colors.white),
+                            color: MaterialStateColor.resolveWith((states) =>
+                            isEven ? Colors.grey.shade50 : Colors.white),
                             cells: [
-                              DataCell(Text(service['customer'])),
-                              DataCell(Text(service['sales'].toString())),
+                              DataCell(Text(service['service'])),
+                              DataCell(Text(service['sold'].toString())),
                               DataCell(Text(_currencyFormat(service['grossSale']))),
                               DataCell(Text(_currencyFormat(service['discount']))),
                               DataCell(Text(_currencyFormat(service['offers']))),
                               DataCell(Text(_currencyFormat(service['netSale']))),
                               DataCell(Text(_currencyFormat(service['tax']))),
-                              DataCell(
-                                Text(
-                                  _currencyFormat(service['totalSales']),
-                                  style: const TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                              ),
+                              DataCell(Text(
+                                _currencyFormat(service['totalSales']),
+                                style: const TextStyle(fontWeight: FontWeight.w600),
+                              )),
                             ],
                           );
                         }),
-                        // Total Row
+
+                        //  Totals Row
                         DataRow(
                           color: MaterialStateColor.resolveWith((states) => Colors.yellow.shade50),
                           cells: [
@@ -313,37 +311,36 @@ class _SalesByCustomersState extends State<SalesByCustomers> {
                               style: TextStyle(fontWeight: FontWeight.bold),
                             )),
                             DataCell(Text(
-                              filteredServices.fold<num>(0, (sum, item) => sum + item['sales']).toString(),
+                              services.fold<num>(0, (sum, item) => sum + item['sold']).toString(),
                               style: const TextStyle(fontWeight: FontWeight.bold),
                             )),
                             DataCell(Text(
-                              _currencyFormat(filteredServices.fold<num>(0, (sum, item) => sum + item['grossSale'])),
+                              _currencyFormat(services.fold<num>(0, (sum, item) => sum + item['grossSale'])),
                               style: const TextStyle(fontWeight: FontWeight.bold),
                             )),
                             DataCell(Text(
-                              _currencyFormat(filteredServices.fold<num>(0, (sum, item) => sum + item['discount'])),
+                              _currencyFormat(services.fold<num>(0, (sum, item) => sum + item['discount'])),
                               style: const TextStyle(fontWeight: FontWeight.bold),
                             )),
                             DataCell(Text(
-                              _currencyFormat(filteredServices.fold<num>(0, (sum, item) => sum + item['offers'])),
+                              _currencyFormat(services.fold<num>(0, (sum, item) => sum + item['offers'])),
                               style: const TextStyle(fontWeight: FontWeight.bold),
                             )),
                             DataCell(Text(
-                              _currencyFormat(filteredServices.fold<num>(0, (sum, item) => sum + item['netSale'])),
+                              _currencyFormat(services.fold<num>(0, (sum, item) => sum + item['netSale'])),
                               style: const TextStyle(fontWeight: FontWeight.bold),
                             )),
                             DataCell(Text(
-                              _currencyFormat(filteredServices.fold<num>(0, (sum, item) => sum + item['tax'])),
+                              _currencyFormat(services.fold<num>(0, (sum, item) => sum + item['tax'])),
                               style: const TextStyle(fontWeight: FontWeight.bold),
                             )),
                             DataCell(Text(
-                              _currencyFormat(filteredServices.fold<num>(0, (sum, item) => sum + item['totalSales'])),
+                              _currencyFormat(services.fold<num>(0, (sum, item) => sum + item['totalSales'])),
                               style: const TextStyle(fontWeight: FontWeight.bold),
                             )),
                           ],
                         ),
                       ],
-
                     ),
                   ),
                 ),

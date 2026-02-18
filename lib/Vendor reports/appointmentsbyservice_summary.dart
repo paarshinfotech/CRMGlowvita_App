@@ -1,24 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
-import 'Notification.dart';
-import 'Profile.dart';
+import '../Notification.dart';
+import '../Profile.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:csv/csv.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 
-class AppointmentsbyStaffSummary extends StatefulWidget {
+class AppointmentsbyServicesSummary extends StatefulWidget {
   @override
-  State<AppointmentsbyStaffSummary> createState() => _AppointmentsbyStaffSummaryState();
+  State<AppointmentsbyServicesSummary> createState() => _AppointmentsbyServicesSummaryState();
 }
 
-class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary> {
+class _AppointmentsbyServicesSummaryState extends State<AppointmentsbyServicesSummary> {
   DateTimeRange? _selectedDateRange;
-  String _sortColumn = 'staffName';
+  String _sortColumn = 'service';
   bool _sortAscending = true;
 
-  final List<Map<String, dynamic>> AppointmentsbyStaff = [
+  final List<Map<String, dynamic>> appointments = [
     {
       'ref': '#00001265',
       'client': 'Siddhi Shinde',
@@ -65,7 +65,7 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
     },
   ];
 
-  List<Map<String, dynamic>> filteredStaffSummary = [];
+  List<Map<String, dynamic>> filteredServiceSummary = [];
   String searchText = '';
 
   // Totals
@@ -76,7 +76,7 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
   @override
   void initState() {
     super.initState();
-    _calculateStaffSummary();
+    _calculateServiceSummary();
   }
 
   String _calculateTotalDuration(List<Map<String, dynamic>> appointments) {
@@ -96,9 +96,9 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
     return '${hours}h ${minutes}m';
   }
 
-  void _calculateStaffSummary() {
-    Map<String, List<Map<String, dynamic>>> staffAppointments = {};
-    List<Map<String, dynamic>> filteredAppointments = AppointmentsbyStaff.where((appointment) {
+  void _calculateServiceSummary() {
+    Map<String, List<Map<String, dynamic>>> serviceAppointments = {};
+    List<Map<String, dynamic>> filteredAppointments = appointments.where((appointment) {
       final matchesDate = _selectedDateRange == null ||
           (appointment['scheduledOn'].isAfter(_selectedDateRange!.start.subtract(const Duration(days: 1))) &&
               appointment['scheduledOn'].isBefore(_selectedDateRange!.end.add(const Duration(days: 1))));
@@ -106,22 +106,33 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
     }).toList();
 
     for (var appointment in filteredAppointments) {
-      String staffName = appointment['staffName'];
-      if (!staffAppointments.containsKey(staffName)) {
-        staffAppointments[staffName] = [];
+      String services = appointment['services'];
+      List<String> serviceList = services.split(',').map((s) => s.trim()).toList();
+      for (var service in serviceList) {
+        if (!serviceAppointments.containsKey(service)) {
+          serviceAppointments[service] = [];
+        }
+        // Create a copy of the appointment with adjusted price and duration
+        double price = (double.tryParse(appointment['price'].toString()) ?? 0) / serviceList.length;
+        int minutes = _durationToMinutes(appointment['duration'] ?? '0h') ~/ serviceList.length;
+        String duration = '${minutes ~/ 60}h ${minutes % 60}m';
+        serviceAppointments[service]!.add({
+          ...appointment,
+          'price': price,
+          'duration': duration,
+        });
       }
-      staffAppointments[staffName]!.add(appointment);
     }
 
-    filteredStaffSummary = staffAppointments.entries.map((entry) {
-      String staffName = entry.key;
+    filteredServiceSummary = serviceAppointments.entries.map((entry) {
+      String service = entry.key;
       List<Map<String, dynamic>> appointments = entry.value;
       int appointmentCount = appointments.length;
       String totalDuration = _calculateTotalDuration(appointments);
       double totalSale = appointments.fold(0, (sum, app) => sum + (double.tryParse(app['price'].toString()) ?? 0));
 
       return {
-        'staffName': staffName,
+        'service': service,
         'totalAppointments': appointmentCount,
         'totalDuration': totalDuration,
         'totalSale': totalSale,
@@ -129,22 +140,22 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
     }).toList();
 
     // Apply search filter
-    filteredStaffSummary = filteredStaffSummary.where((staff) {
-      return staff['staffName'].toString().toLowerCase().contains(searchText.toLowerCase());
+    filteredServiceSummary = filteredServiceSummary.where((service) {
+      return service['service'].toString().toLowerCase().contains(searchText.toLowerCase());
     }).toList();
 
     // Sort the summary
-    filteredStaffSummary.sort((a, b) {
+    filteredServiceSummary.sort((a, b) {
       var aValue = a[_sortColumn];
       var bValue = b[_sortColumn];
-      if (_sortColumn == 'staffName') {
+      if (_sortColumn == 'service') {
         return _sortAscending ? aValue.compareTo(bValue) : bValue.compareTo(aValue);
       } else if (_sortColumn == 'totalAppointments' || _sortColumn == 'totalSale') {
         return _sortAscending ? aValue.compareTo(bValue) : bValue.compareTo(aValue);
       } else {
         int aMinutes = _durationToMinutes(aValue);
         int bMinutes = _durationToMinutes(bValue);
-        return _sortAscending ? aMinutes.compareTo(bMinutes) : bMinutes.compareTo(aMinutes);
+        return _sortAscending ? aMinutes.compareTo(bMinutes) : bMinutes.compareTo(aValue);
       }
     });
 
@@ -163,8 +174,8 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
   }
 
   void _calculateTotals(List<Map<String, dynamic>> filteredAppointments) {
-    totalAppointments = filteredStaffSummary.fold(0, (sum, staff) => sum + (staff['totalAppointments'] as int));
-    totalSales = filteredStaffSummary.fold(0, (sum, staff) => sum + (staff['totalSale'] as double));
+    totalAppointments = filteredServiceSummary.fold(0, (sum, service) => sum + (service['totalAppointments'] as int));
+    totalSales = filteredServiceSummary.fold(0, (sum, service) => sum + (service['totalSale'] as double));
     totalDuration = _calculateTotalDuration(filteredAppointments);
   }
 
@@ -182,7 +193,7 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
     if (picked != null) {
       setState(() {
         _selectedDateRange = picked;
-        _calculateStaffSummary();
+        _calculateServiceSummary();
       });
     }
   }
@@ -193,19 +204,19 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
 
   Future<void> _exportToCsv() async {
     List<List<dynamic>> rows = [
-      ['Staff Name', 'Total Appointments', 'Total Duration', 'Total Sale'],
-      ...filteredStaffSummary.map((staff) => [
-        staff['staffName'],
-        staff['totalAppointments'],
-        staff['totalDuration'],
-        _currencyFormat(staff['totalSale']),
+      ['Service', 'Total Appointments', 'Total Duration', 'Total Sale'],
+      ...filteredServiceSummary.map((service) => [
+        service['service'],
+        service['totalAppointments'],
+        service['totalDuration'],
+        _currencyFormat(service['totalSale']),
       ]),
       ['Total', totalAppointments, totalDuration, _currencyFormat(totalSales)],
     ];
 
     String csv = const ListToCsvConverter().convert(rows);
     final directory = await getTemporaryDirectory();
-    final path = '${directory.path}/staff_summary.csv';
+    final path = '${directory.path}/service_summary.csv';
     final file = File(path);
     await file.writeAsString(csv);
 
@@ -222,7 +233,7 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
         _sortColumn = column;
         _sortAscending = true;
       }
-      _calculateStaffSummary();
+      _calculateServiceSummary();
     });
   }
 
@@ -243,7 +254,7 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
           child: Column(
             children: [
               Text(
-                "Appointments by Staff Summary",
+                "Appointments by Service Summary",
                 style: GoogleFonts.poppins(fontSize: 12.sp, color: Colors.black),
               ),
               SizedBox(height: 4.h),
@@ -254,7 +265,7 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
               TextField(
                 decoration: InputDecoration(
                   prefixIcon: const Icon(Icons.search),
-                  hintText: "Search Staff...",
+                  hintText: "Search Service...",
                   hintStyle: GoogleFonts.poppins(),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10.r),
@@ -263,7 +274,7 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
                 style: GoogleFonts.poppins(),
                 onChanged: (value) {
                   searchText = value;
-                  _calculateStaffSummary();
+                  _calculateServiceSummary();
                 },
               ),
               SizedBox(height: 16.h),
@@ -352,11 +363,11 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
                           columns: [
                             DataColumn(
                               label: GestureDetector(
-                                onTap: () => _sort('staffName'),
+                                onTap: () => _sort('service'),
                                 child: Row(
                                   children: [
-                                    Text("Staff Name"),
-                                    if (_sortColumn == 'staffName')
+                                    Text("Service"),
+                                    if (_sortColumn == 'service')
                                       Icon(
                                         _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
                                         size: 16.sp,
@@ -414,8 +425,8 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
                             ),
                           ],
                           rows: [
-                            ...List.generate(filteredStaffSummary.length, (index) {
-                              final staff = filteredStaffSummary[index];
+                            ...List.generate(filteredServiceSummary.length, (index) {
+                              final service = filteredServiceSummary[index];
                               final isEven = index % 2 == 0;
                               return DataRow(
                                 color: MaterialStateColor.resolveWith(
@@ -425,25 +436,25 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
                                   DataCell(
                                     Padding(
                                       padding: EdgeInsets.symmetric(vertical: 8.h),
-                                      child: Text(staff['staffName']),
+                                      child: Text(service['service']),
                                     ),
                                   ),
                                   DataCell(
                                     Padding(
                                       padding: EdgeInsets.symmetric(vertical: 8.h),
-                                      child: Text(staff['totalAppointments'].toString()),
+                                      child: Text(service['totalAppointments'].toString()),
                                     ),
                                   ),
                                   DataCell(
                                     Padding(
                                       padding: EdgeInsets.symmetric(vertical: 8.h),
-                                      child: Text(staff['totalDuration']),
+                                      child: Text(service['totalDuration']),
                                     ),
                                   ),
                                   DataCell(
                                     Padding(
                                       padding: EdgeInsets.symmetric(vertical: 8.h),
-                                      child: Text(_currencyFormat(staff['totalSale'])),
+                                      child: Text(_currencyFormat(service['totalSale'])),
                                     ),
                                   ),
                                 ],
@@ -520,7 +531,7 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
           SizedBox(width: 20.w),
           Expanded(
             child: Text(
-              'Appointments by Staff Summary',
+              'Appointments by Service Summary',
               style: GoogleFonts.poppins(
                 fontSize: 10.sp,
                 fontWeight: FontWeight.w600,

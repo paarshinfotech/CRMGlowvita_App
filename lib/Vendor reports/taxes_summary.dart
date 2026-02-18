@@ -3,8 +3,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
-import 'Notification.dart';
-import 'Profile.dart';
+import '../Notification.dart';
+import '../Profile.dart';
 
 class TaxesSummary extends StatefulWidget {
   const TaxesSummary({super.key});

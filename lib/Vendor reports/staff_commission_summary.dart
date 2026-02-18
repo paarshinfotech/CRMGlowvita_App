@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
-import 'Notification.dart';
-import 'Profile.dart';
+import '../Notification.dart';
+import '../Profile.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class PaymentSummary extends StatefulWidget {
+class StaffCommissionSummary extends StatefulWidget {
   @override
-  State<PaymentSummary> createState() => _PaymentSummaryState();
+  State<StaffCommissionSummary> createState() => _StaffCommissionSummaryState();
 }
 
-class _PaymentSummaryState extends State<PaymentSummary> {
-
+class _StaffCommissionSummaryState extends State<StaffCommissionSummary> {
   DateTimeRange? _selectedDateRange;
   Future<void> _selectDateRange() async {
     final picked = await showDateRangePicker(
@@ -24,28 +23,55 @@ class _PaymentSummaryState extends State<PaymentSummary> {
             end: DateTime.now(),
           ),
     );
-
+    if (picked != null) setState(() {
+      _selectedDateRange = picked;
+      _filterData();
+    });
   }
 
-  final List<Map<String, dynamic>> payments = [
+  final List<Map<String, dynamic>> StaffCommissionSummary = [
     {
-      'method': 'Cash',
-      'transactions': 25,
-      'gross': 4500,
-      'net': 4450,
+      'invoiceId': '#00001028',
+      'invoiceDate': DateTime(2025, 7, 25),
+      'staffName': 'Siddhi Shinde',
+      'itemSold': 'spa',
+      'saleAmount': '410',
+      'commissionAmount': 60.00,
+      'commissionRate': '20.00%',
+    },{
+      'invoiceId': '#00001028',
+      'invoiceDate': DateTime(2025, 7, 25),
+      'staffName': 'Siddhi Shinde',
+      'itemSold': 'spa',
+      'saleAmount': '410',
+      'commissionAmount': 60.00,
+      'commissionRate': '20.00%',
+    },{
+      'invoiceId': '#00001028',
+      'invoiceDate': DateTime(2025, 7, 25),
+      'staffName': 'Siddhi Shinde',
+      'itemSold': 'spa',
+      'saleAmount': '410',
+      'commissionAmount': 60.00,
+      'commissionRate': '20.00%',
+    },{
+      'invoiceId': '#00001028',
+      'invoiceDate': DateTime(2025, 7, 25),
+      'staffName': 'Siddhi Shinde',
+      'itemSold': 'spa',
+      'saleAmount': '410',
+      'commissionAmount': 60.00,
+      'commissionRate': '20.00%',
+    },{
+      'invoiceId': '#00001028',
+      'invoiceDate': DateTime(2025, 7, 25),
+      'staffName': 'Siddhi Shinde',
+      'itemSold': 'spa',
+      'saleAmount': '410',
+      'commissionAmount': 60.00,
+      'commissionRate': '20.00%',
     },
-    {
-      'method': 'QR',
-      'transactions': 30,
-      'gross': 5200,
-      'net': 5150,
-    },
-    {
-      'method': 'Link',
-      'transactions': 15,
-      'gross': 2800,
-      'net': 2750,
-    },
+
   ];
 
   List<Map<String, dynamic>> filteredServices = [];
@@ -54,6 +80,46 @@ class _PaymentSummaryState extends State<PaymentSummary> {
   @override
   void initState() {
     super.initState();
+    filteredServices = List.from(StaffCommissionSummary);
+  }
+  num _totalSaleAmount() {
+    return filteredServices.fold<num>(0, (sum, item) {
+      final value = num.tryParse(item['saleAmount'].toString()) ?? 0;
+      return sum + value;
+    });
+  }
+
+  num _totalCommissionAmount() {
+    return filteredServices.fold<num>(0, (sum, item) {
+      final value = item['commissionAmount'] ?? 0;
+      return sum + (value is num ? value : 0);
+    });
+  }
+
+  String _totalCommissionRate() {
+    final totalSale = _totalSaleAmount();
+    final totalCommission = _totalCommissionAmount();
+    if (totalSale == 0) return '0.00%';
+    final rate = (totalCommission / totalSale) * 100;
+    return '${rate.toStringAsFixed(2)}%';
+  }
+
+
+  void _filterData() {
+    setState(() {
+      filteredServices = StaffCommissionSummary.where((service) {
+        final matchesSearch = service['staffName']
+            .toString()
+            .toLowerCase()
+            .contains(searchText.toLowerCase());
+
+        final matchesDate = _selectedDateRange == null ||
+            (service['date'].isAfter(_selectedDateRange!.start.subtract(const Duration(days: 1))) &&
+                service['date'].isBefore(_selectedDateRange!.end.add(const Duration(days: 1))));
+
+        return matchesSearch && matchesDate;
+      }).toList();
+    });
   }
 
   String _currencyFormat(num amount) {
@@ -91,7 +157,7 @@ class _PaymentSummaryState extends State<PaymentSummary> {
             const SizedBox(width: 20),
             Expanded(
               child: Text(
-                'Payments Summary',
+                'Staff Commission Summary',
                 style: GoogleFonts.poppins(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
@@ -140,7 +206,30 @@ class _PaymentSummaryState extends State<PaymentSummary> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
+            Text(
+              "View Sales Reports by Each Staff",
+              style: TextStyle(fontSize: 16, color: Colors.black),
+            ),
+            const SizedBox(height: 4),
+            Container(height: 2, width: 200, color: Colors.black),
             const SizedBox(height: 24),
+
+            // Search Bar
+            TextField(
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search),
+                hintText: "Search here",
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Colors.black12),
+                ),
+              ),
+              onChanged: (value) {
+                searchText = value;
+                _filterData();
+              },
+            ),
+            const SizedBox(height: 16),
 
             // Range Picker & Export Dropdown
             Row(
@@ -198,9 +287,7 @@ class _PaymentSummaryState extends State<PaymentSummary> {
               child: Card(
                 elevation: 0,
                 color: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: SingleChildScrollView(
@@ -211,60 +298,69 @@ class _PaymentSummaryState extends State<PaymentSummary> {
                       columnSpacing: 24,
                       dataRowHeight: 60,
                       headingTextStyle: const TextStyle(
-                          fontWeight: FontWeight.bold, color: Colors.black87),
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
                       columns: const [
-                        DataColumn(label: Text("Payment Method")),
-                        DataColumn(label: Text("Transactions")),
-                        DataColumn(label: Text("Gross Payments")),
-                        DataColumn(label: Text("Net Payments")),
+                        DataColumn(label: Text("Invoice Id")),
+                        DataColumn(label: Text("Invoice Date")),
+                        DataColumn(label: Text("Staff Name")),
+                        DataColumn(label: Text("Item Sold")),
+                        DataColumn(label: Text("Sale Amount")),
+                        DataColumn(label: Text("Commission Amount")),
+                        DataColumn(label: Text("Commission Rate")),
                       ],
                       rows: [
-                        ...List.generate(payments.length, (index) {
-                          final payment = payments[index];
+                        // Regular rows
+                        ...List.generate(filteredServices.length, (index) {
+                          final service = filteredServices[index];
                           final isEven = index % 2 == 0;
                           return DataRow(
                             color: MaterialStateColor.resolveWith(
                                   (states) => isEven ? Colors.grey.shade50 : Colors.white,
                             ),
                             cells: [
-                              DataCell(Text(payment['method'])),
-                              DataCell(Text(payment['transactions'].toString())),
-                              DataCell(Text(_currencyFormat(payment['gross']))),
-                              DataCell(Text(
-                                _currencyFormat(payment['net']),
-                                style: const TextStyle(fontWeight: FontWeight.w600),
-                              )),
+                              DataCell(Text(service['invoiceId'] ?? '')),
+                              DataCell(Text(DateFormat('dd MMM yyyy').format(service['invoiceDate']))),
+                              DataCell(Text(service['staffName'] ?? '')),
+                              DataCell(Text(service['itemSold'] ?? '')),
+                              DataCell(Text(_currencyFormat(num.tryParse(service['saleAmount'].toString()) ?? 0))),
+                              DataCell(Text(_currencyFormat(service['commissionAmount'] ?? 0))),
+                              DataCell(Text(service['commissionRate'] ?? '')),
                             ],
                           );
                         }),
 
-                        // Total row
+                        // 👇 Total row
                         DataRow(
                           color: MaterialStateColor.resolveWith((states) => Colors.yellow.shade50),
                           cells: [
-                            const DataCell(Text(
-                              'Total',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            )),
-                            DataCell(Text(
-                              payments.fold<int>(0, (sum, item) => sum + item['transactions'] as int).toString(),
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            )),
-                            DataCell(Text(
-                              _currencyFormat(
-                                payments.fold<double>(0.0, (sum, item) => sum + (item['gross'] as num).toDouble()),
+                            const DataCell(Text('Total', style: TextStyle(fontWeight: FontWeight.bold))),
+                            const DataCell(Text('')),
+                            const DataCell(Text('')),
+                            const DataCell(Text('')),
+                            DataCell(
+                              Text(
+                                _currencyFormat(_totalSaleAmount()),
+                                style: const TextStyle(fontWeight: FontWeight.bold),
                               ),
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            )),
-                            DataCell(Text(
-                              _currencyFormat(
-                                payments.fold<double>(0.0, (sum, item) => sum + (item['net'] as num).toDouble()),
+                            ),
+                            DataCell(
+                              Text(
+                                _currencyFormat(_totalCommissionAmount()),
+                                style: const TextStyle(fontWeight: FontWeight.bold),
                               ),
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            )),
+                            ),
+                            DataCell(
+                              Text(
+                                _totalCommissionRate(),
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
                           ],
                         ),
                       ],
+
                     ),
                   ),
                 ),

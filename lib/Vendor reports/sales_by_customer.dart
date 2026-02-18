@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
-import 'Notification.dart';
-import 'Profile.dart';
+import '../Notification.dart';
+import '../Profile.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class StaffPerformance extends StatefulWidget {
+class SalesByCustomers extends StatefulWidget {
   @override
-  State<StaffPerformance> createState() => _StaffPerformanceState();
+  State<SalesByCustomers> createState() => _SalesByCustomersState();
 }
 
-class _StaffPerformanceState extends State<StaffPerformance> {
+class _SalesByCustomersState extends State<SalesByCustomers> {
   DateTimeRange? _selectedDateRange;
-
   Future<void> _selectDateRange() async {
     final picked = await showDateRangePicker(
       context: context,
@@ -24,33 +23,46 @@ class _StaffPerformanceState extends State<StaffPerformance> {
             end: DateTime.now(),
           ),
     );
-    if (picked != null) {
-      setState(() {
-        _selectedDateRange = picked;
-        _filterData();
-      });
-    }
+    if (picked != null) setState(() {
+      _selectedDateRange = picked;
+      _filterData();
+    });
   }
 
-  final List<Map<String, dynamic>> staffPerformanceList = [
+  final List<Map<String, dynamic>> allServices = [
     {
-      'staffName': 'Juili Ware',
-      'appointments': 33,
-      'avg_service_duration': '23.03 Hours',
-      'netRevenue': '0.00',
-      'discount': '0.00',
-      'tax': 0.00,
-      'totalSale': '6080.00',
+      'customer': 'Shivani',
+      'sales': 30,
+      'grossSale': 3000,
+      'discount': 200,
+      'offers': 100,
+      'netSale': 2700,
+      'tax': 135,
+      'totalSales': 2835,
+      'date': DateTime(2025, 7, 25),
     },
     {
-      'staffName': 'Juili Ware',
-      'appointments': 33,
-      'avg_service_duration': '23.03 Hours',
-      'netRevenue': '0.00',
-      'discount': '0.00',
-      'tax': 0.00,
-      'totalSale': '6080.00',
-    }
+      'customer': 'Om',
+      'sales': 18,
+      'grossSale': 3600,
+      'discount': 300,
+      'offers': 200,
+      'netSale': 3100,
+      'tax': 155,
+      'totalSales': 3255,
+      'date': DateTime(2025, 7, 20),
+    },
+    {
+      'customer': 'Siddhi',
+      'sales': 12,
+      'grossSale': 1800,
+      'discount': 150,
+      'offers': 50,
+      'netSale': 1600,
+      'tax': 80,
+      'totalSales': 1680,
+      'date': DateTime(2025, 7, 22),
+    },
   ];
 
   List<Map<String, dynamic>> filteredServices = [];
@@ -59,34 +71,30 @@ class _StaffPerformanceState extends State<StaffPerformance> {
   @override
   void initState() {
     super.initState();
-    filteredServices = List.from(staffPerformanceList);
+    filteredServices = List.from(allServices);
   }
 
   void _filterData() {
     setState(() {
-      filteredServices = staffPerformanceList.where((service) {
-        final matchesSearch = service['staffName']
+      filteredServices = allServices.where((service) {
+        final matchesSearch = service['customer']
             .toString()
             .toLowerCase()
             .contains(searchText.toLowerCase());
 
-        // Date filter disabled due to missing 'date' field
-        return matchesSearch;
+        final matchesDate = _selectedDateRange == null ||
+            (service['date'].isAfter(_selectedDateRange!.start.subtract(const Duration(days: 1))) &&
+                service['date'].isBefore(_selectedDateRange!.end.add(const Duration(days: 1))));
+
+        return matchesSearch && matchesDate;
       }).toList();
     });
   }
 
   String _currencyFormat(num amount) {
-    return '₹${NumberFormat('#,##0.00').format(amount)}';
+    return '₹${NumberFormat('#,##0').format(amount)}';
   }
-  double _totalServiceDuration() {
-    return filteredServices.fold<double>(0, (sum, item) {
-      final durationStr = item['avg_service_duration']?.toString() ?? '0';
-      final match = RegExp(r'\d+(\.\d+)?').firstMatch(durationStr);
-      final value = match != null ? double.parse(match.group(0)!) : 0;
-      return sum + value;
-    });
-  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -118,7 +126,7 @@ class _StaffPerformanceState extends State<StaffPerformance> {
             const SizedBox(width: 20),
             Expanded(
               child: Text(
-                'Staff Performance',
+                'Sales by Customer',
                 style: GoogleFonts.poppins(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
@@ -168,16 +176,18 @@ class _StaffPerformanceState extends State<StaffPerformance> {
         child: Column(
           children: [
             Text(
-              "View Reports by Staff Performance",
+              "View Sales Reports by Each Customer",
               style: TextStyle(fontSize: 16, color: Colors.black),
             ),
             const SizedBox(height: 4),
             Container(height: 2, width: 200, color: Colors.black),
             const SizedBox(height: 24),
+
+            // Search Bar
             TextField(
               decoration: InputDecoration(
                 prefixIcon: const Icon(Icons.search),
-                hintText: "Search here",
+                hintText: "Search customer",
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide: const BorderSide(color: Colors.black12),
@@ -189,6 +199,8 @@ class _StaffPerformanceState extends State<StaffPerformance> {
               },
             ),
             const SizedBox(height: 16),
+
+            // Range Picker & Export Dropdown
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -204,14 +216,14 @@ class _StaffPerformanceState extends State<StaffPerformance> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: Colors.black87,
-                    side: const BorderSide(color: Colors.black54),
+                    side: BorderSide(color: Colors.black54),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     elevation: 0,
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
                     border: Border.all(color: Colors.black, width: 1),
                     borderRadius: BorderRadius.circular(5),
@@ -238,6 +250,8 @@ class _StaffPerformanceState extends State<StaffPerformance> {
               ],
             ),
             const SizedBox(height: 20),
+
+            // Data Table
             Expanded(
               child: Card(
                 elevation: 0,
@@ -248,7 +262,8 @@ class _StaffPerformanceState extends State<StaffPerformance> {
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: DataTable(
-                      headingRowColor: MaterialStateColor.resolveWith((states) => Colors.grey.shade200),
+                      headingRowColor: MaterialStateColor.resolveWith(
+                              (states) => Colors.grey.shade200),
                       columnSpacing: 24,
                       dataRowHeight: 60,
                       headingTextStyle: const TextStyle(
@@ -256,13 +271,14 @@ class _StaffPerformanceState extends State<StaffPerformance> {
                         color: Colors.black87,
                       ),
                       columns: const [
-                        DataColumn(label: Text("Staff Name")),
-                        DataColumn(label: Text("Appointments")),
-                        DataColumn(label: Text("Avg. Service Duration")),
-                        DataColumn(label: Text("Net Revenue")),
-                        DataColumn(label: Text("Discount")),
+                        DataColumn(label: Text("Customer")),
+                        DataColumn(label: Text("Sales QTY")),
+                        DataColumn(label: Text("Gross Sale")),
+                        DataColumn(label: Text("Discounts")),
+                        DataColumn(label: Text("Offers")),
+                        DataColumn(label: Text("Net Sale")),
                         DataColumn(label: Text("Tax")),
-                        DataColumn(label: Text("Total Sale")),
+                        DataColumn(label: Text("Total Sales")),
                       ],
                       rows: [
                         ...List.generate(filteredServices.length, (index) {
@@ -272,17 +288,22 @@ class _StaffPerformanceState extends State<StaffPerformance> {
                             color: MaterialStateColor.resolveWith(
                                     (states) => isEven ? Colors.grey.shade50 : Colors.white),
                             cells: [
-                              DataCell(Text(service['staffName'] ?? '')),
-                              DataCell(Text(service['appointments'].toString())),
-                              DataCell(Text(service['avg_service_duration'] ?? '')),
-                              DataCell(Text(_currencyFormat(num.tryParse(service['netRevenue']) ?? 0))),
-                              DataCell(Text(_currencyFormat(num.tryParse(service['discount']) ?? 0))),
+                              DataCell(Text(service['customer'])),
+                              DataCell(Text(service['sales'].toString())),
+                              DataCell(Text(_currencyFormat(service['grossSale']))),
+                              DataCell(Text(_currencyFormat(service['discount']))),
+                              DataCell(Text(_currencyFormat(service['offers']))),
+                              DataCell(Text(_currencyFormat(service['netSale']))),
                               DataCell(Text(_currencyFormat(service['tax']))),
-                              DataCell(Text(_currencyFormat(num.tryParse(service['totalSale']) ?? 0))),
+                              DataCell(
+                                Text(
+                                  _currencyFormat(service['totalSales']),
+                                  style: const TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                              ),
                             ],
                           );
                         }),
-
                         // Total Row
                         DataRow(
                           color: MaterialStateColor.resolveWith((states) => Colors.yellow.shade50),
@@ -292,40 +313,37 @@ class _StaffPerformanceState extends State<StaffPerformance> {
                               style: TextStyle(fontWeight: FontWeight.bold),
                             )),
                             DataCell(Text(
-                              filteredServices.fold<int>(
-                                0,
-                                    (sum, item) => sum + (item['appointments'] as int? ?? 0),
-                              ).toString(),
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            )),
-
-                            DataCell(Text(
-                              '${_totalServiceDuration().toStringAsFixed(2)} Hours',
+                              filteredServices.fold<num>(0, (sum, item) => sum + item['sales']).toString(),
                               style: const TextStyle(fontWeight: FontWeight.bold),
                             )),
                             DataCell(Text(
-                              _currencyFormat(filteredServices.fold<num>(0, (sum, item) =>
-                              sum + (num.tryParse(item['netRevenue'].toString()) ?? 0))),
+                              _currencyFormat(filteredServices.fold<num>(0, (sum, item) => sum + item['grossSale'])),
                               style: const TextStyle(fontWeight: FontWeight.bold),
                             )),
                             DataCell(Text(
-                              _currencyFormat(filteredServices.fold<num>(0, (sum, item) =>
-                              sum + (num.tryParse(item['discount'].toString()) ?? 0))),
+                              _currencyFormat(filteredServices.fold<num>(0, (sum, item) => sum + item['discount'])),
                               style: const TextStyle(fontWeight: FontWeight.bold),
                             )),
                             DataCell(Text(
-                              _currencyFormat(filteredServices.fold<num>(0, (sum, item) =>
-                              sum + (item['tax'] ?? 0))),
+                              _currencyFormat(filteredServices.fold<num>(0, (sum, item) => sum + item['offers'])),
                               style: const TextStyle(fontWeight: FontWeight.bold),
                             )),
                             DataCell(Text(
-                              _currencyFormat(filteredServices.fold<num>(0, (sum, item) =>
-                              sum + (num.tryParse(item['totalSale'].toString()) ?? 0))),
+                              _currencyFormat(filteredServices.fold<num>(0, (sum, item) => sum + item['netSale'])),
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            )),
+                            DataCell(Text(
+                              _currencyFormat(filteredServices.fold<num>(0, (sum, item) => sum + item['tax'])),
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            )),
+                            DataCell(Text(
+                              _currencyFormat(filteredServices.fold<num>(0, (sum, item) => sum + item['totalSales'])),
                               style: const TextStyle(fontWeight: FontWeight.bold),
                             )),
                           ],
                         ),
                       ],
+
                     ),
                   ),
                 ),
@@ -337,5 +355,3 @@ class _StaffPerformanceState extends State<StaffPerformance> {
     );
   }
 }
-
-
