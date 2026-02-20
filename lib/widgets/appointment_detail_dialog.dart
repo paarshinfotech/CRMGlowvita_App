@@ -6,9 +6,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../addon_model.dart';
 import '../appointment_model.dart';
+import '../customer_model.dart';
 import '../services/api_service.dart';
 import '../utils/string_extensions.dart';
 import '../invoice_management.dart';
+import 'customer_detail_popup.dart';
 
 class AppointmentDetailDialog extends StatefulWidget {
   final String appointmentId;
@@ -32,10 +34,37 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
     'Cancel Appointment',
   ];
 
+  // Client History state
+  List<AppointmentModel> _clientHistory = [];
+  bool _isLoadingHistory = false;
+  bool _historyLoaded = false;
+  String _historyFilter = 'All';
+  final List<String> _historyFilters = [
+    'All',
+    'Pending',
+    'Confirmed',
+    'Completed',
+    'Cancelled',
+    'Missed',
+  ];
+
+  // Invoices tab state
+  List<BillingInvoice> _invoices = [];
+  bool _isLoadingInvoices = false;
+  bool _invoicesLoaded = false;
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.index == 1 && !_historyLoaded) {
+        _fetchClientHistory();
+      }
+      if (_tabController.index == 2 && !_invoicesLoaded) {
+        _fetchInvoiceForAppointment();
+      }
+    });
     print('🎯 AppointmentDetailDialog opened with ID: ${widget.appointmentId}');
     _fetchAppointmentDetails();
   }
@@ -55,6 +84,87 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
       print('⚠️ Failed to load appointment details: $e');
       setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _fetchClientHistory() async {
+    if (_appointment == null) return;
+    setState(() => _isLoadingHistory = true);
+    try {
+      final all = await ApiService.getAppointments(limit: 500);
+      final clientId = _appointment!.client?.id;
+      final clientName = _appointment!.clientName?.toLowerCase().trim() ?? '';
+
+      final filtered = all.where((a) {
+        if (clientId != null && clientId.isNotEmpty) {
+          return a.client?.id == clientId;
+        }
+        return (a.clientName?.toLowerCase().trim() ?? '') == clientName;
+      }).toList()
+        ..sort(
+            (a, b) => (b.date ?? DateTime(0)).compareTo(a.date ?? DateTime(0)));
+
+      if (mounted) {
+        setState(() {
+          _clientHistory = filtered;
+          _historyLoaded = true;
+          _isLoadingHistory = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching client history: $e');
+      if (mounted) setState(() => _isLoadingHistory = false);
+    }
+  }
+
+  Future<void> _fetchInvoiceForAppointment() async {
+    if (_appointment == null) return;
+    setState(() => _isLoadingInvoices = true);
+    try {
+      final all = await ApiService.getInvoices();
+      final clientId = _appointment!.client?.id ?? '';
+      final clientName = _appointment!.clientName?.toLowerCase().trim() ?? '';
+      final apptDate = _appointment!.date;
+
+      final matched = all.where((inv) {
+        final sameClient = inv.clientId == clientId ||
+            inv.clientInfo.fullName.toLowerCase().trim() == clientName;
+        if (!sameClient) return false;
+        if (apptDate == null) return true;
+        final diff = inv.createdAt.difference(apptDate).abs();
+        return diff.inDays <= 1;
+      }).toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      if (mounted) {
+        setState(() {
+          _invoices = matched;
+          _invoicesLoaded = true;
+          _isLoadingInvoices = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching invoices: $e');
+      if (mounted) setState(() => _isLoadingInvoices = false);
+    }
+  }
+
+  void _showCustomerDetails() {
+    if (_appointment == null) return;
+
+    // Construct a partial Customer object.
+    // The CustomerDetailPopup fetches more data via API using id or name.
+    final customer = Customer(
+      id: _appointment!.client?.id,
+      fullName: _appointment!.clientName ?? '—',
+      mobile: _appointment!.client?.phone ?? '',
+      email: _appointment!.client?.email,
+    );
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.6),
+      builder: (context) => CustomerDetailPopup(customer: customer),
+    );
   }
 
   @override
@@ -155,11 +265,15 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                       const SizedBox(height: 1),
                       Padding(
                         padding: const EdgeInsets.only(left: 4),
-                        child: Text(
-                          '${_appointment?.clientName ?? "Client"} • ${DateFormat('MMM d, yyyy').format(date)} • ${_appointment?.startTime ?? ''}',
-                          style: GoogleFonts.poppins(
-                            fontSize: 11.5,
-                            color: Colors.grey.shade800,
+                        child: InkWell(
+                          onTap: _showCustomerDetails,
+                          child: Text(
+                            '${_appointment?.clientName ?? "Client"} • ${DateFormat('MMM d, yyyy').format(date)} • ${_appointment?.startTime ?? ''}',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11.5,
+                              color: Colors.grey.shade800,
+                              decoration: TextDecoration.underline,
+                            ),
                           ),
                         ),
                       ),
@@ -213,20 +327,16 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                     const SizedBox(width: 6),
                     const Text('Client History'),
                     const SizedBox(width: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 5, vertical: 0.5),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade200,
-                        border: Border.all(color: Colors.black12),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text('4',
-                          style: GoogleFonts.poppins(
-                              fontSize: 9,
-                              color: Colors.black87,
-                              fontWeight: FontWeight.bold)),
-                    ),
+                  ],
+                ),
+              ),
+              Tab(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.receipt_long_outlined, size: 15),
+                    const SizedBox(width: 6),
+                    const Text('Invoice'),
                   ],
                 ),
               ),
@@ -235,210 +345,761 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
 
           const Divider(height: 1, thickness: 1, color: Colors.grey),
 
-          // Body
+          // Body — TabBarView
           Flexible(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Action Buttons Row (Top)
-                  if (!isCompleted)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8.0),
-                      child: Row(
-                        children: [
-                          if (!isCancelled) ...[
-                            Expanded(
-                              child: _outlinedActionButton(
-                                  Icons.payments_outlined, 'Collect Payment',
-                                  onTap: () {
-                                _showCollectPaymentDialog();
-                              }),
-                            ),
-                            const SizedBox(width: 8),
-                          ],
-                          Expanded(
-                            child: _outlinedActionButton(
-                                Icons.calendar_month_rounded, 'Reschedule',
-                                onTap: () {
-                              if (_appointment == null) return;
-                              showDialog(
-                                context: context,
-                                builder: (context) => CreateAppointmentForm(
-                                  existingAppointment: _appointment,
-                                ),
-                              ).then((_) => _fetchAppointmentDetails());
-                            }),
-                          ),
-                        ],
-                      ),
-                    )
-                  else if (!isCancelled)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8.0),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _outlinedActionButton(
-                                Icons.receipt_long_outlined, 'View Invoice',
-                                onTap: () {
-                              // _showInvoice();
-                            }),
-                          ),
-                        ],
-                      ),
-                    ),
-                  const SizedBox(height: 8),
-                  // Status Dropdown on its own line
-                  _statusDropdown(_appointment?.status ?? 'Scheduled'),
-
-                  const SizedBox(height: 12),
-
-                  // Payment History
-                  _paymentHistorySection(),
-
-                  const SizedBox(height: 16),
-
-                  // Info Cards
-                  Row(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                // ── TAB 1: Details ──
+                SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Column(
-                          children: [
-                            _infoCard(Icons.person_outline_rounded, 'CLIENT',
-                                _appointment?.clientName ?? '—'),
-                            const SizedBox(height: 10),
-                            _serviceCard(),
-                            const SizedBox(height: 10),
-                            _infoCard(Icons.people_outline_rounded, 'STAFF',
-                                _appointment?.staffName ?? '—'),
-                          ],
+                      // Action Buttons Row (Top)
+                      if (!isCompleted)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8.0),
+                          child: Row(
+                            children: [
+                              if (!isCancelled) ...[
+                                Expanded(
+                                  child: _outlinedActionButton(
+                                      Icons.payments_outlined,
+                                      'Collect Payment', onTap: () {
+                                    _showCollectPaymentDialog();
+                                  }),
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+                              Expanded(
+                                child: _outlinedActionButton(
+                                    Icons.calendar_month_rounded, 'Reschedule',
+                                    onTap: () {
+                                  if (_appointment == null) return;
+                                  showDialog(
+                                    context: context,
+                                    builder: (context) => CreateAppointmentForm(
+                                      existingAppointment: _appointment,
+                                    ),
+                                  ).then((_) => _fetchAppointmentDetails());
+                                }),
+                              ),
+                            ],
+                          ),
+                        )
+                      else if (!isCancelled)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8.0),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _outlinedActionButton(
+                                    Icons.receipt_long_outlined, 'View Invoice',
+                                    onTap: () {
+                                  // _showInvoice();
+                                }),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          children: [
-                            _infoCard(
-                              Icons.calendar_today_outlined,
-                              'DATE & TIME',
-                              DateFormat('EEEE, MMMM d, yyyy').format(date),
-                              subtitle:
-                                  '${_appointment?.startTime ?? ''} - ${_appointment?.endTime ?? ''} (${_appointment?.duration ?? '?'} min)',
-                              iconData: Icons.access_time_rounded,
+                      const SizedBox(height: 8),
+                      // Status Dropdown on its own line
+                      _statusDropdown(_appointment?.status ?? 'Scheduled'),
+
+                      const SizedBox(height: 12),
+
+                      // Payment History
+                      _paymentHistorySection(),
+
+                      const SizedBox(height: 16),
+
+                      // Info Cards
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              children: [
+                                _infoCard(Icons.person_outline_rounded,
+                                    'CLIENT', _appointment?.clientName ?? '—',
+                                    onTap: _showCustomerDetails),
+                                const SizedBox(height: 10),
+                                _serviceCard(),
+                                const SizedBox(height: 10),
+                                _infoCard(Icons.people_outline_rounded, 'STAFF',
+                                    _appointment?.staffName ?? '—'),
+                              ],
                             ),
-                            const SizedBox(height: 10),
-                            _statusCard(_appointment?.status ?? 'Scheduled'),
-                          ],
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              children: [
+                                _infoCard(
+                                  Icons.calendar_today_outlined,
+                                  'DATE & TIME',
+                                  DateFormat('EEEE, MMMM d, yyyy').format(date),
+                                  subtitle:
+                                      '${_appointment?.startTime ?? ''} - ${_appointment?.endTime ?? ''} (${_appointment?.duration ?? '?'} min)',
+                                  iconData: Icons.access_time_rounded,
+                                ),
+                                const SizedBox(height: 10),
+                                _statusCard(
+                                    _appointment?.status ?? 'Scheduled'),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (_appointment?.notes != null &&
+                          _appointment!.notes!.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.shade50,
+                            border: Border.all(color: Colors.amber.shade200),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Notes / Cancellation Reason:',
+                                style: GoogleFonts.poppins(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.amber.shade900),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _appointment!.notes!,
+                                style: GoogleFonts.poppins(
+                                    fontSize: 11, color: Colors.amber.shade900),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+
+                      const SizedBox(height: 20),
+                      const Divider(
+                          height: 1, thickness: 1, color: Colors.black),
+                      const SizedBox(height: 16),
+
+                      // Payment Details Summary
+                      Text(
+                        'Payment Details',
+                        style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black),
+                      ),
+                      const SizedBox(height: 10),
+                      _paymentDetailRow(
+                          'Service Amount:', _appointment?.amount ?? 0),
+                      _paymentDetailRow(
+                          'Add-on Amount:', _appointment?.addOnsAmount ?? 0),
+                      _paymentDetailRow(
+                          'Service Tax (GST):', _appointment?.serviceTax ?? 0),
+                      _paymentDetailRow(
+                          'Platform Fee:', _appointment?.platformFee ?? 0),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 6),
+                        child: Divider(
+                            height: 1, thickness: 1, color: Colors.black12),
+                      ),
+                      _paymentDetailRow(
+                          'Total Amount:',
+                          _appointment?.finalAmount ??
+                              _appointment?.totalAmount ??
+                              _appointment?.amount ??
+                              0,
+                          bold: true),
+                      _paymentDetailRow(
+                          'Amount Paid:', _appointment?.amountPaid ?? 0),
+                      _paymentDetailRow('Amount Remaining:',
+                          _appointment?.amountRemaining ?? 0,
+                          color: Colors.red.shade800, bold: true),
+                      _paymentDetailRow('Payment Status:', 0,
+                          isStatusText: true,
+                          status: _getPaymentStatusText(_appointment!)),
+
+                      const SizedBox(height: 20),
+
+                      // Bottom Close Button
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 8),
+                            side: BorderSide(
+                                color: Colors.grey.shade400, width: 1),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8)),
+                            minimumSize: const Size(0, 0),
+                            backgroundColor: Colors.white,
+                          ),
+                          child: Text(
+                            'Close',
+                            style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: Colors.black,
+                                fontWeight: FontWeight.w600),
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  if (_appointment?.notes != null &&
-                      _appointment!.notes!.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.shade50,
-                        border: Border.all(color: Colors.amber.shade200),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Notes / Cancellation Reason:',
-                            style: GoogleFonts.poppins(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.amber.shade900),
+                ),
+
+                // ── TAB 2: Client History ──
+                _buildClientHistoryTab(),
+
+                // ── TAB 3: Invoice ──
+                _buildInvoiceTab(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildClientHistoryTab() {
+    if (_isLoadingHistory) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(40),
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    if (!_historyLoaded) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Text(
+            'Switch to this tab to load history',
+            style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey),
+          ),
+        ),
+      );
+    }
+
+    if (_clientHistory.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Text(
+            'No appointment history found for this client.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey),
+          ),
+        ),
+      );
+    }
+
+    // Filter
+    final filtered = _historyFilter == 'All'
+        ? _clientHistory
+        : _clientHistory.where((a) {
+            final s = (a.status ?? '').toLowerCase();
+            final f = _historyFilter.toLowerCase();
+            if (f == 'pending') return s == 'scheduled' || s == 'pending';
+            if (f == 'confirmed') return s == 'confirmed';
+            if (f == 'completed') return s.contains('completed');
+            if (f == 'cancelled') return s.contains('cancelled');
+            if (f == 'missed') return s == 'missed' || s == 'no_show';
+            return true;
+          }).toList();
+
+    // Count per filter
+    int _countFor(String filter) {
+      if (filter == 'All') return _clientHistory.length;
+      return _clientHistory.where((a) {
+        final s = (a.status ?? '').toLowerCase();
+        final f = filter.toLowerCase();
+        if (f == 'pending') return s == 'scheduled' || s == 'pending';
+        if (f == 'confirmed') return s == 'confirmed';
+        if (f == 'completed') return s.contains('completed');
+        if (f == 'cancelled') return s.contains('cancelled');
+        if (f == 'missed') return s == 'missed' || s == 'no_show';
+        return false;
+      }).length;
+    }
+
+    return Column(
+      children: [
+        // Filter chips row
+        Container(
+          height: 42,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: _historyFilters.map((f) {
+              final count = _countFor(f);
+              final isSelected = _historyFilter == f;
+              return Padding(
+                padding: const EdgeInsets.only(right: 6, top: 6, bottom: 6),
+                child: GestureDetector(
+                  onTap: () => setState(() => _historyFilter = f),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? const Color(0xFF3D1F3D)
+                          : Colors.transparent,
+                      border: Border.all(
+                          color: isSelected
+                              ? const Color(0xFF3D1F3D)
+                              : Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          f,
+                          style: GoogleFonts.poppins(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: isSelected ? Colors.white : Colors.black87,
                           ),
-                          const SizedBox(height: 4),
+                        ),
+                        if (count > 0 && f != 'All') ...[
+                          const SizedBox(width: 4),
                           Text(
-                            _appointment!.notes!,
+                            '$count',
                             style: GoogleFonts.poppins(
-                                fontSize: 11, color: Colors.amber.shade900),
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              color: isSelected
+                                  ? Colors.white70
+                                  : Colors.grey.shade600,
+                            ),
                           ),
                         ],
-                      ),
-                    ),
-                  ],
-
-                  const SizedBox(height: 20),
-                  const Divider(height: 1, thickness: 1, color: Colors.black),
-                  const SizedBox(height: 16),
-
-                  // Payment Details Summary
-                  Text(
-                    'Payment Details',
-                    style: GoogleFonts.poppins(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black),
-                  ),
-                  const SizedBox(height: 10),
-                  _paymentDetailRow(
-                      'Service Amount:', _appointment?.amount ?? 0),
-                  _paymentDetailRow(
-                      'Add-on Amount:', _appointment?.addOnsAmount ?? 0),
-                  _paymentDetailRow(
-                      'Service Tax (GST):', _appointment?.serviceTax ?? 0),
-                  _paymentDetailRow(
-                      'Platform Fee:', _appointment?.platformFee ?? 0),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 6),
-                    child:
-                        Divider(height: 1, thickness: 1, color: Colors.black12),
-                  ),
-                  _paymentDetailRow(
-                      'Total Amount:',
-                      _appointment?.finalAmount ??
-                          _appointment?.totalAmount ??
-                          _appointment?.amount ??
-                          0,
-                      bold: true),
-                  _paymentDetailRow(
-                      'Amount Paid:', _appointment?.amountPaid ?? 0),
-                  _paymentDetailRow(
-                      'Amount Remaining:', _appointment?.amountRemaining ?? 0,
-                      color: Colors.red.shade800, bold: true),
-                  _paymentDetailRow('Payment Status:', 0,
-                      isStatusText: true,
-                      status: _getPaymentStatusText(_appointment!)),
-
-                  const SizedBox(height: 20),
-
-                  // Bottom Close Button
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 8),
-                        side: BorderSide(color: Colors.grey.shade400, width: 1),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
-                        minimumSize: const Size(0, 0),
-                        backgroundColor: Colors.white,
-                      ),
-                      child: Text(
-                        'Close',
-                        style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            color: Colors.black,
-                            fontWeight: FontWeight.w600),
-                      ),
+                      ],
                     ),
                   ),
-                ],
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+
+        const Divider(height: 1, thickness: 1, color: Colors.black12),
+
+        // History list
+        Expanded(
+          child: filtered.isEmpty
+              ? Center(
+                  child: Text(
+                    'No ${_historyFilter.toLowerCase()} appointments',
+                    style:
+                        GoogleFonts.poppins(fontSize: 11, color: Colors.grey),
+                  ),
+                )
+              : ListView.separated(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  itemCount: filtered.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, i) {
+                    final appt = filtered[i];
+                    return _historyCard(appt);
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _historyCard(AppointmentModel appt) {
+    final date = appt.date;
+    final dateStr = date != null
+        ? '${_monthAbbr(date.month)} ${date.day}, ${date.year} • ${appt.startTime ?? ''}'
+        : '—';
+    final status = (appt.status ?? 'scheduled').toLowerCase();
+    final isPending = status == 'scheduled' || status == 'pending';
+    final isCompleted = status.contains('completed');
+    final isCancelled = status.contains('cancelled');
+    final isCurrent = appt.id == _appointment?.id;
+
+    Color chipBg;
+    Color chipText;
+    String chipLabel;
+    if (isPending) {
+      chipBg = const Color(0xFFF0EBF5);
+      chipText = const Color(0xFF5D3A7A);
+      chipLabel = 'pending';
+    } else if (isCompleted) {
+      chipBg = const Color(0xFF3D1F3D);
+      chipText = Colors.white;
+      chipLabel = status.contains('no') ? 'no pay' : 'completed';
+    } else if (isCancelled) {
+      chipBg = Colors.red.shade50;
+      chipText = Colors.red.shade700;
+      chipLabel = 'cancelled';
+    } else if (status == 'confirmed') {
+      chipBg = Colors.green.shade50;
+      chipText = Colors.green.shade700;
+      chipLabel = 'confirmed';
+    } else {
+      chipBg = Colors.grey.shade100;
+      chipText = Colors.grey.shade700;
+      chipLabel = status.replaceAll('_', ' ');
+    }
+
+    final serviceName = appt.serviceName ?? '—';
+    // For multi-service appointments, join all service item names
+    final items = appt.serviceItems;
+    final displayName = (items != null && items.isNotEmpty)
+        ? items.map((s) => s.serviceName ?? '—').join(', ')
+        : serviceName;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(
+          color: Colors.grey.shade200,
+        ),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  displayName,
+                  style: GoogleFonts.poppins(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  dateStr,
+                  style: GoogleFonts.poppins(
+                    fontSize: 10,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+            decoration: BoxDecoration(
+              color: chipBg,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              chipLabel,
+              style: GoogleFonts.poppins(
+                fontSize: 9.5,
+                fontWeight: FontWeight.w600,
+                color: chipText,
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  String _monthAbbr(int month) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+    return months[month - 1];
+  }
+
+  Widget _buildInvoiceTab() {
+    final status = (_appointment?.status ?? '').toLowerCase();
+    final isCompleted = status.contains('completed') ||
+        status.contains('paid') ||
+        status.contains('collected') ||
+        status.contains('success');
+
+    if (!isCompleted) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.receipt_long_outlined,
+                  size: 40, color: Colors.grey.shade300),
+              const SizedBox(height: 12),
+              Text(
+                'Invoice is only available for completed appointments.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                    fontSize: 11, color: Colors.grey.shade500),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_isLoadingInvoices) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(40),
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    if (!_invoicesLoaded) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Text(
+            'Switch to this tab to load invoice',
+            style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey),
+          ),
+        ),
+      );
+    }
+
+    if (_invoices.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.receipt_long_outlined,
+                  size: 40, color: Colors.grey.shade300),
+              const SizedBox(height: 12),
+              Text(
+                'No invoice found for this appointment.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                    fontSize: 11, color: Colors.grey.shade500),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final inv = _invoices.first;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Invoice',
+                      style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black)),
+                  Text('#${inv.invoiceNumber}',
+                      style: GoogleFonts.poppins(
+                          fontSize: 10.5, color: Colors.grey.shade600)),
+                ],
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: inv.paymentStatus.toLowerCase() == 'paid'
+                      ? const Color(0xFF3D1F3D)
+                      : Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  inv.paymentStatus.isEmpty ? 'Paid' : inv.paymentStatus,
+                  style: GoogleFonts.poppins(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: inv.paymentStatus.toLowerCase() == 'paid'
+                        ? Colors.white
+                        : Colors.orange.shade800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 10),
+          const Divider(height: 1, color: Colors.black12),
+          const SizedBox(height: 10),
+
+          // Client info
+          Row(
+            children: [
+              const Icon(Icons.person_outline_rounded,
+                  size: 13, color: Colors.grey),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(
+                  inv.clientInfo.fullName.isNotEmpty
+                      ? inv.clientInfo.fullName
+                      : (_appointment?.clientName ?? '—'),
+                  style: GoogleFonts.poppins(
+                      fontSize: 11, fontWeight: FontWeight.w600),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Text(
+                DateFormat('MMM d, yyyy').format(inv.createdAt),
+                style: GoogleFonts.poppins(
+                    fontSize: 10, color: Colors.grey.shade600),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Items
+          Text('Services',
+              style: GoogleFonts.poppins(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey.shade700,
+                  letterSpacing: 0.5)),
+          const SizedBox(height: 6),
+          ...inv.items.map((item) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    border: Border.all(color: Colors.grey.shade200),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(item.name,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.poppins(
+                                    fontSize: 11, fontWeight: FontWeight.w600)),
+                          ),
+                          const SizedBox(width: 8),
+                          Text('₹${item.totalPrice.toStringAsFixed(2)}',
+                              style: GoogleFonts.poppins(
+                                  fontSize: 11, fontWeight: FontWeight.w700)),
+                        ],
+                      ),
+                      if (item.addOns.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        ...item.addOns.map((a) => Padding(
+                              padding: const EdgeInsets.only(bottom: 2),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text('+ ${a.name}',
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.poppins(
+                                            fontSize: 9.5,
+                                            color: Colors.grey.shade600)),
+                                  ),
+                                  Text('₹${a.price.toStringAsFixed(2)}',
+                                      style: GoogleFonts.poppins(
+                                          fontSize: 9.5,
+                                          color: Colors.grey.shade700,
+                                          fontWeight: FontWeight.w500)),
+                                ],
+                              ),
+                            )),
+                      ],
+                    ],
+                  ),
+                ),
+              )),
+
+          const Divider(height: 18, color: Colors.black12),
+
+          // Totals
+          _invRow('Subtotal', inv.subtotal),
+          if (inv.taxAmount > 0)
+            _invRow('Tax (${inv.taxRate.toStringAsFixed(0)}%)', inv.taxAmount),
+          if (inv.platformFee > 0) _invRow('Platform Fee', inv.platformFee),
+          const Divider(height: 12, color: Colors.black12),
+          _invRow('Total', inv.totalAmount, bold: true),
+          if (inv.balance > 0)
+            _invRow('Balance Due', inv.balance,
+                bold: true, color: Colors.red.shade700),
+
+          const SizedBox(height: 10),
+
+          // Payment info
+          if (inv.paymentMethod.isNotEmpty)
+            Row(
+              children: [
+                const Icon(Icons.payments_outlined,
+                    size: 13, color: Colors.grey),
+                const SizedBox(width: 5),
+                Text('Paid via ${inv.paymentMethod}',
+                    style: GoogleFonts.poppins(
+                        fontSize: 10, color: Colors.grey.shade600)),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _invRow(String label, double value,
+      {bool bold = false, Color? color}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  color: color ?? Colors.black87,
+                  fontWeight: bold ? FontWeight.w700 : FontWeight.w400)),
+          Text('₹${value.toStringAsFixed(2)}',
+              style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  color: color ?? Colors.black,
+                  fontWeight: bold ? FontWeight.w700 : FontWeight.w500)),
         ],
       ),
     );
@@ -660,64 +1321,68 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
   }
 
   Widget _infoCard(IconData icon, String label, String value,
-      {String? subtitle, IconData? iconData}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.grey.shade400, width: 1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              border: Border.all(color: Colors.black12),
-              borderRadius: BorderRadius.circular(6),
+      {String? subtitle, IconData? iconData, VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: Colors.grey.shade400, width: 1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                border: Border.all(color: Colors.black12),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(icon, size: 16, color: Colors.black),
             ),
-            child: Icon(icon, size: 16, color: Colors.black),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label,
-                    style: GoogleFonts.poppins(
-                        fontSize: 8.5,
-                        color: Colors.grey.shade800,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5)),
-                Text(value,
-                    style: GoogleFonts.poppins(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black)),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 3),
-                  Row(
-                    children: [
-                      if (iconData != null) ...[
-                        Icon(iconData, size: 11, color: Colors.grey.shade700),
-                        const SizedBox(width: 4),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label,
+                      style: GoogleFonts.poppins(
+                          fontSize: 8.5,
+                          color: Colors.grey.shade800,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5)),
+                  Text(value,
+                      style: GoogleFonts.poppins(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black)),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        if (iconData != null) ...[
+                          Icon(iconData, size: 11, color: Colors.grey.shade700),
+                          const SizedBox(width: 4),
+                        ],
+                        Expanded(
+                            child: Text(subtitle,
+                                style: GoogleFonts.poppins(
+                                    fontSize: 10,
+                                    color: Colors.grey.shade700,
+                                    fontWeight: FontWeight.w500))),
                       ],
-                      Expanded(
-                          child: Text(subtitle,
-                              style: GoogleFonts.poppins(
-                                  fontSize: 10,
-                                  color: Colors.grey.shade700,
-                                  fontWeight: FontWeight.w500))),
-                    ],
-                  ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
