@@ -20,7 +20,7 @@ class MyApp extends StatelessWidget {
       splitScreenMode: true,
       builder: (context, child) {
         return MaterialApp(
-          title: 'GlowVita',
+          title: 'GlowVita Salon CRM',
           debugShowCheckedModeBanner: false,
           home: const SplashScreen(),
           theme: AppTheme.lightTheme,
@@ -72,7 +72,7 @@ class _SplashScreenState extends State<SplashScreen> {
           Center(
             child: Image.asset(
               'assets/images/logo.png',
-              width: screenSize.width * 0.6,
+              width: screenSize.width * 0.7,
             ),
           ),
         ],

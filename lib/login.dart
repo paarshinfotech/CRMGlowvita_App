@@ -130,6 +130,17 @@ class _LoginPageState extends State<Login> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(15.r),
+                          child: Image.asset(
+                            'assets/images/favicon.jpg',
+                            height: 45.h,
+                            width: 45.w,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        SizedBox(height: 20.h),
+
                         Text(
                           'Let’s Get Started',
                           style: GoogleFonts.poppins(
