@@ -11,6 +11,9 @@ import 'package:intl/intl.dart';
 import 'widgets/custom_drawer.dart';
 import 'services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'appointment_model.dart';
+import 'billing_invoice_model.dart';
+import 'widgets/customer_detail_popup.dart';
 
 class Client extends StatefulWidget {
   const Client({super.key});
@@ -552,8 +555,10 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                 const SizedBox(height: 12),
 
                 // Action buttons
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  alignment: WrapAlignment.center,
                   children: [
                     OutlinedButton.icon(
                       onPressed: () => Navigator.push(
@@ -575,7 +580,6 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                     ),
-                    const SizedBox(width: 10),
                     OutlinedButton.icon(
                       onPressed: () => _navigateAndAddCustomer(context),
                       icon: Icon(Icons.add,
@@ -593,7 +597,6 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                     ),
-                    const SizedBox(width: 10),
                     OutlinedButton.icon(
                       onPressed: _isLoading ? null : _loadCustomers,
                       icon: Icon(Icons.refresh,
@@ -809,7 +812,7 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                         const SizedBox(width: 12),
                         // Actions
                         SizedBox(
-                          width: 100,
+                          width: 160, // Increased from 130 to fix overflow
                           child: Text('Actions',
                               style: GoogleFonts.poppins(
                                   fontWeight: FontWeight.w600, fontSize: 12)),
@@ -1043,11 +1046,25 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                                       const SizedBox(width: 12),
                                       // Actions
                                       SizedBox(
-                                        width: 100,
+                                        width:
+                                            160, // Increased from 130 to fix overflow
                                         child: Row(
                                           mainAxisAlignment:
                                               MainAxisAlignment.start,
                                           children: [
+                                            IconButton(
+                                              icon: const Icon(
+                                                  Icons.visibility_outlined,
+                                                  size: 18),
+                                              padding: const EdgeInsets.all(8),
+                                              constraints: const BoxConstraints(
+                                                  minWidth: 40, minHeight: 40),
+                                              onPressed: () =>
+                                                  _showCustomerDetails(
+                                                      context, c),
+                                              tooltip: 'View Details',
+                                            ),
+                                            const SizedBox(width: 4),
                                             IconButton(
                                               icon: const Icon(
                                                   Icons.edit_outlined,
@@ -1127,293 +1144,6 @@ class _InfoCard extends StatelessWidget {
                     color: Colors.grey[600], fontSize: 10.sp)),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class CustomerDetailPopup extends StatefulWidget {
-  final Customer customer;
-
-  const CustomerDetailPopup({Key? key, required this.customer})
-      : super(key: key);
-
-  @override
-  _CustomerDetailPopupState createState() => _CustomerDetailPopupState();
-}
-
-class _CustomerDetailPopupState extends State<CustomerDetailPopup> {
-  int _selectedTabIndex = 0;
-  final List<String> _tabs = [
-    'Overview',
-    'Client Details',
-    'Appointments',
-    'Orders',
-    'Reviews',
-    'Payment History',
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-      elevation: 0,
-      backgroundColor: Colors.transparent,
-      child: _buildContent(context),
-    );
-  }
-
-  Widget _buildContent(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8.0),
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.85,
-        height: 550,
-        color: Colors.white,
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                _buildHeader(),
-                const Divider(
-                    height: 1, thickness: 1, color: Color(0xFFE0E0E0)),
-                Expanded(
-                  child: Row(
-                    children: [
-                      _buildSideMenu(),
-                      const VerticalDivider(
-                          width: 1, thickness: 1, color: Color(0xFFE0E0E0)),
-                      _buildMainContent(),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            Positioned(
-              right: 12.0,
-              top: 12.0,
-              child: InkWell(
-                onTap: () => Navigator.of(context).pop(),
-                child: const Icon(Icons.close, color: Colors.black54),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 20, 50, 20),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300, width: 1.5),
-            ),
-            child: const Icon(Icons.person_outline,
-                size: 30, color: Colors.black54),
-          ),
-          const SizedBox(width: 16),
-          Text(
-            widget.customer.fullName,
-            style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87),
-          ),
-          const Spacer(),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.black87,
-              borderRadius: BorderRadius.circular(4),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSideMenu() {
-    return SizedBox(
-      width: 140,
-      child: ListView.builder(
-        padding: EdgeInsets.zero,
-        itemCount: _tabs.length,
-        itemBuilder: (context, index) {
-          final isSelected = _selectedTabIndex == index;
-          return Material(
-            color: isSelected ? const Color(0xFF343A40) : Colors.white,
-            child: InkWell(
-              onTap: () => setState(() => _selectedTabIndex = index),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-                child: Text(
-                  _tabs[index],
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : Colors.black87,
-                    fontWeight:
-                        isSelected ? FontWeight.bold : FontWeight.normal,
-                    fontSize: 15,
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  // UPDATED: This method now switches between different content widgets
-  Widget _buildMainContent() {
-    switch (_selectedTabIndex) {
-      case 0:
-        return _buildOverviewContent();
-      case 1:
-        return _buildClientDetailsContent();
-      default:
-        return Expanded(
-          child: Center(
-            child: Text(
-              '${_tabs[_selectedTabIndex]} Page',
-              style: const TextStyle(fontSize: 18, color: Colors.grey),
-            ),
-          ),
-        );
-    }
-  }
-
-  Widget _buildOverviewContent() {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(24.0),
-        color: const Color(0xFFFAFAFA),
-        child: Wrap(
-          spacing: 20.0,
-          runSpacing: 20.0,
-          alignment: WrapAlignment.start,
-          children: [
-            _buildMetricCard('₹ ', 'Total Sale'),
-            _buildMetricCard('0', 'Total Visits'),
-            _buildMetricCard('0', 'Completed'),
-            _buildMetricCard('0', 'Cancelled'),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // NEW: Widget for the Client Details view
-  Widget _buildClientDetailsContent() {
-    final c = widget.customer;
-
-    return Expanded(
-      child: Container(
-        color: const Color(0xFFFAFAFA),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Client Details',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 24),
-              _buildSectionHeader('Basic info'),
-              _buildDetailRow('Full Name', c.fullName),
-              _buildDetailRow('Email ID', c.email ?? ''),
-              _buildDetailRow('Phone Number', c.mobile),
-              _buildDetailRow('Date of Birth', c.dateOfBirth ?? ''),
-              _buildDetailRow('Gender', c.gender ?? ''),
-              const SizedBox(height: 32),
-              _buildSectionHeader('Additional info'),
-              _buildDetailRow('Country', c.country ?? ''),
-              _buildDetailRow('Occupation', c.occupation ?? ''),
-              _buildDetailRow('Address', c.address ?? ''),
-              _buildDetailRow('Note', c.note ?? ''),
-              _buildDetailRow('Status', c.status),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // NEW: Helper widget for section headers
-  Widget _buildSectionHeader(String title) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.black54,
-          ),
-        ),
-        const Divider(height: 16, thickness: 1, color: Color(0xFFE0E0E0)),
-      ],
-    );
-  }
-
-  // NEW: Helper widget for a label-value pair
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value.isEmpty ? '—' : value, // Use a dash for empty values
-            style: const TextStyle(
-                fontSize: 16,
-                height: 1.4,
-                color: Colors.black87,
-                fontWeight: FontWeight.w500),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMetricCard(String value, String label) {
-    return Container(
-      width: 190,
-      height: 90,
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(4.0),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-          ),
-        ],
       ),
     );
   }

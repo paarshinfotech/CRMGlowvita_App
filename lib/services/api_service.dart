@@ -169,11 +169,11 @@ class StaffMember {
 }
 
 class ApiService {
-  static const String baseUrl = 'https://partners.v2winonline.com/api';
+  static const String baseUrl = 'https://partners.glowvitasalon.com/api';
   static const String clientsEndpoint = '/crm/clients';
   static const String staffEndpoint = '/crm/staff';
   static const String servicesEndpoint = '/crm/services';
-  static const String adminBaseUrl = 'https://admin.v2winonline.com/api';
+  static const String adminBaseUrl = 'https://admin.glowvitasalon.com/api';
   static const String productCategoriesEndpoint = '/admin/product-categories';
 
   // Get auth token from shared preferences

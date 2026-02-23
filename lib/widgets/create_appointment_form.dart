@@ -9,18 +9,14 @@ import '../customer_model.dart';
 import '../calender.dart';
 import '../services/api_service.dart';
 import '../appointment_model.dart';
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:io' show HttpClient, X509Certificate;
-import 'package:http/io_client.dart' as http_io;
 
-class Client {
+class FormClient {
   final String name;
   final String email;
   final String mobile;
   final Customer customer;
 
-  const Client({
+  const FormClient({
     required this.name,
     required this.email,
     required this.mobile,
@@ -72,13 +68,8 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
   // Client search (Autocomplete)
   final TextEditingController _clientSearchCtrl = TextEditingController();
 
-  // Home Service fields
-  final TextEditingController _homeAddressCtrl = TextEditingController();
-  final TextEditingController _cityCtrl = TextEditingController();
-  final TextEditingController _pincodeCtrl = TextEditingController();
-
-  // Wedding Service fields
-  final TextEditingController _venueAddressCtrl = TextEditingController();
+  // No longer needed: Home Service fields
+  // No longer needed: Wedding Service fields
 
   // Auto-calculated fields (kept as text for simple UI)
   final TextEditingController _amountCtrl = TextEditingController();
@@ -90,17 +81,12 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
   // Notes
   final TextEditingController _notesCtrl = TextEditingController();
 
-  Client? _selectedClient;
+  FormClient? _selectedClient;
   StaffMember? _selectedStaff;
   List<StaffMember> _staff = [];
   bool _isLoadingStaff = true;
 
-  Service? _selectedService;
-  List<Service> _availableServices = [];
-  bool _isLoadingServices = true;
-
-  WeddingPackage? _selectedWeddingPackage;
-  List<WeddingPackage> _weddingPackages = [];
+  // No longer needed: WeddingPackage state
 
   List<QueuedService> _queuedServices = [];
   bool _isSaving = false;
@@ -108,16 +94,16 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
   List<AddOn> _allAddOns = [];
   List<AddOn> _availableAddOns = [];
   List<AddOn> _selectedAddOns = [];
-  bool _isLoadingAddOns = true;
 
-  // Appointment type: 'regular', 'wedding', 'home'
-  String _appointmentType = 'regular';
+  List<Service> _availableServices = [];
+  bool _isLoadingServices = true;
+  Service? _selectedService;
 
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _startTime = TimeOfDay.now();
 
   // Initialize as empty lists
-  List<Client> _clients = [];
+  List<FormClient> _clients = [];
 
   @override
   void initState() {
@@ -133,33 +119,13 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
     // Basic shared data
     await Future.wait([
       _loadClients(),
-      if (_appointmentType != 'wedding') _loadStaff(),
-      if (_appointmentType != 'wedding') _loadServices(),
+      _loadStaff(),
+      _loadServices(),
       _loadAddOns(),
     ]);
 
-    if (_appointmentType == 'wedding') {
-      await _loadWeddingPackages();
-    }
-
     if (widget.existingAppointment != null && _queuedServices.isEmpty) {
       _prefillForm();
-    }
-  }
-
-  Future<void> _loadWeddingPackages() async {
-    setState(() => _isLoadingServices = true);
-    try {
-      final packages = await ApiService.getWeddingPackages();
-      setState(() {
-        _weddingPackages = packages;
-        // Map wedding packages to Service model for the dropdown?
-        // Actually the image shows a SEPARATE "Wedding Package" dropdown.
-        _isLoadingServices = false;
-      });
-    } catch (e) {
-      debugPrint('Wedding packages load error: $e');
-      setState(() => _isLoadingServices = false);
     }
   }
 
@@ -177,21 +143,11 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
       _discountCtrl.text = appt.discount?.toString() ?? '0';
       _taxCtrl.text = (appt.serviceTax ?? 0).toString();
 
-      // Prefill Type
-      if (appt.isHomeService == true || appt.mode == 'home') {
-        _appointmentType = 'home';
-        _homeAddressCtrl.text = appt.homeServiceLocation?.address ?? '';
-      } else if (appt.isWeddingService == true || appt.mode == 'wedding') {
-        _appointmentType = 'wedding';
-        _venueAddressCtrl.text = appt.weddingPackageDetails?.packageName ??
-            ''; // This might need better mapping
-      } else {
-        _appointmentType = 'regular';
-      }
+      // Type is now always regular for new appointments
 
       // Prefill Client
       if (appt.client != null) {
-        _selectedClient = _clients.cast<Client?>().firstWhere(
+        _selectedClient = _clients.cast<FormClient?>().firstWhere(
             (c) => c?.customer.id == appt.client!.id,
             orElse: () => null);
       }
@@ -271,7 +227,7 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
       final apiCustomers = await ApiService.getClients();
       setState(() {
         _clients = apiCustomers
-            .map((customer) => Client(
+            .map((customer) => FormClient(
                   name: customer.fullName,
                   email: customer.email ?? '',
                   mobile: customer.mobile,
@@ -290,42 +246,16 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
     }
   }
 
-  http_io.IOClient _cookieClient() {
-    final ioClient = HttpClient();
-    ioClient.badCertificateCallback =
-        (X509Certificate cert, String host, int port) => true;
-    return http_io.IOClient(ioClient);
-  }
-
   Future<void> _loadStaff() async {
     setState(() => _isLoadingStaff = true);
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token') ?? '';
-      if (token.isEmpty) throw Exception('No login token');
-
-      final client = _cookieClient();
-      final response = await client.get(
-        Uri.parse('https://partners.v2winonline.com/api/crm/staff'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          "Cookie": "crm_access_token=$token",
-        },
-      );
-      client.close();
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
+      final fetchedStaff = await ApiService.getStaff();
+      if (mounted) {
         setState(() {
-          _staff = data.map<StaffMember>((item) {
-            // Updated to use StaffMember.fromJson to ensure consistency
-            return StaffMember.fromJson(item as Map<String, dynamic>);
-          }).toList();
+          _staff = fetchedStaff;
+          _isLoadingStaff = false;
         });
-      } else {
-        throw Exception('Failed to load staff');
       }
     } catch (e) {
       debugPrint('Staff load error: $e');
@@ -335,10 +265,8 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
               content: Text('Failed to load staff'),
               backgroundColor: Colors.red),
         );
+        setState(() => _isLoadingStaff = false);
       }
-      setState(() => _staff = []);
-    } finally {
-      setState(() => _isLoadingStaff = false);
     }
   }
 
@@ -366,24 +294,18 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
   }
 
   Future<void> _loadAddOns() async {
-    setState(() => _isLoadingAddOns = true);
     try {
       List<AddOn> fetchedAddOns = await ApiService.getAddOns();
       if (mounted) {
         setState(() {
           _allAddOns = fetchedAddOns;
-          _isLoadingAddOns = false;
         });
       }
     } catch (e) {
       print('Error loading add-ons: $e');
-      if (mounted) {
-        setState(() => _isLoadingAddOns = false);
-      }
     }
   }
 
-  Future<void> _refreshStaff() async => await _loadStaff();
   Future<void> _refreshClients() async => await _loadClients();
 
   @override
@@ -395,71 +317,7 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
     _taxCtrl.dispose();
     _totalCtrl.dispose();
     _durationCtrl.dispose();
-    _homeAddressCtrl.dispose();
-    _cityCtrl.dispose();
-    _pincodeCtrl.dispose();
-    _venueAddressCtrl.dispose();
     super.dispose();
-  }
-
-  void _onWeddingPackageSelected(WeddingPackage? pkg) {
-    setState(() {
-      _selectedWeddingPackage = pkg;
-      _discountCtrl.text = '0';
-
-      // Remove existing services that were from a package
-      _queuedServices.removeWhere((qs) => qs.isFromPackage);
-
-      if (pkg != null && pkg.services != null) {
-        DateTime currentStartTime = _combine(_selectedDate, _startTime);
-
-        for (var sItem in pkg.services!) {
-          final serviceId = sItem['serviceId'];
-          final serviceName = sItem['serviceName'];
-
-          // Find service in available services or create fallback
-          final service = _availableServices.firstWhere(
-            (s) => s.id == serviceId,
-            orElse: () => Service(
-              id: serviceId,
-              name: serviceName,
-              price: (sItem['price'] as num?)?.toInt(),
-              duration: (sItem['duration'] as num?)?.toInt(),
-            ),
-          );
-
-          // Find a default staff if available
-          StaffMember? staff;
-          if (pkg.assignedStaff != null && pkg.assignedStaff!.isNotEmpty) {
-            final staffId = pkg.assignedStaff![0];
-            staff = _staff.firstWhere(
-              (s) => s.id == staffId,
-              orElse: () => _staff.isNotEmpty
-                  ? _staff[0]
-                  : StaffMember(fullName: 'Unknown'),
-            );
-          } else if (_staff.isNotEmpty) {
-            staff = _staff[0];
-          } else {
-            staff = StaffMember(fullName: 'No Staff');
-          }
-
-          final duration = service.duration ?? 0;
-          final endTime = currentStartTime.add(Duration(minutes: duration));
-
-          _queuedServices.add(QueuedService(
-            service: service,
-            staff: staff!,
-            startTime: currentStartTime,
-            endTime: endTime,
-            isFromPackage: true,
-          ));
-
-          currentStartTime = endTime;
-        }
-      }
-      _recalculatePricingAndTimes();
-    });
   }
 
   // -------- Helpers --------
@@ -482,12 +340,7 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
     double totalAmount = 0;
     int totalDuration = 0;
 
-    if (_appointmentType == 'wedding' && _selectedWeddingPackage != null) {
-      totalAmount += (_selectedWeddingPackage!.discountedPrice ??
-          _selectedWeddingPackage!.totalPrice ??
-          0);
-      totalDuration += _selectedWeddingPackage!.duration ?? 0;
-    }
+    if (_queuedServices.isEmpty) return;
 
     for (var qs in _queuedServices) {
       // Only add price/duration if NOT part of the package (custom/extra services)
@@ -667,12 +520,6 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
       return sTotal;
     });
 
-    if (_appointmentType == 'wedding' && _selectedWeddingPackage != null) {
-      total += (_selectedWeddingPackage!.discountedPrice ??
-          _selectedWeddingPackage!.totalPrice ??
-          0);
-    }
-
     return total;
   }
 
@@ -683,10 +530,6 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
             sum +
             (item.service.duration ?? 0) +
             item.selectedAddOns.fold<int>(0, (s, a) => s + (a.duration ?? 0)));
-
-    if (_appointmentType == 'wedding' && _selectedWeddingPackage != null) {
-      duration += _selectedWeddingPackage!.duration ?? 0;
-    }
 
     return duration;
   }
@@ -820,8 +663,8 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
     // Find the newly added client and select it
     final newClient = _clients.firstWhere(
       (client) => client.customer.id == result.id,
-      orElse: () => Client(
-        name: result.fullName ?? 'Unknown',
+      orElse: () => FormClient(
+        name: result.fullName,
         email: result.email ?? '',
         mobile: result.mobile,
         customer: result,
@@ -880,15 +723,13 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
         "paymentStatus":
             widget.existingAppointment?.status == 'paid' ? 'paid' : 'pending',
         "status": "scheduled",
-        "mode": _appointmentType == 'home' ? 'home' : 'offline',
-        "appointmentType": _appointmentType, // 'regular', 'home', 'wedding'
-        "homeAddress": _appointmentType == 'home' ? _homeAddressCtrl.text : "",
-        "city": _appointmentType == 'home' ? _cityCtrl.text : "",
-        "pincode": _appointmentType == 'home' ? _pincodeCtrl.text : "",
-        "weddingPackage":
-            _appointmentType == 'wedding' ? _selectedWeddingPackage?.id : null,
-        "venueAddress":
-            _appointmentType == 'wedding' ? _venueAddressCtrl.text : "",
+        "mode": 'offline',
+        "appointmentType": 'regular',
+        "homeAddress": "",
+        "city": "",
+        "pincode": "",
+        "weddingPackage": null,
+        "venueAddress": "",
         "isMultiService": _queuedServices.length > 1,
         "notes": _notesCtrl.text,
         "internalNotes": "",
@@ -1020,67 +861,6 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
     );
   }
 
-  // Helper to build the appointment type cards
-  Widget _buildTypeTab(String label, String type, IconData icon) {
-    final bool isSelected = _appointmentType == type;
-
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _appointmentType = type;
-            // Clear selections when switching types as services/staff might differ
-            _selectedService = null;
-            _selectedStaff = null;
-            _selectedAddOns = [];
-            _queuedServices = [];
-          });
-          // Re-load data based on new type
-          _loadData();
-        },
-        child: Container(
-          padding: EdgeInsets.symmetric(vertical: 12.h),
-          decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF2E66E7) : Colors.white,
-            borderRadius: BorderRadius.circular(10.r),
-            border: Border.all(
-              color: isSelected ? const Color(0xFF2E66E7) : Colors.grey[300]!,
-              width: 1,
-            ),
-            boxShadow: [
-              if (isSelected)
-                BoxShadow(
-                  color: const Color(0xFF2E66E7).withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 20,
-                color: isSelected ? Colors.white : Colors.grey[600],
-              ),
-              SizedBox(height: 6.h),
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  fontSize: 7.5.sp,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                  color: isSelected ? Colors.white : Colors.grey[700],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final dateText = DateFormat('dd/MM/yyyy')
@@ -1127,124 +907,6 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                 ),
                 SizedBox(height: 12.h),
 
-                // Appointment Type Cards
-                Row(
-                  children: [
-                    _buildTypeTab('Regular (In-Salon)', 'regular', Icons.chair),
-                    SizedBox(width: 8.w),
-                    _buildTypeTab('Home Service', 'home', Icons.home),
-                    SizedBox(width: 8.w),
-                    _buildTypeTab(
-                        'Wedding Service', 'wedding', Icons.favorite_border),
-                  ],
-                ),
-                SizedBox(height: 16.h),
-
-                // Wedding Service Fields (Conditional)
-                if (_appointmentType == 'wedding') ...[
-                  Text('Wedding Package *',
-                      style: GoogleFonts.poppins(
-                          fontSize: 8.sp, fontWeight: FontWeight.w600)),
-                  SizedBox(height: 6.h),
-                  DropdownButtonFormField<WeddingPackage>(
-                    value: _selectedWeddingPackage,
-                    isExpanded: true,
-                    iconEnabledColor: const Color(0xFFE91E63), // Pink
-                    decoration:
-                        _inputDecoration(label: 'Select a wedding package'),
-                    style: GoogleFonts.poppins(
-                        fontSize: 9.sp, color: const Color(0xFFE91E63)),
-                    items: _weddingPackages
-                        .map((pkg) => DropdownMenuItem(
-                              value: pkg,
-                              child: Text(
-                                '${pkg.name} (₹${pkg.discountedPrice ?? pkg.totalPrice})',
-                                style: TextStyle(
-                                    fontSize: 10.sp,
-                                    color: const Color(0xFFE91E63)),
-                              ),
-                            ))
-                        .toList(),
-                    onChanged: (pkg) {
-                      _onWeddingPackageSelected(pkg);
-                    },
-                  ),
-                  SizedBox(height: 4.h),
-                  Text(
-                    'Select a predefined package to auto-fill details',
-                    style: GoogleFonts.poppins(
-                        fontSize: 7.sp, color: Colors.grey[600]),
-                  ),
-                  SizedBox(height: 12.h),
-                  Text('Venue Address *',
-                      style: GoogleFonts.poppins(
-                          fontSize: 8.sp, fontWeight: FontWeight.w600)),
-                  SizedBox(height: 6.h),
-                  TextFormField(
-                    controller: _venueAddressCtrl,
-                    maxLines: 3,
-                    decoration: _inputDecoration(label: 'Enter venue address'),
-                    style: GoogleFonts.poppins(fontSize: 9.sp),
-                  ),
-                  SizedBox(height: 16.h),
-                ],
-
-                // Home Service Fields (Conditional)
-                if (_appointmentType == 'home') ...[
-                  Text('Home Address *',
-                      style: GoogleFonts.poppins(
-                          fontSize: 8.sp, fontWeight: FontWeight.w600)),
-                  SizedBox(height: 6.h),
-                  TextFormField(
-                    controller: _homeAddressCtrl,
-                    maxLines: 3,
-                    decoration: _inputDecoration(label: 'Enter full address'),
-                    style: GoogleFonts.poppins(fontSize: 9.sp),
-                  ),
-                  SizedBox(height: 10.h),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('City',
-                                style: GoogleFonts.poppins(
-                                    fontSize: 8.sp,
-                                    fontWeight: FontWeight.w600)),
-                            SizedBox(height: 4.h),
-                            TextFormField(
-                              controller: _cityCtrl,
-                              decoration: _inputDecoration(label: 'City'),
-                              style: GoogleFonts.poppins(fontSize: 9.sp),
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(width: 8.w),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Pincode',
-                                style: GoogleFonts.poppins(
-                                    fontSize: 8.sp,
-                                    fontWeight: FontWeight.w600)),
-                            SizedBox(height: 4.h),
-                            TextFormField(
-                              controller: _pincodeCtrl,
-                              keyboardType: TextInputType.number,
-                              decoration: _inputDecoration(label: 'Pincode'),
-                              style: GoogleFonts.poppins(fontSize: 9.sp),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 16.h),
-                ],
-
                 // Client (search + add)
                 Text('Client *',
                     style: GoogleFonts.poppins(
@@ -1253,7 +915,7 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                 Row(
                   children: [
                     Expanded(
-                      child: Autocomplete<Client>(
+                      child: Autocomplete<FormClient>(
                         optionsBuilder: (value) {
                           final q = value.text.trim().toLowerCase();
                           if (q.isEmpty) return _clients;
@@ -1443,6 +1105,48 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Staff Selection
+                    Text('Staff *',
+                        style: TextStyle(
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[600])),
+                    SizedBox(height: 6.h),
+                    DropdownButtonFormField<StaffMember>(
+                      value: _selectedStaff,
+                      isExpanded: true,
+                      decoration: _inputDecoration(label: '').copyWith(
+                        hintText: _isLoadingStaff
+                            ? 'Loading staff...'
+                            : 'Select staff',
+                      ),
+                      items: _staff
+                          .map((staff) => DropdownMenuItem(
+                                value: staff,
+                                child: Text(
+                                  staff.fullName ?? 'Unknown',
+                                  style: TextStyle(fontSize: 10.sp),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ))
+                          .toList(),
+                      onChanged: (staff) {
+                        setState(() {
+                          _selectedStaff = staff;
+                          if (_queuedServices.length == 1 && staff != null) {
+                            _queuedServices[0] = QueuedService(
+                              service: _queuedServices[0].service,
+                              staff: staff,
+                              startTime: _queuedServices[0].startTime,
+                              endTime: _queuedServices[0].endTime,
+                              selectedAddOns: _queuedServices[0].selectedAddOns,
+                            );
+                          }
+                        });
+                      },
+                    ),
+                    SizedBox(height: 12.h),
+
                     // Service Selection
                     Text('Service *',
                         style: TextStyle(
@@ -1524,72 +1228,6 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                         ),
                       ],
                     ),
-                    SizedBox(height: 12.h),
-                    // Staff Selection
-                    Text('Staff *',
-                        style: TextStyle(
-                            fontSize: 10.sp,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey[600])),
-                    SizedBox(height: 6.h),
-                    DropdownButtonFormField<StaffMember>(
-                      value: _selectedStaff,
-                      isExpanded: true,
-                      decoration: _inputDecoration(label: '').copyWith(
-                        hintText: _isLoadingStaff
-                            ? 'Loading staff...'
-                            : 'Select staff',
-                      ),
-                      items: (_appointmentType == 'wedding' &&
-                              _selectedWeddingPackage != null)
-                          ? _staff
-                              .where((s) {
-                                final assignedStaff =
-                                    _selectedWeddingPackage!.assignedStaff;
-                                if (assignedStaff == null) return true;
-                                return assignedStaff.any((assigned) {
-                                  if (assigned is String)
-                                    return assigned == s.id;
-                                  if (assigned is Map)
-                                    return assigned['_id'] == s.id ||
-                                        assigned['id'] == s.id;
-                                  return false;
-                                });
-                              })
-                              .map((staff) => DropdownMenuItem(
-                                    value: staff,
-                                    child: Text(
-                                      staff.fullName ?? 'Unknown',
-                                      style: TextStyle(fontSize: 10.sp),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ))
-                              .toList()
-                          : _staff
-                              .map((staff) => DropdownMenuItem(
-                                    value: staff,
-                                    child: Text(
-                                      staff.fullName ?? 'Unknown',
-                                      style: TextStyle(fontSize: 10.sp),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ))
-                              .toList(),
-                      onChanged: (staff) {
-                        setState(() {
-                          _selectedStaff = staff;
-                          if (_queuedServices.length == 1 && staff != null) {
-                            _queuedServices[0] = QueuedService(
-                              service: _queuedServices[0].service,
-                              staff: staff,
-                              startTime: _queuedServices[0].startTime,
-                              endTime: _queuedServices[0].endTime,
-                              selectedAddOns: _queuedServices[0].selectedAddOns,
-                            );
-                          }
-                        });
-                      },
-                    ),
                   ],
                 ),
 
@@ -1600,7 +1238,7 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Step 1: Select service ·\n Step 2: Select staff ·\n Step 3: Click + to add',
+                      'Step 1: Select staff ·\n Step 2: Select service ·\n Step 3: Click + to add',
                       style: TextStyle(fontSize: 8.sp, color: Colors.grey[500]),
                     ),
                     Text(
@@ -1843,7 +1481,7 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                                   Theme.of(context).primaryColor,
                                   Theme.of(context)
                                       .primaryColor
-                                      .withOpacity(0.5)
+                                      .withValues(alpha: 0.5)
                                 ],
                                 begin: Alignment.centerLeft,
                                 end: Alignment.centerRight,
@@ -1940,10 +1578,10 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                 SizedBox(height: 12.h),
 
                 // Pricing Row (Compact)
+                // Pricing Row 1: Amount & Discount
                 Row(
                   children: [
                     Expanded(
-                      flex: 2,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -1960,9 +1598,8 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                         ],
                       ),
                     ),
-                    SizedBox(width: 4.w),
+                    SizedBox(width: 8.w),
                     Expanded(
-                      flex: 2,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -1979,7 +1616,14 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                         ],
                       ),
                     ),
-                    SizedBox(width: 4.w),
+                  ],
+                ),
+
+                SizedBox(height: 12.h),
+
+                // Pricing Row 2: Tax & Total Amount
+                Row(
+                  children: [
                     Expanded(
                       flex: 1,
                       child: Column(
@@ -1998,7 +1642,7 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                         ],
                       ),
                     ),
-                    SizedBox(width: 4.w),
+                    SizedBox(width: 8.w),
                     Expanded(
                       flex: 2,
                       child: Column(

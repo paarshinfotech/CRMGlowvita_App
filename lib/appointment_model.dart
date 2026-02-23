@@ -19,6 +19,7 @@ class AppointmentModel {
   final String? mode;
   final AppointmentClient? client;
   final AppointmentStaff? staff;
+  final String? paymentStatus;
 
   // New fields
   final String? notes;
@@ -72,6 +73,7 @@ class AppointmentModel {
     this.addOns,
     this.serviceTax,
     this.platformFee,
+    this.paymentStatus,
   });
 
   factory AppointmentModel.fromJson(Map<String, dynamic> json) {
@@ -125,6 +127,7 @@ class AppointmentModel {
               .map((e) => AddOn.fromJson(Map<String, dynamic>.from(e)))
               .toList()
           : null,
+      paymentStatus: json['paymentStatus'],
     );
   }
 }
