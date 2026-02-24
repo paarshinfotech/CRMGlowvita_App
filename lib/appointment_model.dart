@@ -38,6 +38,7 @@ class AppointmentModel {
   final List<AddOn>? addOns;
   final double? serviceTax;
   final double? platformFee;
+  final String? venueAddress;
 
   AppointmentModel({
     this.id,
@@ -73,6 +74,7 @@ class AppointmentModel {
     this.addOns,
     this.serviceTax,
     this.platformFee,
+    this.venueAddress,
     this.paymentStatus,
   });
 
@@ -127,6 +129,9 @@ class AppointmentModel {
               .map((e) => AddOn.fromJson(Map<String, dynamic>.from(e)))
               .toList()
           : null,
+      serviceTax: (json['serviceTax'] as num?)?.toDouble(),
+      platformFee: (json['platformFee'] as num?)?.toDouble(),
+      venueAddress: json['venueAddress'],
       paymentStatus: json['paymentStatus'],
     );
   }

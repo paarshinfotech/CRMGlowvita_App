@@ -10,6 +10,7 @@ import 'services/api_service.dart';
 import 'appointment_model.dart';
 import 'services/api_service.dart';
 import 'widgets/collect_payment_dialog.dart';
+import 'widgets/appointment_detail_dialog.dart';
 
 extension StringExtension on String {
   String capitalize() {
@@ -399,173 +400,238 @@ class _AppointmentState extends State<Appointment>
 
     final items = appt.serviceItems ?? [];
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    return InkWell(
+      onTap: () {
+        showDialog(
+          context: context,
+          builder: (context) => AppointmentDetailDialog(
+            appointmentId: appt.id!,
           ),
-        ],
-        border: Border.all(color: Colors.grey.shade100),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header: Client & Status
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(appt.clientName ?? 'Unknown Client',
-                          style: cardStyle.copyWith(
-                              fontSize: 15, fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 2),
-                      Row(
+        ).then((_) => _fetchAppointments());
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          border: Border.all(color: Colors.grey.shade100),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header: Client & Status
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(appt.clientName ?? 'Unknown Client',
+                            style: cardStyle.copyWith(
+                                fontSize: 15, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Icon(Icons.calendar_today,
+                                size: 11, color: Colors.grey.shade500),
+                            const SizedBox(width: 4),
+                            Text('$dateStr • $timeStr', style: subStyle),
+                          ],
+                        ),
+                        if (appt.isWeddingService == true) ...[
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.pink.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                  color: Colors.pink.withOpacity(0.3)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.auto_awesome,
+                                    size: 12, color: Colors.pink),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Wedding',
+                                  style: GoogleFonts.poppins(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.pink),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  _buildStatusTag(appt.status ?? 'Schedule'),
+                ],
+              ),
+            ),
+
+            // Services Section
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              color: Colors.grey.shade50,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('SERVICES & STAFF',
+                      style: subStyle.copyWith(
+                          fontSize: 9,
+                          letterSpacing: 1,
+                          fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 8),
+                  if (appt.isWeddingService == true &&
+                      appt.weddingPackageDetails != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Icon(Icons.calendar_today,
-                              size: 11, color: Colors.grey.shade500),
-                          const SizedBox(width: 4),
-                          Text('$dateStr • $timeStr', style: subStyle),
+                          Expanded(
+                            child: Text(
+                              appt.weddingPackageDetails?.packageName ??
+                                  'Wedding Package',
+                              style: cardStyle.copyWith(
+                                  fontSize: 13.5, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                          Text(
+                            'Wedding Team',
+                            style: subStyle.copyWith(
+                                fontSize: 12,
+                                color: Theme.of(context).primaryColor),
+                          ),
                         ],
                       ),
+                    )
+                  else
+                    ...items.isEmpty
+                        ? [Text(appt.serviceName ?? '—', style: cardStyle)]
+                        : items.map((item) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      '${item.serviceName} (${item.duration} min)',
+                                      style: cardStyle.copyWith(fontSize: 12.5),
+                                    ),
+                                  ),
+                                  Text(
+                                    item.staffName ?? '—',
+                                    style: subStyle.copyWith(
+                                        fontSize: 12,
+                                        color: Theme.of(context).primaryColor),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                ],
+              ),
+            ),
+
+            // Footer: Payment & Actions
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  _buildPaymentTag(appt),
+                  const Spacer(),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      RichText(
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: 'Paid: ',
+                              style: subStyle.copyWith(fontSize: 10),
+                            ),
+                            TextSpan(
+                              text:
+                                  '₹${appt.amountPaid?.toStringAsFixed(2) ?? '0.00'}',
+                              style: cardStyle.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                  color: Colors.green.shade700),
+                            ),
+                          ],
+                        ),
+                      ),
+                      RichText(
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: 'Total: ',
+                              style: subStyle.copyWith(fontSize: 10),
+                            ),
+                            TextSpan(
+                              text:
+                                  '₹${(appt.totalAmount ?? appt.amount ?? 0).toStringAsFixed(2)}',
+                              style: cardStyle.copyWith(
+                                  fontWeight: FontWeight.w700, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(appt.paymentMethod ?? 'Pay at Salon',
+                          style: subStyle),
                     ],
                   ),
-                ),
-                _buildStatusTag(appt.status ?? 'Schedule'),
-              ],
+                ],
+              ),
             ),
-          ),
 
-          // Services Section
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            color: Colors.grey.shade50,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('SERVICES & STAFF',
-                    style: subStyle.copyWith(
-                        fontSize: 9,
-                        letterSpacing: 1,
-                        fontWeight: FontWeight.w700)),
-                const SizedBox(height: 8),
-                ...items.isEmpty
-                    ? [Text(appt.serviceName ?? '—', style: cardStyle)]
-                    : items.map((item) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  '${item.serviceName} (${item.duration} min)',
-                                  style: cardStyle.copyWith(fontSize: 12.5),
-                                ),
-                              ),
-                              Text(
-                                item.staffName ?? '—',
-                                style: subStyle.copyWith(
-                                    fontSize: 12,
-                                    color: Theme.of(context).primaryColor),
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-              ],
+            // Divider and Mini Action Bar
+            Divider(height: 1, color: Colors.grey.shade100),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if ((appt.amountPaid ?? 0) <
+                          (appt.totalAmount ?? appt.amount ?? 0) &&
+                      !(appt.status?.toLowerCase().contains('cancelled') ??
+                          false) &&
+                      !(appt.status?.toLowerCase().contains('completed') ??
+                          false))
+                    _actionIcon(Icons.payments_outlined, Colors.green, () {
+                      _showCollectPaymentDialog(appt);
+                    }, label: 'Pay'),
+                  _actionIcon(
+                      Icons.edit_outlined, Theme.of(context).primaryColor, () {
+                    _editAppointment(appt);
+                  }, label: 'Edit'),
+                  _actionIcon(Icons.delete_outline, Colors.red, () {
+                    _confirmDelete(appt);
+                  }, label: 'Delete'),
+                ],
+              ),
             ),
-          ),
-
-          // Footer: Payment & Actions
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                _buildPaymentTag(appt),
-                const Spacer(),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    RichText(
-                      text: TextSpan(
-                        children: [
-                          TextSpan(
-                            text: 'Paid: ',
-                            style: subStyle.copyWith(fontSize: 10),
-                          ),
-                          TextSpan(
-                            text:
-                                '₹${appt.amountPaid?.toStringAsFixed(2) ?? '0.00'}',
-                            style: cardStyle.copyWith(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                                color: Colors.green.shade700),
-                          ),
-                        ],
-                      ),
-                    ),
-                    RichText(
-                      text: TextSpan(
-                        children: [
-                          TextSpan(
-                            text: 'Total: ',
-                            style: subStyle.copyWith(fontSize: 10),
-                          ),
-                          TextSpan(
-                            text:
-                                '₹${(appt.totalAmount ?? appt.amount ?? 0).toStringAsFixed(2)}',
-                            style: cardStyle.copyWith(
-                                fontWeight: FontWeight.w700, fontSize: 13),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Text(appt.paymentMethod ?? 'Pay at Salon', style: subStyle),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // Divider and Mini Action Bar
-          Divider(height: 1, color: Colors.grey.shade100),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if ((appt.amountPaid ?? 0) <
-                        (appt.totalAmount ?? appt.amount ?? 0) &&
-                    !(appt.status?.toLowerCase().contains('cancelled') ??
-                        false) &&
-                    !(appt.status?.toLowerCase().contains('completed') ??
-                        false))
-                  _actionIcon(Icons.payments_outlined, Colors.green, () {
-                    _showCollectPaymentDialog(appt);
-                  }, label: 'Pay'),
-                _actionIcon(Icons.edit_outlined, Theme.of(context).primaryColor,
-                    () {
-                  _editAppointment(appt);
-                }, label: 'Edit'),
-                _actionIcon(Icons.delete_outline, Colors.red, () {
-                  _confirmDelete(appt);
-                }, label: 'Delete'),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -4,6 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
+import '../services/api_service.dart';
+import '../vendor_model.dart';
+
 class AddStaffDialog extends StatefulWidget {
   final Map? existing; // raw API staff object for edit
 
@@ -90,6 +93,10 @@ class _AddStaffDialogState extends State<AddStaffDialog>
   TimeOfDay? _blockEnd;
   final _blockReason = TextEditingController();
 
+  // Salon Opening Hours
+  VendorProfile? _vendorProfile;
+  bool _isLoadingSalonHours = true;
+
   // Photo (either http url or local file path)
   String? _imagePath;
 
@@ -151,6 +158,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
   void initState() {
     super.initState();
     _tabController = TabController(length: 6, vsync: this);
+    _fetchSalonHours();
 
     // Initialize default availability to true for all days
     _weeklyAvailability['monday'] = true;
@@ -266,6 +274,54 @@ class _AddStaffDialogState extends State<AddStaffDialog>
         _imagePath = m['photo'].toString();
       }
     }
+  }
+
+  Future<void> _fetchSalonHours() async {
+    try {
+      final profile = await ApiService.getVendorProfile();
+      if (mounted) {
+        setState(() {
+          _vendorProfile = profile;
+          _isLoadingSalonHours = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching salon hours: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingSalonHours = false;
+        });
+      }
+    }
+  }
+
+  bool _isTimeWithinSalonHours(
+      String day, TimeOfDay staffStart, TimeOfDay staffEnd) {
+    if (_vendorProfile == null) return true; // Fallback if profile not loaded
+
+    final fullDay = day.toLowerCase();
+    final oh = _vendorProfile!.openingHours.firstWhere(
+      (h) => h.day.toLowerCase() == fullDay,
+      orElse: () =>
+          OpeningHour(day: day, open: '00:00', close: '23:59', isOpen: true),
+    );
+
+    if (!oh.isOpen) return false;
+
+    final salonOpen = _parseTimeOfDay(oh.open);
+    final salonClose = _parseTimeOfDay(oh.close);
+
+    final staffStartMins = staffStart.hour * 60 + staffStart.minute;
+    final staffEndMins = staffEnd.hour * 60 + staffEnd.minute;
+    final salonOpenMins = salonOpen.hour * 60 + salonOpen.minute;
+    final salonCloseMins = salonClose.hour * 60 + salonClose.minute;
+
+    return staffStartMins >= salonOpenMins && staffEndMins <= salonCloseMins;
+  }
+
+  TimeOfDay _parseTimeOfDay(String time) {
+    final parts = time.split(':');
+    return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
   }
 
   @override
@@ -593,11 +649,15 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       if (parts.length != 2) return;
 
       final fullDay = dayAbbrToFull[abbr]!;
+      final isAvailable = _weeklyAvailability[fullDay] ?? false;
+
       availability[fullDay] = {
-        "available": true,
-        "slots": [
-          {"startTime": parts[0].trim(), "endTime": parts[1].trim()}
-        ]
+        "available": isAvailable,
+        "slots": isAvailable && parts.length == 2
+            ? [
+                {"startTime": parts[0].trim(), "endTime": parts[1].trim()}
+              ]
+            : []
       };
     });
     debugPrint('Activities: Availability set: $availability');
@@ -1227,26 +1287,128 @@ class _AddStaffDialogState extends State<AddStaffDialog>
   }
 
   Widget _buildTimingTab() {
+    if (_isLoadingSalonHours) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
-        children: _weeklyTiming.keys.map((day) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.blue.shade100),
+            ),
             child: Row(
               children: [
-                SizedBox(
-                    width: 80,
-                    child: Text(day,
-                        style: const TextStyle(fontWeight: FontWeight.w600))),
-                const SizedBox(width: 16),
+                const Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                const SizedBox(width: 12),
                 Expanded(
-                    child: _TimeRangePicker(
-                        day: day, controller: _weeklyTiming[day]!)),
+                  child: Text(
+                    'Set staff working hours within salon opening hours.',
+                    style: GoogleFonts.poppins(
+                        fontSize: 12, color: Colors.blue.shade800),
+                  ),
+                ),
               ],
             ),
-          );
-        }).toList(),
+          ),
+          const SizedBox(height: 16),
+          ..._weeklyTiming.keys.map((abbr) {
+            final fullDay = dayAbbrToFull[abbr]!;
+            final isAvailable = _weeklyAvailability[fullDay] ?? false;
+
+            // Get salon hours for this day
+            final oh = _vendorProfile?.openingHours.firstWhere(
+              (h) => h.day.toLowerCase() == fullDay.toLowerCase(),
+              orElse: () => OpeningHour(
+                  day: fullDay, open: '00:00', close: '23:59', isOpen: true),
+            );
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      SizedBox(
+                        width: 100,
+                        child: Text(
+                          fullDay[0].toUpperCase() + fullDay.substring(1),
+                          style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w600, fontSize: 14),
+                        ),
+                      ),
+                      Switch(
+                        value: isAvailable,
+                        activeColor: const Color(0xFF4A2C40),
+                        onChanged: (v) {
+                          setState(() {
+                            _weeklyAvailability[fullDay] = v;
+                            if (!v) {
+                              _weeklyTiming[abbr]!.clear();
+                            } else if (_weeklyTiming[abbr]!.text.isEmpty) {
+                              // Default hours if toggled ON and empty
+                              if (oh != null && oh.isOpen) {
+                                _weeklyTiming[abbr]!.text =
+                                    '${oh.open} - ${oh.close}';
+                              } else {
+                                _weeklyTiming[abbr]!.text = '10:00 - 19:00';
+                              }
+                            }
+                          });
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        isAvailable ? 'Available' : 'Unavailable',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: isAvailable ? Colors.green : Colors.red,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (isAvailable) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const SizedBox(width: 100),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _TimeRangePicker(
+                                day: fullDay,
+                                controller: _weeklyTiming[abbr]!,
+                                salonHours: oh,
+                              ),
+                              if (oh != null && oh.isOpen)
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.only(top: 4, left: 4),
+                                  child: Text(
+                                    'Salon Hours: ${oh.open} - ${oh.close}',
+                                    style: GoogleFonts.poppins(
+                                        fontSize: 10, color: Colors.grey[600]),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  const Divider(),
+                ],
+              ),
+            );
+          }).toList(),
+        ],
       ),
     );
   }
@@ -1382,12 +1544,13 @@ class _TimeField extends StatelessWidget {
 class _TimeRangePicker extends StatefulWidget {
   final String day;
   final TextEditingController controller;
-  final bool initialAvailability;
+  final OpeningHour? salonHours;
 
-  const _TimeRangePicker(
-      {required this.day,
-      required this.controller,
-      this.initialAvailability = true});
+  const _TimeRangePicker({
+    required this.day,
+    required this.controller,
+    this.salonHours,
+  });
 
   @override
   State<_TimeRangePicker> createState() => _TimeRangePickerState();
@@ -1407,17 +1570,61 @@ class _TimeRangePickerState extends State<_TimeRangePicker> {
   }
 
   Future<void> _pick(bool isStart) async {
-    final picked =
-        await showTimePicker(context: context, initialTime: TimeOfDay.now());
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: isStart
+          ? (start ?? const TimeOfDay(hour: 9, minute: 0))
+          : (end ?? const TimeOfDay(hour: 18, minute: 0)),
+    );
     if (picked != null) {
+      if (widget.salonHours != null && widget.salonHours!.isOpen) {
+        final salonOpen = _parseTime(widget.salonHours!.open);
+        final salonClose = _parseTime(widget.salonHours!.close);
+
+        final staffTimeMins = picked.hour * 60 + picked.minute;
+        final salonOpenMins = salonOpen.hour * 60 + salonOpen.minute;
+        final salonCloseMins = salonClose.hour * 60 + salonClose.minute;
+
+        if (staffTimeMins < salonOpenMins || staffTimeMins > salonCloseMins) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  'Selected time must be within salon hours (${widget.salonHours!.open} - ${widget.salonHours!.close})'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+      }
+
       setState(() {
         if (isStart)
           start = picked;
         else
           end = picked;
       });
+
+      if (start != null && end != null) {
+        final startMins = start!.hour * 60 + start!.minute;
+        final endMins = end!.hour * 60 + end!.minute;
+        if (startMins >= endMins) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Start time must be before end time'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          // Don't clear but flag maybe?
+        }
+      }
+
       _updateText();
     }
+  }
+
+  TimeOfDay _parseTime(String time) {
+    final pts = time.split(':');
+    return TimeOfDay(hour: int.parse(pts[0]), minute: int.parse(pts[1]));
   }
 
   @override

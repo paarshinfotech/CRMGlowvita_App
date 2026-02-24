@@ -12,7 +12,7 @@ import 'Notification.dart';
 import 'Profile.dart';
 
 class Appointments {
-  final String id; // Added ID
+  final String id;
   final DateTime startTime;
   final Duration duration;
   final String clientName;
@@ -22,10 +22,11 @@ class Appointments {
   final bool isWebBooking;
   final String mode;
   final bool hasAddOns;
+  final bool isWeddingService;
   final int addOnCount;
 
   Appointments({
-    this.id = '', // Default empty
+    this.id = '',
     required this.startTime,
     required this.duration,
     required this.clientName,
@@ -35,6 +36,7 @@ class Appointments {
     this.isWebBooking = false,
     this.mode = 'offline',
     this.hasAddOns = false,
+    this.isWeddingService = false,
     this.addOnCount = 0,
   });
 
@@ -128,11 +130,26 @@ class _CalendarState extends State<Calendar> {
             hasAddOns:
                 m.serviceItems?.any((s) => s.addOns?.isNotEmpty ?? false) ??
                     false,
+            isWeddingService: m.isWeddingService ?? false,
             addOnCount: m.serviceItems
                     ?.fold<int>(0, (sum, s) => sum + (s.addOns?.length ?? 0)) ??
                 0,
           );
         }).toList();
+
+        // Check if we have wedding service appointments but "Wedding Team" is not in staffList
+        bool hasWeddingAppt = _appointments
+            .any((a) => a.isWeddingService || a.staffName == 'Wedding Team');
+        if (hasWeddingAppt) {
+          bool weddingTeamExists =
+              staffList.any((s) => s.fullName == 'Wedding Team');
+          if (!weddingTeamExists) {
+            staffList.add(StaffMember(
+                id: 'wedding_team_virtual',
+                fullName: 'Wedding Team',
+                position: 'Package Team'));
+          }
+        }
       });
       debugPrint('Loaded ${_appointments.length} appointments from API');
     } catch (e) {

@@ -215,6 +215,22 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
     final status = _appointment?.status?.toLowerCase() ?? '';
     final isCancelled = status.contains('cancelled');
 
+    // Aggregate Team Members
+    final List<String> teamMembers = _appointment?.serviceItems
+            ?.map((item) => item.staffName)
+            .whereType<String>()
+            .where((name) => name.isNotEmpty && name != '—')
+            .toSet()
+            .toList() ??
+        [];
+    if (teamMembers.isEmpty &&
+        _appointment?.staffName != null &&
+        _appointment!.staffName!.isNotEmpty &&
+        _appointment!.staffName! != '—') {
+      teamMembers.add(_appointment!.staffName!);
+    }
+    String staffNames = teamMembers.isNotEmpty ? teamMembers.join(', ') : '—';
+
     // An appointment is considered completed if:
     // 1. Status explicitly contains "completed"
     // 2. Status explicitly contains "paid" or "collected" or "success"
@@ -272,7 +288,6 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                             style: GoogleFonts.poppins(
                               fontSize: 11.5,
                               color: Colors.grey.shade800,
-                              decoration: TextDecoration.underline,
                             ),
                           ),
                         ),
@@ -421,14 +436,47 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                           Expanded(
                             child: Column(
                               children: [
-                                _infoCard(Icons.person_outline_rounded,
-                                    'CLIENT', _appointment?.clientName ?? '—',
-                                    onTap: _showCustomerDetails),
+                                _infoCard(
+                                  Icons.person_outline_rounded,
+                                  'CLIENT',
+                                  _appointment?.clientName ?? '—',
+                                  onTap: _showCustomerDetails,
+                                  extraContent: (_appointment?.client != null)
+                                      ? Column(
+                                          children: [
+                                            if (_appointment?.client?.phone
+                                                    ?.isNotEmpty ??
+                                                false)
+                                              Row(
+                                                children: [
+                                                  Icon(Icons.phone_outlined,
+                                                      size: 13,
+                                                      color:
+                                                          Colors.grey.shade600),
+                                                  const SizedBox(width: 6),
+                                                  Text(
+                                                    _appointment!
+                                                        .client!.phone!,
+                                                    style: GoogleFonts.poppins(
+                                                        fontSize: 10,
+                                                        color: Colors
+                                                            .grey.shade700),
+                                                  ),
+                                                ],
+                                              ),
+                                          ],
+                                        )
+                                      : null,
+                                ),
                                 const SizedBox(height: 10),
-                                _serviceCard(),
+                                // Service Card (handles multi-service details)
+                                _serviceSection(displayServiceName),
                                 const SizedBox(height: 10),
-                                _infoCard(Icons.people_outline_rounded, 'STAFF',
-                                    _appointment?.staffName ?? '—'),
+                                _infoCard(
+                                  Icons.how_to_reg_outlined,
+                                  'TEAM MEMBERS',
+                                  staffNames,
+                                ),
                               ],
                             ),
                           ),
@@ -447,6 +495,17 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                                 const SizedBox(height: 10),
                                 _statusCard(
                                     _appointment?.status ?? 'Scheduled'),
+                                if (_appointment?.isWeddingService == true) ...[
+                                  const SizedBox(height: 10),
+                                  _infoCard(
+                                    Icons.location_on_outlined,
+                                    'VENUE ADDRESS',
+                                    'Wedding Service Venue',
+                                    subtitle: _appointment?.venueAddress ??
+                                        'Address not specified',
+                                    iconData: Icons.pin_drop,
+                                  ),
+                                ],
                               ],
                             ),
                           ),
@@ -506,6 +565,9 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                           'Service Tax (GST):', _appointment?.serviceTax ?? 0),
                       _paymentDetailRow(
                           'Platform Fee:', _appointment?.platformFee ?? 0),
+                      _paymentDetailRow(
+                          'Discount:', -(_appointment?.discount ?? 0),
+                          color: Colors.red),
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 6),
                         child: Divider(
@@ -974,7 +1036,7 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                       ? inv.clientInfo.fullName
                       : (_appointment?.clientName ?? '—'),
                   style: GoogleFonts.poppins(
-                      fontSize: 11, fontWeight: FontWeight.w600),
+                      fontSize: 8, fontWeight: FontWeight.w600),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -1321,7 +1383,11 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
   }
 
   Widget _infoCard(IconData icon, String label, String value,
-      {String? subtitle, IconData? iconData, VoidCallback? onTap}) {
+      {String? subtitle,
+      IconData? iconData,
+      VoidCallback? onTap,
+      Widget? extraContent,
+      bool fullWidthExtra = false}) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
@@ -1333,135 +1399,106 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
           border: Border.all(color: Colors.grey.shade400, width: 1),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Row(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                border: Border.all(color: Colors.black12),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Icon(icon, size: 16, color: Colors.black),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label,
-                      style: GoogleFonts.poppins(
-                          fontSize: 8.5,
-                          color: Colors.grey.shade800,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5)),
-                  Text(value,
-                      style: GoogleFonts.poppins(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.black)),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 3),
-                    Row(
-                      children: [
-                        if (iconData != null) ...[
-                          Icon(iconData, size: 11, color: Colors.grey.shade700),
-                          const SizedBox(width: 4),
-                        ],
-                        Expanded(
-                            child: Text(subtitle,
-                                style: GoogleFonts.poppins(
-                                    fontSize: 10,
-                                    color: Colors.grey.shade700,
-                                    fontWeight: FontWeight.w500))),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    border: Border.all(color: Colors.black12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Icon(icon, size: 16, color: Colors.black),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(label,
+                          style: GoogleFonts.poppins(
+                              fontSize: 7,
+                              color: const Color(0xFF64748B),
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5)),
+                      Text(value,
+                          style: GoogleFonts.poppins(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF1E293B))),
+                      if (subtitle != null) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            if (iconData != null) ...[
+                              Icon(iconData,
+                                  size: 12, color: Colors.grey.shade600),
+                              const SizedBox(width: 4),
+                            ],
+                            Expanded(
+                                child: Text(subtitle,
+                                    style: GoogleFonts.poppins(
+                                        fontSize: 9,
+                                        color: Colors.grey.shade700,
+                                        fontWeight: FontWeight.w500))),
+                          ],
+                        ),
                       ],
-                    ),
-                  ],
-                ],
-              ),
+                      if (extraContent != null && !fullWidthExtra) ...[
+                        const SizedBox(height: 8),
+                        extraContent,
+                      ],
+                    ],
+                  ),
+                ),
+              ],
             ),
+            if (extraContent != null && fullWidthExtra) ...[
+              const SizedBox(height: 8),
+              extraContent,
+            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _serviceCard() {
+  Widget _serviceSection(String displayServiceName) {
     final List<ServiceItem> items = _appointment!.serviceItems ?? [];
-    final String label =
-        items.length > 1 ? 'SERVICES (${items.length})' : 'SERVICE';
+    String label = 'SERVICES';
+    String mainValue = displayServiceName;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.grey.shade400, width: 1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
-                  border: Border.all(color: Colors.black12),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Icon(Icons.content_cut_rounded,
-                    size: 16, color: Colors.black),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(label,
-                        style: GoogleFonts.poppins(
-                            fontSize: 8.5,
-                            color: Colors.grey.shade800,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5)),
-                    Text(_appointment!.serviceName ?? 'Unknown',
-                        style: GoogleFonts.poppins(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // List services dynamically
-          if (items.isEmpty)
-            _serviceItemDetail(
-                _appointment!.serviceName ?? 'Unknown',
-                _appointment!.amount ?? 0,
-                _appointment!.staffName ?? '—',
-                '${_appointment!.startTime}-${_appointment!.endTime} (${_appointment!.duration} min)',
-                addOns: _appointment!.addOns)
-          else
-            ...items.map((it) {
-              // Fallback: if item has no add-ons but there is only 1 service and appointment has add-ons, use them
-              final effectiveAddOns =
-                  (it.addOns != null && it.addOns!.isNotEmpty)
-                      ? it.addOns
-                      : (items.length == 1 ? _appointment!.addOns : null);
+    if (_appointment!.isMultiService == true) {
+      label = 'SERVICES';
+      mainValue = 'Multi-Service (${items.length} Services)';
+    }
 
-              return _serviceItemDetail(
-                  it.serviceName ?? '—',
-                  (it.amount ?? 0).toDouble(),
-                  it.staffName ?? '—',
-                  '${it.startTime}-${it.endTime} (${it.duration ?? 0} min)',
-                  addOns: effectiveAddOns);
-            }).toList(),
-        ],
-      ),
+    return _infoCard(
+      Icons.content_cut_rounded,
+      label,
+      mainValue,
+      fullWidthExtra: true,
+      extraContent: (items.length > 1 || _appointment!.isMultiService == true)
+          ? Column(
+              children: items.map((it) {
+                final effectiveAddOns =
+                    (it.addOns != null && it.addOns!.isNotEmpty)
+                        ? it.addOns
+                        : (items.length == 1 ? _appointment!.addOns : null);
+
+                return _serviceItemDetail(
+                    it.serviceName ?? '—',
+                    (it.amount ?? 0).toDouble(),
+                    it.staffName ?? '—',
+                    '${it.startTime}-${it.endTime} (${it.duration ?? 0} min)',
+                    addOns: effectiveAddOns);
+              }).toList(),
+            )
+          : null,
     );
   }
 
@@ -1469,12 +1506,12 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
       String name, double price, String staff, String time,
       {List<AddOn>? addOns}) {
     return Container(
-      margin: const EdgeInsets.only(top: 6),
-      padding: const EdgeInsets.all(8),
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFBFBFB),
-        border: Border.all(color: Colors.black12),
-        borderRadius: BorderRadius.circular(6),
+        color: const Color(0xFFF8FAFC),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1486,30 +1523,34 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                 child: Text(name,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.poppins(
-                        fontSize: 11.5,
+                        fontSize: 12.5,
                         fontWeight: FontWeight.w700,
-                        color: Colors.black)),
+                        color: const Color(0xFF1E293B))),
               ),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text('₹${price.toStringAsFixed(2)}',
                   style: GoogleFonts.poppins(
-                      fontSize: 11.5,
+                      fontSize: 12.5,
                       fontWeight: FontWeight.w700,
-                      color: Colors.black)),
+                      color: const Color(0xFF1E293B))),
             ],
           ),
-          const SizedBox(height: 1),
+          const SizedBox(height: 2),
           Text('$staff • $time',
               style: GoogleFonts.poppins(
-                  fontSize: 10,
-                  color: Colors.grey.shade800,
+                  fontSize: 10.5,
+                  color: const Color(0xFF64748B),
                   fontWeight: FontWeight.w500)),
           if (addOns != null && addOns.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            const Divider(height: 1, thickness: 0.5),
+            const SizedBox(height: 10),
+            Text('Add-ons:',
+                style: GoogleFonts.poppins(
+                    fontSize: 10,
+                    color: const Color(0xFF64748B),
+                    fontWeight: FontWeight.w600)),
             const SizedBox(height: 4),
             ...addOns.map((addon) => Padding(
-                  padding: const EdgeInsets.only(bottom: 2),
+                  padding: const EdgeInsets.only(bottom: 4),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -1517,15 +1558,15 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                         child: Text('+ ${addon.name ?? 'Add-on'}',
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.poppins(
-                                fontSize: 9.5,
-                                color: Colors.grey.shade700,
+                                fontSize: 10.5,
+                                color: const Color(0xFF334155),
                                 fontWeight: FontWeight.w500)),
                       ),
-                      SizedBox(width: 8),
+                      const SizedBox(width: 8),
                       Text('₹${(addon.price ?? 0).toStringAsFixed(2)}',
                           style: GoogleFonts.poppins(
-                              fontSize: 9.5,
-                              color: Colors.grey.shade700,
+                              fontSize: 10.5,
+                              color: const Color(0xFF1E293B),
                               fontWeight: FontWeight.w600)),
                     ],
                   ),
@@ -1593,7 +1634,7 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
           Text(label,
               style: GoogleFonts.poppins(
                   fontSize: 12,
-                  color: Colors.black87,
+                  color: color ?? Colors.black87,
                   fontWeight: bold ? FontWeight.w700 : FontWeight.w400)),
           if (isStatusText)
             Text(status ?? 'Unpaid',

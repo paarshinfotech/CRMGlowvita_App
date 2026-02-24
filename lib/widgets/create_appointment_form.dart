@@ -731,6 +731,8 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
         "weddingPackage": null,
         "venueAddress": "",
         "isMultiService": _queuedServices.length > 1,
+        "clientPhone": _selectedClient?.mobile ?? '',
+        "clientEmail": _selectedClient?.email ?? '',
         "notes": _notesCtrl.text,
         "internalNotes": "",
         "rescheduleReason": "",
