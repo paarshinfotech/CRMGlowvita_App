@@ -10,6 +10,7 @@ import 'register.dart';
 import 'Suppliers/supp_dashboard.dart';
 import 'Suppliers/supp_register.dart';
 import 'services/api_service.dart';
+import 'intro_page.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -116,6 +117,22 @@ class _LoginPageState extends State<Login> {
                 fit: BoxFit.cover,
                 opacity: 0.8,
               ),
+            ),
+          ),
+
+          // Back Button to Intro
+          Positioned(
+            top: 40.h,
+            left: 10.w,
+            child: IconButton(
+              icon: Icon(Icons.arrow_back_ios,
+                  color: Theme.of(context).primaryColor, size: 20.sp),
+              onPressed: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const IntroPage()),
+                );
+              },
             ),
           ),
 

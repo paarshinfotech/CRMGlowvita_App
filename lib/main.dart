@@ -3,7 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'utils/app_theme.dart';
-import 'login.dart';
+
+import 'package:shared_preferences/shared_preferences.dart';
+import 'intro_page.dart';
+import 'calender.dart';
+import 'Suppliers/supp_dashboard.dart';
 
 void main() {
   runApp(const MyApp());
@@ -41,11 +45,33 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
+    _checkLoginStatus();
+  }
+
+  Future<void> _checkLoginStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    final role = prefs.getString('user_role');
+
     Timer(const Duration(seconds: 5), () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const Login()),
-      );
+      if (token != null && token.isNotEmpty) {
+        if (role == 'supplier') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const Supp_DashboardPage()),
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const Calendar()),
+          );
+        }
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const IntroPage()),
+        );
+      }
     });
   }
 

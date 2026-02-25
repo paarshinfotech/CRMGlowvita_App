@@ -632,6 +632,117 @@ class ApiService {
     return await _delete('$baseUrl$staffEndpoint?id=$staffId');
   }
 
+  // ==================== PRODUCT QUESTIONS ==================== //
+
+  /// Fetch all product questions for the vendor
+  static Future<List<Map<String, dynamic>>> getProductQuestions() async {
+    try {
+      final response = await _get('$baseUrl/crm/product-questions');
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['questions'] != null) {
+          return List<Map<String, dynamic>>.from(data['questions'] as List);
+        } else {
+          throw Exception(data['message'] ?? 'Failed to load questions');
+        }
+      } else {
+        throw Exception(
+            'Failed to load questions: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching product questions: $e');
+      rethrow;
+    }
+  }
+
+  /// Answer or update a product question (also controls isPublished)
+  static Future<bool> answerProductQuestion(
+      String questionId, String answer, bool isPublished) async {
+    final client = _getHttpClient();
+    try {
+      final token = await _getAuthToken();
+      final Map<String, String> requestHeaders = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
+      if (token != null) {
+        requestHeaders['Cookie'] = 'crm_access_token=$token';
+      }
+
+      final url = '$baseUrl/crm/product-questions/$questionId';
+      final bodyStr =
+          json.encode({'answer': answer, 'isPublished': isPublished});
+
+      // Build raw PATCH request (same pattern as DELETE to avoid SSL issues)
+      final request = http.Request('PATCH', Uri.parse(url));
+      request.headers.addAll(requestHeaders);
+      request.body = bodyStr;
+
+      print('PATCH $url  body=$bodyStr');
+
+      final streamedResponse =
+          await client.send(request).timeout(const Duration(seconds: 30));
+      final response = await http.Response.fromStream(streamedResponse);
+
+      print(
+          'Answer product question response [${response.statusCode}]: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        return data['success'] == true;
+      } else {
+        throw Exception(
+            'Failed to answer question: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error answering product question: $e');
+      rethrow;
+    } finally {
+      client.close();
+    }
+  }
+
+  /// Toggle publish status of a product question
+  static Future<bool> togglePublishProductQuestion(
+      String questionId, bool isPublished) async {
+    try {
+      final response = await _put(
+        '$baseUrl/crm/product-questions/$questionId',
+        {'isPublished': isPublished},
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['success'] == true;
+      } else {
+        throw Exception(
+            'Failed to toggle publish: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error toggling publish product question: $e');
+      rethrow;
+    }
+  }
+
+  /// Delete a product question
+  static Future<bool> deleteProductQuestion(String questionId) async {
+    try {
+      final response =
+          await _delete('$baseUrl/crm/product-questions/$questionId');
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['success'] == true;
+      } else if (response.statusCode == 204) {
+        return true;
+      } else {
+        throw Exception(
+            'Failed to delete question: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error deleting product question: $e');
+      rethrow;
+    }
+  }
+
   // Add a new client
   static Future<Customer> addClient(Customer customer) async {
     try {

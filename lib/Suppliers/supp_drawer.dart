@@ -12,6 +12,7 @@ import 'supp_invoice_management.dart';
 import 'supp_shipping.dart';
 import 'supp_expenses.dart';
 import 'supp_settlement.dart';
+import '../intro_page.dart';
 
 // Drawer implementation for the app
 class SupplierDrawer extends StatelessWidget {
@@ -68,27 +69,44 @@ class SupplierDrawer extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    RichText(
-                      text: TextSpan(
-                        children: [
-                          TextSpan(
-                            text: 'Glow',
-                            style: GoogleFonts.poppins(
-                              fontSize: 20 * baseFontScale,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black,
-                            ),
+                    Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4 * scale),
+                          child: Image.asset(
+                            'assets/images/favicon.jpg',
+                            height: 24 * scale,
+                            width: 24 * scale,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                Image.asset('assets/images/logo.png',
+                                    height: 24 * scale),
                           ),
-                          TextSpan(
-                            text: 'Vita',
-                            style: GoogleFonts.poppins(
-                              fontSize: 20 * baseFontScale,
-                              fontWeight: FontWeight.w600,
-                              color: Theme.of(context).primaryColor,
-                            ),
+                        ),
+                        SizedBox(width: 8 * scale),
+                        RichText(
+                          text: TextSpan(
+                            children: [
+                              TextSpan(
+                                text: 'Glow',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 20 * baseFontScale,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black,
+                                ),
+                              ),
+                              TextSpan(
+                                text: 'Vita',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 20 * baseFontScale,
+                                  fontWeight: FontWeight.w600,
+                                  color: Theme.of(context).primaryColor,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                     IconButton(
                       icon: Icon(
@@ -457,7 +475,7 @@ class SupplierDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.star_outlined,
                       title: 'Expenses',
-                      isSelected: currentPage == 'Shipping',
+                      isSelected: currentPage == 'Expenses',
                       onTap: () =>
                           _navigateTo(context, const SuppExpensesPage()),
                       scale: scale,
@@ -647,10 +665,10 @@ class SupplierDrawer extends StatelessWidget {
                 await prefs.remove('user_role');
                 await prefs.remove('user_id');
                 await prefs.remove('user_data');
-
+                await prefs.remove('token');
                 Navigator.pushAndRemoveUntil(
                   context,
-                  MaterialPageRoute(builder: (context) => const Login()),
+                  MaterialPageRoute(builder: (context) => const IntroPage()),
                   (route) => false,
                 );
               },

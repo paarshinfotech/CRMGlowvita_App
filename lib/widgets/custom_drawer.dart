@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:glowvita/intro_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -25,6 +26,7 @@ import '../sales.dart';
 import '../add_ons.dart';
 import '../wedding_packages.dart';
 import '../login.dart';
+import '../intro_page.dart';
 
 // Drawer implementation for the app
 class CustomDrawer extends StatelessWidget {
@@ -77,27 +79,44 @@ class CustomDrawer extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    RichText(
-                      text: TextSpan(
-                        children: [
-                          TextSpan(
-                            text: 'Glow',
-                            style: GoogleFonts.poppins(
-                              fontSize: 20 * baseFontScale,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black,
-                            ),
+                    Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4 * scale),
+                          child: Image.asset(
+                            'assets/images/favicon.jpg', // Using favicon as requested logo.jpg might be this
+                            height: 24 * scale,
+                            width: 24 * scale,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                Image.asset('assets/images/logo.png',
+                                    height: 24 * scale),
                           ),
-                          TextSpan(
-                            text: 'Vita',
-                            style: GoogleFonts.poppins(
-                              fontSize: 20 * baseFontScale,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black,
-                            ),
+                        ),
+                        SizedBox(width: 8 * scale),
+                        RichText(
+                          text: TextSpan(
+                            children: [
+                              TextSpan(
+                                text: 'Glow',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 20 * baseFontScale,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black,
+                                ),
+                              ),
+                              TextSpan(
+                                text: 'Vita',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 20 * baseFontScale,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                     IconButton(
                       icon: Icon(
@@ -574,10 +593,11 @@ class CustomDrawer extends StatelessWidget {
                 await prefs.remove('user_role');
                 await prefs.remove('user_id');
                 await prefs.remove('user_data');
+                await prefs.remove('token'); // Added for consistency
 
                 Navigator.pushAndRemoveUntil(
                   context,
-                  MaterialPageRoute(builder: (context) => const Login()),
+                  MaterialPageRoute(builder: (context) => const IntroPage()),
                   (route) => false,
                 );
               },
