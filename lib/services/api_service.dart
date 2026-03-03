@@ -88,7 +88,9 @@ class StaffMember {
 
     return StaffMember(
       id: json['_id'],
-      vendorId: json['vendorId'],
+      vendorId: (json['vendorId'] is Map)
+          ? json['vendorId']['_id']
+          : (json['vendorId']?.toString()),
       fullName: json['fullName'] ?? json['name'],
       email: json['emailAddress'] ?? json['email'],
       mobile: json['mobileNo'] ?? json['mobile'],
@@ -101,9 +103,9 @@ class StaffMember {
       bankDetails: json['bankDetails'] != null
           ? Map<String, dynamic>.from(json['bankDetails'])
           : null,
-      salary: json['salary'],
-      yearOfExperience: json['yearOfExperience'],
-      clientsServed: json['clientsServed'],
+      salary: (json['salary'] as num?)?.toInt(),
+      yearOfExperience: (json['yearOfExperience'] as num?)?.toInt(),
+      clientsServed: (json['clientsServed'] as num?)?.toInt(),
       commission: json['commission'] ?? false,
       startDate:
           json['startDate'] != null ? DateTime.parse(json['startDate']) : null,
@@ -2185,14 +2187,16 @@ class Product {
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
       id: json['_id'],
-      vendorId: json['vendorId'],
+      vendorId: (json['vendorId'] is Map)
+          ? json['vendorId']['_id']
+          : (json['vendorId']?.toString()),
       productName: json['productName'],
       description: json['description'],
       category: json['category'],
       categoryDescription: json['categoryDescription'],
-      price: json['price'],
-      salePrice: json['salePrice'],
-      stock: json['stock'],
+      price: (json['price'] as num?)?.toInt(),
+      salePrice: (json['salePrice'] as num?)?.toInt(),
+      stock: (json['stock'] as num?)?.toInt(),
       productImages:
           (json['productImages'] as List?)?.map((e) => e.toString()).toList(),
       size: json['size'],

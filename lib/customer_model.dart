@@ -49,12 +49,15 @@ class Customer {
     final dateFormat = DateFormat('dd/MM/yyyy');
     return Customer(
       id: json['_id'],
-      vendorId: json['vendorId'],
+      vendorId: (json['vendorId'] is Map)
+          ? json['vendorId']['_id']
+          : (json['vendorId']?.toString()),
       fullName: json['fullName'] ?? '',
       mobile: json['phone'] ?? '',
       email: json['email'],
-      dateOfBirth: json['birthdayDate'] != null 
-          ? DateFormat('dd/MM/yyyy').format(DateTime.parse(json['birthdayDate'].toString().split('T')[0])) 
+      dateOfBirth: json['birthdayDate'] != null
+          ? DateFormat('dd/MM/yyyy').format(
+              DateTime.parse(json['birthdayDate'].toString().split('T')[0]))
           : null,
       gender: json['gender'],
       country: json['country'],
@@ -62,15 +65,17 @@ class Customer {
       address: json['address'],
       note: json['note'],
       imagePath: json['profilePicture'],
-      lastVisit: json['lastVisit'] != null 
-          ? dateFormat.format(DateTime.parse(json['lastVisit'])) 
+      lastVisit: json['lastVisit'] != null
+          ? dateFormat.format(DateTime.parse(json['lastVisit']))
           : null,
-      totalBookings: json['totalBookings']?.toInt() ?? 0,
-      totalSpent: (json['totalSpent']?.toDouble()) ?? 0.0,
+      totalBookings: (json['totalBookings'] as num?)?.toInt() ?? 0,
+      totalSpent: (json['totalSpent'] as num?)?.toDouble() ?? 0.0,
       status: json['status'] ?? 'Active',
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
-      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
-      isOnline: json['source'] == 'online', 
+      createdAt:
+          json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
+      updatedAt:
+          json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
+      isOnline: json['source'] == 'online',
       source: json['source'],
     );
   }

@@ -90,8 +90,8 @@ class VendorProfile {
       category: json['category'] ?? '',
       regionId: json['regionId'] ?? '',
       vendorType: json['vendorType'] ?? '',
-      travelRadius: json['travelRadius'] ?? 0,
-      travelSpeed: json['travelSpeed'] ?? 0,
+      travelRadius: (json['travelRadius'] as num?)?.toInt() ?? 0,
+      travelSpeed: (json['travelSpeed'] as num?)?.toInt() ?? 0,
       baseLocation: json['baseLocation'] != null
           ? Location.fromJson(json['baseLocation'])
           : null,
@@ -112,12 +112,12 @@ class VendorProfile {
           ? Documents.fromJson(json['documents'])
           : null,
       referralCode: json['referralCode'] ?? '',
-      smsBalance: json['smsBalance'] ?? 0,
+      smsBalance: (json['smsBalance'] as num?)?.toInt() ?? 0,
       createdAt:
           DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),
       updatedAt:
           DateTime.parse(json['updatedAt'] ?? DateTime.now().toIso8601String()),
-      currentSmsBalance: json['currentSmsBalance'] ?? 0,
+      currentSmsBalance: (json['currentSmsBalance'] as num?)?.toInt() ?? 0,
       openingHours: (json['openingHours'] as List? ?? [])
           .map((i) => OpeningHour.fromJson(i))
           .toList(),
@@ -263,8 +263,8 @@ class Plan {
       name: json['name'] ?? '',
       duration: json['duration'] ?? 0,
       durationType: json['durationType'] ?? '',
-      price: json['price'] ?? 0,
-      discountedPrice: json['discountedPrice'] ?? 0,
+      price: (json['price'] as num?)?.toInt() ?? 0,
+      discountedPrice: (json['discountedPrice'] as num?)?.toInt() ?? 0,
       isAvailableForPurchase: json['isAvailableForPurchase'] ?? false,
       planType: json['planType'] ?? '',
       userTypes: json['userTypes'] ?? [],
