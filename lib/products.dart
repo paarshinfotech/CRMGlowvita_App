@@ -274,7 +274,7 @@ class _ProductsPageState extends State<Products> {
         // If it contains a slash and hasn't matched above, prepend domain
         if (image.contains('/')) {
           final cleanPath = image.startsWith('/') ? image.substring(1) : image;
-          final fullUrl = 'https://partners.v2winonline.com/$cleanPath';
+          final fullUrl = 'https://partners.glowvitasalon.com/$cleanPath';
           return Image.network(
             fullUrl,
             fit: BoxFit.cover,

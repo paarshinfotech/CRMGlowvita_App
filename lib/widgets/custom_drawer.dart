@@ -245,15 +245,6 @@ class CustomDrawer extends StatelessWidget {
                     ),
                     _buildMenuItem(
                       context: context,
-                      icon: Icons.bar_chart_outlined,
-                      title: 'Customer Summary',
-                      isSelected: currentPage == 'Customer Summary',
-                      onTap: () {}, // TODO: Implement Customer Summary page
-                      scale: scale,
-                      baseFontScale: baseFontScale,
-                    ),
-                    _buildMenuItem(
-                      context: context,
                       icon: Icons.design_services_outlined,
                       title: 'Services',
                       isSelected: currentPage == 'Services',

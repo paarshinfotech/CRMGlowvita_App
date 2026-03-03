@@ -8,6 +8,7 @@ import '../appointment_model.dart';
 import '../addon_model.dart';
 import '../vendor_model.dart';
 import '../billing_invoice_model.dart';
+import 'marketplace_models.dart';
 
 class StaffMember {
   final String? id;
@@ -630,6 +631,32 @@ class ApiService {
   // Delete a staff member
   static Future<http.Response> deleteStaff(String staffId) async {
     return await _delete('$baseUrl$staffEndpoint?id=$staffId');
+  }
+
+  // ==================== MARKETPLACE SUPPLIERS & PRODUCTS ==================== //
+
+  /// Fetch all products from suppliers for the marketplace
+  static Future<List<MarketplaceProduct>> getSupplierProducts() async {
+    try {
+      final response = await _get('$baseUrl/crm/supplier-products');
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return (data['data'] as List)
+              .map((json) => MarketplaceProduct.fromJson(json))
+              .toList();
+        } else {
+          throw Exception(
+              data['message'] ?? 'Failed to load supplier products');
+        }
+      } else {
+        throw Exception(
+            'Failed to load supplier products: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching supplier products: $e');
+      rethrow;
+    }
   }
 
   // ==================== PRODUCT QUESTIONS ==================== //
