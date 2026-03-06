@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -302,6 +302,34 @@ class _SalesPageState extends State<SalesPage>
   // Add item to billing
   void _addItemToBilling(dynamic item,
       {bool isService = false, List<AddOn>? selectedAddOns}) {
+    // Enforcement: Either services or products, not both.
+    if (selectedItems.isNotEmpty) {
+      bool hasServices = selectedItems.any((i) => i['isService'] == true);
+      bool hasProducts = selectedItems.any((i) => i['isService'] == false);
+
+      if (isService && hasProducts) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'You can only add either services or products in a single bill.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      if (!isService && hasServices) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'You can only add either services or products in a single bill.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    }
+
     // Prevent adding out of stock products
     if (!isService && (item as Product).stock == 0) {
       ScaffoldMessenger.of(context).showSnackBar(

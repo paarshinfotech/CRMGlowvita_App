@@ -220,6 +220,7 @@ class ApiService {
         final token = await _getAuthToken();
         if (token != null) {
           requestHeaders['Cookie'] = 'crm_access_token=$token';
+          requestHeaders['Authorization'] = 'Bearer $token';
         }
       }
 
@@ -250,6 +251,7 @@ class ApiService {
         final token = await _getAuthToken();
         if (token != null) {
           requestHeaders['Cookie'] = 'crm_access_token=$token';
+          requestHeaders['Authorization'] = 'Bearer $token';
         }
       }
 
@@ -279,6 +281,7 @@ class ApiService {
         final token = await _getAuthToken();
         if (token != null) {
           requestHeaders['Cookie'] = 'crm_access_token=$token';
+          requestHeaders['Authorization'] = 'Bearer $token';
         }
       }
 
@@ -311,6 +314,7 @@ class ApiService {
         final token = await _getAuthToken();
         if (token != null) {
           requestHeaders['Cookie'] = 'crm_access_token=$token';
+          requestHeaders['Authorization'] = 'Bearer $token';
         }
       }
 
@@ -342,6 +346,7 @@ class ApiService {
         final token = await _getAuthToken();
         if (token != null) {
           requestHeaders['Cookie'] = 'crm_access_token=$token';
+          requestHeaders['Authorization'] = 'Bearer $token';
         }
       }
 
@@ -696,6 +701,7 @@ class ApiService {
       };
       if (token != null) {
         requestHeaders['Cookie'] = 'crm_access_token=$token';
+        requestHeaders['Authorization'] = 'Bearer $token';
       }
 
       final url = '$baseUrl/crm/product-questions/$questionId';
