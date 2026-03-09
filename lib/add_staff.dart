@@ -3,12 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-
 import '../services/api_service.dart';
 import '../vendor_model.dart';
 
 class AddStaffDialog extends StatefulWidget {
-  final Map? existing; // raw API staff object for edit
+  final Map? existing;
 
   const AddStaffDialog({Key? key, this.existing}) : super(key: key);
 
@@ -63,6 +62,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
     'Sales': false,
     'Settlements': false,
     'Marketing': false,
+    'Expenses': false,
   };
 
   // Timing controllers
@@ -116,7 +116,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
     'Staff': 'staff_view',
     'Products': 'products_view',
     'Orders': 'orders_view',
-    'Offers & Coupons': 'offers_coupons_view',
+    'Offers & Coupons': 'offers_view',
     'Notifications': 'notifications_view',
     'Clients': 'clients_view',
     'Marketplace': 'marketplace_view',
@@ -127,6 +127,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
     'Sales': 'sales_view',
     'Settlements': 'settlements_view',
     'Marketing': 'marketing_view',
+    'Expenses': 'expenses_view',
   };
 
   static const Map<String, String> dayAbbrToFull = {
@@ -187,7 +188,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       _experience.text = (m['yearOfExperience'] ?? '').toString();
       _clients.text = (m['clientsServed'] ?? '').toString();
       _commissionEnabled = m['commission'] == true;
-      _commissionPercentage.text = (m['commissionPercentage'] ?? '').toString();
+      _commissionPercentage.text = (m['commissionRate'] ?? m['commissionPercentage'] ?? '').toString();
 
       if (m['startDate'] != null)
         _startDate = DateTime.tryParse(m['startDate'].toString());
@@ -214,7 +215,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       for (final fullDay in dayFullToAbbr.keys) {
         final abbr = dayFullToAbbr[fullDay]!;
 
-        // Check if availability is defined in the staff object
+        // 1. Try nested availability object first
         final availabilityData = m['availability'] as Map<String, dynamic>?;
         if (availabilityData != null && availabilityData.containsKey(fullDay)) {
           final dayData = availabilityData[fullDay] as Map<String, dynamic>?;
@@ -222,23 +223,29 @@ class _AddStaffDialogState extends State<AddStaffDialog>
             final available = dayData['available'] == true;
             final slots = (dayData['slots'] as List?) ?? [];
 
+            _weeklyAvailability[fullDay] = available;
             if (available && slots.isNotEmpty) {
               final slot = (slots.first as Map?) ?? {};
               final start = (slot['startTime'] ?? '10:00').toString();
               final end = (slot['endTime'] ?? '19:00').toString();
               _weeklyTiming[abbr]!.text = '$start - $end';
-              // Set the day as available by default
-              _weeklyAvailability[fullDay] = true;
-            } else {
-              // If not available, set to false
-              _weeklyAvailability[fullDay] = false;
             }
-          } else {
-            // If dayData is null, default to available (true)
-            _weeklyAvailability[fullDay] = true;
+          }
+        }
+        // 2. Try flat fields (e.g., mondayAvailable, mondaySlots)
+        else if (m.containsKey('${fullDay}Available')) {
+          final available = m['${fullDay}Available'] == true;
+          final slots = (m['${fullDay}Slots'] as List?) ?? [];
+
+          _weeklyAvailability[fullDay] = available;
+          if (available && slots.isNotEmpty) {
+            final slot = (slots.first as Map?) ?? {};
+            final start = (slot['startTime'] ?? '10:00').toString();
+            final end = (slot['endTime'] ?? '19:00').toString();
+            _weeklyTiming[abbr]!.text = '$start - $end';
           }
         } else {
-          // If no availability data for this day, default to available (true)
+          // Default to true as before if not found
           _weeklyAvailability[fullDay] = true;
         }
       }
@@ -763,7 +770,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       'yearOfExperience': yearOfExperience,
       'clientsServed': clientsServed,
       'commission': _commissionEnabled,
-      'commissionPercentage': commissionPercentage,
+      'commissionRate': commissionPercentage,
       'permissions': permissions,
       'permission': permissions,
       'availability': availability,
@@ -784,6 +791,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
     // keep id for edit
     if (widget.existing != null) {
       result['id'] = widget.existing!['_id'];
+      result['_id'] = widget.existing!['_id'];
       debugPrint('Activities: Editing existing staff with ID: ${result['id']}');
     }
 

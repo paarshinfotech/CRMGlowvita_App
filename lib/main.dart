@@ -1,10 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'utils/app_theme.dart';
-
 import 'package:shared_preferences/shared_preferences.dart';
+import 'utils/app_theme.dart';
+import 'utils/navigator_key.dart';
 import 'intro_page.dart';
 import 'calender.dart';
 import 'Suppliers/supp_dashboard.dart';
@@ -24,6 +23,7 @@ class MyApp extends StatelessWidget {
       splitScreenMode: true,
       builder: (context, child) {
         return MaterialApp(
+          navigatorKey: navigatorKey,
           title: 'GlowVita Salon CRM',
           debugShowCheckedModeBanner: false,
           home: const SplashScreen(),

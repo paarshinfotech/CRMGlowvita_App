@@ -3,6 +3,9 @@ import 'dart:io' show HttpClient, X509Certificate;
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart' as http_io;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/material.dart';
+import '../utils/navigator_key.dart';
+import '../intro_page.dart';
 import '../customer_model.dart';
 import '../appointment_model.dart';
 import '../addon_model.dart';
@@ -30,6 +33,7 @@ class StaffMember {
   final DateTime? startDate;
   final DateTime? endDate;
   final String? description;
+  final double? commissionPercentage;
 
   String? get emailAddress => email;
   String? get mobileNo => mobile;
@@ -54,6 +58,7 @@ class StaffMember {
     this.startDate,
     this.endDate,
     this.description,
+    this.commissionPercentage,
   });
 
   factory StaffMember.fromJson(Map<String, dynamic> json) {
@@ -111,6 +116,9 @@ class StaffMember {
           json['startDate'] != null ? DateTime.parse(json['startDate']) : null,
       endDate: json['endDate'] != null ? DateTime.parse(json['endDate']) : null,
       description: json['description'],
+      commissionPercentage:
+          (json['commissionRate'] ?? json['commissionPercentage'] as num?)
+              ?.toDouble(),
     );
   }
 
@@ -132,6 +140,8 @@ class StaffMember {
       'yearOfExperience': yearOfExperience,
       'clientsServed': clientsServed,
       'commission': commission,
+      'commissionPercentage': commissionPercentage,
+      'commissionRate': commissionPercentage,
       'startDate': startDate?.toIso8601String(),
       'endDate': endDate?.toIso8601String(),
       'description': description,
@@ -205,6 +215,49 @@ class ApiService {
     return http_io.IOClient(ioClient);
   }
 
+  static bool _isUnauthorizedHandling = false;
+
+  // Handle 401 Unauthorized globally
+  static Future<void> _handleUnauthorized() async {
+    if (_isUnauthorizedHandling) return;
+    _isUnauthorizedHandling = true;
+
+    try {
+      print('UNAURHORIZED (401) DETECTED - Logging out user');
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('token');
+      // Keep other data or clear it depending on requirements, usually clear all auth data
+      // await prefs.clear();
+
+      if (navigatorKey.currentState != null) {
+        // Show a message to the user
+        ScaffoldMessengerState? scaffoldMessenger =
+            ScaffoldMessenger.maybeOf(navigatorKey.currentContext!);
+
+        if (scaffoldMessenger != null) {
+          scaffoldMessenger.showSnackBar(
+            const SnackBar(
+              content: Text('Your session has expired. Please login again.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+
+        // Navigate to Intro/Login page
+        navigatorKey.currentState!.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const IntroPage()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      print('Error in handleUnauthorized: $e');
+    } finally {
+      // Small delay to prevent multiple redirections if many APIs fail at once
+      await Future.delayed(const Duration(seconds: 2));
+      _isUnauthorizedHandling = false;
+    }
+  }
+
   // Generic POST request helper
   static Future<http.Response> _post(String url, Map<String, dynamic> body,
       {Map<String, String>? headers, bool useAuth = true}) async {
@@ -224,13 +277,19 @@ class ApiService {
         }
       }
 
-      return await client
+      final response = await client
           .post(
             Uri.parse(url),
             headers: requestHeaders,
             body: json.encode(body),
           )
           .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 401 && useAuth) {
+        _handleUnauthorized();
+      }
+
+      return response;
     } finally {
       client.close();
     }
@@ -255,12 +314,18 @@ class ApiService {
         }
       }
 
-      return await client
+      final response = await client
           .get(
             Uri.parse(url),
             headers: requestHeaders,
           )
           .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 401 && useAuth) {
+        _handleUnauthorized();
+      }
+
+      return response;
     } finally {
       client.close();
     }
@@ -285,13 +350,19 @@ class ApiService {
         }
       }
 
-      return await client
+      final response = await client
           .put(
             Uri.parse(url),
             headers: requestHeaders,
             body: json.encode(body),
           )
           .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 401 && useAuth) {
+        _handleUnauthorized();
+      }
+
+      return response;
     } finally {
       client.close();
     }
@@ -325,7 +396,13 @@ class ApiService {
       }
 
       final streamedResponse = await client.send(request);
-      return await http.Response.fromStream(streamedResponse);
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 401 && useAuth) {
+        _handleUnauthorized();
+      }
+
+      return response;
     } finally {
       client.close();
     }
@@ -350,13 +427,19 @@ class ApiService {
         }
       }
 
-      return await client
+      final response = await client
           .patch(
             Uri.parse(url),
             headers: requestHeaders,
             body: json.encode(body),
           )
           .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 401 && useAuth) {
+        _handleUnauthorized();
+      }
+
+      return response;
     } finally {
       client.close();
     }
@@ -638,6 +721,29 @@ class ApiService {
   // Delete a staff member
   static Future<http.Response> deleteStaff(String staffId) async {
     return await _delete('$baseUrl$staffEndpoint?id=$staffId');
+  }
+
+  // Get staff earnings
+  static Future<Map<String, dynamic>> getStaffEarnings(String staffId) async {
+    try {
+      final response = await _get('$baseUrl$staffEndpoint/earnings/$staffId');
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception(
+            'Failed to load staff earnings: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching staff earnings: $e');
+      rethrow;
+    }
+  }
+
+  // Record a new payout for staff
+  static Future<http.Response> recordStaffPayout(
+      String staffId, Map<String, dynamic> payoutData) async {
+    return await _post('$baseUrl$staffEndpoint/earnings/$staffId', payoutData);
   }
 
   // ==================== MARKETPLACE SUPPLIERS & PRODUCTS ==================== //

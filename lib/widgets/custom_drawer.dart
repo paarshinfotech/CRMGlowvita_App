@@ -25,11 +25,13 @@ import '../expenses.dart';
 import '../sales.dart';
 import '../add_ons.dart';
 import '../wedding_packages.dart';
-import '../login.dart';
-import '../intro_page.dart';
+
+import '../vendor_model.dart';
+import '../services/api_service.dart';
+import '../Profile.dart';
 
 // Drawer implementation for the app
-class CustomDrawer extends StatelessWidget {
+class CustomDrawer extends StatefulWidget {
   final String currentPage;
   final String userName;
   final String userType;
@@ -38,10 +40,39 @@ class CustomDrawer extends StatelessWidget {
   const CustomDrawer({
     Key? key,
     required this.currentPage,
-    this.userName = 'HarshalSpa',
+    this.userName = '',
     this.userType = 'Vendor Account',
     this.profileImageUrl = '',
   }) : super(key: key);
+
+  @override
+  State<CustomDrawer> createState() => _CustomDrawerState();
+}
+
+class _CustomDrawerState extends State<CustomDrawer> {
+  VendorProfile? _profile;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final profile = await ApiService.getVendorProfile();
+      if (mounted) {
+        setState(() {
+          _profile = profile;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {});
+      }
+      debugPrint('Error fetching profile for drawer: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,6 +89,9 @@ class CustomDrawer extends StatelessWidget {
       minScaleFactor: 0.9,
       maxScaleFactor: 1.1,
     );
+
+    final displayName = _profile?.businessName ?? widget.userName;
+    final displayImage = _profile?.profileImage ?? widget.profileImageUrl;
 
     return MediaQuery(
       data: mediaQuery.copyWith(textScaler: clampedTextScaler),
@@ -133,58 +167,75 @@ class CustomDrawer extends StatelessWidget {
             ),
 
             // User Info Header
-            Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: 16 * scale,
-                vertical: 16 * scale,
-              ),
+            GestureDetector(
+              onTap: () {
+                Navigator.pop(context); // Close drawer
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => ProfilePage(profile: _profile)),
+                );
+              },
               child: Container(
-                padding: EdgeInsets.all(12 * scale),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12 * scale),
-                  border: Border.all(color: Colors.grey[200]!),
+                padding: EdgeInsets.symmetric(
+                  horizontal: 16 * scale,
+                  vertical: 16 * scale,
                 ),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 20 * scale,
-                      backgroundColor: const Color(0xFFF6F0F2),
-                      child: Text(
-                        'G',
-                        style: GoogleFonts.poppins(
-                          color: Theme.of(context).primaryColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18 * scale,
+                child: Container(
+                  padding: EdgeInsets.all(12 * scale),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12 * scale),
+                    border: Border.all(color: Colors.grey[200]!),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 20 * scale,
+                        backgroundColor: const Color(0xFFF6F0F2),
+                        backgroundImage: displayImage.isNotEmpty
+                            ? NetworkImage(displayImage)
+                            : null,
+                        child: displayImage.isEmpty
+                            ? Text(
+                                displayName.isNotEmpty
+                                    ? displayName[0].toUpperCase()
+                                    : 'G',
+                                style: GoogleFonts.poppins(
+                                  color: Theme.of(context).primaryColor,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18 * scale,
+                                ),
+                              )
+                            : null,
+                      ),
+                      SizedBox(width: 12 * scale),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              displayName,
+                              style: GoogleFonts.poppins(
+                                fontSize: 14 * baseFontScale,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              widget.userType,
+                              style: GoogleFonts.poppins(
+                                fontSize: 11 * baseFontScale,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                    SizedBox(width: 12 * scale),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            userName,
-                            style: GoogleFonts.poppins(
-                              fontSize: 14 * baseFontScale,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black87,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            userType,
-                            style: GoogleFonts.poppins(
-                              fontSize: 11 * baseFontScale,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -202,7 +253,7 @@ class CustomDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.dashboard_outlined,
                       title: 'Dashboard',
-                      isSelected: currentPage == 'Dashboard',
+                      isSelected: widget.currentPage == 'Dashboard',
                       onTap: () => _navigateTo(context, const DashboardPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
@@ -211,7 +262,7 @@ class CustomDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.calendar_today_outlined,
                       title: 'Calendar',
-                      isSelected: currentPage == 'Calendar',
+                      isSelected: widget.currentPage == 'Calendar',
                       onTap: () => _navigateTo(context, const Calendar()),
                       scale: scale,
                       baseFontScale: baseFontScale,
@@ -220,7 +271,7 @@ class CustomDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.event_note_outlined,
                       title: 'Appointments',
-                      isSelected: currentPage == 'Appointments',
+                      isSelected: widget.currentPage == 'Appointments',
                       onTap: () => _navigateTo(context, const Appointment()),
                       scale: scale,
                       baseFontScale: baseFontScale,
@@ -229,7 +280,7 @@ class CustomDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.people_outline,
                       title: 'Staff',
-                      isSelected: currentPage == 'Staff',
+                      isSelected: widget.currentPage == 'Staff',
                       onTap: () => _navigateTo(context, const Staff()),
                       scale: scale,
                       baseFontScale: baseFontScale,
@@ -238,7 +289,7 @@ class CustomDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.people_outline,
                       title: 'Clients',
-                      isSelected: currentPage == 'Clients',
+                      isSelected: widget.currentPage == 'Clients',
                       onTap: () => _navigateTo(context, const Client()),
                       scale: scale,
                       baseFontScale: baseFontScale,
@@ -247,7 +298,7 @@ class CustomDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.design_services_outlined,
                       title: 'Services',
-                      isSelected: currentPage == 'Services',
+                      isSelected: widget.currentPage == 'Services',
                       onTap: () => _navigateTo(context, Services()),
                       scale: scale,
                       baseFontScale: baseFontScale,
@@ -256,7 +307,7 @@ class CustomDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.add_circle_outline,
                       title: 'Add Ons',
-                      isSelected: currentPage == 'Add Ons',
+                      isSelected: widget.currentPage == 'Add Ons',
                       onTap: () => _navigateTo(context, const AddOnsPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
@@ -265,7 +316,7 @@ class CustomDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.card_giftcard,
                       title: 'Wedding Package',
-                      isSelected: currentPage == 'Wedding Package',
+                      isSelected: widget.currentPage == 'Wedding Package',
                       onTap: () =>
                           _navigateTo(context, const WeddingPackagePage()),
                       scale: scale,
@@ -275,7 +326,7 @@ class CustomDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.inventory_2_outlined,
                       title: 'Products',
-                      isSelected: currentPage == 'Products',
+                      isSelected: widget.currentPage == 'Products',
                       onTap: () {
                         _navigateTo(
                           context,
@@ -289,7 +340,7 @@ class CustomDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.question_answer_outlined,
                       title: 'Product Questions',
-                      isSelected: currentPage == 'Product Questions',
+                      isSelected: widget.currentPage == 'Product Questions',
                       onTap: () => _navigateTo(
                         context,
                         const ProductQuestionsPage(),
@@ -301,7 +352,7 @@ class CustomDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.star_outlined,
                       title: 'Reviews',
-                      isSelected: currentPage == 'Reviews',
+                      isSelected: widget.currentPage == 'Reviews',
                       onTap: () => _navigateTo(context, const ReviewsPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
@@ -310,7 +361,7 @@ class CustomDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.store_outlined,
                       title: 'Marketplace',
-                      isSelected: currentPage == 'Marketplace',
+                      isSelected: widget.currentPage == 'Marketplace',
                       onTap: () => _navigateTo(
                         context,
                         const MarketplacePage(),
@@ -322,7 +373,7 @@ class CustomDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.trending_up_outlined,
                       title: 'Sales',
-                      isSelected: currentPage == 'Sales',
+                      isSelected: widget.currentPage == 'Sales',
                       onTap: () => _navigateTo(context, const SalesPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
@@ -331,7 +382,7 @@ class CustomDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.receipt_outlined,
                       title: 'Invoice Management',
-                      isSelected: currentPage == 'Invoice Management',
+                      isSelected: widget.currentPage == 'Invoice Management',
                       onTap: () => _navigateTo(
                         context,
                         const InvoiceManagementPage(),
@@ -343,7 +394,7 @@ class CustomDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.shopping_cart_outlined,
                       title: 'Orders',
-                      isSelected: currentPage == 'Orders',
+                      isSelected: widget.currentPage == 'Orders',
                       onTap: () => _navigateTo(context, OrdersPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
@@ -352,7 +403,7 @@ class CustomDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.local_shipping_outlined,
                       title: 'Shipping',
-                      isSelected: currentPage == 'Shipping',
+                      isSelected: widget.currentPage == 'Shipping',
                       onTap: () => _navigateTo(
                         context,
                         const ShippingPage(),
@@ -364,7 +415,7 @@ class CustomDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.account_balance_outlined,
                       title: 'Settlements',
-                      isSelected: currentPage == 'Settlements',
+                      isSelected: widget.currentPage == 'Settlements',
                       onTap: () => _navigateTo(context, SettlementsPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
@@ -373,7 +424,7 @@ class CustomDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.account_balance_wallet_outlined,
                       title: 'Expenses',
-                      isSelected: currentPage == 'Expenses',
+                      isSelected: widget.currentPage == 'Expenses',
                       onTap: () => _navigateTo(
                         context,
                         const ExpensesPage(),
@@ -385,7 +436,7 @@ class CustomDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.local_offer_outlined,
                       title: 'Offers & Coupons',
-                      isSelected: currentPage == 'Offers & Coupons',
+                      isSelected: widget.currentPage == 'Offers & Coupons',
                       onTap: () => _navigateTo(context, OffersCouponsPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
@@ -394,7 +445,7 @@ class CustomDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.card_giftcard_outlined,
                       title: 'Referrals',
-                      isSelected: currentPage == 'Referrals',
+                      isSelected: widget.currentPage == 'Referrals',
                       onTap: () => _navigateTo(context, const ReferralProg()),
                       scale: scale,
                       baseFontScale: baseFontScale,
@@ -403,7 +454,7 @@ class CustomDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.campaign_outlined,
                       title: 'Marketing',
-                      isSelected: currentPage == 'Marketing',
+                      isSelected: widget.currentPage == 'Marketing',
                       onTap: () {},
                       scale: scale,
                       baseFontScale: baseFontScale,
@@ -412,7 +463,7 @@ class CustomDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.notifications_outlined,
                       title: 'Notifications',
-                      isSelected: currentPage == 'Notifications',
+                      isSelected: widget.currentPage == 'Notifications',
                       onTap: () => _navigateTo(
                         context,
                         const NotificationPage(),
@@ -424,7 +475,7 @@ class CustomDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.bar_chart_outlined,
                       title: 'Reports',
-                      isSelected: currentPage == 'Reports',
+                      isSelected: widget.currentPage == 'Reports',
                       onTap: () => _navigateTo(context, const ReportsPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,

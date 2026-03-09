@@ -1,8 +1,3 @@
-// staff.dart (UPDATED - minimal changes)
-// Fixes:
-// 1) After create/update, refresh list so you see saved non-personal fields.
-// 2) Keeps your existing API + cookie token behavior.
-
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -49,23 +44,53 @@ class _StaffState extends State<Staff> {
       final List<StaffMember> members = await ApiService.getStaff();
       debugPrint('Activities: Received ${members.length} staff members');
 
+      List<Map<String, dynamic>> tempStaffList = [];
+
+      for (var item in members) {
+        final fullName = (item.fullName ?? '').toString();
+        final parts = fullName.split(' ');
+
+        double balance = 0.0;
+        double commission = item.commissionPercentage ?? 0.0;
+
+        try {
+          final earnings = await ApiService.getStaffEarnings(item.id ?? '');
+          if (earnings['summary'] != null) {
+            balance = (earnings['summary']['balance'] ?? 0.0).toDouble();
+          }
+          if (commission == 0.0) {
+            if (earnings['commissionDetails'] != null) {
+              commission =
+                  (earnings['commissionDetails']['rate'] ?? 0.0).toDouble();
+            } else if (earnings['summary'] != null &&
+                earnings['summary']['commissionRate'] != null) {
+              commission =
+                  (earnings['summary']['commissionRate'] ?? 0.0).toDouble();
+            }
+          }
+        } catch (e) {
+          debugPrint('Failed to load earnings for ${item.id}: $e');
+        }
+
+        tempStaffList.add({
+          'id': item.id,
+          'firstName': parts.isNotEmpty ? parts.first : '',
+          'lastName': parts.length > 1 ? parts.last : '',
+          'fullName': fullName,
+          'email': item.emailAddress ?? '',
+          'mobile': item.mobileNo ?? '',
+          'position': item.position ?? '',
+          'status': item.status ?? 'Active',
+          'image': item.photo, // used by UI avatar
+          'raw': item.toJson(),
+          'balance': balance,
+          'isCommissionEnabled': item.commission == true,
+          'commissionRate': commission,
+        });
+      }
+
       setState(() {
-        staffList = members.map<Map<String, dynamic>>((item) {
-          final fullName = (item.fullName ?? '').toString();
-          final parts = fullName.split(' ');
-          return {
-            'id': item.id,
-            'firstName': parts.isNotEmpty ? parts.first : '',
-            'lastName': parts.length > 1 ? parts.last : '',
-            'fullName': fullName,
-            'email': item.emailAddress ?? '',
-            'mobile': item.mobileNo ?? '',
-            'position': item.position ?? '',
-            'status': item.status ?? 'Active',
-            'image': item.photo, // used by UI avatar
-            'raw': item.toJson(),
-          };
-        }).toList();
+        staffList = tempStaffList;
         isLoading = false;
       });
     } catch (e) {
@@ -225,6 +250,39 @@ class _StaffState extends State<Staff> {
   Future<void> _updateStaff(
       String staffId, Map<String, dynamic> staffData) async {
     try {
+      // Process availability data to match backend format (flattening)
+      if (staffData.containsKey('availability')) {
+        final availability = staffData['availability'] as Map<String, dynamic>?;
+        if (availability != null) {
+          for (final day in [
+            'monday',
+            'tuesday',
+            'wednesday',
+            'thursday',
+            'friday',
+            'saturday',
+            'sunday'
+          ]) {
+            if (availability.containsKey(day)) {
+              final dayData = availability[day] as Map<String, dynamic>?;
+              if (dayData != null) {
+                final available = dayData['available'] == true;
+                final slots = (dayData['slots'] as List?) ?? [];
+                staffData['${day}Available'] = available;
+                staffData['${day}Slots'] = slots;
+              } else {
+                staffData['${day}Available'] = false;
+                staffData['${day}Slots'] = [];
+              }
+            } else {
+              staffData['${day}Available'] = false;
+              staffData['${day}Slots'] = [];
+            }
+          }
+        }
+        staffData.remove('availability');
+      }
+
       debugPrint('UPDATE STAFF PAYLOAD: ${jsonEncode(staffData)}');
 
       final response = await ApiService.updateStaff(staffId, staffData);
@@ -399,6 +457,14 @@ class _StaffState extends State<Staff> {
   Widget build(BuildContext context) {
     final total = staffList.length;
     final activeCount = staffList.where((s) => s['status'] == 'Active').length;
+    final commissionActiveCount =
+        staffList.where((s) => s['isCommissionEnabled'] == true).length;
+
+    double pendingPayoutsSum = 0;
+    for (var s in staffList) {
+      pendingPayoutsSum += (s['balance'] ?? 0.0);
+    }
+
     final rows = _applySort(_filteredStaff);
 
     return Theme(
@@ -440,18 +506,41 @@ class _StaffState extends State<Staff> {
             children: [
               LayoutBuilder(
                 builder: (context, constraints) {
-                  if (constraints.maxWidth < 400) {
+                  if (constraints.maxWidth < 600) {
                     return Column(
                       children: [
-                        _InfoCard(
-                            title: 'Total',
-                            value: '$total',
-                            subtitle: 'team members'),
+                        Row(
+                          children: [
+                            Expanded(
+                                child: _InfoCard(
+                                    title: 'Total Staff',
+                                    value: '$total',
+                                    subtitle: 'team members')),
+                            const SizedBox(width: 8),
+                            Expanded(
+                                child: _InfoCard(
+                                    title: 'Active Staff',
+                                    value: '$activeCount',
+                                    subtitle: 'active members')),
+                          ],
+                        ),
                         const SizedBox(height: 8),
-                        _InfoCard(
-                            title: 'Active',
-                            value: '$activeCount',
-                            subtitle: 'active members'),
+                        Row(
+                          children: [
+                            Expanded(
+                                child: _InfoCard(
+                                    title: 'Commission Active',
+                                    value: '$commissionActiveCount',
+                                    subtitle: 'earning commission')),
+                            const SizedBox(width: 8),
+                            Expanded(
+                                child: _InfoCard(
+                                    title: 'Pending Payouts',
+                                    value:
+                                        '₹${pendingPayoutsSum.toStringAsFixed(0)}',
+                                    subtitle: 'total due')),
+                          ],
+                        )
                       ],
                     );
                   }
@@ -459,16 +548,27 @@ class _StaffState extends State<Staff> {
                     children: [
                       Expanded(
                           child: _InfoCard(
-                              title: 'Total',
+                              title: 'Total Staff',
                               value: '$total',
                               subtitle: 'team members')),
                       const SizedBox(width: 10),
                       Expanded(
                           child: _InfoCard(
-                              title: 'Active',
+                              title: 'Active Staff',
                               value: '$activeCount',
                               subtitle: 'active members')),
-                      const Spacer(),
+                      const SizedBox(width: 10),
+                      Expanded(
+                          child: _InfoCard(
+                              title: 'Commission Active',
+                              value: '$commissionActiveCount',
+                              subtitle: 'earning commission')),
+                      const SizedBox(width: 10),
+                      Expanded(
+                          child: _InfoCard(
+                              title: 'Pending Payouts',
+                              value: '₹${pendingPayoutsSum.toStringAsFixed(0)}',
+                              subtitle: 'total due')),
                     ],
                   );
                 },
@@ -545,8 +645,10 @@ class _StaffState extends State<Staff> {
                                 child: SingleChildScrollView(
                                   scrollDirection: Axis.horizontal,
                                   child: SizedBox(
-                                    width: 760,
+                                    width: 1200,
                                     child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         // header row
                                         Container(
@@ -632,6 +734,16 @@ class _StaffState extends State<Staff> {
                                               ),
                                               const SizedBox(width: 10),
                                               SizedBox(
+                                                  width: 90,
+                                                  child: Text('Balance',
+                                                      style:
+                                                          GoogleFonts.poppins(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                              fontSize: 11))),
+                                              const SizedBox(width: 10),
+                                              SizedBox(
                                                 width: 90,
                                                 child: InkWell(
                                                   onTap: () => _sortBy(3),
@@ -688,6 +800,11 @@ class _StaffState extends State<Staff> {
                                               final actualIndex =
                                                   staffList.indexOf(s);
 
+                                              final commissionRate =
+                                                  s['commissionRate'] ?? 0.0;
+                                              final netBalance =
+                                                  s['balance'] ?? 0.0;
+
                                               return Container(
                                                 color: Colors.white,
                                                 padding:
@@ -729,7 +846,6 @@ class _StaffState extends State<Staff> {
                                                                           errorBuilder: (context,
                                                                               error,
                                                                               stackTrace) {
-                                                                            // If network image fails, show initial
                                                                             return Container(
                                                                               color: Colors.grey[300],
                                                                               child: Center(
@@ -851,6 +967,37 @@ class _StaffState extends State<Staff> {
                                                                     .ellipsis)),
                                                     const SizedBox(width: 10),
                                                     SizedBox(
+                                                        width: 100,
+                                                        child: Text(
+                                                            '${commissionRate.toStringAsFixed(0)}%',
+                                                            style: GoogleFonts
+                                                                .poppins(
+                                                                    fontSize:
+                                                                        10),
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis)),
+                                                    const SizedBox(width: 10),
+                                                    SizedBox(
+                                                        width: 90,
+                                                        child: Text(
+                                                            '₹${netBalance.toStringAsFixed(0)}',
+                                                            style: GoogleFonts.poppins(
+                                                                fontSize: 10,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w600,
+                                                                color: netBalance >
+                                                                        0
+                                                                    ? Colors.orange[
+                                                                        800]
+                                                                    : Colors.green[
+                                                                        800]),
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis)),
+                                                    const SizedBox(width: 10),
+                                                    SizedBox(
                                                       width: 90,
                                                       child: Align(
                                                         alignment: Alignment
@@ -897,53 +1044,109 @@ class _StaffState extends State<Staff> {
                                                     SizedBox(
                                                       width: 100,
                                                       child: Row(
+                                                        mainAxisAlignment:
+                                                            MainAxisAlignment
+                                                                .start,
                                                         children: [
-                                                          IconButton(
-                                                            icon: const Icon(Icons
-                                                                .edit_outlined),
-                                                            iconSize: 16,
+                                                          PopupMenuButton<
+                                                              String>(
+                                                            icon: const Icon(
+                                                                Icons.more_vert,
+                                                                size: 20,
+                                                                color: Color(
+                                                                    0xFF4A2C40)),
                                                             padding:
                                                                 EdgeInsets.zero,
-                                                            constraints:
-                                                                const BoxConstraints
-                                                                    .tightFor(),
-                                                            onPressed: () =>
+                                                            tooltip: 'Actions',
+                                                            onSelected: (val) {
+                                                              if (val ==
+                                                                  'edit') {
                                                                 _openAddStaff(
                                                                     existing: s,
                                                                     editIndex:
-                                                                        actualIndex),
-                                                          ),
-                                                          IconButton(
-                                                            icon: const Icon(Icons
-                                                                .visibility_outlined),
-                                                            iconSize: 16,
-                                                            color: const Color(
-                                                                0xFF4A2C40),
-                                                            padding:
-                                                                EdgeInsets.zero,
-                                                            constraints:
-                                                                const BoxConstraints
-                                                                    .tightFor(),
-                                                            onPressed: () =>
+                                                                        actualIndex);
+                                                              } else if (val ==
+                                                                  'view') {
                                                                 _showEarningsDialog(
-                                                                    s),
-                                                            tooltip:
-                                                                'View Earnings',
-                                                          ),
-                                                          IconButton(
-                                                            icon: const Icon(Icons
-                                                                .delete_outline),
-                                                            iconSize: 16,
-                                                            padding:
-                                                                EdgeInsets.zero,
-                                                            constraints:
-                                                                const BoxConstraints
-                                                                    .tightFor(),
-                                                            onPressed: () =>
+                                                                    s);
+                                                              } else if (val ==
+                                                                  'delete') {
                                                                 _deleteStaff(
                                                                     s['id'],
-                                                                    s['fullName']),
-                                                            color: Colors.red,
+                                                                    s['fullName']);
+                                                              }
+                                                            },
+                                                            itemBuilder:
+                                                                (ctx) => [
+                                                              PopupMenuItem(
+                                                                value: 'view',
+                                                                child: Row(
+                                                                  children: [
+                                                                    const Icon(
+                                                                        Icons
+                                                                            .visibility_outlined,
+                                                                        size:
+                                                                            16,
+                                                                        color: Color(
+                                                                            0xFF4A2C40)),
+                                                                    const SizedBox(
+                                                                        width:
+                                                                            8),
+                                                                    Text(
+                                                                        'View Earnings',
+                                                                        style: GoogleFonts.poppins(
+                                                                            fontSize:
+                                                                                11)),
+                                                                  ],
+                                                                ),
+                                                              ),
+                                                              PopupMenuItem(
+                                                                value: 'edit',
+                                                                child: Row(
+                                                                  children: [
+                                                                    const Icon(
+                                                                        Icons
+                                                                            .edit_outlined,
+                                                                        size:
+                                                                            16,
+                                                                        color: Colors
+                                                                            .blue),
+                                                                    const SizedBox(
+                                                                        width:
+                                                                            8),
+                                                                    Text(
+                                                                        'Edit Info',
+                                                                        style: GoogleFonts.poppins(
+                                                                            fontSize:
+                                                                                11)),
+                                                                  ],
+                                                                ),
+                                                              ),
+                                                              PopupMenuItem(
+                                                                value: 'delete',
+                                                                child: Row(
+                                                                  children: [
+                                                                    const Icon(
+                                                                        Icons
+                                                                            .delete_outline,
+                                                                        size:
+                                                                            16,
+                                                                        color: Colors
+                                                                            .red),
+                                                                    const SizedBox(
+                                                                        width:
+                                                                            8),
+                                                                    Text(
+                                                                        'Delete Staff',
+                                                                        style: GoogleFonts.poppins(
+                                                                            fontSize:
+                                                                                11,
+                                                                            color:
+                                                                                Colors.red)),
+                                                                  ],
+                                                                ),
+                                                              ),
+                                                            ],
                                                           ),
                                                         ],
                                                       ),
