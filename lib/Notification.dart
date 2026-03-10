@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'widgets/custom_drawer.dart';
+import 'vendor_model.dart';
+import 'services/api_service.dart';
+import 'my_Profile.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class NotificationPage extends StatefulWidget {
   const NotificationPage({super.key});
@@ -10,6 +14,7 @@ class NotificationPage extends StatefulWidget {
 }
 
 class _NotificationPageState extends State<NotificationPage> {
+  VendorProfile? _profile;
   // Sample notification data
   final List<Map<String, dynamic>> notifications = [
     {
@@ -39,6 +44,21 @@ class _NotificationPageState extends State<NotificationPage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final p = await ApiService.getVendorProfile();
+      if (mounted) setState(() => _profile = p);
+    } catch (e) {
+      debugPrint('fetchProfile: $e');
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       drawer: const CustomDrawer(currentPage: 'Notifications'),
@@ -47,13 +67,38 @@ class _NotificationPageState extends State<NotificationPage> {
           'Notifications',
           style: GoogleFonts.poppins(
             fontWeight: FontWeight.bold,
-            fontSize: 18,
+            fontSize: 18.sp,
             color: Colors.black,
           ),
         ),
         backgroundColor: Colors.white,
         iconTheme: const IconThemeData(color: Colors.black),
         elevation: 0.4,
+        actions: [
+          GestureDetector(
+            onTap: () => Navigator.push(
+                context, MaterialPageRoute(builder: (_) => My_Profile())),
+            child: Padding(
+              padding: EdgeInsets.only(right: 12.w),
+              child: CircleAvatar(
+                radius: 16.r,
+                backgroundColor: Theme.of(context).primaryColor,
+                backgroundImage: (_profile != null && _profile!.profileImage.isNotEmpty)
+                    ? NetworkImage(_profile!.profileImage)
+                    : null,
+                child: (_profile == null || _profile!.profileImage.isEmpty)
+                    ? Text(
+                        (_profile?.businessName ?? 'H').substring(0, 1).toUpperCase(),
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.bold),
+                      )
+                    : null,
+              ),
+            ),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Column(

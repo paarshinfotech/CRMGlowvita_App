@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 import '../Notification.dart';
-import '../Profile.dart';
+import '../my_Profile.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class ProfitAndLossSummary extends StatefulWidget {
@@ -74,28 +74,31 @@ class _ProfitAndLossSummaryState extends State<ProfitAndLossSummary> {
   @override
   Widget build(BuildContext context) {
     // Calculate totals
-    final totalRevenue = financeSummary.fold<double>(0, (sum, e) => sum + e['totalSales']);
+    final totalRevenue =
+        financeSummary.fold<double>(0, (sum, e) => sum + e['totalSales']);
     final cogs = 0.0;
     final totalExpenses = 0.0;
     final totalOpex = cogs + totalExpenses;
     final profit = totalRevenue - totalOpex;
-    final profitPct = totalRevenue > 0 ? (profit / totalRevenue * 100).round() : 0;
+    final profitPct =
+        totalRevenue > 0 ? (profit / totalRevenue * 100).round() : 0;
 
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         leading: BackButton(color: Colors.black),
-        title:
-        Text('Profit & Loss', style: GoogleFonts.poppins(color: Colors.black, fontSize: 20)),
+        title: Text('Profit & Loss',
+            style: GoogleFonts.poppins(color: Colors.black, fontSize: 20)),
         actions: [
           IconButton(
             icon: Icon(Icons.notifications, color: Colors.black),
-            onPressed: () =>
-                Navigator.push(context, MaterialPageRoute(builder: (_) => NotificationPage())),
+            onPressed: () => Navigator.push(
+                context, MaterialPageRoute(builder: (_) => NotificationPage())),
           ),
           GestureDetector(
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfilePage())),
+            onTap: () => Navigator.push(
+                context, MaterialPageRoute(builder: (_) => My_Profile())),
             child: Padding(
               padding: EdgeInsets.only(right: 16.w),
               child: CircleAvatar(
@@ -132,7 +135,8 @@ class _ProfitAndLossSummaryState extends State<ProfitAndLossSummary> {
                   ),
                   Spacer(),
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.black26),
                       borderRadius: BorderRadius.circular(8),
@@ -141,7 +145,8 @@ class _ProfitAndLossSummaryState extends State<ProfitAndLossSummary> {
                       child: DropdownButton<String>(
                         icon: Icon(Icons.download, color: Colors.black),
                         items: ['CSV', 'PDF', 'Excel', 'Print']
-                            .map((f) => DropdownMenuItem(value: f, child: Text(f)))
+                            .map((f) =>
+                                DropdownMenuItem(value: f, child: Text(f)))
                             .toList(),
                         hint: Text('Export', style: GoogleFonts.poppins()),
                         onChanged: (_) {},
@@ -156,48 +161,46 @@ class _ProfitAndLossSummaryState extends State<ProfitAndLossSummary> {
               Card(
                 color: Colors.white,
                 elevation: 4,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
                 child: Padding(
                   padding: EdgeInsets.all(16.r),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Profit – Loss statement',
-                          style:
-                          GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600)),
+                          style: GoogleFonts.poppins(
+                              fontSize: 16, fontWeight: FontWeight.w600)),
                       SizedBox(height: 4.h),
                       Text(
                         _selectedDateRange != null
                             ? "For ${DateFormat('dd MMM yyyy').format(_selectedDateRange!.start)} to ${DateFormat('dd MMM yyyy').format(_selectedDateRange!.end)}"
                             : "Select a date range",
-                        style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600]),
+                        style: GoogleFonts.poppins(
+                            fontSize: 12, color: Colors.grey[600]),
                       ),
                       SizedBox(height: 16.h),
-
                       _pnlRow(
                         'Total Revenue',
                         _currency(totalRevenue),
                         pct: '100 %',
                       ),
-
                       _pnlRow(
                         'COGS',
                         _currency(cogs),
                         pct: '0 %',
                         infoTitle: 'COGS',
                         infoMessage:
-                        'Cost Of Goods Sold\nFormula: COGS = % of Total Revenue',
+                            'Cost Of Goods Sold\nFormula: COGS = % of Total Revenue',
                       ),
-
                       _pnlRow(
                         'Total Expenses',
                         _currency(totalExpenses),
                         pct: '0 %',
                         infoTitle: 'Total Expenses',
                         infoMessage:
-                        'Sum of all operating expenses\nFormula: Total Expenses = % of Total Revenue',
+                            'Sum of all operating expenses\nFormula: Total Expenses = % of Total Revenue',
                       ),
-
                       _pnlRow(
                         'Total Opex',
                         _currency(totalOpex),
@@ -205,9 +208,7 @@ class _ProfitAndLossSummaryState extends State<ProfitAndLossSummary> {
                         infoTitle: 'Operating Expenses',
                         infoMessage: 'Formula: COGS + Total Expenses',
                       ),
-
                       SizedBox(height: 12.h),
-
                       Container(
                         decoration: BoxDecoration(
                           color: Colors.green.shade50,
@@ -227,10 +228,11 @@ class _ProfitAndLossSummaryState extends State<ProfitAndLossSummary> {
                                         color: Colors.green[700])),
                                 SizedBox(width: 4.w),
                                 GestureDetector(
-                                  onTap: () => _showInfo('Profit Margin (EBITA)',
+                                  onTap: () => _showInfo(
+                                      'Profit Margin (EBITA)',
                                       'Earnings Before Interest, Taxes & Amortization\nProfit Margin (EBITA) = Total Revenue - Total Opex'),
-                                  child:
-                                  Icon(Icons.info_outline, size: 18, color: Colors.green[700]),
+                                  child: Icon(Icons.info_outline,
+                                      size: 18, color: Colors.green[700]),
                                 ),
                               ],
                             ),
@@ -265,12 +267,12 @@ class _ProfitAndLossSummaryState extends State<ProfitAndLossSummary> {
   }
 
   Widget _pnlRow(
-      String label,
-      String value, {
-        required String pct,
-        String? infoTitle,
-        String? infoMessage,
-      }) {
+    String label,
+    String value, {
+    required String pct,
+    String? infoTitle,
+    String? infoMessage,
+  }) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 6.h),
       child: Row(
@@ -283,7 +285,8 @@ class _ProfitAndLossSummaryState extends State<ProfitAndLossSummary> {
                 SizedBox(width: 4.w),
                 GestureDetector(
                   onTap: () => _showInfo(infoTitle, infoMessage),
-                  child: Icon(Icons.info_outline, size: 18, color: Colors.grey[700]),
+                  child: Icon(Icons.info_outline,
+                      size: 18, color: Colors.grey[700]),
                 ),
               ],
             ],

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 import '../Notification.dart';
-import '../Profile.dart';
+import '../my_Profile.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class PaymentSummary extends StatefulWidget {
@@ -11,7 +11,6 @@ class PaymentSummary extends StatefulWidget {
 }
 
 class _PaymentSummaryState extends State<PaymentSummary> {
-
   DateTimeRange? _selectedDateRange;
   Future<void> _selectDateRange() async {
     final picked = await showDateRangePicker(
@@ -24,7 +23,6 @@ class _PaymentSummaryState extends State<PaymentSummary> {
             end: DateTime.now(),
           ),
     );
-
   }
 
   final List<Map<String, dynamic>> payments = [
@@ -105,7 +103,8 @@ class _PaymentSummaryState extends State<PaymentSummary> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const NotificationPage()),
+                  MaterialPageRoute(
+                      builder: (context) => const NotificationPage()),
                 );
               },
             ),
@@ -113,7 +112,7 @@ class _PaymentSummaryState extends State<PaymentSummary> {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const ProfilePage()),
+                  MaterialPageRoute(builder: (context) => const My_Profile()),
                 );
               },
               child: Padding(
@@ -159,8 +158,10 @@ class _PaymentSummaryState extends State<PaymentSummary> {
                     backgroundColor: Colors.white,
                     foregroundColor: Colors.black87,
                     side: BorderSide(color: Colors.black54),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
                     elevation: 0,
                   ),
                 ),
@@ -172,7 +173,8 @@ class _PaymentSummaryState extends State<PaymentSummary> {
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
-                      icon: const Icon(Icons.file_download_outlined, color: Colors.black),
+                      icon: const Icon(Icons.file_download_outlined,
+                          color: Colors.black),
                       items: const [
                         DropdownMenuItem(value: 'csv', child: Text('CSV')),
                         DropdownMenuItem(value: 'pdf', child: Text('PDF')),
@@ -207,7 +209,7 @@ class _PaymentSummaryState extends State<PaymentSummary> {
                     scrollDirection: Axis.horizontal,
                     child: DataTable(
                       headingRowColor: MaterialStateColor.resolveWith(
-                              (states) => Colors.grey.shade200),
+                          (states) => Colors.grey.shade200),
                       columnSpacing: 24,
                       dataRowHeight: 60,
                       headingTextStyle: const TextStyle(
@@ -224,15 +226,18 @@ class _PaymentSummaryState extends State<PaymentSummary> {
                           final isEven = index % 2 == 0;
                           return DataRow(
                             color: MaterialStateColor.resolveWith(
-                                  (states) => isEven ? Colors.grey.shade50 : Colors.white,
+                              (states) =>
+                                  isEven ? Colors.grey.shade50 : Colors.white,
                             ),
                             cells: [
                               DataCell(Text(payment['method'])),
-                              DataCell(Text(payment['transactions'].toString())),
+                              DataCell(
+                                  Text(payment['transactions'].toString())),
                               DataCell(Text(_currencyFormat(payment['gross']))),
                               DataCell(Text(
                                 _currencyFormat(payment['net']),
-                                style: const TextStyle(fontWeight: FontWeight.w600),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600),
                               )),
                             ],
                           );
@@ -240,27 +245,43 @@ class _PaymentSummaryState extends State<PaymentSummary> {
 
                         // Total row
                         DataRow(
-                          color: MaterialStateColor.resolveWith((states) => Colors.yellow.shade50),
+                          color: MaterialStateColor.resolveWith(
+                              (states) => Colors.yellow.shade50),
                           cells: [
                             const DataCell(Text(
                               'Total',
                               style: TextStyle(fontWeight: FontWeight.bold),
                             )),
                             DataCell(Text(
-                              payments.fold<int>(0, (sum, item) => sum + item['transactions'] as int).toString(),
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              payments
+                                  .fold<int>(
+                                      0,
+                                      (sum, item) =>
+                                          sum + item['transactions'] as int)
+                                  .toString(),
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
                             )),
                             DataCell(Text(
                               _currencyFormat(
-                                payments.fold<double>(0.0, (sum, item) => sum + (item['gross'] as num).toDouble()),
+                                payments.fold<double>(
+                                    0.0,
+                                    (sum, item) =>
+                                        sum +
+                                        (item['gross'] as num).toDouble()),
                               ),
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
                             )),
                             DataCell(Text(
                               _currencyFormat(
-                                payments.fold<double>(0.0, (sum, item) => sum + (item['net'] as num).toDouble()),
+                                payments.fold<double>(
+                                    0.0,
+                                    (sum, item) =>
+                                        sum + (item['net'] as num).toDouble()),
                               ),
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
                             )),
                           ],
                         ),

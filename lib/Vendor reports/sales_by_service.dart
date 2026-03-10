@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 import '../Notification.dart';
-import '../Profile.dart';
+import '../my_Profile.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class SalesByService extends StatefulWidget {
@@ -23,10 +23,11 @@ class _SalesByServiceState extends State<SalesByService> {
             end: DateTime.now(),
           ),
     );
-    if (picked != null) setState(() {
-      _selectedDateRange = picked;
-      _filterData();
-    });
+    if (picked != null)
+      setState(() {
+        _selectedDateRange = picked;
+        _filterData();
+      });
   }
 
   final List<Map<String, dynamic>> services = [
@@ -62,7 +63,6 @@ class _SalesByServiceState extends State<SalesByService> {
     },
   ];
 
-
   List<Map<String, dynamic>> filteredServices = [];
   String searchText = '';
 
@@ -81,8 +81,10 @@ class _SalesByServiceState extends State<SalesByService> {
             .contains(searchText.toLowerCase());
 
         final matchesDate = _selectedDateRange == null ||
-            (service['date'].isAfter(_selectedDateRange!.start.subtract(const Duration(days: 1))) &&
-                service['date'].isBefore(_selectedDateRange!.end.add(const Duration(days: 1))));
+            (service['date'].isAfter(_selectedDateRange!.start
+                    .subtract(const Duration(days: 1))) &&
+                service['date'].isBefore(
+                    _selectedDateRange!.end.add(const Duration(days: 1))));
 
         return matchesSearch && matchesDate;
       }).toList();
@@ -138,7 +140,8 @@ class _SalesByServiceState extends State<SalesByService> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const NotificationPage()),
+                  MaterialPageRoute(
+                      builder: (context) => const NotificationPage()),
                 );
               },
             ),
@@ -146,7 +149,7 @@ class _SalesByServiceState extends State<SalesByService> {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const ProfilePage()),
+                  MaterialPageRoute(builder: (context) => const My_Profile()),
                 );
               },
               child: Padding(
@@ -215,8 +218,10 @@ class _SalesByServiceState extends State<SalesByService> {
                     backgroundColor: Colors.white,
                     foregroundColor: Colors.black87,
                     side: BorderSide(color: Colors.black54),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
                     elevation: 0,
                   ),
                 ),
@@ -228,7 +233,8 @@ class _SalesByServiceState extends State<SalesByService> {
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
-                      icon: const Icon(Icons.file_download_outlined, color: Colors.black),
+                      icon: const Icon(Icons.file_download_outlined,
+                          color: Colors.black),
                       items: const [
                         DropdownMenuItem(value: 'csv', child: Text('CSV')),
                         DropdownMenuItem(value: 'pdf', child: Text('PDF')),
@@ -261,7 +267,8 @@ class _SalesByServiceState extends State<SalesByService> {
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: DataTable(
-                      headingRowColor: MaterialStateColor.resolveWith((states) => Colors.grey.shade200),
+                      headingRowColor: MaterialStateColor.resolveWith(
+                          (states) => Colors.grey.shade200),
                       columnSpacing: 24,
                       dataRowHeight: 60,
                       headingTextStyle: const TextStyle(
@@ -285,18 +292,23 @@ class _SalesByServiceState extends State<SalesByService> {
                           final isEven = index % 2 == 0;
                           return DataRow(
                             color: MaterialStateColor.resolveWith((states) =>
-                            isEven ? Colors.grey.shade50 : Colors.white),
+                                isEven ? Colors.grey.shade50 : Colors.white),
                             cells: [
                               DataCell(Text(service['service'])),
                               DataCell(Text(service['sold'].toString())),
-                              DataCell(Text(_currencyFormat(service['grossSale']))),
-                              DataCell(Text(_currencyFormat(service['discount']))),
-                              DataCell(Text(_currencyFormat(service['offers']))),
-                              DataCell(Text(_currencyFormat(service['netSale']))),
+                              DataCell(
+                                  Text(_currencyFormat(service['grossSale']))),
+                              DataCell(
+                                  Text(_currencyFormat(service['discount']))),
+                              DataCell(
+                                  Text(_currencyFormat(service['offers']))),
+                              DataCell(
+                                  Text(_currencyFormat(service['netSale']))),
                               DataCell(Text(_currencyFormat(service['tax']))),
                               DataCell(Text(
                                 _currencyFormat(service['totalSales']),
-                                style: const TextStyle(fontWeight: FontWeight.w600),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600),
                               )),
                             ],
                           );
@@ -304,39 +316,56 @@ class _SalesByServiceState extends State<SalesByService> {
 
                         //  Totals Row
                         DataRow(
-                          color: MaterialStateColor.resolveWith((states) => Colors.yellow.shade50),
+                          color: MaterialStateColor.resolveWith(
+                              (states) => Colors.yellow.shade50),
                           cells: [
                             const DataCell(Text(
                               'Total',
                               style: TextStyle(fontWeight: FontWeight.bold),
                             )),
                             DataCell(Text(
-                              services.fold<num>(0, (sum, item) => sum + item['sold']).toString(),
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              services
+                                  .fold<num>(
+                                      0, (sum, item) => sum + item['sold'])
+                                  .toString(),
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
                             )),
                             DataCell(Text(
-                              _currencyFormat(services.fold<num>(0, (sum, item) => sum + item['grossSale'])),
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              _currencyFormat(services.fold<num>(
+                                  0, (sum, item) => sum + item['grossSale'])),
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
                             )),
                             DataCell(Text(
-                              _currencyFormat(services.fold<num>(0, (sum, item) => sum + item['discount'])),
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              _currencyFormat(services.fold<num>(
+                                  0, (sum, item) => sum + item['discount'])),
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
                             )),
                             DataCell(Text(
-                              _currencyFormat(services.fold<num>(0, (sum, item) => sum + item['offers'])),
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              _currencyFormat(services.fold<num>(
+                                  0, (sum, item) => sum + item['offers'])),
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
                             )),
                             DataCell(Text(
-                              _currencyFormat(services.fold<num>(0, (sum, item) => sum + item['netSale'])),
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              _currencyFormat(services.fold<num>(
+                                  0, (sum, item) => sum + item['netSale'])),
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
                             )),
                             DataCell(Text(
-                              _currencyFormat(services.fold<num>(0, (sum, item) => sum + item['tax'])),
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              _currencyFormat(services.fold<num>(
+                                  0, (sum, item) => sum + item['tax'])),
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
                             )),
                             DataCell(Text(
-                              _currencyFormat(services.fold<num>(0, (sum, item) => sum + item['totalSales'])),
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              _currencyFormat(services.fold<num>(
+                                  0, (sum, item) => sum + item['totalSales'])),
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
                             )),
                           ],
                         ),

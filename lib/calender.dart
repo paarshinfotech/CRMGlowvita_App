@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:glowvita/my_Profile.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'services/api_service.dart';
@@ -9,7 +10,7 @@ import 'widgets/create_appointment_form.dart';
 import 'widgets/custom_drawer.dart';
 import 'widgets/appointment_detail_dialog.dart';
 import 'Notification.dart';
-import 'Profile.dart';
+import 'vendor_model.dart';
 
 class Appointments {
   final String id;
@@ -44,13 +45,16 @@ class Appointments {
 }
 
 class Calendar extends StatefulWidget {
-  const Calendar({super.key});
+  final DateTime? initialDate;
+  final String? initialAppointmentId;
+  const Calendar({super.key, this.initialDate, this.initialAppointmentId});
   @override
   State<Calendar> createState() => _CalendarState();
 }
 
 class _CalendarState extends State<Calendar> {
-  DateTime _selectedDate = DateTime.now();
+  late DateTime _selectedDate;
+  String? _highlightedAppointmentId;
   final ValueNotifier<int> _timerNotifier = ValueNotifier<int>(0);
 
   late final ScrollController _verticalScrollController;
@@ -69,6 +73,7 @@ class _CalendarState extends State<Calendar> {
   List<StaffMember> staffList = [];
   bool isStaffLoading = false;
   List<Appointments> _appointments = [];
+  VendorProfile? _profile;
 
   DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
@@ -152,16 +157,60 @@ class _CalendarState extends State<Calendar> {
         }
       });
       debugPrint('Loaded ${_appointments.length} appointments from API');
+
+      if (_highlightedAppointmentId != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _scrollToAppointment(_highlightedAppointmentId!);
+        });
+      }
     } catch (e) {
       debugPrint('Error loading appointments: $e');
-      // If API fails, maybe keep current or show error
+    }
+  }
+
+  void _scrollToAppointment(String id) {
+    if (!mounted) return;
+    try {
+      final appt = _appointments.firstWhere((a) => a.id == id);
+
+      // Vertical scroll
+      final startMin = appt.startTime.hour * 60 + appt.startTime.minute;
+      final quarterSlot = slotHeight / 4;
+      final targetTop = (startMin / 15) * quarterSlot;
+
+      if (_verticalScrollController.hasClients) {
+        _verticalScrollController.animateTo(
+          (targetTop - 100)
+              .clamp(0, _verticalScrollController.position.maxScrollExtent),
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+      }
+
+      // Horizontal scroll to staff member
+      if (_horizontalScrollController.hasClients && staffList.isNotEmpty) {
+        final staffIdx =
+            staffList.indexWhere((s) => s.fullName == appt.staffName);
+        if (staffIdx != -1) {
+          final targetLeft = staffIdx * staffColumnWidth;
+          _horizontalScrollController.animateTo(
+            targetLeft.clamp(
+                0, _horizontalScrollController.position.maxScrollExtent),
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Scroll to appointment failed: $e');
     }
   }
 
   @override
   void initState() {
     super.initState();
-    _selectedDate = _dateOnly(DateTime.now());
+    _selectedDate = _dateOnly(widget.initialDate ?? DateTime.now());
+    _highlightedAppointmentId = widget.initialAppointmentId;
 
     // Controllers...
     _verticalScrollController = ScrollController();
@@ -171,6 +220,7 @@ class _CalendarState extends State<Calendar> {
     // This will now actually fetch real staff, appointments
     _loadStaff();
     _loadAppointments();
+    _fetchProfile();
 
     // Timer and scroll sync...
     _horizontalScrollController.addListener(() {
@@ -215,6 +265,15 @@ class _CalendarState extends State<Calendar> {
       if (mounted) {
         setState(() => isStaffLoading = false);
       }
+    }
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final p = await ApiService.getVendorProfile();
+      if (mounted) setState(() => _profile = p);
+    } catch (e) {
+      debugPrint('fetchProfile: $e');
     }
   }
 
@@ -364,11 +423,24 @@ class _CalendarState extends State<Calendar> {
             padding: EdgeInsets.only(right: 12.w),
             child: GestureDetector(
               onTap: () => Navigator.push(
-                  context, MaterialPageRoute(builder: (_) => ProfilePage())),
+                  context, MaterialPageRoute(builder: (_) => My_Profile())),
               child: CircleAvatar(
-                  radius: 16.r,
-                  backgroundImage:
-                      const AssetImage('assets/images/profile.jpeg')),
+                radius: 16.r,
+                backgroundColor: Theme.of(context).primaryColor,
+                child: ClipOval(
+                  child: (_profile != null && _profile!.profileImage.isNotEmpty)
+                      ? Image.network(
+                          _profile!.profileImage,
+                          width: 32.r,
+                          height: 32.r,
+                          fit: BoxFit.cover,
+                          errorBuilder: (ctx, _, __) => _buildInitialAvatar(),
+                          loadingBuilder: (ctx, child, progress) =>
+                              progress == null ? child : _buildInitialAvatar(),
+                        )
+                      : _buildInitialAvatar(),
+                ),
+              ),
             ),
           ),
         ],
@@ -592,6 +664,57 @@ class _CalendarState extends State<Calendar> {
                                                 ),
                                               );
                                             }),
+                                            // Blocked times for this staff
+                                            ...(staff.blockedTimes ?? [])
+                                                .where((b) =>
+                                                    b != null &&
+                                                    b['date'] ==
+                                                        DateFormat('yyyy-MM-dd')
+                                                            .format(
+                                                                _selectedDate))
+                                                .map((b) {
+                                              final startMin =
+                                                  _getMinutes(b['startTime']);
+                                              final endMin =
+                                                  _getMinutes(b['endTime']);
+                                              final top =
+                                                  (startMin / 15) * quarterSlot;
+                                              final height =
+                                                  ((endMin - startMin) / 15) *
+                                                      quarterSlot;
+
+                                              return Positioned(
+                                                top: top,
+                                                left: 4.w,
+                                                right: 4.w,
+                                                height: height,
+                                                child: Container(
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.grey[100]!
+                                                        .withOpacity(0.85),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            4.r),
+                                                    border: Border.all(
+                                                        color:
+                                                            Colors.grey[300]!,
+                                                        width: 0.5),
+                                                  ),
+                                                  child: Center(
+                                                    child: Text(
+                                                      'Blocked',
+                                                      style: TextStyle(
+                                                        color: Colors.red[400],
+                                                        fontSize: 9.sp,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              );
+                                            }),
+
                                             // Appointments for this staff
                                             ...appts.map((appt) {
                                               final startMin =
@@ -645,9 +768,17 @@ class _CalendarState extends State<Calendar> {
                                                             BorderRadius
                                                                 .circular(8.r),
                                                         border: Border.all(
-                                                            color: Colors
-                                                                .grey[200]!,
-                                                            width: 1),
+                                                            color: appt.id ==
+                                                                    _highlightedAppointmentId
+                                                                ? Theme.of(
+                                                                        context)
+                                                                    .primaryColor
+                                                                : Colors
+                                                                    .grey[200]!,
+                                                            width: appt.id ==
+                                                                    _highlightedAppointmentId
+                                                                ? 2
+                                                                : 1),
                                                         boxShadow: [
                                                           BoxShadow(
                                                             color: Colors.black
@@ -923,5 +1054,23 @@ class _CalendarState extends State<Calendar> {
         ],
       ),
     );
+  }
+
+  Widget _buildInitialAvatar() {
+    return Text(
+      (_profile?.businessName ?? 'H').substring(0, 1).toUpperCase(),
+      style: TextStyle(
+          color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.bold),
+    );
+  }
+
+  int _getMinutes(String? timeStr) {
+    if (timeStr == null || !timeStr.contains(':')) return 0;
+    try {
+      final parts = timeStr.split(':');
+      return int.parse(parts[0]) * 60 + int.parse(parts[1]);
+    } catch (e) {
+      return 0;
+    }
   }
 }

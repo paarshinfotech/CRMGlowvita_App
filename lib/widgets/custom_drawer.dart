@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:glowvita/intro_page.dart';
+import 'package:glowvita/my_Profile.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../dashboard.dart';
-import '../calender.dart';
+import '../booking_calendar.dart';
+
 import '../appointment.dart';
 import '../staff.dart';
 import '../clients.dart';
@@ -28,7 +30,6 @@ import '../wedding_packages.dart';
 
 import '../vendor_model.dart';
 import '../services/api_service.dart';
-import '../Profile.dart';
 
 // Drawer implementation for the app
 class CustomDrawer extends StatefulWidget {
@@ -172,8 +173,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                 Navigator.pop(context); // Close drawer
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                      builder: (_) => ProfilePage(profile: _profile)),
+                  MaterialPageRoute(builder: (_) => My_Profile()),
                 );
               },
               child: Container(
@@ -192,7 +192,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                     children: [
                       CircleAvatar(
                         radius: 20 * scale,
-                        backgroundColor: const Color(0xFFF6F0F2),
+                        backgroundColor: Theme.of(context).primaryColor,
                         backgroundImage: displayImage.isNotEmpty
                             ? NetworkImage(displayImage)
                             : null,
@@ -202,7 +202,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                                     ? displayName[0].toUpperCase()
                                     : 'G',
                                 style: GoogleFonts.poppins(
-                                  color: Theme.of(context).primaryColor,
+                                  color: Colors.white,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 18 * scale,
                                 ),
@@ -260,10 +260,11 @@ class _CustomDrawerState extends State<CustomDrawer> {
                     ),
                     _buildMenuItem(
                       context: context,
-                      icon: Icons.calendar_today_outlined,
-                      title: 'Calendar',
-                      isSelected: widget.currentPage == 'Calendar',
-                      onTap: () => _navigateTo(context, const Calendar()),
+                      icon: Icons.calendar_month_outlined,
+                      title: 'Booking Calendar',
+                      isSelected: widget.currentPage == 'Booking Calendar',
+                      onTap: () =>
+                          _navigateTo(context, const BookingCalendarPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),

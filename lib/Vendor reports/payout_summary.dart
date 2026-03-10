@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../Notification.dart';
-import '../Profile.dart';
+import '../my_Profile.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -27,6 +27,7 @@ class _PayoutSummaryState extends State<PayoutSummary> {
     super.initState();
     _loadDummyData();
   }
+
   DateTimeRange? _selectedDateRange;
   void _loadDummyData() {
     allData = [
@@ -61,11 +62,15 @@ class _PayoutSummaryState extends State<PayoutSummary> {
   void _applyFilter(String query) {
     setState(() {
       filteredData = allData.where((data) {
-        return data['invoice'].toString().toLowerCase().contains(query.toLowerCase());
+        return data['invoice']
+            .toString()
+            .toLowerCase()
+            .contains(query.toLowerCase());
       }).toList();
       _calculateTotals();
     });
   }
+
   void _filterData() {
     setState(() {
       filteredData = allData.where((data) {
@@ -77,6 +82,7 @@ class _PayoutSummaryState extends State<PayoutSummary> {
       _calculateTotals();
     });
   }
+
   Future<void> _selectDateRange() async {
     final picked = await showDateRangePicker(
       context: context,
@@ -94,8 +100,10 @@ class _PayoutSummaryState extends State<PayoutSummary> {
       });
     }
   }
+
   void _calculateTotals() {
-    totalQty = totalGrossSale = totalDiscount = totalNetSale = totalTaxes = totalTotalSale = 0;
+    totalQty = totalGrossSale =
+        totalDiscount = totalNetSale = totalTaxes = totalTotalSale = 0;
     for (var data in filteredData) {
       totalQty += data['qty'];
       totalGrossSale += data['grossSale'];
@@ -123,8 +131,6 @@ class _PayoutSummaryState extends State<PayoutSummary> {
     final format = NumberFormat.currency(symbol: "₹", decimalDigits: 2);
     return format.format(value);
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -154,12 +160,12 @@ class _PayoutSummaryState extends State<PayoutSummary> {
             ),
             IconButton(
               icon: const Icon(Icons.notifications),
-              onPressed: () => Navigator.push(
-                  context, MaterialPageRoute(builder: (_) => NotificationPage())),
+              onPressed: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => NotificationPage())),
             ),
             GestureDetector(
               onTap: () => Navigator.push(
-                  context, MaterialPageRoute(builder: (_) => ProfilePage())),
+                  context, MaterialPageRoute(builder: (_) => My_Profile())),
               child: Padding(
                 padding: EdgeInsets.only(right: 10.w),
                 child: CircleAvatar(
@@ -188,7 +194,8 @@ class _PayoutSummaryState extends State<PayoutSummary> {
               decoration: InputDecoration(
                 hintText: "Search Settlement ID...",
                 prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
               ),
               onChanged: (val) {
                 searchText = val;
@@ -211,15 +218,18 @@ class _PayoutSummaryState extends State<PayoutSummary> {
                     backgroundColor: Colors.white,
                     foregroundColor: Colors.black87,
                     side: BorderSide(color: Colors.black54),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
                     elevation: 0,
                   ),
                 ),
                 SizedBox(width: 8),
                 ElevatedButton.icon(
                   onPressed: () {},
-                  icon: const Icon(Icons.payments_outlined, size: 20, color: Colors.white),
+                  icon: const Icon(Icons.payments_outlined,
+                      size: 20, color: Colors.white),
                   label: Text(
                     "Payout: ",
                     style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
@@ -227,8 +237,10 @@ class _PayoutSummaryState extends State<PayoutSummary> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
                     elevation: 0,
                   ),
                 ),
@@ -241,7 +253,8 @@ class _PayoutSummaryState extends State<PayoutSummary> {
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
-                      icon: const Icon(Icons.file_download_outlined, color: Colors.black),
+                      icon: const Icon(Icons.file_download_outlined,
+                          color: Colors.black),
                       items: const [
                         DropdownMenuItem(value: 'csv', child: Text('CSV')),
                         DropdownMenuItem(value: 'pdf', child: Text('PDF')),
@@ -267,7 +280,8 @@ class _PayoutSummaryState extends State<PayoutSummary> {
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
-                  headingRowColor: MaterialStateProperty.all(Colors.grey.shade200),
+                  headingRowColor:
+                      MaterialStateProperty.all(Colors.grey.shade200),
                   columns: const [
                     DataColumn(label: Text("Invoice")),
                     DataColumn(label: Text("Status")),
@@ -285,10 +299,13 @@ class _PayoutSummaryState extends State<PayoutSummary> {
                       return DataRow(cells: [
                         DataCell(Text(data['invoice'] ?? '')),
                         DataCell(Container(
-                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: _getStatusColor(data['status']).withOpacity(0.1),
-                            border: Border.all(color: _getStatusColor(data['status'])),
+                            color: _getStatusColor(data['status'])
+                                .withOpacity(0.1),
+                            border: Border.all(
+                                color: _getStatusColor(data['status'])),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -299,7 +316,8 @@ class _PayoutSummaryState extends State<PayoutSummary> {
                             ),
                           ),
                         )),
-                        DataCell(Text(DateFormat('dd MMM yyyy').format(data['date']))),
+                        DataCell(Text(
+                            DateFormat('dd MMM yyyy').format(data['date']))),
                         DataCell(Text(data['customer'] ?? '')),
                         DataCell(Text('${data['qty']}')),
                         DataCell(Text(_currencyFormat(data['grossSale']))),
@@ -314,16 +332,23 @@ class _PayoutSummaryState extends State<PayoutSummary> {
                     DataRow(
                       color: MaterialStateProperty.all(Colors.yellow.shade100),
                       cells: [
-                        const DataCell(Text("Total", style: TextStyle(fontWeight: FontWeight.bold))),
+                        const DataCell(Text("Total",
+                            style: TextStyle(fontWeight: FontWeight.bold))),
                         const DataCell(Text("")),
                         const DataCell(Text("")),
                         const DataCell(Text("")),
-                        DataCell(Text(totalQty.toStringAsFixed(0), style: TextStyle(fontWeight: FontWeight.bold))),
-                        DataCell(Text(_currencyFormat(totalGrossSale), style: TextStyle(fontWeight: FontWeight.bold))),
-                        DataCell(Text(_currencyFormat(totalDiscount), style: TextStyle(fontWeight: FontWeight.bold))),
-                        DataCell(Text(_currencyFormat(totalNetSale), style: TextStyle(fontWeight: FontWeight.bold))),
-                        DataCell(Text(_currencyFormat(totalTaxes), style: TextStyle(fontWeight: FontWeight.bold))),
-                        DataCell(Text(_currencyFormat(totalTotalSale), style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataCell(Text(totalQty.toStringAsFixed(0),
+                            style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataCell(Text(_currencyFormat(totalGrossSale),
+                            style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataCell(Text(_currencyFormat(totalDiscount),
+                            style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataCell(Text(_currencyFormat(totalNetSale),
+                            style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataCell(Text(_currencyFormat(totalTaxes),
+                            style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataCell(Text(_currencyFormat(totalTotalSale),
+                            style: TextStyle(fontWeight: FontWeight.bold))),
                       ],
                     ),
                   ],

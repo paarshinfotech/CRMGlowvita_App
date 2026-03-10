@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 import '../Notification.dart';
-import '../Profile.dart';
+import '../my_Profile.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:csv/csv.dart';
 import 'package:path_provider/path_provider.dart';
@@ -10,10 +10,12 @@ import 'dart:io';
 
 class AppointmentsCancellationSummary extends StatefulWidget {
   @override
-  State<AppointmentsCancellationSummary> createState() => _AppointmentsCancellationSummaryState();
+  State<AppointmentsCancellationSummary> createState() =>
+      _AppointmentsCancellationSummaryState();
 }
 
-class _AppointmentsCancellationSummaryState extends State<AppointmentsCancellationSummary> {
+class _AppointmentsCancellationSummaryState
+    extends State<AppointmentsCancellationSummary> {
   DateTimeRange? _selectedDateRange;
   String _sortColumn = 'ref';
   bool _sortAscending = true;
@@ -87,10 +89,13 @@ class _AppointmentsCancellationSummaryState extends State<AppointmentsCancellati
   }
 
   void _calculateServiceDetails() {
-    List<Map<String, dynamic>> filteredAppointments = appointments.where((appointment) {
+    List<Map<String, dynamic>> filteredAppointments =
+        appointments.where((appointment) {
       final matchesDate = _selectedDateRange == null ||
-          (appointment['scheduledOn'].isAfter(_selectedDateRange!.start.subtract(const Duration(days: 1))) &&
-              appointment['scheduledOn'].isBefore(_selectedDateRange!.end.add(const Duration(days: 1))));
+          (appointment['scheduledOn'].isAfter(_selectedDateRange!.start
+                  .subtract(const Duration(days: 1))) &&
+              appointment['scheduledOn'].isBefore(
+                  _selectedDateRange!.end.add(const Duration(days: 1))));
       return matchesDate;
     }).toList();
 
@@ -98,15 +103,21 @@ class _AppointmentsCancellationSummaryState extends State<AppointmentsCancellati
     for (var appointment in filteredAppointments) {
       List<String> serviceList;
       if (appointment['services'] is String) {
-        serviceList = (appointment['services'] as String).split(',').map((s) => s.trim()).toList();
+        serviceList = (appointment['services'] as String)
+            .split(',')
+            .map((s) => s.trim())
+            .toList();
       } else if (appointment['services'] is List) {
-        serviceList = (appointment['services'] as List).map((s) => s.toString().trim()).toList();
+        serviceList = (appointment['services'] as List)
+            .map((s) => s.toString().trim())
+            .toList();
       } else {
         serviceList = []; // Fallback for unexpected types
       }
 
       for (var service in serviceList) {
-        double price = (double.tryParse(appointment['price'].toString()) ?? 0) / (serviceList.isEmpty ? 1 : serviceList.length);
+        double price = (double.tryParse(appointment['price'].toString()) ?? 0) /
+            (serviceList.isEmpty ? 1 : serviceList.length);
         detailedAppointments.add({
           'ref': appointment['ref'],
           'client': appointment['client'],
@@ -122,10 +133,22 @@ class _AppointmentsCancellationSummaryState extends State<AppointmentsCancellati
     }
 
     filteredServiceDetails = detailedAppointments.where((appointment) {
-      return appointment['ref'].toString().toLowerCase().contains(searchText.toLowerCase()) ||
-          appointment['client'].toString().toLowerCase().contains(searchText.toLowerCase()) ||
-          appointment['service'].toString().toLowerCase().contains(searchText.toLowerCase()) ||
-          appointment['staffName'].toString().toLowerCase().contains(searchText.toLowerCase());
+      return appointment['ref']
+              .toString()
+              .toLowerCase()
+              .contains(searchText.toLowerCase()) ||
+          appointment['client']
+              .toString()
+              .toLowerCase()
+              .contains(searchText.toLowerCase()) ||
+          appointment['service']
+              .toString()
+              .toLowerCase()
+              .contains(searchText.toLowerCase()) ||
+          appointment['staffName']
+              .toString()
+              .toLowerCase()
+              .contains(searchText.toLowerCase());
     }).toList();
 
     // Sort the details
@@ -135,9 +158,13 @@ class _AppointmentsCancellationSummaryState extends State<AppointmentsCancellati
       if (_sortColumn == 'scheduledOn' || _sortColumn == 'cancelledOn') {
         aValue = aValue ?? DateTime(1970);
         bValue = bValue ?? DateTime(1970);
-        return _sortAscending ? aValue.compareTo(bValue) : bValue.compareTo(aValue);
+        return _sortAscending
+            ? aValue.compareTo(bValue)
+            : bValue.compareTo(aValue);
       } else if (_sortColumn == 'price') {
-        return _sortAscending ? aValue.compareTo(bValue) : bValue.compareTo(aValue);
+        return _sortAscending
+            ? aValue.compareTo(bValue)
+            : bValue.compareTo(aValue);
       } else {
         return _sortAscending
             ? aValue.toString().compareTo(bValue.toString())
@@ -176,18 +203,28 @@ class _AppointmentsCancellationSummaryState extends State<AppointmentsCancellati
 
   Future<void> _exportToCsv() async {
     List<List<dynamic>> rows = [
-      ['Ref.', 'Client', 'Service', 'Staff Name', 'Schedule On', 'Cancelled On', 'Cancelled By', 'Reason', 'Price'],
+      [
+        'Ref.',
+        'Client',
+        'Service',
+        'Staff Name',
+        'Schedule On',
+        'Cancelled On',
+        'Cancelled By',
+        'Reason',
+        'Price'
+      ],
       ...filteredServiceDetails.map((appointment) => [
-        appointment['ref'],
-        appointment['client'],
-        appointment['service'],
-        appointment['staffName'],
-        _formatDateTime(appointment['scheduledOn']),
-        _formatDateTime(appointment['cancelledOn']),
-        appointment['cancelledBy'] ?? 'N/A',
-        appointment['reason'] ?? 'N/A',
-        _currencyFormat(appointment['price']),
-      ]),
+            appointment['ref'],
+            appointment['client'],
+            appointment['service'],
+            appointment['staffName'],
+            _formatDateTime(appointment['scheduledOn']),
+            _formatDateTime(appointment['cancelledOn']),
+            appointment['cancelledBy'] ?? 'N/A',
+            appointment['reason'] ?? 'N/A',
+            _currencyFormat(appointment['price']),
+          ]),
     ];
 
     String csv = const ListToCsvConverter().convert(rows);
@@ -231,7 +268,8 @@ class _AppointmentsCancellationSummaryState extends State<AppointmentsCancellati
             children: [
               Text(
                 "Appointments by Service Details",
-                style: GoogleFonts.poppins(fontSize: 12.sp, color: Colors.black),
+                style:
+                    GoogleFonts.poppins(fontSize: 12.sp, color: Colors.black),
               ),
               SizedBox(height: 4.h),
               Container(height: 2.h, width: 200.w, color: Colors.black),
@@ -266,32 +304,39 @@ class _AppointmentsCancellationSummaryState extends State<AppointmentsCancellati
                       _selectedDateRange != null
                           ? "${DateFormat('dd MMM').format(_selectedDateRange!.start)} - ${DateFormat('dd MMM').format(_selectedDateRange!.end)}"
                           : "Pick Range",
-                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 10.sp),
+                      style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w600, fontSize: 10.sp),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.black87,
                       side: BorderSide(color: Colors.black54),
-                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 16.w, vertical: 12.h),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.r)),
                       elevation: 0,
                     ),
                   ),
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.black),
                       borderRadius: BorderRadius.circular(5.r),
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
-                        icon: Icon(Icons.file_download_outlined, color: Colors.black, size: 20.sp),
+                        icon: Icon(Icons.file_download_outlined,
+                            color: Colors.black, size: 20.sp),
                         items: const [
                           DropdownMenuItem(value: 'csv', child: Text('CSV')),
                           DropdownMenuItem(value: 'pdf', child: Text('PDF')),
                           DropdownMenuItem(value: 'copy', child: Text('Copy')),
-                          DropdownMenuItem(value: 'excel', child: Text('Excel')),
-                          DropdownMenuItem(value: 'print', child: Text('Print')),
+                          DropdownMenuItem(
+                              value: 'excel', child: Text('Excel')),
+                          DropdownMenuItem(
+                              value: 'print', child: Text('Print')),
                         ],
                         hint: Text("Export", style: GoogleFonts.poppins()),
                         onChanged: (value) {
@@ -315,7 +360,8 @@ class _AppointmentsCancellationSummaryState extends State<AppointmentsCancellati
                 child: Card(
                   color: Colors.white,
                   elevation: 2,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.r)),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12.r),
                     child: SingleChildScrollView(
@@ -323,7 +369,8 @@ class _AppointmentsCancellationSummaryState extends State<AppointmentsCancellati
                       child: SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: DataTable(
-                          headingRowColor: MaterialStateColor.resolveWith((states) => Colors.grey.shade200),
+                          headingRowColor: MaterialStateColor.resolveWith(
+                              (states) => Colors.grey.shade200),
                           columnSpacing: 16.w,
                           dataRowHeight: 60.h,
                           headingTextStyle: GoogleFonts.poppins(
@@ -335,7 +382,8 @@ class _AppointmentsCancellationSummaryState extends State<AppointmentsCancellati
                             fontSize: 10.sp,
                             color: Colors.black87,
                           ),
-                          border: TableBorder.all(color: Colors.black26, width: 0.5),
+                          border: TableBorder.all(
+                              color: Colors.black26, width: 0.5),
                           columns: [
                             DataColumn(
                               label: GestureDetector(
@@ -345,7 +393,9 @@ class _AppointmentsCancellationSummaryState extends State<AppointmentsCancellati
                                     Text("Ref."),
                                     if (_sortColumn == 'ref')
                                       Icon(
-                                        _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                                        _sortAscending
+                                            ? Icons.arrow_upward
+                                            : Icons.arrow_downward,
                                         size: 16.sp,
                                       ),
                                   ],
@@ -360,7 +410,9 @@ class _AppointmentsCancellationSummaryState extends State<AppointmentsCancellati
                                     Text("Client"),
                                     if (_sortColumn == 'client')
                                       Icon(
-                                        _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                                        _sortAscending
+                                            ? Icons.arrow_upward
+                                            : Icons.arrow_downward,
                                         size: 16.sp,
                                       ),
                                   ],
@@ -375,7 +427,9 @@ class _AppointmentsCancellationSummaryState extends State<AppointmentsCancellati
                                     Text("Service"),
                                     if (_sortColumn == 'service')
                                       Icon(
-                                        _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                                        _sortAscending
+                                            ? Icons.arrow_upward
+                                            : Icons.arrow_downward,
                                         size: 16.sp,
                                       ),
                                   ],
@@ -390,7 +444,9 @@ class _AppointmentsCancellationSummaryState extends State<AppointmentsCancellati
                                     Text("Staff Name"),
                                     if (_sortColumn == 'staffName')
                                       Icon(
-                                        _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                                        _sortAscending
+                                            ? Icons.arrow_upward
+                                            : Icons.arrow_downward,
                                         size: 16.sp,
                                       ),
                                   ],
@@ -405,7 +461,9 @@ class _AppointmentsCancellationSummaryState extends State<AppointmentsCancellati
                                     Text("Schedule On"),
                                     if (_sortColumn == 'scheduledOn')
                                       Icon(
-                                        _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                                        _sortAscending
+                                            ? Icons.arrow_upward
+                                            : Icons.arrow_downward,
                                         size: 16.sp,
                                       ),
                                   ],
@@ -420,7 +478,9 @@ class _AppointmentsCancellationSummaryState extends State<AppointmentsCancellati
                                     Text("Cancelled On"),
                                     if (_sortColumn == 'cancelledOn')
                                       Icon(
-                                        _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                                        _sortAscending
+                                            ? Icons.arrow_upward
+                                            : Icons.arrow_downward,
                                         size: 16.sp,
                                       ),
                                   ],
@@ -435,7 +495,9 @@ class _AppointmentsCancellationSummaryState extends State<AppointmentsCancellati
                                     Text("Cancelled By"),
                                     if (_sortColumn == 'cancelledBy')
                                       Icon(
-                                        _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                                        _sortAscending
+                                            ? Icons.arrow_upward
+                                            : Icons.arrow_downward,
                                         size: 16.sp,
                                       ),
                                   ],
@@ -450,7 +512,9 @@ class _AppointmentsCancellationSummaryState extends State<AppointmentsCancellati
                                     Text("Reason"),
                                     if (_sortColumn == 'reason')
                                       Icon(
-                                        _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                                        _sortAscending
+                                            ? Icons.arrow_upward
+                                            : Icons.arrow_downward,
                                         size: 16.sp,
                                       ),
                                   ],
@@ -465,7 +529,9 @@ class _AppointmentsCancellationSummaryState extends State<AppointmentsCancellati
                                     Text("Price"),
                                     if (_sortColumn == 'price')
                                       Icon(
-                                        _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                                        _sortAscending
+                                            ? Icons.arrow_upward
+                                            : Icons.arrow_downward,
                                         size: 16.sp,
                                       ),
                                   ],
@@ -474,66 +540,92 @@ class _AppointmentsCancellationSummaryState extends State<AppointmentsCancellati
                               numeric: true,
                             ),
                           ],
-                          rows: List.generate(filteredServiceDetails.length, (index) {
+                          rows: List.generate(filteredServiceDetails.length,
+                              (index) {
                             final appointment = filteredServiceDetails[index];
                             final isEven = index % 2 == 0;
                             return DataRow(
                               color: MaterialStateColor.resolveWith(
-                                    (states) => isEven ? Colors.grey.shade50 : Colors.white,
+                                (states) =>
+                                    isEven ? Colors.grey.shade50 : Colors.white,
                               ),
                               cells: [
                                 DataCell(
                                   Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 8.h),
-                                    child: Text(appointment['ref']?.toString() ?? 'N/A'),
+                                    padding:
+                                        EdgeInsets.symmetric(vertical: 8.h),
+                                    child: Text(
+                                        appointment['ref']?.toString() ??
+                                            'N/A'),
                                   ),
                                 ),
                                 DataCell(
                                   Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 8.h),
-                                    child: Text(appointment['client']?.toString() ?? 'N/A'),
+                                    padding:
+                                        EdgeInsets.symmetric(vertical: 8.h),
+                                    child: Text(
+                                        appointment['client']?.toString() ??
+                                            'N/A'),
                                   ),
                                 ),
                                 DataCell(
                                   Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 8.h),
-                                    child: Text(appointment['service']?.toString() ?? 'N/A'),
+                                    padding:
+                                        EdgeInsets.symmetric(vertical: 8.h),
+                                    child: Text(
+                                        appointment['service']?.toString() ??
+                                            'N/A'),
                                   ),
                                 ),
                                 DataCell(
                                   Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 8.h),
-                                    child: Text(appointment['staffName']?.toString() ?? 'N/A'),
+                                    padding:
+                                        EdgeInsets.symmetric(vertical: 8.h),
+                                    child: Text(
+                                        appointment['staffName']?.toString() ??
+                                            'N/A'),
                                   ),
                                 ),
                                 DataCell(
                                   Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 8.h),
-                                    child: Text(_formatDateTime(appointment['scheduledOn'])),
+                                    padding:
+                                        EdgeInsets.symmetric(vertical: 8.h),
+                                    child: Text(_formatDateTime(
+                                        appointment['scheduledOn'])),
                                   ),
                                 ),
                                 DataCell(
                                   Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 8.h),
-                                    child: Text(_formatDateTime(appointment['cancelledOn'])),
+                                    padding:
+                                        EdgeInsets.symmetric(vertical: 8.h),
+                                    child: Text(_formatDateTime(
+                                        appointment['cancelledOn'])),
                                   ),
                                 ),
                                 DataCell(
                                   Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 8.h),
-                                    child: Text(appointment['cancelledBy']?.toString() ?? 'N/A'),
+                                    padding:
+                                        EdgeInsets.symmetric(vertical: 8.h),
+                                    child: Text(appointment['cancelledBy']
+                                            ?.toString() ??
+                                        'N/A'),
                                   ),
                                 ),
                                 DataCell(
                                   Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 8.h),
-                                    child: Text(appointment['reason']?.toString() ?? 'N/A'),
+                                    padding:
+                                        EdgeInsets.symmetric(vertical: 8.h),
+                                    child: Text(
+                                        appointment['reason']?.toString() ??
+                                            'N/A'),
                                   ),
                                 ),
                                 DataCell(
                                   Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 8.h),
-                                    child: Text(_currencyFormat(appointment['price'])),
+                                    padding:
+                                        EdgeInsets.symmetric(vertical: 8.h),
+                                    child: Text(
+                                        _currencyFormat(appointment['price'])),
                                   ),
                                 ),
                               ],
@@ -578,10 +670,12 @@ class _AppointmentsCancellationSummaryState extends State<AppointmentsCancellati
           ),
           IconButton(
             icon: const Icon(Icons.notifications),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationPage())),
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const NotificationPage())),
           ),
           GestureDetector(
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilePage())),
+            onTap: () => Navigator.push(
+                context, MaterialPageRoute(builder: (_) => const My_Profile())),
             child: Padding(
               padding: EdgeInsets.only(right: 10.w),
               child: Container(

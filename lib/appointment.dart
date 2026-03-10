@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:glowvita/my_Profile.dart';
 import 'package:glowvita/widgets/create_appointment_form.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'Notification.dart';
-import 'Profile.dart';
 import 'widgets/custom_drawer.dart';
 import 'services/api_service.dart';
 import 'appointment_model.dart';
-import 'services/api_service.dart';
 import 'widgets/collect_payment_dialog.dart';
 import 'widgets/appointment_detail_dialog.dart';
+import 'vendor_model.dart';
 
 extension StringExtension on String {
   String capitalize() {
@@ -59,6 +59,7 @@ class _AppointmentState extends State<Appointment>
   int _currentPage = 1;
   int _limit = 10;
   final List<int> _limitOptions = [5, 10, 15, 20, 25, 50];
+  VendorProfile? _profile;
 
   final List<String> statuses = [
     'All',
@@ -76,6 +77,16 @@ class _AppointmentState extends State<Appointment>
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _fetchAppointments();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final p = await ApiService.getVendorProfile();
+      if (mounted) setState(() => _profile = p);
+    } catch (e) {
+      debugPrint('fetchProfile: $e');
+    }
   }
 
   @override
@@ -548,6 +559,34 @@ class _AppointmentState extends State<Appointment>
                               ),
                             );
                           }).toList(),
+                  if (appt.addOns != null && appt.addOns!.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text('ADD-ONS',
+                        style: subStyle.copyWith(
+                            fontSize: 9,
+                            letterSpacing: 1,
+                            fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 4),
+                    ...appt.addOns!.map((addon) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              '+ ${addon.name ?? 'Add-on'}',
+                              style: cardStyle.copyWith(
+                                  fontSize: 11.5, fontStyle: FontStyle.italic),
+                            ),
+                            Text(
+                              '₹${addon.price?.toStringAsFixed(0)}',
+                              style: subStyle.copyWith(fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ],
                 ],
               ),
             ),
@@ -771,7 +810,7 @@ class _AppointmentState extends State<Appointment>
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const ProfilePage()),
+                  MaterialPageRoute(builder: (context) => const My_Profile()),
                 );
               },
               child: Padding(
@@ -787,8 +826,19 @@ class _AppointmentState extends State<Appointment>
                   ),
                   child: CircleAvatar(
                     radius: 17,
-                    backgroundImage: AssetImage('assets/images/profile.jpeg'),
                     backgroundColor: Theme.of(context).primaryColor,
+                    backgroundImage: (_profile != null && _profile!.profileImage.isNotEmpty)
+                        ? NetworkImage(_profile!.profileImage)
+                        : null,
+                    child: (_profile == null || _profile!.profileImage.isEmpty)
+                        ? Text(
+                            (_profile?.businessName ?? 'H').substring(0, 1).toUpperCase(),
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.bold),
+                          )
+                        : null,
                   ),
                 ),
               ),

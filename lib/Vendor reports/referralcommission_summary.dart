@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 import '../Notification.dart';
-import '../Profile.dart';
+import '../my_Profile.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class ReferralCommissionSummary extends StatefulWidget {
@@ -11,8 +11,7 @@ class ReferralCommissionSummary extends StatefulWidget {
       _ReferralCommissionSummaryState();
 }
 
-class _ReferralCommissionSummaryState
-    extends State<ReferralCommissionSummary> {
+class _ReferralCommissionSummaryState extends State<ReferralCommissionSummary> {
   DateTimeRange? _selectedDateRange;
   String _searchText = '';
 
@@ -56,8 +55,8 @@ class _ReferralCommissionSummaryState
             .toLowerCase()
             .contains(_searchText.toLowerCase());
         final matchesDate = _selectedDateRange == null ||
-            (row['date']
-                .isAfter(_selectedDateRange!.start.subtract(Duration(days: 1))) &&
+            (row['date'].isAfter(
+                    _selectedDateRange!.start.subtract(Duration(days: 1))) &&
                 row['date']
                     .isBefore(_selectedDateRange!.end.add(Duration(days: 1))));
         return matchesSearch && matchesDate;
@@ -90,7 +89,7 @@ class _ReferralCommissionSummaryState
   Widget build(BuildContext context) {
     final totalAmount = _filtered.fold<double>(
       0,
-          (sum, row) => sum + (row['amount'] as num).toDouble(),
+      (sum, row) => sum + (row['amount'] as num).toDouble(),
     );
 
     return Scaffold(
@@ -98,8 +97,9 @@ class _ReferralCommissionSummaryState
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading:
-        IconButton(icon: Icon(Icons.arrow_back, color: Colors.black), onPressed: () => Navigator.pop(context)),
+        leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: Colors.black),
+            onPressed: () => Navigator.pop(context)),
         toolbarHeight: 50.h,
         titleSpacing: 0,
         title: Row(
@@ -109,15 +109,19 @@ class _ReferralCommissionSummaryState
               child: Text(
                 'Referral Commission',
                 style: GoogleFonts.poppins(
-                    fontSize: 20, fontWeight: FontWeight.w600, color: Colors.black),
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black),
               ),
             ),
             IconButton(
               icon: Icon(Icons.notifications, color: Colors.black),
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => NotificationPage())),
+              onPressed: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => NotificationPage())),
             ),
             GestureDetector(
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfilePage())),
+              onTap: () => Navigator.push(
+                  context, MaterialPageRoute(builder: (_) => My_Profile())),
               child: Padding(
                 padding: EdgeInsets.only(right: 10.w),
                 child: CircleAvatar(
@@ -129,7 +133,6 @@ class _ReferralCommissionSummaryState
           ],
         ),
       ),
-
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -190,20 +193,16 @@ class _ReferralCommissionSummaryState
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
-                      icon:
-                      Icon(Icons.file_download_outlined, color: Colors.black),
-                      items: [
-                        'CSV',
-                        'PDF',
-                        'Copy',
-                        'Excel',
-                        'Print'
-                      ]
-                          .map((f) => DropdownMenuItem(value: f, child: Text(f)))
+                      icon: Icon(Icons.file_download_outlined,
+                          color: Colors.black),
+                      items: ['CSV', 'PDF', 'Copy', 'Excel', 'Print']
+                          .map(
+                              (f) => DropdownMenuItem(value: f, child: Text(f)))
                           .toList(),
                       hint: Text("Export"),
                       onChanged: (v) => ScaffoldMessenger.of(context)
-                          .showSnackBar(SnackBar(content: Text("Selected: $v"))),
+                          .showSnackBar(
+                              SnackBar(content: Text("Selected: $v"))),
                     ),
                   ),
                 ),
@@ -224,12 +223,11 @@ class _ReferralCommissionSummaryState
                     scrollDirection: Axis.horizontal,
                     child: DataTable(
                       headingRowColor: MaterialStateColor.resolveWith(
-                              (_) => Colors.grey.shade200),
+                          (_) => Colors.grey.shade200),
                       columnSpacing: 24,
                       dataRowHeight: 56,
                       headingTextStyle: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87),
+                          fontWeight: FontWeight.bold, color: Colors.black87),
                       columns: const [
                         DataColumn(label: Text("Commission From")),
                         DataColumn(label: Text("Salon / Customer")),
@@ -243,15 +241,17 @@ class _ReferralCommissionSummaryState
                           DataRow(cells: [
                             DataCell(Text(row['from'])),
                             DataCell(Text(row['name'])),
-                            DataCell(Text(DateFormat('dd MMM yyyy').format(row['date']))),
-                            DataCell(Text("${row['rate'].toStringAsFixed(2)}%")),
+                            DataCell(Text(
+                                DateFormat('dd MMM yyyy').format(row['date']))),
+                            DataCell(
+                                Text("${row['rate'].toStringAsFixed(2)}%")),
                             DataCell(Text(_currency(row['amount']))),
                           ]),
 
                         // total
                         DataRow(
                           color: MaterialStateColor.resolveWith(
-                                  (_) => Colors.yellow.shade50),
+                              (_) => Colors.yellow.shade50),
                           cells: [
                             const DataCell(Text("Total",
                                 style: TextStyle(fontWeight: FontWeight.bold))),
@@ -259,8 +259,7 @@ class _ReferralCommissionSummaryState
                             const DataCell(Text("")),
                             const DataCell(Text("")),
                             DataCell(Text(_currency(totalAmount),
-                                style:
-                                TextStyle(fontWeight: FontWeight.bold))),
+                                style: TextStyle(fontWeight: FontWeight.bold))),
                           ],
                         ),
                       ],

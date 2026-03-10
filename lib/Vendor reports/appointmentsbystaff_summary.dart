@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 import '../Notification.dart';
-import '../Profile.dart';
+import '../my_Profile.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:csv/csv.dart';
 import 'package:path_provider/path_provider.dart';
@@ -10,10 +10,12 @@ import 'dart:io';
 
 class AppointmentsbyStaffSummary extends StatefulWidget {
   @override
-  State<AppointmentsbyStaffSummary> createState() => _AppointmentsbyStaffSummaryState();
+  State<AppointmentsbyStaffSummary> createState() =>
+      _AppointmentsbyStaffSummaryState();
 }
 
-class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary> {
+class _AppointmentsbyStaffSummaryState
+    extends State<AppointmentsbyStaffSummary> {
   DateTimeRange? _selectedDateRange;
   String _sortColumn = 'staffName';
   bool _sortAscending = true;
@@ -98,10 +100,13 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
 
   void _calculateStaffSummary() {
     Map<String, List<Map<String, dynamic>>> staffAppointments = {};
-    List<Map<String, dynamic>> filteredAppointments = AppointmentsbyStaff.where((appointment) {
+    List<Map<String, dynamic>> filteredAppointments =
+        AppointmentsbyStaff.where((appointment) {
       final matchesDate = _selectedDateRange == null ||
-          (appointment['scheduledOn'].isAfter(_selectedDateRange!.start.subtract(const Duration(days: 1))) &&
-              appointment['scheduledOn'].isBefore(_selectedDateRange!.end.add(const Duration(days: 1))));
+          (appointment['scheduledOn'].isAfter(_selectedDateRange!.start
+                  .subtract(const Duration(days: 1))) &&
+              appointment['scheduledOn'].isBefore(
+                  _selectedDateRange!.end.add(const Duration(days: 1))));
       return matchesDate;
     }).toList();
 
@@ -118,7 +123,8 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
       List<Map<String, dynamic>> appointments = entry.value;
       int appointmentCount = appointments.length;
       String totalDuration = _calculateTotalDuration(appointments);
-      double totalSale = appointments.fold(0, (sum, app) => sum + (double.tryParse(app['price'].toString()) ?? 0));
+      double totalSale = appointments.fold(0,
+          (sum, app) => sum + (double.tryParse(app['price'].toString()) ?? 0));
 
       return {
         'staffName': staffName,
@@ -130,7 +136,10 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
 
     // Apply search filter
     filteredStaffSummary = filteredStaffSummary.where((staff) {
-      return staff['staffName'].toString().toLowerCase().contains(searchText.toLowerCase());
+      return staff['staffName']
+          .toString()
+          .toLowerCase()
+          .contains(searchText.toLowerCase());
     }).toList();
 
     // Sort the summary
@@ -138,13 +147,20 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
       var aValue = a[_sortColumn];
       var bValue = b[_sortColumn];
       if (_sortColumn == 'staffName') {
-        return _sortAscending ? aValue.compareTo(bValue) : bValue.compareTo(aValue);
-      } else if (_sortColumn == 'totalAppointments' || _sortColumn == 'totalSale') {
-        return _sortAscending ? aValue.compareTo(bValue) : bValue.compareTo(aValue);
+        return _sortAscending
+            ? aValue.compareTo(bValue)
+            : bValue.compareTo(aValue);
+      } else if (_sortColumn == 'totalAppointments' ||
+          _sortColumn == 'totalSale') {
+        return _sortAscending
+            ? aValue.compareTo(bValue)
+            : bValue.compareTo(aValue);
       } else {
         int aMinutes = _durationToMinutes(aValue);
         int bMinutes = _durationToMinutes(bValue);
-        return _sortAscending ? aMinutes.compareTo(bMinutes) : bMinutes.compareTo(aMinutes);
+        return _sortAscending
+            ? aMinutes.compareTo(bMinutes)
+            : bMinutes.compareTo(aMinutes);
       }
     });
 
@@ -163,8 +179,10 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
   }
 
   void _calculateTotals(List<Map<String, dynamic>> filteredAppointments) {
-    totalAppointments = filteredStaffSummary.fold(0, (sum, staff) => sum + (staff['totalAppointments'] as int));
-    totalSales = filteredStaffSummary.fold(0, (sum, staff) => sum + (staff['totalSale'] as double));
+    totalAppointments = filteredStaffSummary.fold(
+        0, (sum, staff) => sum + (staff['totalAppointments'] as int));
+    totalSales = filteredStaffSummary.fold(
+        0, (sum, staff) => sum + (staff['totalSale'] as double));
     totalDuration = _calculateTotalDuration(filteredAppointments);
   }
 
@@ -195,11 +213,11 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
     List<List<dynamic>> rows = [
       ['Staff Name', 'Total Appointments', 'Total Duration', 'Total Sale'],
       ...filteredStaffSummary.map((staff) => [
-        staff['staffName'],
-        staff['totalAppointments'],
-        staff['totalDuration'],
-        _currencyFormat(staff['totalSale']),
-      ]),
+            staff['staffName'],
+            staff['totalAppointments'],
+            staff['totalDuration'],
+            _currencyFormat(staff['totalSale']),
+          ]),
       ['Total', totalAppointments, totalDuration, _currencyFormat(totalSales)],
     ];
 
@@ -244,7 +262,8 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
             children: [
               Text(
                 "Appointments by Staff Summary",
-                style: GoogleFonts.poppins(fontSize: 12.sp, color: Colors.black),
+                style:
+                    GoogleFonts.poppins(fontSize: 12.sp, color: Colors.black),
               ),
               SizedBox(height: 4.h),
               Container(height: 2.h, width: 200.w, color: Colors.black),
@@ -279,32 +298,39 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
                       _selectedDateRange != null
                           ? "${DateFormat('dd MMM').format(_selectedDateRange!.start)} - ${DateFormat('dd MMM').format(_selectedDateRange!.end)}"
                           : "Pick Range",
-                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 10.sp),
+                      style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w600, fontSize: 10.sp),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.black87,
                       side: BorderSide(color: Colors.black54),
-                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 16.w, vertical: 12.h),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.r)),
                       elevation: 0,
                     ),
                   ),
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.black),
                       borderRadius: BorderRadius.circular(5.r),
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
-                        icon: Icon(Icons.file_download_outlined, color: Colors.black, size: 20.sp),
+                        icon: Icon(Icons.file_download_outlined,
+                            color: Colors.black, size: 20.sp),
                         items: const [
                           DropdownMenuItem(value: 'csv', child: Text('CSV')),
                           DropdownMenuItem(value: 'pdf', child: Text('PDF')),
                           DropdownMenuItem(value: 'copy', child: Text('Copy')),
-                          DropdownMenuItem(value: 'excel', child: Text('Excel')),
-                          DropdownMenuItem(value: 'print', child: Text('Print')),
+                          DropdownMenuItem(
+                              value: 'excel', child: Text('Excel')),
+                          DropdownMenuItem(
+                              value: 'print', child: Text('Print')),
                         ],
                         hint: Text("Export", style: GoogleFonts.poppins()),
                         onChanged: (value) {
@@ -328,7 +354,8 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
                 child: Card(
                   color: Colors.white,
                   elevation: 2,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.r)),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12.r),
                     child: SingleChildScrollView(
@@ -336,7 +363,8 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
                       child: SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: DataTable(
-                          headingRowColor: MaterialStateColor.resolveWith((states) => Colors.grey.shade200),
+                          headingRowColor: MaterialStateColor.resolveWith(
+                              (states) => Colors.grey.shade200),
                           columnSpacing: 24.w,
                           dataRowHeight: 60.h,
                           headingTextStyle: GoogleFonts.poppins(
@@ -348,7 +376,8 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
                             fontSize: 10.sp,
                             color: Colors.black87,
                           ),
-                          border: TableBorder.all(color: Colors.black26, width: 0.5),
+                          border: TableBorder.all(
+                              color: Colors.black26, width: 0.5),
                           columns: [
                             DataColumn(
                               label: GestureDetector(
@@ -358,7 +387,9 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
                                     Text("Staff Name"),
                                     if (_sortColumn == 'staffName')
                                       Icon(
-                                        _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                                        _sortAscending
+                                            ? Icons.arrow_upward
+                                            : Icons.arrow_downward,
                                         size: 16.sp,
                                       ),
                                   ],
@@ -373,7 +404,9 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
                                     Text("Total Appointments"),
                                     if (_sortColumn == 'totalAppointments')
                                       Icon(
-                                        _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                                        _sortAscending
+                                            ? Icons.arrow_upward
+                                            : Icons.arrow_downward,
                                         size: 16.sp,
                                       ),
                                   ],
@@ -389,7 +422,9 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
                                     Text("Total Duration"),
                                     if (_sortColumn == 'totalDuration')
                                       Icon(
-                                        _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                                        _sortAscending
+                                            ? Icons.arrow_upward
+                                            : Icons.arrow_downward,
                                         size: 16.sp,
                                       ),
                                   ],
@@ -404,7 +439,9 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
                                     Text("Total Sale"),
                                     if (_sortColumn == 'totalSale')
                                       Icon(
-                                        _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                                        _sortAscending
+                                            ? Icons.arrow_upward
+                                            : Icons.arrow_downward,
                                         size: 16.sp,
                                       ),
                                   ],
@@ -414,36 +451,45 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
                             ),
                           ],
                           rows: [
-                            ...List.generate(filteredStaffSummary.length, (index) {
+                            ...List.generate(filteredStaffSummary.length,
+                                (index) {
                               final staff = filteredStaffSummary[index];
                               final isEven = index % 2 == 0;
                               return DataRow(
                                 color: MaterialStateColor.resolveWith(
-                                      (states) => isEven ? Colors.grey.shade50 : Colors.white,
+                                  (states) => isEven
+                                      ? Colors.grey.shade50
+                                      : Colors.white,
                                 ),
                                 cells: [
                                   DataCell(
                                     Padding(
-                                      padding: EdgeInsets.symmetric(vertical: 8.h),
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 8.h),
                                       child: Text(staff['staffName']),
                                     ),
                                   ),
                                   DataCell(
                                     Padding(
-                                      padding: EdgeInsets.symmetric(vertical: 8.h),
-                                      child: Text(staff['totalAppointments'].toString()),
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 8.h),
+                                      child: Text(staff['totalAppointments']
+                                          .toString()),
                                     ),
                                   ),
                                   DataCell(
                                     Padding(
-                                      padding: EdgeInsets.symmetric(vertical: 8.h),
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 8.h),
                                       child: Text(staff['totalDuration']),
                                     ),
                                   ),
                                   DataCell(
                                     Padding(
-                                      padding: EdgeInsets.symmetric(vertical: 8.h),
-                                      child: Text(_currencyFormat(staff['totalSale'])),
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 8.h),
+                                      child: Text(
+                                          _currencyFormat(staff['totalSale'])),
                                     ),
                                   ),
                                 ],
@@ -451,41 +497,50 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
                             }),
                             // Total Row
                             DataRow(
-                              color: MaterialStateColor.resolveWith((states) => Colors.yellow.shade100),
+                              color: MaterialStateColor.resolveWith(
+                                  (states) => Colors.yellow.shade100),
                               cells: [
                                 DataCell(
                                   Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 8.h),
+                                    padding:
+                                        EdgeInsets.symmetric(vertical: 8.h),
                                     child: Text(
                                       "Total",
-                                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                                      style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.w600),
                                     ),
                                   ),
                                 ),
                                 DataCell(
                                   Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 8.h),
+                                    padding:
+                                        EdgeInsets.symmetric(vertical: 8.h),
                                     child: Text(
                                       totalAppointments.toString(),
-                                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                                      style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.w600),
                                     ),
                                   ),
                                 ),
                                 DataCell(
                                   Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 8.h),
+                                    padding:
+                                        EdgeInsets.symmetric(vertical: 8.h),
                                     child: Text(
                                       totalDuration,
-                                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                                      style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.w600),
                                     ),
                                   ),
                                 ),
                                 DataCell(
                                   Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 8.h),
+                                    padding:
+                                        EdgeInsets.symmetric(vertical: 8.h),
                                     child: Text(
                                       _currencyFormat(totalSales),
-                                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                                      style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.w600),
                                     ),
                                   ),
                                 ),
@@ -531,10 +586,12 @@ class _AppointmentsbyStaffSummaryState extends State<AppointmentsbyStaffSummary>
           ),
           IconButton(
             icon: const Icon(Icons.notifications),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationPage())),
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const NotificationPage())),
           ),
           GestureDetector(
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilePage())),
+            onTap: () => Navigator.push(
+                context, MaterialPageRoute(builder: (_) => const My_Profile())),
             child: Padding(
               padding: EdgeInsets.only(right: 10.w),
               child: Container(

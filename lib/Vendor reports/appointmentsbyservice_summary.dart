@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 import '../Notification.dart';
-import '../Profile.dart';
+import '../my_Profile.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:csv/csv.dart';
 import 'package:path_provider/path_provider.dart';
@@ -10,10 +10,12 @@ import 'dart:io';
 
 class AppointmentsbyServicesSummary extends StatefulWidget {
   @override
-  State<AppointmentsbyServicesSummary> createState() => _AppointmentsbyServicesSummaryState();
+  State<AppointmentsbyServicesSummary> createState() =>
+      _AppointmentsbyServicesSummaryState();
 }
 
-class _AppointmentsbyServicesSummaryState extends State<AppointmentsbyServicesSummary> {
+class _AppointmentsbyServicesSummaryState
+    extends State<AppointmentsbyServicesSummary> {
   DateTimeRange? _selectedDateRange;
   String _sortColumn = 'service';
   bool _sortAscending = true;
@@ -98,23 +100,29 @@ class _AppointmentsbyServicesSummaryState extends State<AppointmentsbyServicesSu
 
   void _calculateServiceSummary() {
     Map<String, List<Map<String, dynamic>>> serviceAppointments = {};
-    List<Map<String, dynamic>> filteredAppointments = appointments.where((appointment) {
+    List<Map<String, dynamic>> filteredAppointments =
+        appointments.where((appointment) {
       final matchesDate = _selectedDateRange == null ||
-          (appointment['scheduledOn'].isAfter(_selectedDateRange!.start.subtract(const Duration(days: 1))) &&
-              appointment['scheduledOn'].isBefore(_selectedDateRange!.end.add(const Duration(days: 1))));
+          (appointment['scheduledOn'].isAfter(_selectedDateRange!.start
+                  .subtract(const Duration(days: 1))) &&
+              appointment['scheduledOn'].isBefore(
+                  _selectedDateRange!.end.add(const Duration(days: 1))));
       return matchesDate;
     }).toList();
 
     for (var appointment in filteredAppointments) {
       String services = appointment['services'];
-      List<String> serviceList = services.split(',').map((s) => s.trim()).toList();
+      List<String> serviceList =
+          services.split(',').map((s) => s.trim()).toList();
       for (var service in serviceList) {
         if (!serviceAppointments.containsKey(service)) {
           serviceAppointments[service] = [];
         }
         // Create a copy of the appointment with adjusted price and duration
-        double price = (double.tryParse(appointment['price'].toString()) ?? 0) / serviceList.length;
-        int minutes = _durationToMinutes(appointment['duration'] ?? '0h') ~/ serviceList.length;
+        double price = (double.tryParse(appointment['price'].toString()) ?? 0) /
+            serviceList.length;
+        int minutes = _durationToMinutes(appointment['duration'] ?? '0h') ~/
+            serviceList.length;
         String duration = '${minutes ~/ 60}h ${minutes % 60}m';
         serviceAppointments[service]!.add({
           ...appointment,
@@ -129,7 +137,8 @@ class _AppointmentsbyServicesSummaryState extends State<AppointmentsbyServicesSu
       List<Map<String, dynamic>> appointments = entry.value;
       int appointmentCount = appointments.length;
       String totalDuration = _calculateTotalDuration(appointments);
-      double totalSale = appointments.fold(0, (sum, app) => sum + (double.tryParse(app['price'].toString()) ?? 0));
+      double totalSale = appointments.fold(0,
+          (sum, app) => sum + (double.tryParse(app['price'].toString()) ?? 0));
 
       return {
         'service': service,
@@ -141,7 +150,10 @@ class _AppointmentsbyServicesSummaryState extends State<AppointmentsbyServicesSu
 
     // Apply search filter
     filteredServiceSummary = filteredServiceSummary.where((service) {
-      return service['service'].toString().toLowerCase().contains(searchText.toLowerCase());
+      return service['service']
+          .toString()
+          .toLowerCase()
+          .contains(searchText.toLowerCase());
     }).toList();
 
     // Sort the summary
@@ -149,13 +161,20 @@ class _AppointmentsbyServicesSummaryState extends State<AppointmentsbyServicesSu
       var aValue = a[_sortColumn];
       var bValue = b[_sortColumn];
       if (_sortColumn == 'service') {
-        return _sortAscending ? aValue.compareTo(bValue) : bValue.compareTo(aValue);
-      } else if (_sortColumn == 'totalAppointments' || _sortColumn == 'totalSale') {
-        return _sortAscending ? aValue.compareTo(bValue) : bValue.compareTo(aValue);
+        return _sortAscending
+            ? aValue.compareTo(bValue)
+            : bValue.compareTo(aValue);
+      } else if (_sortColumn == 'totalAppointments' ||
+          _sortColumn == 'totalSale') {
+        return _sortAscending
+            ? aValue.compareTo(bValue)
+            : bValue.compareTo(aValue);
       } else {
         int aMinutes = _durationToMinutes(aValue);
         int bMinutes = _durationToMinutes(bValue);
-        return _sortAscending ? aMinutes.compareTo(bMinutes) : bMinutes.compareTo(aValue);
+        return _sortAscending
+            ? aMinutes.compareTo(bMinutes)
+            : bMinutes.compareTo(aValue);
       }
     });
 
@@ -174,8 +193,10 @@ class _AppointmentsbyServicesSummaryState extends State<AppointmentsbyServicesSu
   }
 
   void _calculateTotals(List<Map<String, dynamic>> filteredAppointments) {
-    totalAppointments = filteredServiceSummary.fold(0, (sum, service) => sum + (service['totalAppointments'] as int));
-    totalSales = filteredServiceSummary.fold(0, (sum, service) => sum + (service['totalSale'] as double));
+    totalAppointments = filteredServiceSummary.fold(
+        0, (sum, service) => sum + (service['totalAppointments'] as int));
+    totalSales = filteredServiceSummary.fold(
+        0, (sum, service) => sum + (service['totalSale'] as double));
     totalDuration = _calculateTotalDuration(filteredAppointments);
   }
 
@@ -206,11 +227,11 @@ class _AppointmentsbyServicesSummaryState extends State<AppointmentsbyServicesSu
     List<List<dynamic>> rows = [
       ['Service', 'Total Appointments', 'Total Duration', 'Total Sale'],
       ...filteredServiceSummary.map((service) => [
-        service['service'],
-        service['totalAppointments'],
-        service['totalDuration'],
-        _currencyFormat(service['totalSale']),
-      ]),
+            service['service'],
+            service['totalAppointments'],
+            service['totalDuration'],
+            _currencyFormat(service['totalSale']),
+          ]),
       ['Total', totalAppointments, totalDuration, _currencyFormat(totalSales)],
     ];
 
@@ -255,7 +276,8 @@ class _AppointmentsbyServicesSummaryState extends State<AppointmentsbyServicesSu
             children: [
               Text(
                 "Appointments by Service Summary",
-                style: GoogleFonts.poppins(fontSize: 12.sp, color: Colors.black),
+                style:
+                    GoogleFonts.poppins(fontSize: 12.sp, color: Colors.black),
               ),
               SizedBox(height: 4.h),
               Container(height: 2.h, width: 200.w, color: Colors.black),
@@ -290,32 +312,39 @@ class _AppointmentsbyServicesSummaryState extends State<AppointmentsbyServicesSu
                       _selectedDateRange != null
                           ? "${DateFormat('dd MMM').format(_selectedDateRange!.start)} - ${DateFormat('dd MMM').format(_selectedDateRange!.end)}"
                           : "Pick Range",
-                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 10.sp),
+                      style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w600, fontSize: 10.sp),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.black87,
                       side: BorderSide(color: Colors.black54),
-                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 16.w, vertical: 12.h),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.r)),
                       elevation: 0,
                     ),
                   ),
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.black),
                       borderRadius: BorderRadius.circular(5.r),
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
-                        icon: Icon(Icons.file_download_outlined, color: Colors.black, size: 20.sp),
+                        icon: Icon(Icons.file_download_outlined,
+                            color: Colors.black, size: 20.sp),
                         items: const [
                           DropdownMenuItem(value: 'csv', child: Text('CSV')),
                           DropdownMenuItem(value: 'pdf', child: Text('PDF')),
                           DropdownMenuItem(value: 'copy', child: Text('Copy')),
-                          DropdownMenuItem(value: 'excel', child: Text('Excel')),
-                          DropdownMenuItem(value: 'print', child: Text('Print')),
+                          DropdownMenuItem(
+                              value: 'excel', child: Text('Excel')),
+                          DropdownMenuItem(
+                              value: 'print', child: Text('Print')),
                         ],
                         hint: Text("Export", style: GoogleFonts.poppins()),
                         onChanged: (value) {
@@ -339,7 +368,8 @@ class _AppointmentsbyServicesSummaryState extends State<AppointmentsbyServicesSu
                 child: Card(
                   color: Colors.white,
                   elevation: 2,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.r)),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12.r),
                     child: SingleChildScrollView(
@@ -347,7 +377,8 @@ class _AppointmentsbyServicesSummaryState extends State<AppointmentsbyServicesSu
                       child: SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: DataTable(
-                          headingRowColor: MaterialStateColor.resolveWith((states) => Colors.grey.shade200),
+                          headingRowColor: MaterialStateColor.resolveWith(
+                              (states) => Colors.grey.shade200),
                           columnSpacing: 24.w,
                           dataRowHeight: 60.h,
                           headingTextStyle: GoogleFonts.poppins(
@@ -359,7 +390,8 @@ class _AppointmentsbyServicesSummaryState extends State<AppointmentsbyServicesSu
                             fontSize: 10.sp,
                             color: Colors.black87,
                           ),
-                          border: TableBorder.all(color: Colors.black26, width: 0.5),
+                          border: TableBorder.all(
+                              color: Colors.black26, width: 0.5),
                           columns: [
                             DataColumn(
                               label: GestureDetector(
@@ -369,7 +401,9 @@ class _AppointmentsbyServicesSummaryState extends State<AppointmentsbyServicesSu
                                     Text("Service"),
                                     if (_sortColumn == 'service')
                                       Icon(
-                                        _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                                        _sortAscending
+                                            ? Icons.arrow_upward
+                                            : Icons.arrow_downward,
                                         size: 16.sp,
                                       ),
                                   ],
@@ -384,7 +418,9 @@ class _AppointmentsbyServicesSummaryState extends State<AppointmentsbyServicesSu
                                     Text("Total Appointments"),
                                     if (_sortColumn == 'totalAppointments')
                                       Icon(
-                                        _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                                        _sortAscending
+                                            ? Icons.arrow_upward
+                                            : Icons.arrow_downward,
                                         size: 16.sp,
                                       ),
                                   ],
@@ -400,7 +436,9 @@ class _AppointmentsbyServicesSummaryState extends State<AppointmentsbyServicesSu
                                     Text("Total Duration"),
                                     if (_sortColumn == 'totalDuration')
                                       Icon(
-                                        _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                                        _sortAscending
+                                            ? Icons.arrow_upward
+                                            : Icons.arrow_downward,
                                         size: 16.sp,
                                       ),
                                   ],
@@ -415,7 +453,9 @@ class _AppointmentsbyServicesSummaryState extends State<AppointmentsbyServicesSu
                                     Text("Total Sale"),
                                     if (_sortColumn == 'totalSale')
                                       Icon(
-                                        _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                                        _sortAscending
+                                            ? Icons.arrow_upward
+                                            : Icons.arrow_downward,
                                         size: 16.sp,
                                       ),
                                   ],
@@ -425,36 +465,45 @@ class _AppointmentsbyServicesSummaryState extends State<AppointmentsbyServicesSu
                             ),
                           ],
                           rows: [
-                            ...List.generate(filteredServiceSummary.length, (index) {
+                            ...List.generate(filteredServiceSummary.length,
+                                (index) {
                               final service = filteredServiceSummary[index];
                               final isEven = index % 2 == 0;
                               return DataRow(
                                 color: MaterialStateColor.resolveWith(
-                                      (states) => isEven ? Colors.grey.shade50 : Colors.white,
+                                  (states) => isEven
+                                      ? Colors.grey.shade50
+                                      : Colors.white,
                                 ),
                                 cells: [
                                   DataCell(
                                     Padding(
-                                      padding: EdgeInsets.symmetric(vertical: 8.h),
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 8.h),
                                       child: Text(service['service']),
                                     ),
                                   ),
                                   DataCell(
                                     Padding(
-                                      padding: EdgeInsets.symmetric(vertical: 8.h),
-                                      child: Text(service['totalAppointments'].toString()),
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 8.h),
+                                      child: Text(service['totalAppointments']
+                                          .toString()),
                                     ),
                                   ),
                                   DataCell(
                                     Padding(
-                                      padding: EdgeInsets.symmetric(vertical: 8.h),
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 8.h),
                                       child: Text(service['totalDuration']),
                                     ),
                                   ),
                                   DataCell(
                                     Padding(
-                                      padding: EdgeInsets.symmetric(vertical: 8.h),
-                                      child: Text(_currencyFormat(service['totalSale'])),
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 8.h),
+                                      child: Text(_currencyFormat(
+                                          service['totalSale'])),
                                     ),
                                   ),
                                 ],
@@ -462,41 +511,50 @@ class _AppointmentsbyServicesSummaryState extends State<AppointmentsbyServicesSu
                             }),
                             // Total Row
                             DataRow(
-                              color: MaterialStateColor.resolveWith((states) => Colors.yellow.shade100),
+                              color: MaterialStateColor.resolveWith(
+                                  (states) => Colors.yellow.shade100),
                               cells: [
                                 DataCell(
                                   Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 8.h),
+                                    padding:
+                                        EdgeInsets.symmetric(vertical: 8.h),
                                     child: Text(
                                       "Total",
-                                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                                      style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.w600),
                                     ),
                                   ),
                                 ),
                                 DataCell(
                                   Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 8.h),
+                                    padding:
+                                        EdgeInsets.symmetric(vertical: 8.h),
                                     child: Text(
                                       totalAppointments.toString(),
-                                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                                      style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.w600),
                                     ),
                                   ),
                                 ),
                                 DataCell(
                                   Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 8.h),
+                                    padding:
+                                        EdgeInsets.symmetric(vertical: 8.h),
                                     child: Text(
                                       totalDuration,
-                                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                                      style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.w600),
                                     ),
                                   ),
                                 ),
                                 DataCell(
                                   Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 8.h),
+                                    padding:
+                                        EdgeInsets.symmetric(vertical: 8.h),
                                     child: Text(
                                       _currencyFormat(totalSales),
-                                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                                      style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.w600),
                                     ),
                                   ),
                                 ),
@@ -542,10 +600,12 @@ class _AppointmentsbyServicesSummaryState extends State<AppointmentsbyServicesSu
           ),
           IconButton(
             icon: const Icon(Icons.notifications),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationPage())),
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const NotificationPage())),
           ),
           GestureDetector(
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilePage())),
+            onTap: () => Navigator.push(
+                context, MaterialPageRoute(builder: (_) => const My_Profile())),
             child: Padding(
               padding: EdgeInsets.only(right: 10.w),
               child: Container(

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 import '../Notification.dart';
-import '../Profile.dart';
+import '../my_Profile.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class FinanceSummary extends StatefulWidget {
@@ -132,14 +132,18 @@ class _FinanceSummaryState extends State<FinanceSummary> {
             IconButton(
               icon: const Icon(Icons.notifications),
               onPressed: () {
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => const NotificationPage()));
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const NotificationPage()));
               },
             ),
             GestureDetector(
               onTap: () {
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => const ProfilePage()));
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const My_Profile()));
               },
               child: Padding(
                 padding: EdgeInsets.only(right: 10.w),
@@ -170,7 +174,7 @@ class _FinanceSummaryState extends State<FinanceSummary> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 ElevatedButton.icon(
-                   onPressed: _selectDateRange,
+                  onPressed: _selectDateRange,
                   icon: const Icon(Icons.date_range, size: 20),
                   label: Text(
                     _selectedDateRange != null
@@ -182,8 +186,8 @@ class _FinanceSummaryState extends State<FinanceSummary> {
                     backgroundColor: Colors.white,
                     foregroundColor: Colors.black87,
                     side: const BorderSide(color: Colors.black54),
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8)),
                     elevation: 8,
@@ -195,22 +199,31 @@ class _FinanceSummaryState extends State<FinanceSummary> {
 
             // Sales Card
             Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              elevation: 8,color: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              elevation: 8,
+              color: Colors.white,
               margin: const EdgeInsets.only(bottom: 16),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Sales', style: GoogleFonts.poppins(fontSize: 16.sp, fontWeight: FontWeight.w600)),
+                    Text('Sales',
+                        style: GoogleFonts.poppins(
+                            fontSize: 16.sp, fontWeight: FontWeight.w600)),
                     const Divider(),
-                    _infoRow('Gross Sales', '₹ ${grossSalesTotal.toStringAsFixed(2)}'),
-                    _infoRow('Discounts + Offers', '₹ ${discountsAndOffersTotal.toStringAsFixed(2)}'),
-                    _infoRow('Net Sales', '₹ ${netSalesTotal.toStringAsFixed(2)}'),
+                    _infoRow('Gross Sales',
+                        '₹ ${grossSalesTotal.toStringAsFixed(2)}'),
+                    _infoRow('Discounts + Offers',
+                        '₹ ${discountsAndOffersTotal.toStringAsFixed(2)}'),
+                    _infoRow(
+                        'Net Sales', '₹ ${netSalesTotal.toStringAsFixed(2)}'),
                     _infoRow('Taxes', '₹ ${taxTotal.toStringAsFixed(2)}'),
-                   Divider(),
-                    _infoRow('Total Sales', '₹ ${totalSalesTotal.toStringAsFixed(2)}', isBold: true),
+                    Divider(),
+                    _infoRow('Total Sales',
+                        '₹ ${totalSalesTotal.toStringAsFixed(2)}',
+                        isBold: true),
                   ],
                 ),
               ),
@@ -218,21 +231,27 @@ class _FinanceSummaryState extends State<FinanceSummary> {
 
             // Payments Card
             Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              elevation: 8, color: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              elevation: 8,
+              color: Colors.white,
               margin: const EdgeInsets.only(bottom: 24),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Payments', style: GoogleFonts.poppins(fontSize: 16.sp, fontWeight: FontWeight.w600)),
+                    Text('Payments',
+                        style: GoogleFonts.poppins(
+                            fontSize: 16.sp, fontWeight: FontWeight.w600)),
                     const Divider(),
                     _infoRow('Cash', '₹ ${cashTotal.toStringAsFixed(2)}'),
                     _infoRow('QR', '₹ ${qrTotal.toStringAsFixed(2)}'),
                     _infoRow('Link', '₹ ${linkTotal.toStringAsFixed(2)}'),
                     Divider(),
-                    _infoRow('Total Payments', '₹ ${totalPaymentsTotal.toStringAsFixed(2)}', isBold: true),
+                    _infoRow('Total Payments',
+                        '₹ ${totalPaymentsTotal.toStringAsFixed(2)}',
+                        isBold: true),
                   ],
                 ),
               ),

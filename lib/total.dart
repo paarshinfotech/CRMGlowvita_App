@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'Notification.dart';
-import 'Profile.dart';
+import 'my_Profile.dart';
 
 class TotalPage extends StatelessWidget {
   const TotalPage({super.key});
@@ -79,7 +79,7 @@ class TotalPage extends StatelessWidget {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const ProfilePage()),
+                  MaterialPageRoute(builder: (context) => const My_Profile()),
                 );
               },
               child: Padding(

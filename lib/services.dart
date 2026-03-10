@@ -4,6 +4,9 @@ import 'add_services.dart';
 import 'widgets/custom_drawer.dart';
 import 'services/api_service.dart';
 import 'add_ons.dart';
+import 'vendor_model.dart';
+import 'my_Profile.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class Services extends StatefulWidget {
   const Services({super.key});
@@ -15,6 +18,7 @@ class _ServicesState extends State<Services> {
   List<Service> services = [];
   bool isLoading = true;
   String? errorMessage;
+  VendorProfile? _profile;
 
   String? selectedCategory;
   String searchQuery = '';
@@ -31,6 +35,16 @@ class _ServicesState extends State<Services> {
     super.initState();
     selectedCategory = 'All';
     _fetchServices();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final p = await ApiService.getVendorProfile();
+      if (mounted) setState(() => _profile = p);
+    } catch (e) {
+      debugPrint('fetchProfile: $e');
+    }
   }
 
   Future<void> _fetchServices() async {
@@ -311,13 +325,38 @@ class _ServicesState extends State<Services> {
       appBar: AppBar(
         title: Text('Services',
             style: GoogleFonts.poppins(
-                fontSize: 18,
+                fontSize: 18.sp,
                 fontWeight: FontWeight.w600,
                 color: Colors.black87)),
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black87),
         surfaceTintColor: Colors.transparent,
+        actions: [
+          GestureDetector(
+            onTap: () => Navigator.push(
+                context, MaterialPageRoute(builder: (_) => My_Profile())),
+            child: Padding(
+              padding: EdgeInsets.only(right: 12.w),
+              child: CircleAvatar(
+                radius: 16.r,
+                backgroundColor: Theme.of(context).primaryColor,
+                backgroundImage: (_profile != null && _profile!.profileImage.isNotEmpty)
+                    ? NetworkImage(_profile!.profileImage)
+                    : null,
+                child: (_profile == null || _profile!.profileImage.isEmpty)
+                    ? Text(
+                        (_profile?.businessName ?? 'H').substring(0, 1).toUpperCase(),
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.bold),
+                      )
+                    : null,
+              ),
+            ),
+          ),
+        ],
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {

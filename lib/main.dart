@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'utils/app_theme.dart';
 import 'utils/navigator_key.dart';
 import 'intro_page.dart';
-import 'calender.dart';
+import 'Dashboard.dart';
 import 'Suppliers/supp_dashboard.dart';
 
 void main() {
@@ -63,7 +63,7 @@ class _SplashScreenState extends State<SplashScreen> {
         } else {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const Calendar()),
+            MaterialPageRoute(builder: (_) => const DashboardPage()),
           );
         }
       } else {

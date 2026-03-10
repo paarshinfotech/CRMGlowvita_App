@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 import '../Notification.dart';
-import '../Profile.dart';
+import '../my_Profile.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/custom_drawer.dart';
 
@@ -150,7 +150,7 @@ class _SettlementSummaryState extends State<SettlementSummary> {
             ),
             GestureDetector(
               onTap: () => Navigator.push(
-                  context, MaterialPageRoute(builder: (_) => ProfilePage())),
+                  context, MaterialPageRoute(builder: (_) => My_Profile())),
               child: Padding(
                 padding: EdgeInsets.only(right: 10.w),
                 child: CircleAvatar(
@@ -384,7 +384,7 @@ PreferredSizeWidget _buildAppBar(BuildContext context) {
         ),
         GestureDetector(
           onTap: () => Navigator.push(
-              context, MaterialPageRoute(builder: (_) => const ProfilePage())),
+              context, MaterialPageRoute(builder: (_) => const My_Profile())),
           child: Padding(
             padding: EdgeInsets.only(right: 10.w),
             child: Container(

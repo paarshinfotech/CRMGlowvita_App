@@ -8,6 +8,8 @@ import 'services/api_service.dart';
 
 import 'add_staff.dart';
 import 'widgets/custom_drawer.dart';
+import 'vendor_model.dart';
+import 'my_Profile.dart';
 import 'widgets/staff_earnings_dialog.dart';
 
 class Staff extends StatefulWidget {
@@ -25,11 +27,22 @@ class _StaffState extends State<Staff> {
 
   int? _sortColumn;
   bool _sortAsc = true;
+  VendorProfile? _profile;
 
   @override
   void initState() {
     super.initState();
     fetchStaff();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final p = await ApiService.getVendorProfile();
+      if (mounted) setState(() => _profile = p);
+    } catch (e) {
+      debugPrint('fetchProfile: $e');
+    }
   }
 
   Future<void> fetchStaff() async {
@@ -487,7 +500,7 @@ class _StaffState extends State<Staff> {
             style: GoogleFonts.poppins(
                 color: Colors.black,
                 fontWeight: FontWeight.w600,
-                fontSize: 12.sp),
+                fontSize: 16.sp),
           ),
           backgroundColor: Colors.white,
           elevation: 1,
@@ -495,9 +508,32 @@ class _StaffState extends State<Staff> {
           surfaceTintColor: Colors.white,
           actions: [
             IconButton(
-                icon: const Icon(Icons.refresh),
+                icon: const Icon(Icons.refresh, size: 20),
                 onPressed: fetchStaff,
                 tooltip: 'Refresh'),
+            GestureDetector(
+              onTap: () => Navigator.push(
+                  context, MaterialPageRoute(builder: (_) => My_Profile())),
+              child: Padding(
+                padding: EdgeInsets.only(right: 12.w),
+                child: CircleAvatar(
+                  radius: 16.r,
+                  backgroundColor: Theme.of(context).primaryColor,
+                  backgroundImage: (_profile != null && _profile!.profileImage.isNotEmpty)
+                      ? NetworkImage(_profile!.profileImage)
+                      : null,
+                  child: (_profile == null || _profile!.profileImage.isEmpty)
+                      ? Text(
+                          (_profile?.businessName ?? 'H').substring(0, 1).toUpperCase(),
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.bold),
+                        )
+                      : null,
+                ),
+              ),
+            ),
           ],
         ),
         body: Padding(

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 import '../Notification.dart';
-import '../Profile.dart';
+import '../my_Profile.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class StaffCommissionSummary extends StatefulWidget {
@@ -23,10 +23,11 @@ class _StaffCommissionSummaryState extends State<StaffCommissionSummary> {
             end: DateTime.now(),
           ),
     );
-    if (picked != null) setState(() {
-      _selectedDateRange = picked;
-      _filterData();
-    });
+    if (picked != null)
+      setState(() {
+        _selectedDateRange = picked;
+        _filterData();
+      });
   }
 
   final List<Map<String, dynamic>> StaffCommissionSummary = [
@@ -38,31 +39,8 @@ class _StaffCommissionSummaryState extends State<StaffCommissionSummary> {
       'saleAmount': '410',
       'commissionAmount': 60.00,
       'commissionRate': '20.00%',
-    },{
-      'invoiceId': '#00001028',
-      'invoiceDate': DateTime(2025, 7, 25),
-      'staffName': 'Siddhi Shinde',
-      'itemSold': 'spa',
-      'saleAmount': '410',
-      'commissionAmount': 60.00,
-      'commissionRate': '20.00%',
-    },{
-      'invoiceId': '#00001028',
-      'invoiceDate': DateTime(2025, 7, 25),
-      'staffName': 'Siddhi Shinde',
-      'itemSold': 'spa',
-      'saleAmount': '410',
-      'commissionAmount': 60.00,
-      'commissionRate': '20.00%',
-    },{
-      'invoiceId': '#00001028',
-      'invoiceDate': DateTime(2025, 7, 25),
-      'staffName': 'Siddhi Shinde',
-      'itemSold': 'spa',
-      'saleAmount': '410',
-      'commissionAmount': 60.00,
-      'commissionRate': '20.00%',
-    },{
+    },
+    {
       'invoiceId': '#00001028',
       'invoiceDate': DateTime(2025, 7, 25),
       'staffName': 'Siddhi Shinde',
@@ -71,7 +49,33 @@ class _StaffCommissionSummaryState extends State<StaffCommissionSummary> {
       'commissionAmount': 60.00,
       'commissionRate': '20.00%',
     },
-
+    {
+      'invoiceId': '#00001028',
+      'invoiceDate': DateTime(2025, 7, 25),
+      'staffName': 'Siddhi Shinde',
+      'itemSold': 'spa',
+      'saleAmount': '410',
+      'commissionAmount': 60.00,
+      'commissionRate': '20.00%',
+    },
+    {
+      'invoiceId': '#00001028',
+      'invoiceDate': DateTime(2025, 7, 25),
+      'staffName': 'Siddhi Shinde',
+      'itemSold': 'spa',
+      'saleAmount': '410',
+      'commissionAmount': 60.00,
+      'commissionRate': '20.00%',
+    },
+    {
+      'invoiceId': '#00001028',
+      'invoiceDate': DateTime(2025, 7, 25),
+      'staffName': 'Siddhi Shinde',
+      'itemSold': 'spa',
+      'saleAmount': '410',
+      'commissionAmount': 60.00,
+      'commissionRate': '20.00%',
+    },
   ];
 
   List<Map<String, dynamic>> filteredServices = [];
@@ -82,6 +86,7 @@ class _StaffCommissionSummaryState extends State<StaffCommissionSummary> {
     super.initState();
     filteredServices = List.from(StaffCommissionSummary);
   }
+
   num _totalSaleAmount() {
     return filteredServices.fold<num>(0, (sum, item) {
       final value = num.tryParse(item['saleAmount'].toString()) ?? 0;
@@ -104,7 +109,6 @@ class _StaffCommissionSummaryState extends State<StaffCommissionSummary> {
     return '${rate.toStringAsFixed(2)}%';
   }
 
-
   void _filterData() {
     setState(() {
       filteredServices = StaffCommissionSummary.where((service) {
@@ -114,8 +118,10 @@ class _StaffCommissionSummaryState extends State<StaffCommissionSummary> {
             .contains(searchText.toLowerCase());
 
         final matchesDate = _selectedDateRange == null ||
-            (service['date'].isAfter(_selectedDateRange!.start.subtract(const Duration(days: 1))) &&
-                service['date'].isBefore(_selectedDateRange!.end.add(const Duration(days: 1))));
+            (service['date'].isAfter(_selectedDateRange!.start
+                    .subtract(const Duration(days: 1))) &&
+                service['date'].isBefore(
+                    _selectedDateRange!.end.add(const Duration(days: 1))));
 
         return matchesSearch && matchesDate;
       }).toList();
@@ -171,7 +177,8 @@ class _StaffCommissionSummaryState extends State<StaffCommissionSummary> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const NotificationPage()),
+                  MaterialPageRoute(
+                      builder: (context) => const NotificationPage()),
                 );
               },
             ),
@@ -179,7 +186,7 @@ class _StaffCommissionSummaryState extends State<StaffCommissionSummary> {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const ProfilePage()),
+                  MaterialPageRoute(builder: (context) => const My_Profile()),
                 );
               },
               child: Padding(
@@ -248,8 +255,10 @@ class _StaffCommissionSummaryState extends State<StaffCommissionSummary> {
                     backgroundColor: Colors.white,
                     foregroundColor: Colors.black87,
                     side: BorderSide(color: Colors.black54),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
                     elevation: 0,
                   ),
                 ),
@@ -261,7 +270,8 @@ class _StaffCommissionSummaryState extends State<StaffCommissionSummary> {
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
-                      icon: const Icon(Icons.file_download_outlined, color: Colors.black),
+                      icon: const Icon(Icons.file_download_outlined,
+                          color: Colors.black),
                       items: const [
                         DropdownMenuItem(value: 'csv', child: Text('CSV')),
                         DropdownMenuItem(value: 'pdf', child: Text('PDF')),
@@ -287,14 +297,15 @@ class _StaffCommissionSummaryState extends State<StaffCommissionSummary> {
               child: Card(
                 elevation: 0,
                 color: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: DataTable(
                       headingRowColor: MaterialStateColor.resolveWith(
-                              (states) => Colors.grey.shade200),
+                          (states) => Colors.grey.shade200),
                       columnSpacing: 24,
                       dataRowHeight: 60,
                       headingTextStyle: const TextStyle(
@@ -317,15 +328,20 @@ class _StaffCommissionSummaryState extends State<StaffCommissionSummary> {
                           final isEven = index % 2 == 0;
                           return DataRow(
                             color: MaterialStateColor.resolveWith(
-                                  (states) => isEven ? Colors.grey.shade50 : Colors.white,
+                              (states) =>
+                                  isEven ? Colors.grey.shade50 : Colors.white,
                             ),
                             cells: [
                               DataCell(Text(service['invoiceId'] ?? '')),
-                              DataCell(Text(DateFormat('dd MMM yyyy').format(service['invoiceDate']))),
+                              DataCell(Text(DateFormat('dd MMM yyyy')
+                                  .format(service['invoiceDate']))),
                               DataCell(Text(service['staffName'] ?? '')),
                               DataCell(Text(service['itemSold'] ?? '')),
-                              DataCell(Text(_currencyFormat(num.tryParse(service['saleAmount'].toString()) ?? 0))),
-                              DataCell(Text(_currencyFormat(service['commissionAmount'] ?? 0))),
+                              DataCell(Text(_currencyFormat(num.tryParse(
+                                      service['saleAmount'].toString()) ??
+                                  0))),
+                              DataCell(Text(_currencyFormat(
+                                  service['commissionAmount'] ?? 0))),
                               DataCell(Text(service['commissionRate'] ?? '')),
                             ],
                           );
@@ -333,34 +349,38 @@ class _StaffCommissionSummaryState extends State<StaffCommissionSummary> {
 
                         // 👇 Total row
                         DataRow(
-                          color: MaterialStateColor.resolveWith((states) => Colors.yellow.shade50),
+                          color: MaterialStateColor.resolveWith(
+                              (states) => Colors.yellow.shade50),
                           cells: [
-                            const DataCell(Text('Total', style: TextStyle(fontWeight: FontWeight.bold))),
+                            const DataCell(Text('Total',
+                                style: TextStyle(fontWeight: FontWeight.bold))),
                             const DataCell(Text('')),
                             const DataCell(Text('')),
                             const DataCell(Text('')),
                             DataCell(
                               Text(
                                 _currencyFormat(_totalSaleAmount()),
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
                               ),
                             ),
                             DataCell(
                               Text(
                                 _currencyFormat(_totalCommissionAmount()),
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
                               ),
                             ),
                             DataCell(
                               Text(
                                 _totalCommissionRate(),
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
                               ),
                             ),
                           ],
                         ),
                       ],
-
                     ),
                   ),
                 ),

@@ -1469,7 +1469,7 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
 
   Widget _serviceSection(String displayServiceName) {
     final List<ServiceItem> items = _appointment!.serviceItems ?? [];
-    String label = 'SERVICES';
+    String label = 'SERVICE';
     String mainValue = displayServiceName;
 
     if (_appointment!.isMultiService == true) {
@@ -1482,23 +1482,29 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
       label,
       mainValue,
       fullWidthExtra: true,
-      extraContent: (items.length > 1 || _appointment!.isMultiService == true)
-          ? Column(
-              children: items.map((it) {
-                final effectiveAddOns =
-                    (it.addOns != null && it.addOns!.isNotEmpty)
-                        ? it.addOns
-                        : (items.length == 1 ? _appointment!.addOns : null);
+      extraContent: Column(
+        children: items.isNotEmpty
+            ? items.map((it) {
+                final effectiveAddOns = (it.addOns != null && it.addOns!.isNotEmpty)
+                    ? it.addOns
+                    : (items.length == 1 ? _appointment!.addOns : null);
 
                 return _serviceItemDetail(
                     it.serviceName ?? '—',
                     (it.amount ?? 0).toDouble(),
                     it.staffName ?? '—',
-                    '${it.startTime}-${it.endTime} (${it.duration ?? 0} min)',
+                    '${it.startTime ?? "—"} - ${it.endTime ?? "—"} (${it.duration ?? 0} min)',
                     addOns: effectiveAddOns);
-              }).toList(),
-            )
-          : null,
+              }).toList()
+            : [
+                _serviceItemDetail(
+                    _appointment!.serviceName ?? '—',
+                    (_appointment!.amount ?? 0).toDouble(),
+                    _appointment!.staffName ?? '—',
+                    '${_appointment!.startTime ?? "—"} - ${_appointment!.endTime ?? "—"} (${_appointment!.duration ?? 0} min)',
+                    addOns: _appointment!.addOns)
+              ],
+      ),
     );
   }
 
@@ -1511,7 +1517,7 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFC),
         border: Border.all(color: const Color(0xFFE2E8F0)),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1523,49 +1529,50 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                 child: Text(name,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.poppins(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
                         color: const Color(0xFF1E293B))),
               ),
               const SizedBox(width: 8),
               Text('₹${price.toStringAsFixed(2)}',
                   style: GoogleFonts.poppins(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                       color: const Color(0xFF1E293B))),
             ],
           ),
           const SizedBox(height: 2),
           Text('$staff • $time',
               style: GoogleFonts.poppins(
-                  fontSize: 10.5,
+                  fontSize: 10,
                   color: const Color(0xFF64748B),
-                  fontWeight: FontWeight.w500)),
+                  fontWeight: FontWeight.w400)),
           if (addOns != null && addOns.isNotEmpty) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Text('Add-ons:',
                 style: GoogleFonts.poppins(
                     fontSize: 10,
                     color: const Color(0xFF64748B),
-                    fontWeight: FontWeight.w600)),
-            const SizedBox(height: 4),
+                    fontWeight: FontWeight.w500)),
+            const SizedBox(height: 6),
             ...addOns.map((addon) => Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
+                  padding: const EdgeInsets.only(bottom: 6),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
-                        child: Text('+ ${addon.name ?? 'Add-on'}',
+                        child: Text(
+                            '+ ${addon.name ?? 'Add-on'}${addon.duration != null && addon.duration! > 0 ? " (${addon.duration} min)" : ""}',
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.poppins(
-                                fontSize: 10.5,
-                                color: const Color(0xFF334155),
+                                fontSize: 10,
+                                color: const Color(0xFF475569),
                                 fontWeight: FontWeight.w500)),
                       ),
                       const SizedBox(width: 8),
                       Text('₹${(addon.price ?? 0).toStringAsFixed(2)}',
                           style: GoogleFonts.poppins(
-                              fontSize: 10.5,
+                              fontSize: 10,
                               color: const Color(0xFF1E293B),
                               fontWeight: FontWeight.w600)),
                     ],

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 import '../Notification.dart';
-import '../Profile.dart';
+import '../my_Profile.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class SalesCommission extends StatefulWidget {
@@ -475,8 +475,8 @@ class _SalesCommissionState extends State<SalesCommission> {
                 MaterialPageRoute(builder: (_) => const NotificationPage())),
           ),
           GestureDetector(
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const ProfilePage())),
+            onTap: () => Navigator.push(
+                context, MaterialPageRoute(builder: (_) => const My_Profile())),
             child: Padding(
               padding: EdgeInsets.only(right: 10.w),
               child: Container(

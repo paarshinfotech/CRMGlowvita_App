@@ -3,7 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../Notification.dart';
-import '../Profile.dart';
+import '../my_Profile.dart';
 
 class DiscountSummary extends StatefulWidget {
   const DiscountSummary({super.key});
@@ -67,8 +67,10 @@ class _DiscountSummaryState extends State<DiscountSummary> {
     setState(() {
       filteredData = discountSummary.where((item) {
         final matchesDate = _selectedDateRange == null ||
-            (item['date'].isAfter(_selectedDateRange!.start.subtract(const Duration(days: 1))) &&
-                item['date'].isBefore(_selectedDateRange!.end.add(const Duration(days: 1))));
+            (item['date'].isAfter(_selectedDateRange!.start
+                    .subtract(const Duration(days: 1))) &&
+                item['date'].isBefore(
+                    _selectedDateRange!.end.add(const Duration(days: 1))));
         return matchesDate;
       }).toList();
     });
@@ -80,11 +82,12 @@ class _DiscountSummaryState extends State<DiscountSummary> {
 
   @override
   Widget build(BuildContext context) {
-
-    double totalValue = filteredData.fold(0.0, (sum, item) => sum + (item['itemsValue'] as double));
-    double totalDiscount = filteredData.fold(0.0, (sum, item) => sum + (item['discountAmount'] as double));
-    int totalItems = filteredData.fold(0, (sum, item) => sum + (item['itemsDiscounted'] as int));
-
+    double totalValue = filteredData.fold(
+        0.0, (sum, item) => sum + (item['itemsValue'] as double));
+    double totalDiscount = filteredData.fold(
+        0.0, (sum, item) => sum + (item['discountAmount'] as double));
+    int totalItems = filteredData.fold(
+        0, (sum, item) => sum + (item['itemsDiscounted'] as int));
 
     return Scaffold(
       appBar: AppBar(
@@ -126,12 +129,18 @@ class _DiscountSummaryState extends State<DiscountSummary> {
             IconButton(
               icon: const Icon(Icons.notifications),
               onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationPage()));
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const NotificationPage()));
               },
             ),
             GestureDetector(
               onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfilePage()));
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const My_Profile()));
               },
               child: Padding(
                 padding: EdgeInsets.only(right: 10.w),
@@ -181,20 +190,24 @@ class _DiscountSummaryState extends State<DiscountSummary> {
                     backgroundColor: Colors.white,
                     foregroundColor: Colors.black87,
                     side: const BorderSide(color: Colors.black54),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
                     elevation: 0,
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
                     border: Border.all(color: Colors.black, width: 1),
                     borderRadius: BorderRadius.circular(5),
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
-                      icon: const Icon(Icons.file_download_outlined, color: Colors.black),
+                      icon: const Icon(Icons.file_download_outlined,
+                          color: Colors.black),
                       items: const [
                         DropdownMenuItem(value: 'csv', child: Text('CSV')),
                         DropdownMenuItem(value: 'pdf', child: Text('PDF')),
@@ -232,7 +245,8 @@ class _DiscountSummaryState extends State<DiscountSummary> {
                       children: [
                         // Header Row
                         TableRow(
-                          decoration: BoxDecoration(color: Colors.grey.shade200),
+                          decoration:
+                              BoxDecoration(color: Colors.grey.shade200),
                           children: [
                             _buildTableHeaderCell("Items Discounted"),
                             _buildTableHeaderCell("Items Value"),
@@ -242,11 +256,15 @@ class _DiscountSummaryState extends State<DiscountSummary> {
                         // Data Rows
                         ...filteredData.map((item) {
                           return TableRow(
-                            decoration: const BoxDecoration(color: Colors.white),
+                            decoration:
+                                const BoxDecoration(color: Colors.white),
                             children: [
-                              _buildTableDataCell(item['itemsDiscounted'].toString()),
-                              _buildTableDataCell(_currencyFormat(item['itemsValue'])),
-                              _buildTableDataCell(_currencyFormat(item['discountAmount'])),
+                              _buildTableDataCell(
+                                  item['itemsDiscounted'].toString()),
+                              _buildTableDataCell(
+                                  _currencyFormat(item['itemsValue'])),
+                              _buildTableDataCell(
+                                  _currencyFormat(item['discountAmount'])),
                             ],
                           );
                         }).toList(),
@@ -258,18 +276,22 @@ class _DiscountSummaryState extends State<DiscountSummary> {
                     // Vertical Total Section
                     Card(
                       elevation: 2,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
                       color: Colors.yellow.shade50,
                       child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildTotalRow("Total Items Discounted", totalItems.toString()),
+                            _buildTotalRow("Total Items Discounted",
+                                totalItems.toString()),
                             const SizedBox(height: 8),
-                            _buildTotalRow("Total Items Value", _currencyFormat(totalValue)),
+                            _buildTotalRow("Total Items Value",
+                                _currencyFormat(totalValue)),
                             const SizedBox(height: 8),
-                            _buildTotalRow("Total Discount Amount", _currencyFormat(totalDiscount)),
+                            _buildTotalRow("Total Discount Amount",
+                                _currencyFormat(totalDiscount)),
                           ],
                         ),
                       ),
@@ -284,10 +306,13 @@ class _DiscountSummaryState extends State<DiscountSummary> {
     );
   }
 }
+
 Widget _buildTableHeaderCell(String text) {
   return Padding(
     padding: EdgeInsets.all(12.w),
-    child: Text(text, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 12.sp)),
+    child: Text(text,
+        style:
+            GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 12.sp)),
   );
 }
 
@@ -301,15 +326,22 @@ Widget _buildTableDataCell(String text) {
 Widget _buildTableTotalCell(String text) {
   return Padding(
     padding: EdgeInsets.all(12.w),
-    child: Text(text, style: GoogleFonts.poppins(fontSize: 12.sp, fontWeight: FontWeight.w600)),
+    child: Text(text,
+        style:
+            GoogleFonts.poppins(fontSize: 12.sp, fontWeight: FontWeight.w600)),
   );
 }
+
 Widget _buildTotalRow(String label, String value) {
   return Row(
     mainAxisAlignment: MainAxisAlignment.spaceBetween,
     children: [
-      Text(label, style: GoogleFonts.poppins(fontWeight: FontWeight.w500, fontSize: 13.sp)),
-      Text(value, style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 13.sp)),
+      Text(label,
+          style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w500, fontSize: 13.sp)),
+      Text(value,
+          style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600, fontSize: 13.sp)),
     ],
   );
 }

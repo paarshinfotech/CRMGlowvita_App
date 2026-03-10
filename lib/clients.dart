@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:glowvita/vendor_model.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'customer_model.dart';
 import 'import_customers.dart';
 import 'add_customer.dart';
 import 'Notification.dart';
-import 'Profile.dart';
+import 'my_Profile.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'dart:io';
 import 'package:intl/intl.dart';
@@ -43,6 +44,7 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
 
   bool _isLoading = false;
   String? _errorMessage;
+  VendorProfile? _profile;
 
   @override
   void initState() {
@@ -63,6 +65,24 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
 
     // Load customers from API
     _loadCustomers();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final p = await ApiService.getVendorProfile();
+      if (mounted) setState(() => _profile = p);
+    } catch (e) {
+      debugPrint('fetchProfile: $e');
+    }
+  }
+
+  Widget _buildInitialAvatar() {
+    return Text(
+      (_profile?.businessName ?? 'H').substring(0, 1).toUpperCase(),
+      style: TextStyle(
+          color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.bold),
+    );
   }
 
   Future<void> _loadCustomers() async {
@@ -458,8 +478,7 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                        builder: (context) => const ProfilePage()),
+                    MaterialPageRoute(builder: (context) => const My_Profile()),
                   );
                 },
                 child: Padding(
@@ -473,10 +492,26 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                         width: 1.w,
                       ),
                     ),
-                    child: const CircleAvatar(
+                    child: CircleAvatar(
                       radius: 18,
-                      backgroundImage: AssetImage('assets/images/profile.jpeg'),
-                      backgroundColor: Colors.white,
+                      backgroundColor: Theme.of(context).primaryColor,
+                      child: ClipOval(
+                        child: (_profile != null &&
+                                _profile!.profileImage.isNotEmpty)
+                            ? Image.network(
+                                _profile!.profileImage,
+                                width: 36,
+                                height: 36,
+                                fit: BoxFit.cover,
+                                errorBuilder: (ctx, _, __) =>
+                                    _buildInitialAvatar(),
+                                loadingBuilder: (ctx, child, progress) =>
+                                    progress == null
+                                        ? child
+                                        : _buildInitialAvatar(),
+                              )
+                            : _buildInitialAvatar(),
+                      ),
                     ),
                   ),
                 ),

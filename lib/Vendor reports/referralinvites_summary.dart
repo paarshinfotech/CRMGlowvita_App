@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 import '../Notification.dart';
-import '../Profile.dart';
+import '../my_Profile.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class ReferralInvitesSummary extends StatefulWidget {
@@ -48,8 +48,10 @@ class _ReferralInvitesSummaryState extends State<ReferralInvitesSummary> {
             .toLowerCase()
             .contains(_searchText.toLowerCase());
         final matchesDate = _selectedDateRange == null ||
-            (invite['date'].isAfter(_selectedDateRange!.start.subtract(const Duration(days: 1))) &&
-                invite['date'].isBefore(_selectedDateRange!.end.add(const Duration(days: 1))));
+            (invite['date'].isAfter(_selectedDateRange!.start
+                    .subtract(const Duration(days: 1))) &&
+                invite['date'].isBefore(
+                    _selectedDateRange!.end.add(const Duration(days: 1))));
         return matchesSearch && matchesDate;
       }).toList();
     });
@@ -104,12 +106,12 @@ class _ReferralInvitesSummaryState extends State<ReferralInvitesSummary> {
             ),
             IconButton(
               icon: const Icon(Icons.notifications),
-              onPressed: () => Navigator.push(
-                  context, MaterialPageRoute(builder: (_) => NotificationPage())),
+              onPressed: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => NotificationPage())),
             ),
             GestureDetector(
               onTap: () => Navigator.push(
-                  context, MaterialPageRoute(builder: (_) => ProfilePage())),
+                  context, MaterialPageRoute(builder: (_) => My_Profile())),
               child: Padding(
                 padding: EdgeInsets.only(right: 10.w),
                 child: CircleAvatar(
@@ -168,8 +170,8 @@ class _ReferralInvitesSummaryState extends State<ReferralInvitesSummary> {
                     backgroundColor: Colors.white,
                     foregroundColor: Colors.black87,
                     side: BorderSide(color: Colors.black54),
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8)),
                     elevation: 0,
@@ -183,8 +185,8 @@ class _ReferralInvitesSummaryState extends State<ReferralInvitesSummary> {
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
-                      icon:
-                      const Icon(Icons.file_download_outlined, color: Colors.black),
+                      icon: const Icon(Icons.file_download_outlined,
+                          color: Colors.black),
                       items: const [
                         DropdownMenuItem(value: 'csv', child: Text('CSV')),
                         DropdownMenuItem(value: 'pdf', child: Text('PDF')),
@@ -193,7 +195,8 @@ class _ReferralInvitesSummaryState extends State<ReferralInvitesSummary> {
                         DropdownMenuItem(value: 'print', child: Text('Print')),
                       ],
                       hint: const Text("Export"),
-                      onChanged: (value) => ScaffoldMessenger.of(context).showSnackBar(
+                      onChanged: (value) =>
+                          ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text("Selected: $value")),
                       ),
                     ),
@@ -216,7 +219,7 @@ class _ReferralInvitesSummaryState extends State<ReferralInvitesSummary> {
                     scrollDirection: Axis.horizontal,
                     child: DataTable(
                       headingRowColor: MaterialStateColor.resolveWith(
-                              (_) => Colors.grey.shade200),
+                          (_) => Colors.grey.shade200),
                       columnSpacing: 24,
                       dataRowHeight: 56,
                       headingTextStyle: TextStyle(
@@ -243,13 +246,12 @@ class _ReferralInvitesSummaryState extends State<ReferralInvitesSummary> {
                         // Total row
                         DataRow(
                           color: MaterialStateColor.resolveWith(
-                                  (_) => Colors.yellow.shade50),
+                              (_) => Colors.yellow.shade50),
                           cells: [
                             const DataCell(Text("Total",
                                 style: TextStyle(fontWeight: FontWeight.bold))),
                             DataCell(Text("$totalInvites invites",
-                                style:
-                                TextStyle(fontWeight: FontWeight.bold))),
+                                style: TextStyle(fontWeight: FontWeight.bold))),
                             const DataCell(Text("")),
                           ],
                         ),

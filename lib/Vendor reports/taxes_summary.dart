@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../Notification.dart';
-import '../Profile.dart';
+import '../my_Profile.dart';
 
 class TaxesSummary extends StatefulWidget {
   const TaxesSummary({super.key});
@@ -71,8 +71,10 @@ class _TaxesSummaryState extends State<TaxesSummary> {
     setState(() {
       filteredTaxData = taxesSummary.where((item) {
         final matchesDate = _selectedDateRange == null ||
-            (item['date'].isAfter(_selectedDateRange!.start.subtract(const Duration(days: 1))) &&
-                item['date'].isBefore(_selectedDateRange!.end.add(const Duration(days: 1))));
+            (item['date'].isAfter(_selectedDateRange!.start
+                    .subtract(const Duration(days: 1))) &&
+                item['date'].isBefore(
+                    _selectedDateRange!.end.add(const Duration(days: 1))));
         return matchesDate;
       }).toList();
     });
@@ -86,11 +88,11 @@ class _TaxesSummaryState extends State<TaxesSummary> {
   Widget build(BuildContext context) {
     double totalAmount = filteredTaxData.fold(
       0.0,
-          (sum, item) => sum + (item['amount'] as num),
+      (sum, item) => sum + (item['amount'] as num),
     );
     int totalItems = filteredTaxData.fold(
       0,
-          (sum, item) => sum + (item['itemsSold'] as int),
+      (sum, item) => sum + (item['itemsSold'] as int),
     );
 
     return Scaffold(
@@ -133,12 +135,18 @@ class _TaxesSummaryState extends State<TaxesSummary> {
             IconButton(
               icon: const Icon(Icons.notifications),
               onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationPage()));
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const NotificationPage()));
               },
             ),
             GestureDetector(
               onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfilePage()));
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const My_Profile()));
               },
               child: Padding(
                 padding: EdgeInsets.only(right: 10.w),
@@ -171,7 +179,6 @@ class _TaxesSummaryState extends State<TaxesSummary> {
             const SizedBox(height: 4),
             Container(height: 2, width: 200, color: Colors.black),
             const SizedBox(height: 24),
-
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -188,20 +195,24 @@ class _TaxesSummaryState extends State<TaxesSummary> {
                     backgroundColor: Colors.white,
                     foregroundColor: Colors.black87,
                     side: const BorderSide(color: Colors.black54),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
                     elevation: 0,
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
                     border: Border.all(color: Colors.black, width: 1),
                     borderRadius: BorderRadius.circular(5),
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
-                      icon: const Icon(Icons.file_download_outlined, color: Colors.black),
+                      icon: const Icon(Icons.file_download_outlined,
+                          color: Colors.black),
                       items: const [
                         DropdownMenuItem(value: 'csv', child: Text('CSV')),
                         DropdownMenuItem(value: 'pdf', child: Text('PDF')),
@@ -221,7 +232,6 @@ class _TaxesSummaryState extends State<TaxesSummary> {
               ],
             ),
             const SizedBox(height: 20),
-
             Expanded(
               child: SingleChildScrollView(
                 scrollDirection: Axis.vertical,
@@ -238,7 +248,8 @@ class _TaxesSummaryState extends State<TaxesSummary> {
                       children: [
                         // Table Header
                         TableRow(
-                          decoration: BoxDecoration(color: Colors.grey.shade200),
+                          decoration:
+                              BoxDecoration(color: Colors.grey.shade200),
                           children: [
                             _buildTableHeaderCell("Tax"),
                             _buildTableHeaderCell("Item Sold"),
@@ -255,14 +266,16 @@ class _TaxesSummaryState extends State<TaxesSummary> {
                               _buildTableDataCell(item['tax']),
                               _buildTableDataCell(item['itemsSold'].toString()),
                               _buildTableDataCell(item['rate'].toString()),
-                              _buildTableDataCell(_currencyFormat(item['amount'])),
+                              _buildTableDataCell(
+                                  _currencyFormat(item['amount'])),
                             ],
                           );
                         }).toList(),
 
                         // Total Summary Row
                         TableRow(
-                          decoration: BoxDecoration(color: Colors.yellow.shade100),
+                          decoration:
+                              BoxDecoration(color: Colors.yellow.shade100),
                           children: [
                             _buildTableTotalCell("Total"),
                             _buildTableTotalCell(totalItems.toString()),
@@ -282,6 +295,7 @@ class _TaxesSummaryState extends State<TaxesSummary> {
     );
   }
 }
+
 Widget _buildTableHeaderCell(String text) {
   return Padding(
     padding: EdgeInsets.all(12.w),

@@ -6,6 +6,9 @@ import 'package:image_picker/image_picker.dart';
 import 'add_product.dart';
 import 'widgets/custom_drawer.dart';
 import 'services/api_service.dart';
+import 'vendor_model.dart';
+import 'my_Profile.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class Products extends StatefulWidget {
   const Products({super.key});
@@ -24,6 +27,7 @@ class _ProductsPageState extends State<Products> {
   String searchQuery = '';
   List<Map<String, dynamic>> products = [];
   bool isLoading = true;
+  VendorProfile? _profile;
 
   final List<String> statusFilters = [
     'All Status',
@@ -36,6 +40,16 @@ class _ProductsPageState extends State<Products> {
   void initState() {
     super.initState();
     _loadProducts();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final p = await ApiService.getVendorProfile();
+      if (mounted) setState(() => _profile = p);
+    } catch (e) {
+      debugPrint('fetchProfile: $e');
+    }
   }
 
   Future<void> _loadProducts() async {
@@ -328,12 +342,37 @@ class _ProductsPageState extends State<Products> {
           style: GoogleFonts.poppins(
             fontWeight: FontWeight.w600,
             color: Colors.black,
-            fontSize: 18,
+            fontSize: 18.sp,
           ),
         ),
         backgroundColor: Colors.white,
         iconTheme: const IconThemeData(color: Colors.black),
         elevation: 0,
+        actions: [
+          GestureDetector(
+            onTap: () => Navigator.push(
+                context, MaterialPageRoute(builder: (_) => My_Profile())),
+            child: Padding(
+              padding: EdgeInsets.only(right: 12.w),
+              child: CircleAvatar(
+                radius: 16.r,
+                backgroundColor: Theme.of(context).primaryColor,
+                backgroundImage: (_profile != null && _profile!.profileImage.isNotEmpty)
+                    ? NetworkImage(_profile!.profileImage)
+                    : null,
+                child: (_profile == null || _profile!.profileImage.isEmpty)
+                    ? Text(
+                        (_profile?.businessName ?? 'H').substring(0, 1).toUpperCase(),
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.bold),
+                      )
+                    : null,
+              ),
+            ),
+          ),
+        ],
       ),
       backgroundColor: scaffoldBg,
       body: Padding(
