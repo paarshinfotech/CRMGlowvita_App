@@ -415,26 +415,130 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
   }
 
   bool _hasConflict(DateTime start, DateTime end, StaffMember staff) {
+    // 1. Check against existing appointments
     for (var appt in widget.dailyAppointments) {
-      // Exclude current appointment if editing
       if (widget.existingAppointment != null &&
           appt.id == widget.existingAppointment!.id) {
         continue;
       }
-
-      // Check staff match
-      // Assuming staffNames are consistent.
-      // Ideally should match IDs if possible, but existing 'Appointments' model might not have IDs populated from calendar yet.
-      // let's try to match name.
       if (appt.staffName != staff.fullName) continue;
-
-      // Check overlap
-      // Overlap if (StartA < EndB) and (EndA > StartB)
       if (appt.startTime.isBefore(end) && appt.endTime.isAfter(start)) {
         return true;
       }
     }
+
+    // 2. Check against staff's blocked times
+    final blockedTimes = staff.blockedTimes ?? [];
+    final startMinutes = start.hour * 60 + start.minute;
+    final endMinutes = end.hour * 60 + end.minute;
+
+    for (final b in blockedTimes) {
+      if (b == null) continue;
+      if (b['isActive'] == false) continue;
+
+      // Match date
+      try {
+        final blockDate = DateTime.parse(b['date'].toString()).toLocal();
+        if (!DateUtils.isSameDay(blockDate, start)) continue;
+      } catch (_) {
+        continue;
+      }
+
+      // Parse block start/end minutes
+      int bSm = 0, bEm = 0;
+      try {
+        final sp = b['startTime'].toString().split(':');
+        bSm = int.parse(sp[0]) * 60 + int.parse(sp[1]);
+        final ep = b['endTime'].toString().split(':');
+        bEm = int.parse(ep[0]) * 60 + int.parse(ep[1]);
+      } catch (_) {
+        continue;
+      }
+
+      // Overlap: (startA < endB) && (endA > startB)
+      if (startMinutes < bEm && endMinutes > bSm) {
+        return true;
+      }
+    }
+
     return false;
+  }
+
+  /// Returns the blocked slot that overlaps, or null
+  Map<String, dynamic>? _getBlockedSlot(
+      DateTime start, DateTime end, StaffMember staff) {
+    final blockedTimes = staff.blockedTimes ?? [];
+    final startMinutes = start.hour * 60 + start.minute;
+    final endMinutes = end.hour * 60 + end.minute;
+
+    debugPrint('━━━ BlockedTime Check ━━━');
+    debugPrint('  Staff: ${staff.fullName} (id: ${staff.id})');
+    debugPrint('  blockedTimes count: ${blockedTimes.length}');
+    debugPrint(
+        '  Appointment window: ${start.hour}:${start.minute.toString().padLeft(2, '0')} – ${end.hour}:${end.minute.toString().padLeft(2, '0')} on ${start.year}-${start.month}-${start.day}');
+
+    for (int i = 0; i < blockedTimes.length; i++) {
+      final raw = blockedTimes[i];
+      debugPrint('  [bt$i] raw type: ${raw.runtimeType}, value: $raw');
+
+      if (raw == null) {
+        debugPrint('  [bt$i] SKIP: null');
+        continue;
+      }
+
+      // Safely convert to Map
+      Map<String, dynamic> b;
+      try {
+        b = (raw is Map<String, dynamic>)
+            ? raw
+            : Map<String, dynamic>.from(raw as Map);
+      } catch (e) {
+        debugPrint('  [bt$i] SKIP: cannot cast to Map – $e');
+        continue;
+      }
+
+      // Check isActive — API may send bool true or int 1
+      final isActive = b['isActive'];
+      if (isActive == false || isActive == 0) {
+        debugPrint('  [bt$i] SKIP: isActive=$isActive');
+        continue;
+      }
+
+      // Match date
+      DateTime blockDate;
+      try {
+        blockDate = DateTime.parse(b['date'].toString()).toLocal();
+      } catch (e) {
+        debugPrint('  [bt$i] SKIP: date parse error – $e');
+        continue;
+      }
+      final sameDay = DateUtils.isSameDay(blockDate, start);
+      debugPrint('  [bt$i] blockDate: $blockDate, sameDay: $sameDay');
+      if (!sameDay) continue;
+
+      // Parse block start/end minutes
+      int bSm, bEm;
+      try {
+        final sp = b['startTime'].toString().split(':');
+        bSm = int.parse(sp[0]) * 60 + int.parse(sp[1]);
+        final ep = b['endTime'].toString().split(':');
+        bEm = int.parse(ep[0]) * 60 + int.parse(ep[1]);
+      } catch (e) {
+        debugPrint('  [bt$i] SKIP: time parse error – $e');
+        continue;
+      }
+
+      debugPrint('  [bt$i] block $bSm–$bEm vs appt $startMinutes–$endMinutes');
+
+      // Overlap: (startA < endB) && (endA > startB)
+      if (startMinutes < bEm && endMinutes > bSm) {
+        debugPrint('  [bt$i] ✅ OVERLAP FOUND');
+        return Map<String, dynamic>.from(b);
+      }
+    }
+
+    debugPrint('  No blocked slot overlap found.');
+    return null;
   }
 
   void _showConflictDialog(
@@ -442,13 +546,89 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Slot Unavailable'),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+        title: Row(children: [
+          Icon(Icons.event_busy, color: Colors.red.shade600, size: 18.sp),
+          SizedBox(width: 8.w),
+          Text('Slot Unavailable',
+              style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w700)),
+        ]),
         content: Text(
             '${staff.fullName} is already booked between ${DateFormat('HH:mm').format(start)} and ${DateFormat('HH:mm').format(end)}.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
             child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBlockedTimeDialog(StaffMember staff, DateTime start, DateTime end,
+      Map<String, dynamic> blockedSlot) {
+    final blockStart = blockedSlot['startTime'] ?? '';
+    final blockEnd = blockedSlot['endTime'] ?? '';
+    final reason = blockedSlot['reason']?.toString();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+        title: Row(children: [
+          Icon(Icons.block, color: Colors.red.shade700, size: 18.sp),
+          SizedBox(width: 8.w),
+          Text('Time is Blocked',
+              style: TextStyle(
+                  fontSize: 11.sp,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.red.shade700)),
+        ]),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${staff.fullName} is not available from $blockStart to $blockEnd.',
+              style: TextStyle(fontSize: 10.sp),
+            ),
+            if (reason != null && reason.isNotEmpty) ...[
+              SizedBox(height: 6.h),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(6.r),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Row(children: [
+                  Icon(Icons.info_outline,
+                      size: 12.sp, color: Colors.red.shade400),
+                  SizedBox(width: 6.w),
+                  Expanded(
+                    child: Text(
+                      'Reason: $reason',
+                      style:
+                          TextStyle(fontSize: 9.sp, color: Colors.red.shade700),
+                    ),
+                  ),
+                ]),
+              ),
+            ],
+            SizedBox(height: 8.h),
+            Text(
+              'Please choose a different time or staff member.',
+              style: TextStyle(fontSize: 9.sp, color: Colors.grey[600]),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('OK',
+                style: TextStyle(
+                    color: Colors.red.shade600, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -470,18 +650,33 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
       currentStartTime = _queuedServices.last.endTime;
     }
 
-    // Calculate total duration including add-ons
     final serviceDuration = _selectedService!.duration ?? 0;
     final addOnsDuration = _selectedAddOns.fold<int>(
         0, (sum, addon) => sum + (addon.duration ?? 0));
     final totalDuration = serviceDuration + addOnsDuration;
     final endTime = currentStartTime.add(Duration(minutes: totalDuration));
 
-    // Check conflict BEFORE adding (now with correct end time including add-ons)
+    debugPrint('══ _addToQueue ══');
+    debugPrint('  selectedStaff: ${_selectedStaff!.fullName}');
+    debugPrint(
+        '  blockedTimes on staff: ${_selectedStaff!.blockedTimes?.length ?? 0} entries');
+    debugPrint('  selectedDate: $_selectedDate');
+    debugPrint('  currentStartTime: $currentStartTime  endTime: $endTime');
+
+    // Check blocked time FIRST (takes priority over appointment conflict)
+    final blockedSlot =
+        _getBlockedSlot(currentStartTime, endTime, _selectedStaff!);
+    if (blockedSlot != null) {
+      _showBlockedTimeDialog(
+          _selectedStaff!, currentStartTime, endTime, blockedSlot);
+      return;
+    }
+
+    // Then check appointment conflict
     if (_hasConflict(currentStartTime, endTime, _selectedStaff!)) {
       _showConflictDialog(
           _selectedStaff!, _selectedService!, currentStartTime, endTime);
-      return; // Do not add to queue
+      return;
     }
 
     setState(() {
@@ -492,11 +687,9 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
         endTime: endTime,
         selectedAddOns: List.from(_selectedAddOns),
       ));
-      // Clear selection buffers
       _selectedService = null;
       _selectedAddOns = [];
       _availableAddOns = [];
-      // Note: We keep _selectedStaff for easier multiple additions
     });
 
     _recalculatePricingAndTimes();

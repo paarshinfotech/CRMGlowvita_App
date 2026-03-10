@@ -407,9 +407,6 @@ class _Header extends StatelessWidget {
               ),
             ),
             const Spacer(),
-            _NavBtn(icon: Icons.chevron_left, onTap: onPrev),
-            SizedBox(width: 6.w),
-            _NavBtn(icon: Icons.chevron_right, onTap: onNext),
           ]),
         ),
         SizedBox(height: 7.h),
@@ -468,6 +465,7 @@ class _Header extends StatelessWidget {
       ]),
     );
   }
+
   Widget _buildInitial() {
     return Text(
       (profile?.businessName ?? 'H').substring(0, 1).toUpperCase(),
@@ -501,7 +499,7 @@ class _SummaryBar extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           Text('$total Total Appointment${total == 1 ? '' : 's'}',
-              style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w700)),
+              style: TextStyle(fontSize: 9.sp, fontWeight: FontWeight.w700)),
           Text(DateFormat('EEEE, d MMM').format(date),
               style: TextStyle(fontSize: 7.5.sp, color: Colors.grey[500])),
         ]),
@@ -848,14 +846,14 @@ class _StatChip extends StatelessWidget {
           child: Column(children: [
             Text(label,
                 style: TextStyle(
-                    fontSize: 6.5.sp,
+                    fontSize: 5.5.sp,
                     fontWeight: FontWeight.w700,
                     color: color,
                     letterSpacing: 0.3)),
             SizedBox(height: 2.h),
             Text(count,
                 style: TextStyle(
-                    fontSize: 16.sp,
+                    fontSize: 13.sp,
                     fontWeight: FontWeight.w800,
                     color: color)),
           ]),

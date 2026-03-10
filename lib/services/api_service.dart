@@ -61,6 +61,31 @@ class StaffMember {
     this.commissionPercentage,
   });
 
+  /// Safely parses the blockedTimes array from JSON.
+  /// Using List.from() instead of .cast<dynamic>() avoids CastError
+  /// when the list contains _JsonMap instances that Dart can't lazily cast.
+  static List<dynamic> _parseBlockedTimes(dynamic raw) {
+    if (raw == null) return [];
+    try {
+      final list = raw as List;
+      final result = list
+          .map((item) {
+            if (item == null) return null;
+            if (item is Map<String, dynamic>) return item;
+            if (item is Map) return Map<String, dynamic>.from(item);
+            return item;
+          })
+          .where((e) => e != null)
+          .toList();
+      debugPrint(
+          '⚡ _parseBlockedTimes: parsed ${result.length} blocked entries');
+      return result;
+    } catch (e) {
+      debugPrint('⚡ _parseBlockedTimes ERROR: $e  raw=$raw');
+      return [];
+    }
+  }
+
   factory StaffMember.fromJson(Map<String, dynamic> json) {
     // Construct availability map from root fields if 'availability' is missing
     Map<String, dynamic>? availabilityMap = json['availability'] != null
@@ -104,7 +129,7 @@ class StaffMember {
       status: json['status'] ?? 'Active',
       permissions: json['permissions']?.cast<dynamic>() ?? [],
       availability: availabilityMap,
-      blockedTimes: json['blockedTimes']?.cast<dynamic>() ?? [],
+      blockedTimes: _parseBlockedTimes(json['blockedTimes']),
       bankDetails: json['bankDetails'] != null
           ? Map<String, dynamic>.from(json['bankDetails'])
           : null,
