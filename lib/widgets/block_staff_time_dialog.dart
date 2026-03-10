@@ -312,8 +312,10 @@ class _BlockStaffTimeDialogState extends State<BlockStaffTimeDialog> {
 }
 
 // ═══════════════════════════════════════════════════════
-//  INLINE CALENDAR
+//  INLINE CALENDAR  (Day → Month → Year drill-down)
 // ═══════════════════════════════════════════════════════
+enum _CalView { day, month, year }
+
 class _InlineCalendar extends StatefulWidget {
   final DateTime selected;
   final ValueChanged<DateTime> onChanged;
@@ -326,26 +328,74 @@ class _InlineCalendar extends StatefulWidget {
 class _InlineCalendarState extends State<_InlineCalendar> {
   late DateTime _viewMonth;
   late DateTime _selected;
+  _CalView _view = _CalView.day;
+
+  // Year-grid page: show 12 years per page
+  late int _yearPageStart;
+
+  static const _months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
 
   @override
   void initState() {
     super.initState();
     _selected = widget.selected;
     _viewMonth = DateTime(_selected.year, _selected.month);
+    _yearPageStart = (_selected.year ~/ 12) * 12;
   }
 
-  void _prevMonth() => setState(
+  // ── navigation helpers ───────────────────────────────
+  void _prevDay() => setState(
       () => _viewMonth = DateTime(_viewMonth.year, _viewMonth.month - 1));
-  void _nextMonth() => setState(
+  void _nextDay() => setState(
       () => _viewMonth = DateTime(_viewMonth.year, _viewMonth.month + 1));
+
+  void _prevYear() => setState(() => _yearPageStart -= 12);
+  void _nextYear() => setState(() => _yearPageStart += 12);
+
+  // ── header label ─────────────────────────────────────
+  String get _headerLabel {
+    switch (_view) {
+      case _CalView.day:
+        return DateFormat('MMMM yyyy').format(_viewMonth);
+      case _CalView.month:
+        return '${_viewMonth.year}';
+      case _CalView.year:
+        return '$_yearPageStart – ${_yearPageStart + 11}';
+    }
+  }
+
+  // ── header tap cycles view ────────────────────────────
+  void _cycleView() {
+    setState(() {
+      switch (_view) {
+        case _CalView.day:
+          _view = _CalView.month;
+          break;
+        case _CalView.month:
+          _view = _CalView.year;
+          break;
+        case _CalView.year:
+          _view = _CalView.day;
+          break;
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final daysInMonth =
-        DateUtils.getDaysInMonth(_viewMonth.year, _viewMonth.month);
-    final firstWeekday =
-        DateTime(_viewMonth.year, _viewMonth.month, 1).weekday % 7; // Sun=0
-
     return Container(
       margin: EdgeInsets.only(top: 6.h),
       decoration: BoxDecoration(
@@ -354,34 +404,93 @@ class _InlineCalendarState extends State<_InlineCalendar> {
         borderRadius: BorderRadius.circular(10.r),
       ),
       child: Column(children: [
-        // Month nav
+        // ── Header nav bar ─────────────────────────────
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
           child: Row(children: [
             GestureDetector(
-              onTap: _prevMonth,
-              child:
-                  Icon(Icons.chevron_left, size: 16.sp, color: Colors.black87),
+              onTap: _view == _CalView.day
+                  ? _prevDay
+                  : _view == _CalView.year
+                      ? _prevYear
+                      : null,
+              child: Icon(
+                Icons.chevron_left,
+                size: 16.sp,
+                color: _view == _CalView.month
+                    ? Colors.transparent
+                    : Colors.black87,
+              ),
             ),
             Expanded(
-              child: Text(
-                DateFormat('MMMM yyyy').format(_viewMonth),
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 9.sp, fontWeight: FontWeight.w700),
+              child: GestureDetector(
+                onTap: _cycleView,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      _headerLabel,
+                      style: TextStyle(
+                          fontSize: 9.sp, fontWeight: FontWeight.w700),
+                    ),
+                    SizedBox(width: 3.w),
+                    Icon(
+                      _view == _CalView.day
+                          ? Icons.arrow_drop_down
+                          : Icons.arrow_drop_up,
+                      size: 14.sp,
+                      color: _kPrimary,
+                    ),
+                  ],
+                ),
               ),
             ),
             GestureDetector(
-              onTap: _nextMonth,
-              child:
-                  Icon(Icons.chevron_right, size: 16.sp, color: Colors.black87),
+              onTap: _view == _CalView.day
+                  ? _nextDay
+                  : _view == _CalView.year
+                      ? _nextYear
+                      : null,
+              child: Icon(
+                Icons.chevron_right,
+                size: 16.sp,
+                color: _view == _CalView.month
+                    ? Colors.transparent
+                    : Colors.black87,
+              ),
             ),
           ]),
         ),
 
-        // Day labels
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 6.w),
-          child: Row(
+        const Divider(height: 1, thickness: 0.5, color: Color(0xFFEEEEEE)),
+
+        // ── Body ───────────────────────────────────────
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          child: _view == _CalView.day
+              ? _buildDayGrid()
+              : _view == _CalView.month
+                  ? _buildMonthGrid()
+                  : _buildYearGrid(),
+        ),
+      ]),
+    );
+  }
+
+  // ── DAY GRID ───────────────────────────────────────────
+  Widget _buildDayGrid() {
+    final daysInMonth =
+        DateUtils.getDaysInMonth(_viewMonth.year, _viewMonth.month);
+    final firstWeekday =
+        DateTime(_viewMonth.year, _viewMonth.month, 1).weekday % 7;
+
+    return KeyedSubtree(
+      key: ValueKey('day-${_viewMonth.year}-${_viewMonth.month}'),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(6.w, 8.h, 6.w, 8.h),
+        child: Column(children: [
+          // Weekday headers
+          Row(
             children: ['S', 'M', 'T', 'W', 'T', 'F', 'S']
                 .map((d) => Expanded(
                       child: Center(
@@ -394,14 +503,8 @@ class _InlineCalendarState extends State<_InlineCalendar> {
                     ))
                 .toList(),
           ),
-        ),
-
-        SizedBox(height: 4.h),
-
-        // Date grid
-        Padding(
-          padding: EdgeInsets.fromLTRB(6.w, 0, 6.w, 8.h),
-          child: GridView.builder(
+          SizedBox(height: 4.h),
+          GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -413,9 +516,8 @@ class _InlineCalendarState extends State<_InlineCalendar> {
               if (i < firstWeekday) return const SizedBox();
               final day = i - firstWeekday + 1;
               final date = DateTime(_viewMonth.year, _viewMonth.month, day);
-              final isSelected = DateUtils.isSameDay(date, _selected);
+              final isSel = DateUtils.isSameDay(date, _selected);
               final isToday = DateUtils.isSameDay(date, DateTime.now());
-
               return GestureDetector(
                 onTap: () {
                   setState(() => _selected = date);
@@ -424,7 +526,7 @@ class _InlineCalendarState extends State<_InlineCalendar> {
                 child: Container(
                   margin: EdgeInsets.all(1.5.w),
                   decoration: BoxDecoration(
-                    color: isSelected
+                    color: isSel
                         ? _kPrimary
                         : isToday
                             ? _kPrimaryLight
@@ -435,10 +537,10 @@ class _InlineCalendarState extends State<_InlineCalendar> {
                     child: Text('$day',
                         style: TextStyle(
                             fontSize: 8.5.sp,
-                            fontWeight: isSelected || isToday
+                            fontWeight: isSel || isToday
                                 ? FontWeight.w700
                                 : FontWeight.w400,
-                            color: isSelected
+                            color: isSel
                                 ? Colors.white
                                 : isToday
                                     ? _kPrimary
@@ -448,8 +550,115 @@ class _InlineCalendarState extends State<_InlineCalendar> {
               );
             },
           ),
+        ]),
+      ),
+    );
+  }
+
+  // ── MONTH GRID ─────────────────────────────────────────
+  Widget _buildMonthGrid() {
+    return KeyedSubtree(
+      key: ValueKey('month-${_viewMonth.year}'),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(10.w, 10.h, 10.w, 10.h),
+        child: GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 4,
+            childAspectRatio: 2.0,
+            crossAxisSpacing: 6,
+            mainAxisSpacing: 6,
+          ),
+          itemCount: 12,
+          itemBuilder: (_, i) {
+            final isSel =
+                i + 1 == _viewMonth.month && _viewMonth.year == _selected.year;
+            final isCurMonth = i + 1 == DateTime.now().month &&
+                _viewMonth.year == DateTime.now().year;
+            return GestureDetector(
+              onTap: () => setState(() {
+                _viewMonth = DateTime(_viewMonth.year, i + 1);
+                _view = _CalView.day;
+              }),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isSel
+                      ? _kPrimary
+                      : isCurMonth
+                          ? _kPrimaryLight
+                          : const Color(0xFFF5F5F5),
+                  borderRadius: BorderRadius.circular(6.r),
+                ),
+                child: Center(
+                  child: Text(_months[i],
+                      style: TextStyle(
+                          fontSize: 9.sp,
+                          fontWeight: isSel ? FontWeight.w700 : FontWeight.w500,
+                          color: isSel
+                              ? Colors.white
+                              : isCurMonth
+                                  ? _kPrimary
+                                  : Colors.black87)),
+                ),
+              ),
+            );
+          },
         ),
-      ]),
+      ),
+    );
+  }
+
+  // ── YEAR GRID ──────────────────────────────────────────
+  Widget _buildYearGrid() {
+    return KeyedSubtree(
+      key: ValueKey('year-$_yearPageStart'),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(10.w, 10.h, 10.w, 10.h),
+        child: GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 4,
+            childAspectRatio: 2.0,
+            crossAxisSpacing: 6,
+            mainAxisSpacing: 6,
+          ),
+          itemCount: 12,
+          itemBuilder: (_, i) {
+            final year = _yearPageStart + i;
+            final isSel = year == _viewMonth.year;
+            final isNow = year == DateTime.now().year;
+            return GestureDetector(
+              onTap: () => setState(() {
+                _viewMonth = DateTime(year, _viewMonth.month);
+                _view = _CalView.month;
+              }),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isSel
+                      ? _kPrimary
+                      : isNow
+                          ? _kPrimaryLight
+                          : const Color(0xFFF5F5F5),
+                  borderRadius: BorderRadius.circular(6.r),
+                ),
+                child: Center(
+                  child: Text('$year',
+                      style: TextStyle(
+                          fontSize: 9.sp,
+                          fontWeight: isSel ? FontWeight.w700 : FontWeight.w500,
+                          color: isSel
+                              ? Colors.white
+                              : isNow
+                                  ? _kPrimary
+                                  : Colors.black87)),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 }
