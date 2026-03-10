@@ -125,8 +125,9 @@ class _DashboardPageState extends State<DashboardPage>
       ]);
 
       if (mounted) {
+        final appointmentData = results[0] as Map<String, dynamic>;
         setState(() {
-          _allAppointments = results[0] as List<AppointmentModel>;
+          _allAppointments = appointmentData['data'] ?? [];
           _allServices = results[1] as List<Service>;
           _allProducts = results[2] as List<Product>;
           _allReviews = results[3] as List<Map<String, dynamic>>;
@@ -443,10 +444,11 @@ class _DashboardPageState extends State<DashboardPage>
                                         fit: BoxFit.cover,
                                         errorBuilder: (ctx, _, __) =>
                                             _buildInitialAvatar(),
-                                        loadingBuilder: (ctx, child, progress) =>
-                                            progress == null
-                                                ? child
-                                                : _buildInitialAvatar(),
+                                        loadingBuilder:
+                                            (ctx, child, progress) =>
+                                                progress == null
+                                                    ? child
+                                                    : _buildInitialAvatar(),
                                       )
                                     : _buildInitialAvatar(),
                               ),

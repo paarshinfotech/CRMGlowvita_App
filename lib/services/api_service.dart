@@ -1396,7 +1396,7 @@ class ApiService {
     }
   }
 
-  static Future<List<AppointmentModel>> getAppointments(
+  static Future<Map<String, dynamic>> getAppointments(
       {int? page, int? limit}) async {
     try {
       String url = '$baseUrl/crm/appointments';
@@ -1406,8 +1406,7 @@ class ApiService {
       if (limit != null) {
         queryParams['limit'] = limit.toString();
       } else {
-        queryParams['limit'] =
-            '100'; // Increase default limit to fetch more for calendar
+        queryParams['limit'] = '100';
       }
 
       if (queryParams.isNotEmpty) {
@@ -1418,20 +1417,34 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        List<AppointmentModel> items = [];
+        int total = 0;
+
         if (data is List) {
-          return data
+          items = data
               .whereType<Map<String, dynamic>>()
               .map((json) => AppointmentModel.fromJson(json))
               .toList();
-        } else if (data is Map && data['data'] != null) {
-          List<dynamic> appointmentsData = data['data'];
-          return appointmentsData
-              .whereType<Map<String, dynamic>>()
-              .map((json) => AppointmentModel.fromJson(json))
-              .toList();
-        } else {
-          throw Exception('Unexpected response format from appointments API');
+          total = items.length;
+        } else if (data is Map) {
+          final rawData = data['data'] ?? [];
+          if (rawData is List) {
+            items = rawData
+                .whereType<Map<String, dynamic>>()
+                .map((json) => AppointmentModel.fromJson(json))
+                .toList();
+          }
+          // Some APIs use 'total', 'totalItems', 'count', etc.
+          total = data['total'] ??
+              data['totalItems'] ??
+              data['count'] ??
+              items.length;
         }
+
+        return {
+          'data': items,
+          'total': total,
+        };
       } else {
         throw Exception(
             'Failed to load appointments: ${response.statusCode} - ${response.body}');

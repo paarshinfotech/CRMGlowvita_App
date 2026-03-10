@@ -66,7 +66,8 @@ class _CustomerDetailPopupState extends State<CustomerDetailPopup>
       );
 
       // 2. Fetch Appointments
-      final allAppts = await ApiService.getAppointments(limit: 1000);
+      final result = await ApiService.getAppointments(limit: 1000);
+      final List<AppointmentModel> allAppts = result['data'] ?? [];
       final clientAppts = allAppts.where((a) {
         final cId = a.client?.id;
         final cName = a.clientName?.toLowerCase().trim();

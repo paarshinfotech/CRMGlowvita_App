@@ -11,6 +11,7 @@ import 'widgets/custom_drawer.dart';
 import 'widgets/appointment_detail_dialog.dart';
 import 'Notification.dart';
 import 'vendor_model.dart';
+import 'appointment_model.dart';
 
 // ══════════════════════════════════════════════════
 // MODEL  — unchanged from original
@@ -113,10 +114,12 @@ class _CalendarState extends State<Calendar> {
 
   Future<void> _loadAppointments() async {
     try {
-      final models = await ApiService.getAppointments();
+      final result = await ApiService.getAppointments();
+      final List<AppointmentModel> models =
+          List<AppointmentModel>.from(result['data'] ?? []);
       setState(() {
         _appointments = models.where((m) {
-          if (m.date == null) return true;
+          if (m.date == null) return false;
           return DateUtils.isSameDay(m.date!, _selectedDate);
         }).map((m) {
           DateTime start = m.date ?? _selectedDate;

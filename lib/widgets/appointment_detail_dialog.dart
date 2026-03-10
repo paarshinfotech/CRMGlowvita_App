@@ -90,7 +90,8 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
     if (_appointment == null) return;
     setState(() => _isLoadingHistory = true);
     try {
-      final all = await ApiService.getAppointments(limit: 500);
+      final result = await ApiService.getAppointments(limit: 500);
+      final List<AppointmentModel> all = result['data'] ?? [];
       final clientId = _appointment!.client?.id;
       final clientName = _appointment!.clientName?.toLowerCase().trim() ?? '';
 
@@ -1485,9 +1486,10 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
       extraContent: Column(
         children: items.isNotEmpty
             ? items.map((it) {
-                final effectiveAddOns = (it.addOns != null && it.addOns!.isNotEmpty)
-                    ? it.addOns
-                    : (items.length == 1 ? _appointment!.addOns : null);
+                final effectiveAddOns =
+                    (it.addOns != null && it.addOns!.isNotEmpty)
+                        ? it.addOns
+                        : (items.length == 1 ? _appointment!.addOns : null);
 
                 return _serviceItemDetail(
                     it.serviceName ?? '—',

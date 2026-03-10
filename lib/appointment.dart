@@ -47,19 +47,23 @@ class _AppointmentState extends State<Appointment>
   DateTimeRange? _selectedDateRange;
   String? _selectedClient, _selectedService, _selectedStaff;
   String _selectedStatus = 'All';
+  String _searchQuery = '';
 
-  // Dynamic data from API
+  // ── Backend data — NOT MODIFIED ─────────────────────
   List<AppointmentModel> _apiAppointments = [];
   bool _isLoading = true;
   Set<String> _uniqueClients = {};
   Set<String> _uniqueServices = {};
   Set<String> _uniqueStaff = {};
 
-  // Pagination state
+  // Pagination
   int _currentPage = 1;
   int _limit = 10;
+  int _totalCount = 0;
   final List<int> _limitOptions = [5, 10, 15, 20, 25, 50];
   VendorProfile? _profile;
+
+  final ScrollController _scrollController = ScrollController();
 
   final List<String> statuses = [
     'All',
@@ -69,8 +73,11 @@ class _AppointmentState extends State<Appointment>
     'completed',
     'completed_without_payment',
     'cancelled',
-    'pending'
   ];
+
+  // Derived pagination flags
+  bool get _hasPrev => _currentPage > 1;
+  bool get _hasNext => (_currentPage * _limit) < _totalCount;
 
   @override
   void initState() {
@@ -98,45 +105,38 @@ class _AppointmentState extends State<Appointment>
   Future<void> _fetchAppointments() async {
     try {
       print(
-          '📥 Fetching appointments from API (Page: $_currentPage, Limit: $_limit)...');
-      final appointments =
+          '📥 Fetching appointments (Page: $_currentPage, Limit: $_limit)...');
+      final result =
           await ApiService.getAppointments(page: _currentPage, limit: _limit);
+
+      final List<AppointmentModel> appointments = result['data'] ?? [];
+      final int total = result['total'] ?? 0;
 
       setState(() {
         _apiAppointments = appointments;
+        _totalCount = total;
         _isLoading = false;
-
-        // Extract unique values for filters
         _uniqueClients = appointments
             .map((a) => a.clientName ?? 'Unknown')
             .where((name) => name.isNotEmpty)
             .toSet();
-
         _uniqueServices = appointments
             .map((a) => a.serviceName ?? 'Unknown')
             .where((name) => name.isNotEmpty)
             .toSet();
-
         _uniqueStaff = appointments
             .map((a) => a.staffName ?? 'Unassigned')
             .where((name) => name.isNotEmpty)
             .toSet();
       });
-
-      print('✅ Loaded ${appointments.length} appointments');
+      print('✅ Loaded ${appointments.length} appointments. Total: $total');
     } catch (e) {
-      print('❌ Error fetching appointments: $e');
-      setState(() {
-        _isLoading = false;
-      });
-
+      print('❌ Error: $e');
+      setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text('Failed to load appointments: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+            backgroundColor: Colors.red));
       }
     }
   }
@@ -148,7 +148,7 @@ class _AppointmentState extends State<Appointment>
       lastDate: DateTime(2100),
       initialDateRange: _selectedDateRange ??
           DateTimeRange(
-            start: DateTime.now().subtract(Duration(days: 7)),
+            start: DateTime.now().subtract(const Duration(days: 7)),
             end: DateTime.now(),
           ),
     );
@@ -157,32 +157,37 @@ class _AppointmentState extends State<Appointment>
 
   List<AppointmentModel> get _filteredAppointments {
     return _apiAppointments.where((appt) {
-      // Date filtering
       final scheduled = appt.date;
       final inRange = _selectedDateRange == null ||
           scheduled == null ||
-          (scheduled.isAfter(
-                  _selectedDateRange!.start.subtract(Duration(days: 1))) &&
-              scheduled
-                  .isBefore(_selectedDateRange!.end.add(Duration(days: 1))));
+          (scheduled.isAfter(_selectedDateRange!.start
+                  .subtract(const Duration(days: 1))) &&
+              scheduled.isBefore(
+                  _selectedDateRange!.end.add(const Duration(days: 1))));
 
-      // Client filtering
+      final searchMatch = _searchQuery.isEmpty ||
+          (appt.clientName
+                  ?.toLowerCase()
+                  .contains(_searchQuery.toLowerCase()) ??
+              false) ||
+          (appt.serviceName
+                  ?.toLowerCase()
+                  .contains(_searchQuery.toLowerCase()) ??
+              false) ||
+          (appt.staffName?.toLowerCase().contains(_searchQuery.toLowerCase()) ??
+              false);
+
       final clientMatch =
           _selectedClient == null || appt.clientName == _selectedClient;
-
-      // Service filtering
       final serviceMatch =
           _selectedService == null || appt.serviceName == _selectedService;
-
-      // Staff filtering
       final staffMatch =
           _selectedStaff == null || appt.staffName == _selectedStaff;
-
-      // Status filtering
       final statusMatch = _selectedStatus == 'All' ||
           (appt.status?.toLowerCase() == _selectedStatus.toLowerCase());
 
       return inRange &&
+          searchMatch &&
           clientMatch &&
           serviceMatch &&
           staffMatch &&
@@ -190,46 +195,309 @@ class _AppointmentState extends State<Appointment>
     }).toList();
   }
 
+  void _editAppointment(AppointmentModel appt) {
+    showDialog(
+      context: context,
+      builder: (context) => CreateAppointmentForm(existingAppointment: appt),
+    ).then((_) => _fetchAppointments());
+  }
+
+  void _confirmDelete(AppointmentModel appt) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete Appointment',
+            style: GoogleFonts.poppins(
+                fontSize: 12.sp, fontWeight: FontWeight.w700)),
+        content: Text('Are you sure you want to delete this appointment?',
+            style: GoogleFonts.poppins(fontSize: 10.sp)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child:
+                  Text('Cancel', style: GoogleFonts.poppins(fontSize: 10.sp))),
+          TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                if (appt.id != null) _deleteAppointment(appt.id!);
+              },
+              child: Text('Delete',
+                  style:
+                      GoogleFonts.poppins(fontSize: 10.sp, color: Colors.red))),
+        ],
+      ),
+    );
+  }
+
+  void _showCollectPaymentDialog(AppointmentModel appt) {
+    showDialog(
+      context: context,
+      builder: (context) => CollectPaymentDialog(appointment: appt),
+    ).then((result) {
+      if (result != null) {
+        print('Payment Collected: $result');
+        _fetchAppointments();
+      }
+    });
+  }
+
+  Future<void> _deleteAppointment(String id) async {
+    try {
+      print('🗑️ Deleting: $id');
+      await ApiService.deleteAppointment(id);
+      await _fetchAppointments();
+      print('✅ Deleted');
+    } catch (e) {
+      print('❌ Failed: $e');
+    }
+  }
+
+  int _getTodayCount() {
+    final today = DateTime.now();
+    return _apiAppointments.where((a) {
+      final d = a.date;
+      if (d == null) return false;
+      return d.year == today.year &&
+          d.month == today.month &&
+          d.day == today.day;
+    }).length;
+  }
+
+  int _getPendingCount() => _apiAppointments
+      .where((a) =>
+          a.status?.toLowerCase() == 'pending' ||
+          a.status?.toLowerCase() == 'scheduled')
+      .length;
+
+  void _goToPage(int page) {
+    if (page < 1) return;
+    setState(() {
+      _currentPage = page;
+      _isLoading = true;
+    });
+    _fetchAppointments();
+    // Scroll to top of list
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(0,
+          duration: const Duration(milliseconds: 300), curve: Curves.easeIn);
+    }
+  }
+
+  // ── Color helpers ─────────────────────────────────
+  Color _statusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'scheduled':
+      case 'schedule':
+        return const Color(0xFFE65100);
+      case 'confirmed':
+        return const Color(0xFF1565C0);
+      case 'completed':
+        return const Color(0xFF2E7D32);
+      case 'cancelled':
+        return const Color(0xFFC62828);
+      case 'in_progress':
+        return const Color(0xFF6A1B9A);
+      default:
+        return const Color(0xFF616161);
+    }
+  }
+
+  Color _statusBg(String status) {
+    switch (status.toLowerCase()) {
+      case 'scheduled':
+      case 'schedule':
+        return const Color(0xFFFFF3E0);
+      case 'confirmed':
+        return const Color(0xFFE3F2FD);
+      case 'completed':
+        return const Color(0xFFE8F5E9);
+      case 'cancelled':
+        return const Color(0xFFFFEBEE);
+      case 'in_progress':
+        return const Color(0xFFF3E5F5);
+      default:
+        return const Color(0xFFF5F5F5);
+    }
+  }
+
+  // ── Micro widgets ─────────────────────────────────
+  Widget _statusChip(String status) => Container(
+        padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+        decoration: BoxDecoration(
+          color: _statusBg(status),
+          borderRadius: BorderRadius.circular(20.r),
+        ),
+        child: Text(status.capitalize(),
+            style: GoogleFonts.poppins(
+                fontSize: 7.sp,
+                fontWeight: FontWeight.w700,
+                color: _statusColor(status))),
+      );
+
+  Widget _paymentChip(AppointmentModel appt) {
+    final paid = appt.amountPaid ?? 0;
+    final total = appt.totalAmount ?? appt.amount ?? 0;
+    String label;
+    Color bg, text;
+    if (paid >= total && total > 0) {
+      label = 'Paid';
+      bg = const Color(0xFFE8F5E9);
+      text = const Color(0xFF2E7D32);
+    } else if (paid > 0) {
+      label = 'Partial';
+      bg = const Color(0xFFFFF3E0);
+      text = const Color(0xFFE65100);
+    } else {
+      label = 'Unpaid';
+      bg = const Color(0xFFFFEBEE);
+      text = const Color(0xFFC62828);
+    }
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+      decoration:
+          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20.r)),
+      child: Text(label,
+          style: GoogleFonts.poppins(
+              fontSize: 7.sp, fontWeight: FontWeight.w700, color: text)),
+    );
+  }
+
+  Widget _statCard({
+    required String label,
+    required String count,
+    required IconData icon,
+    required Color iconColor,
+    required Color iconBg,
+  }) =>
+      Expanded(
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 7.h),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8.r),
+            border: Border.all(color: Colors.grey.shade100),
+          ),
+          child: Row(children: [
+            Container(
+              width: 26.w,
+              height: 26.w,
+              decoration: BoxDecoration(
+                  color: iconBg, borderRadius: BorderRadius.circular(6.r)),
+              child: Icon(icon, size: 12.sp, color: iconColor),
+            ),
+            SizedBox(width: 6.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(count,
+                      style: GoogleFonts.poppins(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.black)),
+                  Text(label,
+                      style: GoogleFonts.poppins(
+                          fontSize: 6.5.sp, color: Colors.grey.shade500),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis),
+                ],
+              ),
+            ),
+          ]),
+        ),
+      );
+
+  Widget _serviceRow(String service, String staff) => Padding(
+        padding: EdgeInsets.only(bottom: 2.h),
+        child: Row(children: [
+          Expanded(
+              child: Text(service,
+                  style: GoogleFonts.poppins(
+                      fontSize: 9.sp, color: Colors.black87),
+                  overflow: TextOverflow.ellipsis)),
+          SizedBox(width: 4.w),
+          Icon(Icons.person_outline,
+              size: 8.sp,
+              color: Theme.of(context).primaryColor.withOpacity(0.6)),
+          SizedBox(width: 2.w),
+          Text(staff,
+              style: GoogleFonts.poppins(
+                  fontSize: 8.sp,
+                  color: Theme.of(context).primaryColor,
+                  fontWeight: FontWeight.w600)),
+        ]),
+      );
+
+  Widget _actionBtn(
+          IconData icon, String label, Color color, VoidCallback onTap) =>
+      InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(4.r),
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 5.h),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(icon, size: 11.sp, color: color),
+            SizedBox(width: 3.w),
+            Text(label,
+                style: GoogleFonts.poppins(
+                    fontSize: 8.sp, color: color, fontWeight: FontWeight.w600)),
+          ]),
+        ),
+      );
+
   Widget _buildDropdown<T>({
     required String hint,
     required List<T> items,
     T? selectedValue,
     required ValueChanged<T?> onChanged,
-  }) =>
-      DropdownButtonFormField<T>(
-        decoration: InputDecoration(
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+    double? width,
+  }) {
+    // Add "All" or "Any" behavior if needed, but items should be managed by caller
+    return Container(
+      width: width,
+      height: 28.h,
+      padding: EdgeInsets.symmetric(horizontal: 8.w),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(6.r),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<T>(
+          value: selectedValue,
+          hint: Text(hint,
+              style: GoogleFonts.poppins(fontSize: 8.sp, color: Colors.grey)),
+          isExpanded: false,
+          icon:
+              Icon(Icons.keyboard_arrow_down, size: 12.sp, color: Colors.grey),
+          style: GoogleFonts.poppins(fontSize: 8.sp, color: Colors.black87),
+          items: items
+              .map((e) => DropdownMenuItem<T>(
+                    value: e,
+                    child: Text(e.toString().capitalize(),
+                        style: GoogleFonts.poppins(fontSize: 8.sp)),
+                  ))
+              .toList(),
+          onChanged: onChanged,
         ),
-        value: selectedValue,
-        hint: Text(hint, style: GoogleFonts.poppins(fontSize: 12)),
-        items: items
-            .map((e) => DropdownMenuItem(
-                  value: e,
-                  child: Text(e.toString(),
-                      style: GoogleFonts.poppins(fontSize: 12)),
-                ))
-            .toList(),
-        onChanged: onChanged,
-      );
-  Widget _buildDateRangeSelector() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-      child: Row(
-        children: [
-          // Styled Quick Ranges dropdown
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.black),
-              borderRadius: BorderRadius.circular(8),
-            ),
+      ),
+    );
+  }
+
+  Widget _buildDateRangeSelector() => Row(children: [
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 6.w),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(7.r),
+            color: Colors.white,
+          ),
+          child: DropdownButtonHideUnderline(
             child: DropdownButton<QuickDateRange>(
-              underline: SizedBox(),
-              hint: Text("Quick Ranges",
-                  style:
-                      GoogleFonts.poppins(color: Colors.black, fontSize: 11)),
+              underline: const SizedBox(),
+              hint: Text('Quick Range',
+                  style: GoogleFonts.poppins(fontSize: 9.sp)),
               onChanged: (range) {
                 if (range == null) return;
                 final now = DateTime.now();
@@ -239,29 +507,29 @@ class _AppointmentState extends State<Appointment>
                     start = end = now;
                     break;
                   case QuickDateRange.tomorrow:
-                    start = end = now.add(Duration(days: 1));
+                    start = end = now.add(const Duration(days: 1));
                     break;
                   case QuickDateRange.yesterday:
-                    start = end = now.subtract(Duration(days: 1));
+                    start = end = now.subtract(const Duration(days: 1));
                     break;
                   case QuickDateRange.next7Days:
                     start = now;
-                    end = now.add(Duration(days: 7));
+                    end = now.add(const Duration(days: 7));
                     break;
                   case QuickDateRange.last7Days:
-                    start = now.subtract(Duration(days: 7));
+                    start = now.subtract(const Duration(days: 7));
                     end = now;
                     break;
                   case QuickDateRange.next30Days:
                     start = now;
-                    end = now.add(Duration(days: 30));
+                    end = now.add(const Duration(days: 30));
                     break;
                   case QuickDateRange.last30Days:
-                    start = now.subtract(Duration(days: 30));
+                    start = now.subtract(const Duration(days: 30));
                     end = now;
                     break;
                   case QuickDateRange.last90Days:
-                    start = now.subtract(Duration(days: 90));
+                    start = now.subtract(const Duration(days: 90));
                     end = now;
                     break;
                   case QuickDateRange.lastMonth:
@@ -283,1026 +551,704 @@ class _AppointmentState extends State<Appointment>
               items: QuickDateRange.values.map((e) {
                 final label = e.name
                     .replaceAllMapped(
-                        RegExp(r'([a-z])([A-Z])'), (m) => "${m[1]} ${m[2]}")
+                        RegExp(r'([a-z])([A-Z])'), (m) => '${m[1]} ${m[2]}')
                     .capitalize();
                 return DropdownMenuItem(
                   value: e,
-                  child: Text(label, style: GoogleFonts.poppins(fontSize: 11)),
+                  child:
+                      Text(label, style: GoogleFonts.poppins(fontSize: 9.sp)),
                 );
               }).toList(),
             ),
           ),
-
-          const SizedBox(width: 8),
-
-          // Styled Pick Range button - reduced size
-          ElevatedButton.icon(
-            onPressed: _selectDateRange,
-            icon: const Icon(Icons.date_range, size: 16),
-            label: Text(
-              _selectedDateRange != null
-                  ? "${DateFormat('dd MMM').format(_selectedDateRange!.start)} - ${DateFormat('dd MMM').format(_selectedDateRange!.end)}"
-                  : "Pick Range",
-              style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.w600, fontSize: 11),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.black87,
-              side:
-                  BorderSide(color: Theme.of(context).primaryColor, width: 1.5),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
-              elevation: 0,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              minimumSize: Size(0, 30),
+        ),
+        SizedBox(width: 6.w),
+        Expanded(
+          child: GestureDetector(
+            onTap: _selectDateRange,
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 5.h),
+              decoration: BoxDecoration(
+                border:
+                    Border.all(color: Theme.of(context).primaryColor, width: 1),
+                borderRadius: BorderRadius.circular(7.r),
+                color: Colors.white,
+              ),
+              child: Row(children: [
+                Icon(Icons.date_range,
+                    size: 10.sp, color: Theme.of(context).primaryColor),
+                SizedBox(width: 4.w),
+                Expanded(
+                  child: Text(
+                    _selectedDateRange != null
+                        ? '${DateFormat('dd MMM').format(_selectedDateRange!.start)} - ${DateFormat('dd MMM').format(_selectedDateRange!.end)}'
+                        : 'Pick Range',
+                    style: GoogleFonts.poppins(
+                        fontSize: 9.sp,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87),
+                  ),
+                ),
+              ]),
             ),
           ),
+        ),
+        SizedBox(width: 4.w),
+        GestureDetector(
+          onTap: () => setState(() => _selectedDateRange = null),
+          child: Icon(Icons.clear, color: Colors.grey.shade400, size: 13.sp),
+        ),
+      ]);
 
-          const Spacer(),
-
-          IconButton(
-            icon: const Icon(Icons.clear, color: Colors.black, size: 18),
-            tooltip: "Clear Date Filter",
-            onPressed: () => setState(() => _selectedDateRange = null),
-            padding: EdgeInsets.zero,
-            constraints: BoxConstraints(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusTag(String status) {
-    Color color;
-    switch (status.toLowerCase()) {
-      case 'scheduled':
-      case 'schedule':
-        color = Colors.orange.shade700;
-        break;
-      case 'confirmed':
-        color = Theme.of(context).primaryColor;
-        break;
-      case 'completed':
-        color = Colors.green.shade700;
-        break;
-      case 'cancelled':
-        color = Colors.red.shade700;
-        break;
-      default:
-        color = Colors.grey.shade700;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Text(
-        status.capitalize(),
-        style: GoogleFonts.poppins(
-            color: color, fontSize: 11, fontWeight: FontWeight.w600),
-      ),
-    );
-  }
-
-  Widget _buildPaymentTag(AppointmentModel appt) {
-    final paid = appt.amountPaid ?? 0;
-    final total = appt.totalAmount ?? appt.amount ?? 0;
-
-    String label;
-    Color color;
-
-    if (paid >= total && total > 0) {
-      label = "PAID";
-      color = Colors.green.shade600;
-    } else if (paid > 0) {
-      label = "PARTIALLY PAID (₹${paid.toStringAsFixed(0)})";
-      color = Colors.orange.shade600;
-    } else {
-      label = "UNPAID";
-      color = Colors.red.shade400;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.poppins(
-            color: color, fontSize: 10, fontWeight: FontWeight.w700),
-      ),
-    );
-  }
-
+  // ── Appointment card ──────────────────────────────
   Widget _buildAppointmentCard(AppointmentModel appt) {
-    final cardStyle = GoogleFonts.poppins(fontSize: 13, color: Colors.black87);
-    final subStyle =
-        GoogleFonts.poppins(fontSize: 11, color: Colors.grey.shade600);
-
     final dateStr =
         appt.date != null ? DateFormat('MMM d, yyyy').format(appt.date!) : '-';
     final timeStr = '${appt.startTime ?? '--'} - ${appt.endTime ?? '--'}';
-
     final items = appt.serviceItems ?? [];
+    final initials = (appt.clientName ?? 'U').substring(0, 1).toUpperCase();
 
     return InkWell(
-      onTap: () {
-        showDialog(
-          context: context,
-          builder: (context) => AppointmentDetailDialog(
-            appointmentId: appt.id!,
-          ),
-        ).then((_) => _fetchAppointments());
-      },
+      onTap: () => showDialog(
+        context: context,
+        builder: (_) => AppointmentDetailDialog(appointmentId: appt.id!),
+      ).then((_) => _fetchAppointments()),
+      borderRadius: BorderRadius.circular(10.r),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
+        margin: EdgeInsets.only(bottom: 8.h),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(10.r),
+          border: Border.all(color: Colors.grey.shade100),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.02),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 5,
+                offset: const Offset(0, 2))
           ],
-          border: Border.all(color: Colors.grey.shade100),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header: Client & Status
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Column(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // Header
+          Padding(
+            padding: EdgeInsets.fromLTRB(10.w, 8.h, 10.w, 5.h),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 14.r,
+                  backgroundColor:
+                      Theme.of(context).primaryColor.withOpacity(0.12),
+                  child: Text(initials,
+                      style: GoogleFonts.poppins(
+                          fontSize: 9.sp,
+                          fontWeight: FontWeight.w700,
+                          color: Theme.of(context).primaryColor)),
+                ),
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(appt.clientName ?? 'Unknown Client',
-                            style: cardStyle.copyWith(
-                                fontSize: 15, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            Icon(Icons.calendar_today,
-                                size: 11, color: Colors.grey.shade500),
-                            const SizedBox(width: 4),
-                            Text('$dateStr • $timeStr', style: subStyle),
-                          ],
-                        ),
+                        Text(appt.clientName ?? 'Unknown',
+                            style: GoogleFonts.poppins(
+                                fontSize: 10.sp,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.black)),
+                        SizedBox(height: 1.h),
+                        Row(children: [
+                          Icon(Icons.access_time,
+                              size: 8.sp, color: Colors.grey.shade400),
+                          SizedBox(width: 2.w),
+                          Flexible(
+                            child: Text('$dateStr • $timeStr',
+                                style: GoogleFonts.poppins(
+                                    fontSize: 7.5.sp,
+                                    color: Colors.grey.shade500),
+                                overflow: TextOverflow.ellipsis),
+                          ),
+                        ]),
                         if (appt.isWeddingService == true) ...[
-                          const SizedBox(height: 6),
+                          SizedBox(height: 3.h),
                           Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 5.w, vertical: 1.h),
                             decoration: BoxDecoration(
-                              color: Colors.pink.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(6),
+                              color: Colors.pink.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(4.r),
                               border: Border.all(
-                                  color: Colors.pink.withOpacity(0.3)),
+                                  color: Colors.pink.withOpacity(0.25)),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.auto_awesome,
-                                    size: 12, color: Colors.pink),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Wedding',
+                            child:
+                                Row(mainAxisSize: MainAxisSize.min, children: [
+                              Icon(Icons.auto_awesome,
+                                  size: 7.sp, color: Colors.pink),
+                              SizedBox(width: 2.w),
+                              Text('Wedding',
                                   style: GoogleFonts.poppins(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.pink),
-                                ),
-                              ],
-                            ),
+                                      fontSize: 7.sp,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.pink)),
+                            ]),
                           ),
                         ],
-                      ],
-                    ),
-                  ),
-                  _buildStatusTag(appt.status ?? 'Schedule'),
-                ],
-              ),
-            ),
-
-            // Services Section
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              color: Colors.grey.shade50,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('SERVICES & STAFF',
-                      style: subStyle.copyWith(
-                          fontSize: 9,
-                          letterSpacing: 1,
-                          fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 8),
-                  if (appt.isWeddingService == true &&
-                      appt.weddingPackageDetails != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              appt.weddingPackageDetails?.packageName ??
-                                  'Wedding Package',
-                              style: cardStyle.copyWith(
-                                  fontSize: 13.5, fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                          Text(
-                            'Wedding Team',
-                            style: subStyle.copyWith(
-                                fontSize: 12,
-                                color: Theme.of(context).primaryColor),
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    ...items.isEmpty
-                        ? [Text(appt.serviceName ?? '—', style: cardStyle)]
-                        : items.map((item) {
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      '${item.serviceName} (${item.duration} min)',
-                                      style: cardStyle.copyWith(fontSize: 12.5),
-                                    ),
-                                  ),
-                                  Text(
-                                    item.staffName ?? '—',
-                                    style: subStyle.copyWith(
-                                        fontSize: 12,
-                                        color: Theme.of(context).primaryColor),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                  if (appt.addOns != null && appt.addOns!.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text('ADD-ONS',
-                        style: subStyle.copyWith(
-                            fontSize: 9,
-                            letterSpacing: 1,
-                            fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 4),
-                    ...appt.addOns!.map((addon) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              '+ ${addon.name ?? 'Add-on'}',
-                              style: cardStyle.copyWith(
-                                  fontSize: 11.5, fontStyle: FontStyle.italic),
-                            ),
-                            Text(
-                              '₹${addon.price?.toStringAsFixed(0)}',
-                              style: subStyle.copyWith(fontSize: 11),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ],
-                ],
-              ),
-            ),
-
-            // Footer: Payment & Actions
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  _buildPaymentTag(appt),
-                  const Spacer(),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      RichText(
-                        text: TextSpan(
-                          children: [
-                            TextSpan(
-                              text: 'Paid: ',
-                              style: subStyle.copyWith(fontSize: 10),
-                            ),
-                            TextSpan(
-                              text:
-                                  '₹${appt.amountPaid?.toStringAsFixed(2) ?? '0.00'}',
-                              style: cardStyle.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                  color: Colors.green.shade700),
-                            ),
-                          ],
-                        ),
-                      ),
-                      RichText(
-                        text: TextSpan(
-                          children: [
-                            TextSpan(
-                              text: 'Total: ',
-                              style: subStyle.copyWith(fontSize: 10),
-                            ),
-                            TextSpan(
-                              text:
-                                  '₹${(appt.totalAmount ?? appt.amount ?? 0).toStringAsFixed(2)}',
-                              style: cardStyle.copyWith(
-                                  fontWeight: FontWeight.w700, fontSize: 13),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Text(appt.paymentMethod ?? 'Pay at Salon',
-                          style: subStyle),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // Divider and Mini Action Bar
-            Divider(height: 1, color: Colors.grey.shade100),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  if ((appt.amountPaid ?? 0) <
-                          (appt.totalAmount ?? appt.amount ?? 0) &&
-                      !(appt.status?.toLowerCase().contains('cancelled') ??
-                          false) &&
-                      !(appt.status?.toLowerCase().contains('completed') ??
-                          false))
-                    _actionIcon(Icons.payments_outlined, Colors.green, () {
-                      _showCollectPaymentDialog(appt);
-                    }, label: 'Pay'),
-                  _actionIcon(
-                      Icons.edit_outlined, Theme.of(context).primaryColor, () {
-                    _editAppointment(appt);
-                  }, label: 'Edit'),
-                  _actionIcon(Icons.delete_outline, Colors.red, () {
-                    _confirmDelete(appt);
-                  }, label: 'Delete'),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _actionIcon(IconData icon, Color color, VoidCallback onTap,
-      {String? label}) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          child: Row(
-            children: [
-              Icon(icon, size: 16, color: color),
-              if (label != null) ...[
-                const SizedBox(width: 4),
-                Text(label,
-                    style: GoogleFonts.poppins(
-                        fontSize: 11,
-                        color: color,
-                        fontWeight: FontWeight.w500)),
+                      ]),
+                ),
+                _statusChip(appt.status ?? 'Schedule'),
               ],
-            ],
+            ),
           ),
-        ),
+
+          // Services
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
+            color: const Color(0xFFF8F9FA),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Services & Staff',
+                    style: GoogleFonts.poppins(
+                        fontSize: 7.sp,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.grey.shade400,
+                        letterSpacing: 0.4)),
+                SizedBox(height: 3.h),
+                if (appt.isWeddingService == true &&
+                    appt.weddingPackageDetails != null)
+                  _serviceRow(
+                      appt.weddingPackageDetails?.packageName ??
+                          'Wedding Package',
+                      'Wedding Team')
+                else
+                  ...items.isEmpty
+                      ? [
+                          _serviceRow(
+                              appt.serviceName ?? '—', appt.staffName ?? '—')
+                        ]
+                      : items
+                          .map((item) => _serviceRow(
+                              '${item.serviceName} (${item.duration} min)',
+                              item.staffName ?? '—'))
+                          .toList(),
+                if (appt.addOns != null && appt.addOns!.isNotEmpty) ...[
+                  SizedBox(height: 3.h),
+                  Text('Add-ons',
+                      style: GoogleFonts.poppins(
+                          fontSize: 7.sp,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.grey.shade400,
+                          letterSpacing: 0.4)),
+                  SizedBox(height: 2.h),
+                  ...appt.addOns!.map((addon) => Padding(
+                        padding: EdgeInsets.only(bottom: 1.h),
+                        child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('+ ${addon.name ?? 'Add-on'}',
+                                  style: GoogleFonts.poppins(
+                                      fontSize: 8.sp,
+                                      fontStyle: FontStyle.italic,
+                                      color: Colors.black87)),
+                              Text('₹${addon.price?.toStringAsFixed(0) ?? '0'}',
+                                  style: GoogleFonts.poppins(
+                                      fontSize: 8.sp,
+                                      color: Colors.grey.shade600)),
+                            ]),
+                      )),
+                ],
+              ],
+            ),
+          ),
+
+          // Payment footer
+          Padding(
+            padding: EdgeInsets.fromLTRB(10.w, 5.h, 10.w, 3.h),
+            child: Row(children: [
+              _paymentChip(appt),
+              const Spacer(),
+              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                RichText(
+                    text: TextSpan(children: [
+                  TextSpan(
+                      text: 'Paid: ',
+                      style: GoogleFonts.poppins(
+                          fontSize: 7.sp, color: Colors.grey.shade400)),
+                  TextSpan(
+                      text: '₹${appt.amountPaid?.toStringAsFixed(2) ?? '0.00'}',
+                      style: GoogleFonts.poppins(
+                          fontSize: 8.5.sp,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF2E7D32))),
+                ])),
+                RichText(
+                    text: TextSpan(children: [
+                  TextSpan(
+                      text: 'Total: ',
+                      style: GoogleFonts.poppins(
+                          fontSize: 7.sp, color: Colors.grey.shade400)),
+                  TextSpan(
+                      text:
+                          '₹${(appt.totalAmount ?? appt.amount ?? 0).toStringAsFixed(2)}',
+                      style: GoogleFonts.poppins(
+                          fontSize: 8.5.sp,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black)),
+                ])),
+                if (appt.paymentMethod != null)
+                  Text(appt.paymentMethod!,
+                      style: GoogleFonts.poppins(
+                          fontSize: 7.sp, color: Colors.grey.shade400)),
+              ]),
+            ]),
+          ),
+
+          // Actions
+          Container(
+            decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: Colors.grey.shade100))),
+            padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 1.h),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if ((appt.amountPaid ?? 0) <
+                        (appt.totalAmount ?? appt.amount ?? 0) &&
+                    !(appt.status?.toLowerCase().contains('cancelled') ??
+                        false) &&
+                    !(appt.status?.toLowerCase().contains('completed') ??
+                        false))
+                  _actionBtn(
+                      Icons.payments_outlined,
+                      'Pay',
+                      const Color(0xFF2E7D32),
+                      () => _showCollectPaymentDialog(appt)),
+                _actionBtn(
+                    Icons.edit_outlined,
+                    'Edit',
+                    Theme.of(context).primaryColor,
+                    () => _editAppointment(appt)),
+                _actionBtn(Icons.delete_outline, 'Delete',
+                    const Color(0xFFC62828), () => _confirmDelete(appt)),
+              ],
+            ),
+          ),
+        ]),
       ),
     );
   }
 
-  void _editAppointment(AppointmentModel appt) {
-    showDialog(
-      context: context,
-      builder: (context) => CreateAppointmentForm(
-        existingAppointment: appt,
-      ),
-    ).then((_) => _fetchAppointments());
-  }
-
-  void _confirmDelete(AppointmentModel appt) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Appointment'),
-        content:
-            const Text('Are you sure you want to delete this appointment?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              if (appt.id != null) {
-                _deleteAppointment(appt.id!);
-              }
-            },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showCollectPaymentDialog(AppointmentModel appt) {
-    showDialog(
-      context: context,
-      builder: (context) => CollectPaymentDialog(appointment: appt),
-    ).then((result) {
-      if (result != null) {
-        print('Payment Collected: $result');
-        // TODO: Call API to save payment
-        // For now, reload appointments to reflect any changes if API was called
-        _fetchAppointments();
-      }
-    });
-  }
-
+  // ══════════════════════════════════════════════════
+  // BUILD
+  // ══════════════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
+    final scheduledCount = _apiAppointments
+        .where((a) => a.status?.toLowerCase() == 'scheduled')
+        .length;
+    final confirmedCount = _apiAppointments
+        .where((a) => a.status?.toLowerCase() == 'confirmed')
+        .length;
+    final completedCount = _apiAppointments
+        .where((a) => a.status?.toLowerCase() == 'completed')
+        .length;
+    final cancelledCount = _apiAppointments
+        .where((a) => a.status?.toLowerCase() == 'cancelled')
+        .length;
+
     return Scaffold(
       drawer: const CustomDrawer(currentPage: 'Appointments'),
+      backgroundColor: const Color(0xFFF6F7FB),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        toolbarHeight: 50.h,
-        titleSpacing: 0,
-        automaticallyImplyLeading: true,
+        toolbarHeight: 42.h,
         leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.black, size: 22),
-            onPressed: () => Scaffold.of(context).openDrawer(),
+          builder: (ctx) => IconButton(
+            icon: Icon(Icons.menu, color: Colors.black87, size: 18.sp),
+            onPressed: () => Scaffold.of(ctx).openDrawer(),
           ),
         ),
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.1),
-                spreadRadius: 1,
-                blurRadius: 3,
-                offset: Offset(0, 1),
-              ),
-            ],
+        title: Text('Appointments',
+            style: GoogleFonts.poppins(
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w700,
+                color: Colors.black)),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.notifications_outlined,
+                size: 16.sp, color: Colors.black54),
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const NotificationPage())),
           ),
-        ),
-        title: Row(
-          children: [
-            // Back Button removed since drawer provides navigation
-            Text('All Appointment',
-                style: GoogleFonts.poppins(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black)),
-
-            Spacer(), // Pushes buttons to the right
-
-            SizedBox(width: 15),
-
-            IconButton(
-              icon: Icon(Icons.notifications, size: 22),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const NotificationPage()),
-                );
-              },
-            ),
-
-            SizedBox(width: 15),
-
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const My_Profile()),
-                );
-              },
-              child: Padding(
-                padding: EdgeInsets.only(right: 10.w),
-                child: Container(
-                  padding: EdgeInsets.all(1.5.w), // Border width
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.black,
-                      width: 1.w,
-                    ),
-                  ),
-                  child: CircleAvatar(
-                    radius: 17,
-                    backgroundColor: Theme.of(context).primaryColor,
-                    backgroundImage: (_profile != null && _profile!.profileImage.isNotEmpty)
+          GestureDetector(
+            onTap: () => Navigator.push(
+                context, MaterialPageRoute(builder: (_) => const My_Profile())),
+            child: Padding(
+              padding: EdgeInsets.only(right: 10.w),
+              child: CircleAvatar(
+                radius: 13.r,
+                backgroundColor: Theme.of(context).primaryColor,
+                backgroundImage:
+                    (_profile != null && _profile!.profileImage.isNotEmpty)
                         ? NetworkImage(_profile!.profileImage)
                         : null,
-                    child: (_profile == null || _profile!.profileImage.isEmpty)
-                        ? Text(
-                            (_profile?.businessName ?? 'H').substring(0, 1).toUpperCase(),
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12.sp,
-                                fontWeight: FontWeight.bold),
-                          )
-                        : null,
-                  ),
-                ),
+                child: (_profile == null || _profile!.profileImage.isEmpty)
+                    ? Text(
+                        (_profile?.businessName ?? 'H')
+                            .substring(0, 1)
+                            .toUpperCase(),
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 9.sp,
+                            fontWeight: FontWeight.bold))
+                    : null,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-      backgroundColor: const Color(0xFFF6F7FB),
       body: SafeArea(
         child: SingleChildScrollView(
+          controller: _scrollController,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Search bar
-              Container(
-                margin:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Search appointments...',
-                    hintStyle: GoogleFonts.poppins(fontSize: 12),
-                    prefixIcon:
-                        const Icon(Icons.search, color: Colors.grey, size: 18),
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
-                  ),
-                ),
-              ),
-              // Single filter row for status
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
+              SizedBox(height: 8.h),
+
+              // ── Search & Filter Section ────────────────
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 10.w),
+                child: Column(
                   children: [
-                    // Status filter dropdown
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey.shade300),
-                        ),
-                        child: DropdownButton<String>(
-                          value: _selectedStatus,
-                          underline: const SizedBox(),
-                          items: statuses
-                              .map((status) => DropdownMenuItem(
-                                    value: status,
-                                    child: Text(
-                                      status,
-                                      style: GoogleFonts.poppins(fontSize: 12),
-                                    ),
-                                  ))
-                              .toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedStatus = value!;
-                            });
-                          },
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: 12),
-              // Stats cards
-              Container(
-                height: 80,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        margin: const EdgeInsets.only(right: 4),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade200),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.event_available,
-                                  size: 14,
-                                  color: Colors.grey.shade700,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Today',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.grey.shade700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${_getTodayCount()}',
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Container(
-                        margin: const EdgeInsets.only(left: 4),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade200),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.pending_outlined,
-                                  size: 14,
-                                  color: Colors.grey.shade700,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Pending',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.grey.shade700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${_getPendingCount()}',
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: 12),
-              // Count card
-              Container(
-                width: double.infinity,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
-                child: Row(
-                  children: [
+                    // Row 1: Search
                     Container(
-                      padding: const EdgeInsets.all(6),
+                      height: 30.h,
                       decoration: BoxDecoration(
-                        color: Theme.of(context).primaryColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(7.r),
+                        border: Border.all(color: Colors.grey.shade200),
                       ),
-                      child: Icon(Icons.event,
-                          color: Theme.of(context).primaryColor, size: 18),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Appointments',
-                              style: GoogleFonts.poppins(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              )),
-                          Text(
-                              '${_filteredAppointments.length} appointments in total',
-                              style: GoogleFonts.poppins(
-                                fontSize: 11,
-                                color: Colors.grey.shade600,
-                              )),
-                        ],
+                      child: TextField(
+                        onChanged: (v) => setState(() => _searchQuery = v),
+                        style: GoogleFonts.poppins(fontSize: 9.sp),
+                        decoration: InputDecoration(
+                          hintText: 'Search Client or Service...',
+                          hintStyle: GoogleFonts.poppins(
+                              fontSize: 8.sp, color: Colors.grey),
+                          prefixIcon: Icon(Icons.search,
+                              color: Colors.grey, size: 13.sp),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(vertical: 6.h),
+                        ),
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).primaryColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text('${_filteredAppointments.length}',
-                          style: GoogleFonts.poppins(
-                            color: Theme.of(context).primaryColor,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
-                          )),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: 12),
-              // Filter tabs
-              SizedBox(
-                height: 16,
-              ),
-              TabBar(
-                controller: _tabController,
-                indicatorColor: Theme.of(context).primaryColor,
-                labelColor: Theme.of(context).primaryColor,
-                unselectedLabelColor: Colors.black54,
-                labelStyle: GoogleFonts.poppins(
-                    fontWeight: FontWeight.w600, fontSize: 12),
-                unselectedLabelStyle: GoogleFonts.poppins(fontSize: 12),
-                tabs: const [
-                  Tab(text: "Clients"),
-                  Tab(text: "Services"),
-                  Tab(text: "Staff"),
-                  Tab(text: "Date"),
-                ],
-              ),
-              SizedBox(
-                height: 8,
-              ),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                height: 80,
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildDropdown(
-                        hint: "Select Client",
-                        items: _uniqueClients.toList(),
-                        selectedValue: _selectedClient,
-                        onChanged: (v) => setState(() => _selectedClient = v)),
-                    _buildDropdown(
-                        hint: "Select Service",
-                        items: _uniqueServices.toList(),
-                        selectedValue: _selectedService,
-                        onChanged: (v) => setState(() => _selectedService = v)),
-                    _buildDropdown(
-                        hint: "Select Staff",
-                        items: _uniqueStaff.toList(),
-                        selectedValue: _selectedStaff,
-                        onChanged: (v) => setState(() => _selectedStaff = v)),
+                    SizedBox(height: 6.h),
+
+                    // Row 2: Date Selector
                     _buildDateRangeSelector(),
+                    SizedBox(height: 6.h),
+
+                    // Row 3: Horizontal Scrollable Dropdowns
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(children: [
+                        _buildDropdown<String>(
+                          hint: 'Status',
+                          selectedValue:
+                              _selectedStatus == 'All' ? null : _selectedStatus,
+                          items: statuses.where((s) => s != 'All').toList(),
+                          onChanged: (v) =>
+                              setState(() => _selectedStatus = v ?? 'All'),
+                        ),
+                        if (_selectedStatus != 'All')
+                          IconButton(
+                            icon: Icon(Icons.clear, size: 12.sp),
+                            onPressed: () =>
+                                setState(() => _selectedStatus = 'All'),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        SizedBox(width: 5.w),
+                        _buildDropdown<String>(
+                          hint: 'Client',
+                          selectedValue: _selectedClient,
+                          items: _uniqueClients.toList(),
+                          onChanged: (v) => setState(() => _selectedClient = v),
+                        ),
+                        if (_selectedClient != null)
+                          IconButton(
+                            icon: Icon(Icons.clear, size: 12.sp),
+                            onPressed: () =>
+                                setState(() => _selectedClient = null),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        SizedBox(width: 5.w),
+                        _buildDropdown<String>(
+                          hint: 'Service',
+                          selectedValue: _selectedService,
+                          items: _uniqueServices.toList(),
+                          onChanged: (v) =>
+                              setState(() => _selectedService = v),
+                        ),
+                        if (_selectedService != null)
+                          IconButton(
+                            icon: Icon(Icons.clear, size: 12.sp),
+                            onPressed: () =>
+                                setState(() => _selectedService = null),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        SizedBox(width: 5.w),
+                        _buildDropdown<String>(
+                          hint: 'Staff',
+                          selectedValue: _selectedStaff,
+                          items: _uniqueStaff.toList(),
+                          onChanged: (v) => setState(() => _selectedStaff = v),
+                        ),
+                        if (_selectedStaff != null)
+                          IconButton(
+                            icon: Icon(Icons.clear, size: 12.sp),
+                            onPressed: () =>
+                                setState(() => _selectedStaff = null),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                      ]),
+                    ),
                   ],
                 ),
               ),
 
-              TextButton(
-                onPressed: () {
-                  setState(() {
-                    _selectedClient = null;
-                    _selectedService = null;
-                    _selectedStaff = null;
-                    _selectedStatus = 'All';
-                    _selectedDateRange = null;
-                  });
-                },
-                child: Text("Clear All Filters",
-                    style: GoogleFonts.poppins(fontSize: 12)),
+              SizedBox(height: 8.h),
+
+              // ── 2×2 Stat Cards ───────────────────────
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 10.w),
+                child: Column(children: [
+                  Row(children: [
+                    _statCard(
+                      label: 'All Scheduled\nAppointments',
+                      count: '$scheduledCount',
+                      icon: Icons.event_note_outlined,
+                      iconColor: const Color(0xFF1565C0),
+                      iconBg: const Color(0xFFE3F2FD),
+                    ),
+                    SizedBox(width: 6.w),
+                    _statCard(
+                      label: 'Upcoming Confirmed\nBookings',
+                      count: '$confirmedCount',
+                      icon: Icons.check_circle_outline,
+                      iconColor: const Color(0xFF2E7D32),
+                      iconBg: const Color(0xFFE8F5E9),
+                    ),
+                  ]),
+                  SizedBox(height: 6.h),
+                  Row(children: [
+                    _statCard(
+                      label: 'Successfully\nCompleted',
+                      count: '$completedCount',
+                      icon: Icons.done_all,
+                      iconColor: const Color(0xFF00796B),
+                      iconBg: const Color(0xFFE0F2F1),
+                    ),
+                    SizedBox(width: 6.w),
+                    _statCard(
+                      label: 'Cancelled by Client\nor Staff',
+                      count: '$cancelledCount',
+                      icon: Icons.cancel_outlined,
+                      iconColor: const Color(0xFFC62828),
+                      iconBg: const Color(0xFFFFEBEE),
+                    ),
+                  ]),
+                ]),
               ),
 
-              SizedBox(height: 8),
-
-              // Appointments list header
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
+              SizedBox(height: 8.h),
+              // List header
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 10.w),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Appointments List',
-                      style: GoogleFonts.poppins(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
+                    Text('Appointments List',
+                        style: GoogleFonts.poppins(
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black)),
+                    Container(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 7.w, vertical: 2.h),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).primaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10.r),
                       ),
+                      child: Text('$_totalCount',
+                          style: GoogleFonts.poppins(
+                              fontSize: 8.sp,
+                              fontWeight: FontWeight.w700,
+                              color: Theme.of(context).primaryColor)),
                     ),
                   ],
                 ),
               ),
-              SizedBox(height: 10),
-              // Appointments cards
-              // Appointments list
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+
+              SizedBox(height: 6.h),
+
+              // Appointment cards
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 10.w),
                 child: _isLoading
-                    ? Center(
+                    ? const Center(
                         child: Padding(
-                          padding: const EdgeInsets.all(32),
+                          padding: EdgeInsets.all(28),
                           child: CircularProgressIndicator(),
                         ),
                       )
                     : _filteredAppointments.isEmpty
                         ? Center(
                             child: Padding(
-                            padding: const EdgeInsets.all(32),
-                            child: Text("No appointments found.",
-                                style: GoogleFonts.poppins(fontSize: 13)),
-                          ))
+                              padding: const EdgeInsets.all(28),
+                              child: Text('No appointments found.',
+                                  style: GoogleFonts.poppins(
+                                      fontSize: 10.sp, color: Colors.grey)),
+                            ),
+                          )
                         : Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: _filteredAppointments.map((appointment) {
-                              return _buildAppointmentCard(appointment);
-                            }).toList(),
+                            children: _filteredAppointments
+                                .map(_buildAppointmentCard)
+                                .toList(),
                           ),
               ),
 
-              // Pagination Controls
+              // ── Pagination ───────────────────────────
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.h),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        Text("Show",
-                            style: GoogleFonts.poppins(
-                                fontSize: 12, color: Colors.grey.shade600)),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                    // Show N per page
+                    Row(children: [
+                      Text('Show',
+                          style: GoogleFonts.poppins(
+                              fontSize: 8.sp, color: Colors.grey.shade500)),
+                      SizedBox(width: 5.w),
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 5.w),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(5.r),
+                          color: Colors.white,
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<int>(
+                            value: _limit,
+                            isDense: true,
+                            items: _limitOptions
+                                .map((v) => DropdownMenuItem(
+                                      value: v,
+                                      child: Text(v.toString(),
+                                          style: GoogleFonts.poppins(
+                                              fontSize: 8.sp)),
+                                    ))
+                                .toList(),
+                            onChanged: (v) {
+                              if (v != null) {
+                                setState(() {
+                                  _limit = v;
+                                  _currentPage = 1;
+                                  _isLoading = true;
+                                });
+                                _fetchAppointments();
+                              }
+                            },
+                            icon: Icon(Icons.arrow_drop_down, size: 13.sp),
+                          ),
+                        ),
+                      ),
+                    ]),
+
+                    // Prev · Page N · Next
+                    Row(children: [
+                      GestureDetector(
+                        onTap:
+                            _hasPrev ? () => _goToPage(_currentPage - 1) : null,
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 9.w, vertical: 4.h),
                           decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(8),
+                            color: _hasPrev
+                                ? Theme.of(context)
+                                    .primaryColor
+                                    .withOpacity(0.08)
+                                : Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(5.r),
+                            border: Border.all(
+                                color: _hasPrev
+                                    ? Theme.of(context)
+                                        .primaryColor
+                                        .withOpacity(0.3)
+                                    : Colors.grey.shade200),
                           ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<int>(
-                              value: _limit,
-                              items: _limitOptions.map((int value) {
-                                return DropdownMenuItem<int>(
-                                  value: value,
-                                  child: Text(value.toString(),
-                                      style: GoogleFonts.poppins(fontSize: 12)),
-                                );
-                              }).toList(),
-                              onChanged: (int? newValue) {
-                                if (newValue != null) {
-                                  setState(() {
-                                    _limit = newValue;
-                                    _currentPage = 1;
-                                    _isLoading = true;
-                                  });
-                                  _fetchAppointments();
-                                }
-                              },
-                              icon: const Icon(Icons.arrow_drop_down, size: 18),
-                            ),
+                          child: Icon(Icons.chevron_left,
+                              size: 14.sp,
+                              color: _hasPrev
+                                  ? Theme.of(context).primaryColor
+                                  : Colors.grey.shade300),
+                        ),
+                      ),
+                      SizedBox(width: 10.w),
+                      Text('Page $_currentPage',
+                          style: GoogleFonts.poppins(
+                              fontSize: 9.sp,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black)),
+                      SizedBox(width: 10.w),
+                      GestureDetector(
+                        onTap:
+                            _hasNext ? () => _goToPage(_currentPage + 1) : null,
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 9.w, vertical: 4.h),
+                          decoration: BoxDecoration(
+                            color: _hasNext
+                                ? Theme.of(context)
+                                    .primaryColor
+                                    .withOpacity(0.08)
+                                : Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(5.r),
+                            border: Border.all(
+                                color: _hasNext
+                                    ? Theme.of(context)
+                                        .primaryColor
+                                        .withOpacity(0.3)
+                                    : Colors.grey.shade200),
                           ),
+                          child: Icon(Icons.chevron_right,
+                              size: 14.sp,
+                              color: _hasNext
+                                  ? Theme.of(context).primaryColor
+                                  : Colors.grey.shade300),
                         ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.chevron_left),
-                          onPressed: _currentPage > 1
-                              ? () {
-                                  setState(() {
-                                    _currentPage--;
-                                    _isLoading = true;
-                                  });
-                                  _fetchAppointments();
-                                }
-                              : null,
-                        ),
-                        Text("Page $_currentPage",
-                            style: GoogleFonts.poppins(
-                                fontSize: 13, fontWeight: FontWeight.w600)),
-                        IconButton(
-                          icon: const Icon(Icons.chevron_right),
-                          onPressed: _apiAppointments.length >= _limit
-                              ? () {
-                                  setState(() {
-                                    _currentPage++;
-                                    _isLoading = true;
-                                  });
-                                  _fetchAppointments();
-                                }
-                              : null,
-                        ),
-                      ],
-                    ),
+                      ),
+                    ]),
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
+
+              SizedBox(height: 70.h),
             ],
           ),
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          showDialog(
-            context: context,
-            builder: (context) => const CreateAppointmentForm(),
-          ).then((_) => _fetchAppointments());
-        },
+        onPressed: () => showDialog(
+          context: context,
+          builder: (_) => const CreateAppointmentForm(),
+        ).then((_) => _fetchAppointments()),
         backgroundColor: Theme.of(context).primaryColor,
-        child: const Icon(Icons.add, size: 26, color: Colors.white),
+        child: const Icon(Icons.add, size: 20, color: Colors.white),
         tooltip: 'Add Appointment',
       ),
     );
-  }
-
-  int _getTodayCount() {
-    final today = DateTime.now();
-    return _apiAppointments.where((appt) {
-      final scheduled = appt.date;
-      if (scheduled == null) return false;
-      return scheduled.year == today.year &&
-          scheduled.month == today.month &&
-          scheduled.day == today.day;
-    }).length;
-  }
-
-  int _getPendingCount() {
-    return _apiAppointments
-        .where((appt) =>
-            appt.status?.toLowerCase() == 'pending' ||
-            appt.status?.toLowerCase() == 'scheduled')
-        .length;
-  }
-
-  Future<void> _deleteAppointment(String id) async {
-    try {
-      print('🗑️ Deleting appointment with ID: $id');
-      await ApiService.deleteAppointment(id);
-
-      // Refresh list
-      await _fetchAppointments();
-      print('✅ Appointment deleted successfully');
-    } catch (e) {
-      print('❌ Failed to delete appointment: $e');
-    }
   }
 }

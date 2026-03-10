@@ -100,8 +100,9 @@ class _BookingCalendarPageState extends State<BookingCalendarPage> {
         ApiService.getVendorProfile(),
       ]);
       if (mounted) {
+        final appointmentData = results[0] as Map<String, dynamic>;
         setState(() {
-          _allAppointments = results[0] as List<AppointmentModel>;
+          _allAppointments = appointmentData['data'] ?? [];
           _staff = results[1] as List<StaffMember>;
           _profile = results[2] as VendorProfile;
         });
