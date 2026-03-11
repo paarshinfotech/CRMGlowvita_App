@@ -1042,7 +1042,14 @@ class ApiService {
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
         if (decoded is List) return List<Map<String, dynamic>>.from(decoded);
-        return List<Map<String, dynamic>>.from(decoded['data'] ?? []);
+        if (decoded is Map) {
+          final data = decoded['data'] ??
+              decoded['categories'] ??
+              decoded['category'] ??
+              [];
+          if (data is List) return List<Map<String, dynamic>>.from(data);
+        }
+        return [];
       } else {
         throw Exception('Failed to load categories: ${response.statusCode}');
       }
@@ -1065,8 +1072,13 @@ class ApiService {
           await _get('$baseUrl/crm/services?category=$categoryName');
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
-        if (decoded is List) return List<Map<String, dynamic>>.from(decoded);
-        return List<Map<String, dynamic>>.from(decoded['data'] ?? []);
+        List<dynamic> list = [];
+        if (decoded is List) {
+          list = decoded;
+        } else if (decoded is Map) {
+          list = decoded['data'] ?? decoded['services'] ?? [];
+        }
+        return List<Map<String, dynamic>>.from(list);
       } else {
         throw Exception('Failed to load services: ${response.statusCode}');
       }
@@ -1218,10 +1230,11 @@ class ApiService {
       }
 
       // Staff must be list of staff IDs (from StaffMember.id), not names
-      final List<String> staffIds = (serviceData['staff_ids'] as List<dynamic>?)
-              ?.whereType<String>()
-              .toList() ??
-          [];
+      final List<String> staffIds =
+          ((serviceData['staff_ids'] ?? serviceData['staff']) as List<dynamic>?)
+                  ?.whereType<String>()
+                  .toList() ??
+              [];
 
       // Parse duration string like "30 min" → minutes (int)
       final int durationMinutes = _parseDuration(serviceData['duration']);
@@ -2108,6 +2121,51 @@ class ApiService {
       }
     } catch (e) {
       print('Error deleting review: $e');
+      rethrow;
+    }
+  }
+
+  // ══════════════════════════════════════════════════
+// SETTLEMENTS METHODS
+// ══════════════════════════════════════════════════
+
+  static Future<Map<String, dynamic>> getSettlements() async {
+    try {
+      final response = await _get('$baseUrl/crm/settlements');
+
+      debugPrint('Get Settlements - Status: ${response.statusCode}');
+      debugPrint('Get Settlements - Response: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {
+          'data': data['data'] ?? [],
+          'summary': data['summary'] ?? {},
+        };
+      } else {
+        throw Exception('Failed to load settlements');
+      }
+    } catch (e) {
+      debugPrint('Error fetching settlements: $e');
+      rethrow;
+    }
+  }
+
+  static Future<bool> recordSettlementPayment(
+      Map<String, dynamic> paymentData) async {
+    try {
+      final response = await _post('$baseUrl/crm/settlements', paymentData);
+
+      debugPrint('Record Payment - Status: ${response.statusCode}');
+      debugPrint('Record Payment - Response: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true;
+      } else {
+        throw Exception('Failed to record payment');
+      }
+    } catch (e) {
+      debugPrint('Error recording payment: $e');
       rethrow;
     }
   }

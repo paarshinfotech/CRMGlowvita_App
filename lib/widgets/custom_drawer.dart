@@ -3,10 +3,8 @@ import 'package:glowvita/intro_page.dart';
 import 'package:glowvita/my_Profile.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import '../dashboard.dart';
 import '../booking_calendar.dart';
-
 import '../appointment.dart';
 import '../staff.dart';
 import '../clients.dart';
@@ -27,7 +25,6 @@ import '../expenses.dart';
 import '../sales.dart';
 import '../add_ons.dart';
 import '../wedding_packages.dart';
-
 import '../vendor_model.dart';
 import '../services/api_service.dart';
 
@@ -417,7 +414,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                       icon: Icons.account_balance_outlined,
                       title: 'Settlements',
                       isSelected: widget.currentPage == 'Settlements',
-                      onTap: () => _navigateTo(context, SettlementsPage()),
+                      onTap: () => _navigateTo(context, Settlements()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),

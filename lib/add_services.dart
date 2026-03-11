@@ -231,7 +231,7 @@ class _AddServicePageState extends State<AddServicePage>
 
       // If editing, fetch services for the selected category
       Future.delayed(Duration.zero, () {
-        if (selectedCategory != null && selectedCategory != 'Uncategorized') {
+        if (selectedCategory != null) {
           _fetchServicesByCategory(selectedCategory!);
         }
       });
@@ -1122,6 +1122,11 @@ class _AddServicePageState extends State<AddServicePage>
         }
       });
       print('Categories loaded: ${categories.length}');
+
+      // If we have a selected category, fetch services for it
+      if (selectedCategory != null) {
+        _fetchServicesByCategory(selectedCategory!);
+      }
     } catch (e) {
       print('Error fetching categories: $e');
       setState(() {
@@ -1154,6 +1159,7 @@ class _AddServicePageState extends State<AddServicePage>
 
       setState(() {
         categoryServicesMap[categoryName] = names;
+
         if (selectedCategory == categoryName) {
           serviceNames = names;
           if (selectedServiceName != null &&
@@ -1426,15 +1432,21 @@ class _AddServicePageState extends State<AddServicePage>
                                 response.statusCode == 201) {
                               // Success - update local list with the response data
                               final responseData = json.decode(response.body);
+                              final data = responseData['data'] ??
+                                  responseData['category'] ??
+                                  responseData;
+                              final String newName =
+                                  data['name'] ?? 'New Category';
+                              final String newId =
+                                  data['_id'] ?? data['id'] ?? '';
+
                               setState(() {
-                                // Add the new category to the list using the name from response
-                                categories.add(responseData['name']);
-                                // Update the category map with the new category ID
-                                categoryIdMap[responseData['name']] =
-                                    responseData['_id'];
-                                selectedCategory = responseData['name'];
-                                // After adding category, fetch services for the new category
-                                _fetchServicesByCategory(responseData['name']);
+                                if (!categories.contains(newName)) {
+                                  categories.add(newName);
+                                  categoryIdMap[newName] = newId;
+                                }
+                                selectedCategory = newName;
+                                selectedCategoryId = newId;
                               });
                               _newCategoryNameController.clear();
                               _newCategoryDescController.clear();
@@ -1636,19 +1648,30 @@ class _AddServicePageState extends State<AddServicePage>
                             if (response.statusCode == 200 ||
                                 response.statusCode == 201) {
                               final responseData = json.decode(response.body);
+                              final data = responseData['data'] ??
+                                  responseData['service'] ??
+                                  responseData;
+                              final String newName =
+                                  data['name'] ?? 'New Service';
+
                               setState(() {
                                 // Add to current category services list
                                 if (categoryServicesMap[selectedCategory] !=
                                     null) {
-                                  categoryServicesMap[selectedCategory]!
-                                      .add(responseData['name']);
+                                  if (!categoryServicesMap[selectedCategory]!
+                                      .contains(newName)) {
+                                    categoryServicesMap[selectedCategory]!
+                                        .add(newName);
+                                  }
                                 } else {
                                   categoryServicesMap[selectedCategory!] = [
-                                    responseData['name']
+                                    newName
                                   ];
                                 }
-                                serviceNames.add(responseData['name']);
-                                selectedServiceName = responseData['name'];
+                                if (!serviceNames.contains(newName)) {
+                                  serviceNames.add(newName);
+                                }
+                                selectedServiceName = newName;
                               });
                               _newServiceNameController.clear();
                               _newServiceDescController.clear();

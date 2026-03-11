@@ -3,282 +3,413 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'widgets/custom_drawer.dart';
+import 'services/api_service.dart';
+import 'vendor_model.dart';
+import 'my_Profile.dart';
 
-class SettlementsPage extends StatefulWidget {
-  const SettlementsPage({super.key});
+class Settlements extends StatefulWidget {
+  const Settlements({Key? key}) : super(key: key);
 
   @override
-  State<SettlementsPage> createState() => _SettlementsPageState();
+  State<Settlements> createState() => _SettlementsState();
 }
 
-class _SettlementsPageState extends State<SettlementsPage> {
-  final TextEditingController _searchCtrl = TextEditingController();
-  final currency = NumberFormat.currency(symbol: '₹', decimalDigits: 2);
-
+class _SettlementsState extends State<Settlements> {
+  bool _isLoading = true;
+  String? _errorMessage;
+  VendorProfile? _profile;
+  String _searchQuery = '';
+  String _selectedMonth = 'This Month';
   String _selectedStatus = 'All Status';
-  String _selectedTime = 'All Time';
 
-  final List<Map<String, dynamic>> _settlements = [
-    {
-      'id': 'SETTLEMENT_5...',
-      'vendor': 'GlowVita Salon & Spa',
-      'email': 'N/A',
-      'phone': 'N/A',
-      'totalAmount': 5658.00,
-      'direction': 'Vendor -> Admin',
-      'amount': 1102.00,
-      'status': 'Partially Paid',
-    },
-    // Add more mock data if needed
+  // Settlement data
+  List<Map<String, dynamic>> _settlements = [];
+  double _totalAmount = 0.0;
+  double _adminOwesVendors = 0.0;
+  double _vendorsOweAdmin = 0.0;
+  double _netSettlement = 0.0;
+
+  final List<String> _months = [
+    'This Month',
+    'Last Month',
+    'Last 3 Months',
+    'Last 6 Months',
+    'This Year'
+  ];
+
+  final List<String> _statuses = [
+    'All Status',
+    'Pending',
+    'Partially Paid',
+    'Settled'
   ];
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
-      drawer: const CustomDrawer(currentPage: 'Settlements'),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
-        title: Text(
-          'Settlements',
-          style: GoogleFonts.poppins(
-            color: Colors.black,
-            fontSize: 14.sp,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+  void initState() {
+    super.initState();
+    _fetchProfile();
+    _fetchSettlements();
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final p = await ApiService.getVendorProfile();
+      if (mounted) setState(() => _profile = p);
+    } catch (e) {
+      debugPrint('fetchProfile: $e');
+    }
+  }
+
+  Future<void> _fetchSettlements() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final result = await ApiService.getSettlements();
+
+      setState(() {
+        _settlements = List<Map<String, dynamic>>.from(result['data'] ?? []);
+        final summary = result['summary'] ?? {};
+        _totalAmount = (summary['totalAmount'] ?? 0.0).toDouble();
+        _adminOwesVendors = (summary['totalVendorAmount'] ?? 0.0).toDouble();
+        _vendorsOweAdmin = (summary['totalAdminReceivable'] ?? 0.0).toDouble();
+        _netSettlement = (summary['totalPending'] ?? 0.0).toDouble();
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = e.toString();
+      });
+      debugPrint('Error fetching settlements: $e');
+    }
+  }
+
+  List<Map<String, dynamic>> get _filteredSettlements {
+    final q = _searchQuery.trim().toLowerCase();
+    List<Map<String, dynamic>> filtered = List.from(_settlements);
+
+    // Filter by search query
+    if (q.isNotEmpty) {
+      filtered = filtered.where((s) {
+        final vendorName = (s['vendorName'] ?? '').toString().toLowerCase();
+        final ownerName = (s['ownerName'] ?? '').toString().toLowerCase();
+        return vendorName.contains(q) || ownerName.contains(q);
+      }).toList();
+    }
+
+    /*
+    // Filter by status
+    if (_selectedStatus != 'All Status') {
+      filtered = filtered.where((s) {
+        final status = (s['status'] ?? '').toString();
+        return status.toLowerCase() == _selectedStatus.toLowerCase();
+      }).toList();
+    }
+    */
+
+    return filtered;
+  }
+
+  void _showSettlementDetails(Map<String, dynamic> settlement) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _SettlementDetailsSheet(
+        settlement: settlement,
+        onPaymentRecorded: () {
+          Navigator.pop(context);
+          _fetchSettlements();
+        },
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1200),
-          child: SingleChildScrollView(
-            padding: EdgeInsets.all(16.w),
+    );
+  }
+
+  void _showPayAdminDialog(Map<String, dynamic> settlement) {
+    showDialog(
+      context: context,
+      builder: (context) => _PayAdminDialog(
+        settlement: settlement,
+        onPaymentRecorded: () {
+          Navigator.pop(context);
+          _fetchSettlements();
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filteredData = _filteredSettlements;
+
+    return Theme(
+      data: Theme.of(context).copyWith(
+        scaffoldBackgroundColor: const Color(0xFFF8F9FA),
+        textTheme: GoogleFonts.poppinsTextTheme(Theme.of(context).textTheme)
+            .apply(fontSizeFactor: 0.75),
+      ),
+      child: Scaffold(
+        drawer: const CustomDrawer(currentPage: 'Settlements'),
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0.5,
+          titleSpacing: 0,
+          leading: Builder(
+            builder: (context) => IconButton(
+              icon: Icon(Icons.menu, color: Colors.black, size: 20.sp),
+              onPressed: () => Scaffold.of(context).openDrawer(),
+            ),
+          ),
+          title: Text(
+            'Vendor Settlements',
+            style: GoogleFonts.poppins(
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+            ),
+          ),
+          actions: [
+            IconButton(
+              icon: Icon(Icons.refresh, size: 20.sp, color: Colors.black54),
+              onPressed: _fetchSettlements,
+            ),
+            GestureDetector(
+              onTap: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const My_Profile())),
+              child: Padding(
+                padding: EdgeInsets.only(right: 12.w),
+                child: CircleAvatar(
+                  radius: 14.r,
+                  backgroundColor: Theme.of(context).primaryColor,
+                  backgroundImage:
+                      (_profile != null && _profile!.profileImage.isNotEmpty)
+                          ? NetworkImage(_profile!.profileImage)
+                          : null,
+                  child: (_profile == null || _profile!.profileImage.isEmpty)
+                      ? Text(
+                          (_profile?.businessName ?? 'H')
+                              .substring(0, 1)
+                              .toUpperCase(),
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.bold),
+                        )
+                      : null,
+                ),
+              ),
+            ),
+          ],
+        ),
+        body: RefreshIndicator(
+          onRefresh: _fetchSettlements,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Description
                 Text(
-                  'Vendor Settlements',
+                  'Track settlements for both Pay Online and Pay at Salon appointments',
                   style: GoogleFonts.poppins(
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF1F2937),
-                  ),
-                ),
-                SizedBox(height: 4.h),
-                Text(
-                  'Track settlements for Pay Online and Pay at Salon appointments',
-                  style: GoogleFonts.poppins(
-                    fontSize: 10.sp,
+                    fontSize: 9.sp,
                     color: Colors.grey[600],
                   ),
                 ),
-                SizedBox(height: 16.h),
+                const SizedBox(height: 12),
 
-                // Summary Cards
-                LayoutBuilder(builder: (context, constraints) {
-                  return Wrap(
-                    spacing: 16.w,
-                    runSpacing: 16.h,
-                    children: [
-                      _buildSummaryCard(
+                // Stats Cards - 2x2 Grid
+                Row(
+                  children: [
+                    Expanded(
+                      child: _StatCard(
                         title: 'Total Amount',
-                        value: '₹5658.00',
-                        subtitle: '1 settlements',
-                        width: constraints.maxWidth > 600
-                            ? (constraints.maxWidth - 48.w) / 4
-                            : (constraints.maxWidth - 16.w) / 2,
+                        value: '₹${_totalAmount.toStringAsFixed(2)}',
+                        subtitle: '${_settlements.length} settlements',
+                        valueColor: Colors.black87,
                       ),
-                      _buildSummaryCard(
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _StatCard(
                         title: 'Admin Owes Vendors',
-                        value: '₹0.00',
+                        value: '₹${_adminOwesVendors.toStringAsFixed(2)}',
                         subtitle: 'Pay Online service amounts',
-                        valueColor: Colors.red[700],
-                        width: constraints.maxWidth > 600
-                            ? (constraints.maxWidth - 48.w) / 4
-                            : (constraints.maxWidth - 16.w) / 2,
+                        valueColor: Colors.orange[700]!,
                       ),
-                      _buildSummaryCard(
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _StatCard(
                         title: 'Vendors Owe Admin',
-                        value: '₹1102.00',
+                        value: '₹${_vendorsOweAdmin.toStringAsFixed(2)}',
                         subtitle: 'Pay at Salon fees',
-                        valueColor: Colors.green[700],
-                        width: constraints.maxWidth > 600
-                            ? (constraints.maxWidth - 48.w) / 4
-                            : (constraints.maxWidth - 16.w) / 2,
+                        valueColor: Colors.green[700]!,
                       ),
-                      _buildSummaryCard(
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _StatCard(
                         title: 'Net Settlement',
-                        value: '+ ₹1102.00',
+                        value:
+                            '${_netSettlement >= 0 ? '+' : ''} ₹${_netSettlement.toStringAsFixed(2)}',
                         subtitle: 'Vendors owe admin',
-                        valueColor: Colors.green[700],
-                        width: constraints.maxWidth > 600
-                            ? (constraints.maxWidth - 48.w) / 4
-                            : (constraints.maxWidth - 16.w) / 2,
+                        valueColor: _netSettlement >= 0
+                            ? Colors.green[700]!
+                            : Colors.orange[700]!,
                       ),
-                    ],
-                  );
-                }),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
 
-                SizedBox(height: 24.h),
-
-                // Filter Bar
+                // Search Bar
                 Container(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                  height: 40,
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(8.r),
-                    border: Border.all(color: Colors.grey[200]!),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey[300]!),
                   ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _searchCtrl,
-                          decoration: InputDecoration(
-                            hintText: 'Search by vendor or owner name...',
-                            hintStyle: GoogleFonts.poppins(fontSize: 10.sp),
-                            border: InputBorder.none,
-                            isDense: true,
-                          ),
+                  child: TextField(
+                    decoration: InputDecoration(
+                      isDense: true,
+                      prefixIcon:
+                          Icon(Icons.search, size: 18, color: Colors.grey[400]),
+                      hintText: 'Search by vendor or owner name...',
+                      hintStyle: GoogleFonts.poppins(
+                          fontSize: 11, color: Colors.grey[400]),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                          vertical: 12, horizontal: 12),
+                    ),
+                    style: GoogleFonts.poppins(fontSize: 11),
+                    onChanged: (v) => setState(() => _searchQuery = v),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                /*
+                // Filters Row
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        height: 38,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.grey[300]!),
+                        ),
+                        child: DropdownButton<String>(
+                          value: _selectedMonth,
+                          icon: Icon(Icons.keyboard_arrow_down,
+                              size: 18, color: Colors.grey[600]),
+                          underline: const SizedBox(),
+                          isExpanded: true,
+                          style: GoogleFonts.poppins(
+                              fontSize: 11, color: Colors.black87),
+                          items: _months.map((String value) {
+                            return DropdownMenuItem<String>(
+                              value: value,
+                              child: Text(value),
+                            );
+                          }).toList(),
+                          onChanged: (String? newValue) {
+                            setState(() {
+                              _selectedMonth = newValue ?? 'This Month';
+                            });
+                          },
                         ),
                       ),
-                      _buildDropdown(
-                        value: _selectedTime,
-                        items: ['All Time', 'This Month', 'Last Month'],
-                        onChanged: (v) => setState(() => _selectedTime = v!),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Container(
+                        height: 38,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.grey[300]!),
+                        ),
+                        child: DropdownButton<String>(
+                          value: _selectedStatus,
+                          icon: Icon(Icons.keyboard_arrow_down,
+                              size: 18, color: Colors.grey[600]),
+                          underline: const SizedBox(),
+                          isExpanded: true,
+                          style: GoogleFonts.poppins(
+                              fontSize: 11, color: Colors.black87),
+                          items: _statuses.map((String value) {
+                            return DropdownMenuItem<String>(
+                              value: value,
+                              child: Text(value),
+                            );
+                          }).toList(),
+                          onChanged: (String? newValue) {
+                            setState(() {
+                              _selectedStatus = newValue ?? 'All Status';
+                            });
+                          },
+                        ),
                       ),
-                      SizedBox(width: 8.w),
-                      _buildDropdown(
-                        value: _selectedStatus,
-                        items: [
-                          'All Status',
-                          'Paid',
-                          'Pending',
-                          'Partially Paid'
-                        ],
-                        onChanged: (v) => setState(() => _selectedStatus = v!),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
+                */
+                const SizedBox(height: 12),
 
-                SizedBox(height: 16.h),
-
-                // Table Header
-                Container(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF9FAFB),
-                    border:
-                        Border(bottom: BorderSide(color: Colors.grey[200]!)),
-                  ),
-                  child: Row(
-                    children: [
-                      _buildHeaderCell('ID', 100.w),
-                      _buildHeaderCell('Vendor Details', 250.w),
-                      _buildHeaderCell('Total Amount', 150.w),
-                      _buildHeaderCell('Settlement Direction', 180.w),
-                      _buildHeaderCell('Amount', 120.w),
-                      _buildHeaderCell('Status', 120.w),
-                      _buildHeaderCell('Actions', 200.w),
-                    ],
-                  ),
-                ),
-
-                // Table Body
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _settlements.length,
-                  itemBuilder: (context, index) {
-                    final s = _settlements[index];
-                    return Container(
-                      padding: EdgeInsets.symmetric(
-                          horizontal: 16.w, vertical: 16.h),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border(
-                            bottom: BorderSide(color: Colors.grey[100]!)),
-                      ),
-                      child: Row(
-                        children: [
-                          _buildBodyCell(s['id'], 100.w),
-                          SizedBox(
-                            width: 250.w,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(s['vendor'],
-                                    style: GoogleFonts.poppins(
-                                        fontSize: 10.sp,
-                                        fontWeight: FontWeight.w600)),
-                                Text(s['email'],
-                                    style: GoogleFonts.poppins(
-                                        fontSize: 9.sp,
-                                        color: Colors.grey[500])),
-                                Text(s['phone'],
-                                    style: GoogleFonts.poppins(
-                                        fontSize: 9.sp,
-                                        color: Colors.grey[500])),
-                              ],
-                            ),
-                          ),
-                          _buildBodyCell('₹${s['totalAmount']}', 150.w),
-                          SizedBox(
-                            width: 180.w,
-                            child: Text(
-                              s['direction'],
-                              style: GoogleFonts.poppins(
-                                  fontSize: 9.sp, color: Colors.green[700]),
-                            ),
-                          ),
-                          _buildBodyCell('₹${s['amount']}', 120.w,
-                              color: Colors.green[700],
-                              fontWeight: FontWeight.bold),
-                          SizedBox(
-                            width: 120.w,
-                            child: _buildStatusPill(s['status']),
-                          ),
-                          SizedBox(
-                            width: 200.w,
-                            child: Row(
-                              children: [
-                                TextButton(
-                                  onPressed: () =>
-                                      _showDetailsDialog(context, s),
-                                  child: Text('View Details',
+                // Settlements List
+                Expanded(
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _errorMessage != null
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(_errorMessage!,
                                       style: GoogleFonts.poppins(
-                                          fontSize: 9.sp,
-                                          color: Colors.grey[700])),
-                                ),
-                                SizedBox(width: 8.w),
-                                ElevatedButton(
-                                  onPressed: () =>
-                                      _showRecordPaymentDialog(context, s),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF372935),
-                                    padding: EdgeInsets.symmetric(
-                                        horizontal: 12.w, vertical: 8.h),
-                                    shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(6.r)),
-                                  ),
-                                  child: Text('Collect Payment',
+                                          color: Colors.red, fontSize: 10)),
+                                  const SizedBox(height: 10),
+                                  ElevatedButton(
+                                      onPressed: _fetchSettlements,
+                                      child: Text('Retry',
+                                          style: GoogleFonts.poppins(
+                                              fontSize: 10))),
+                                ],
+                              ),
+                            )
+                          : filteredData.isEmpty
+                              ? Center(
+                                  child: Text('No settlements found.',
                                       style: GoogleFonts.poppins(
-                                          fontSize: 10.sp,
-                                          color: Colors.white)),
+                                          color: Colors.grey[600],
+                                          fontSize: 10)))
+                              : ListView.separated(
+                                  itemCount: filteredData.length,
+                                  separatorBuilder: (_, __) =>
+                                      const SizedBox(height: 8),
+                                  itemBuilder: (context, idx) {
+                                    final settlement = filteredData[idx];
+                                    return _SettlementCard(
+                                      settlement: settlement,
+                                      onViewDetails: () =>
+                                          _showSettlementDetails(settlement),
+                                      onPayAdmin: () =>
+                                          _showPayAdminDialog(settlement),
+                                    );
+                                  },
                                 ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
                 ),
               ],
             ),
@@ -287,408 +418,1225 @@ class _SettlementsPageState extends State<SettlementsPage> {
       ),
     );
   }
+}
 
-  Widget _buildSummaryCard({
-    required String title,
-    required String value,
-    required String subtitle,
-    required double width,
-    Color? valueColor,
-  }) {
+// Stat Card Widget
+class _StatCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final String subtitle;
+  final Color valueColor;
+
+  const _StatCard({
+    required this.title,
+    required this.value,
+    required this.subtitle,
+    required this.valueColor,
+    Key? key,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      width: width,
-      padding: EdgeInsets.all(16.w),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8.r),
-        border: Border.all(color: Colors.grey[200]!),
+        borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.grey.withValues(alpha: 0.1),
+            spreadRadius: 1,
+            blurRadius: 3,
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style:
-                  GoogleFonts.poppins(fontSize: 9.sp, color: Colors.grey[600])),
-          SizedBox(height: 8.h),
-          Text(value,
-              style: GoogleFonts.poppins(
-                fontSize: 14.sp,
-                fontWeight: FontWeight.bold,
-                color: valueColor ?? const Color(0xFF111827),
-              )),
-          SizedBox(height: 4.h),
-          Text(subtitle,
-              style: GoogleFonts.poppins(
-                  fontSize: 10.sp, color: Colors.grey[500])),
+          Text(
+            title,
+            style: GoogleFonts.poppins(
+              fontSize: 8,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: valueColor,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: GoogleFonts.poppins(
+              fontSize: 7,
+              color: Colors.grey[500],
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildDropdown({
-    required String value,
-    required List<String> items,
-    required Function(String?) onChanged,
-  }) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey[300]!),
-        borderRadius: BorderRadius.circular(6.r),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: value,
-          items: items
-              .map((e) => DropdownMenuItem(
-                  value: e,
-                  child: Text(e, style: GoogleFonts.poppins(fontSize: 9.sp))))
-              .toList(),
-          onChanged: onChanged,
-        ),
-      ),
-    );
-  }
+// Settlement Card Widget
+class _SettlementCard extends StatelessWidget {
+  final Map<String, dynamic> settlement;
+  final VoidCallback onViewDetails;
+  final VoidCallback onPayAdmin;
 
-  Widget _buildHeaderCell(String label, double width) {
-    return SizedBox(
-      width: width,
-      child: Text(
-        label,
-        style: GoogleFonts.poppins(
-          fontSize: 9.sp,
-          fontWeight: FontWeight.w600,
-          color: Colors.grey[600],
-        ),
-      ),
-    );
-  }
+  const _SettlementCard({
+    required this.settlement,
+    required this.onViewDetails,
+    required this.onPayAdmin,
+    Key? key,
+  }) : super(key: key);
 
-  Widget _buildBodyCell(String label, double width,
-      {Color? color, FontWeight? fontWeight}) {
-    return SizedBox(
-      width: width,
-      child: Text(
-        label,
-        style: GoogleFonts.poppins(
-          fontSize: 10.sp,
-          color: color ?? const Color(0xFF374151),
-          fontWeight: fontWeight ?? FontWeight.normal,
-        ),
-      ),
-    );
-  }
+  @override
+  Widget build(BuildContext context) {
+    final settlementId = settlement['id'] ?? 'N/A';
+    final vendorName = settlement['vendorName'] ?? 'Unknown Vendor';
+    final ownerName = settlement['ownerName'] ?? 'N/A';
+    final contact = settlement['contactNo'] ?? 'N/A';
+    final totalAmount = (settlement['totalAmount'] ?? 0.0).toDouble();
+    final vendorOwesAdmin = (settlement['vendorOwesAdmin'] ?? 0.0).toDouble();
+    final adminOwesVendor = (settlement['adminOwesVendor'] ?? 0.0).toDouble();
+    final status = settlement['status'] ?? 'Pending';
 
-  Widget _buildStatusPill(String status) {
-    Color bg = Colors.grey[100]!;
-    Color text = Colors.grey[700]!;
-
-    if (status == 'Partially Paid') {
-      bg = const Color(0xFFFEF3C7);
-      text = const Color(0xFFD97706);
-    } else if (status == 'Paid') {
-      bg = const Color(0xFFD1FAE5);
-      text = const Color(0xFF059669);
+    // Determine settlement direction
+    String settlementDirection = 'Vendor → Admin';
+    double displayAmount = vendorOwesAdmin;
+    if (adminOwesVendor > 0) {
+      settlementDirection = 'Admin → Vendor';
+      displayAmount = adminOwesVendor;
     }
 
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(20.r),
-      ),
-      child: Text(
-        status,
-        style: GoogleFonts.poppins(
-            fontSize: 10.sp, fontWeight: FontWeight.w600, color: text),
-        textAlign: TextAlign.center,
-      ),
-    );
-  }
+    final statusColor = status == 'Settled'
+        ? Colors.green[700]
+        : status == 'Partially Paid'
+            ? Colors.orange[700]
+            : Colors.red[700];
 
-  void _showRecordPaymentDialog(BuildContext context, Map<String, dynamic> s) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Send Payment to Admin',
-                    style: GoogleFonts.poppins(
-                        fontSize: 16.sp, fontWeight: FontWeight.bold)),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
-            ),
-            Text('Record payment received from ${s['vendor']}',
-                style: GoogleFonts.poppins(
-                    fontSize: 10.sp, color: Colors.grey[600])),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildFieldLabel('Amount'),
-            TextFormField(
-              initialValue: '502',
-              decoration: _inputDecoration(),
-            ),
-            SizedBox(height: 4.h),
-            Text('Pending: ₹502.00',
-                style: GoogleFonts.poppins(
-                    fontSize: 10.sp, color: Colors.grey[500])),
-            SizedBox(height: 16.h),
-            _buildFieldLabel('Payment Method'),
-            DropdownButtonFormField<String>(
-              value: 'Bank Transfer',
-              items: ['Bank Transfer', 'Cash', 'UPI']
-                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                  .toList(),
-              onChanged: (v) {},
-              decoration: _inputDecoration(),
-            ),
-            SizedBox(height: 16.h),
-            _buildFieldLabel('Transaction ID (Optional)'),
-            TextFormField(
-              decoration: _inputDecoration(hintText: 'Enter transaction ID'),
-            ),
-            SizedBox(height: 16.h),
-            _buildFieldLabel('Notes (Optional)'),
-            TextFormField(
-              maxLines: 3,
-              decoration: _inputDecoration(hintText: 'Add any notes...'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel',
-                style: GoogleFonts.poppins(color: Colors.grey[700])),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF372935),
-              padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
-            ),
-            child: Text('Record Payment',
-                style: GoogleFonts.poppins(color: Colors.white)),
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withValues(alpha: 0.1),
+            spreadRadius: 1,
+            blurRadius: 3,
           ),
         ],
       ),
-    );
-  }
-
-  void _showDetailsDialog(BuildContext context, Map<String, dynamic> s) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-        child: Container(
-          width: 700.w,
-          padding: EdgeInsets.all(24.w),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Settlement Details',
-                          style: GoogleFonts.poppins(
-                              fontSize: 14.sp, fontWeight: FontWeight.bold)),
-                      Text('Detailed breakdown of vendor settlement',
-                          style: GoogleFonts.poppins(
-                              fontSize: 10.sp, color: Colors.grey[600])),
-                    ],
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded, color: Colors.grey),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              SizedBox(height: 24.h),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildDetailItem('Vendor Name', s['vendor'], flex: 2),
-                  _buildDetailItem('Owner Name', 'N/A', flex: 2),
-                ],
-              ),
-              SizedBox(height: 16.h),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildDetailItem('Contact', 'N/A', flex: 2),
-                  _buildDetailItem('Settlement ID',
-                      'SETTLEMENT_696a30e6a8e33e1bf1a2d787_1577836800000',
-                      flex: 2),
-                ],
-              ),
-              SizedBox(height: 24.h),
-              Container(
-                padding: EdgeInsets.all(16.w),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF9FAFB),
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-                child: Wrap(
-                  spacing: 40.w,
-                  runSpacing: 20.h,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildMetric('Total Amount', '₹5658.00', Colors.black),
-                    _buildMetric(
-                        'Platform Fee', '₹499.00', Colors.orange[800]!),
-                    _buildMetric('Service Tax', '₹603.00', Colors.orange[800]!),
-                    _buildMetric(
-                        'Admin Receivable', '₹1102.00', Colors.green[700]!),
-                    _buildMetric('Vendor Amount', '₹0.00', Colors.blue[700]!),
-                    _buildMetric('Pending Amount', '₹502.00', Colors.red[700]!),
+                    Text(
+                      vendorName,
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$ownerName • $contact',
+                      style: GoogleFonts.poppins(
+                        fontSize: 8,
+                        color: Colors.grey[600],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ],
                 ),
               ),
-              SizedBox(height: 24.h),
-              Text('Included Appointments (9)',
-                  style: GoogleFonts.poppins(
-                      fontSize: 14.sp, fontWeight: FontWeight.bold)),
-              SizedBox(height: 12.h),
               Container(
-                constraints: BoxConstraints(maxHeight: 300.h),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey[200]!),
-                  borderRadius: BorderRadius.circular(8.r),
+                  color: statusColor?.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: SingleChildScrollView(
-                  child: DataTable(
-                    columnSpacing: 20.w,
-                    headingRowHeight: 40.h,
-                    dataRowHeight: 45.h,
-                    columns: [
-                      _buildDataColumn('Date'),
-                      _buildDataColumn('Client'),
-                      _buildDataColumn('Service'),
-                      _buildDataColumn('Amount'),
-                      _buildDataColumn('Platform Fee'),
-                      _buildDataColumn('Tax'),
-                    ],
-                    rows: List.generate(
-                        5,
-                        (index) => DataRow(cells: [
-                              DataCell(Text('3/9/2026',
-                                  style: TextStyle(fontSize: 9.sp))),
-                              DataCell(Text('Pratiksha Aher',
-                                  style: TextStyle(fontSize: 9.sp))),
-                              DataCell(Text('Moonlight Silver Colored Lashes',
-                                  style: TextStyle(fontSize: 9.sp))),
-                              DataCell(Text('₹597.00',
-                                  style: TextStyle(fontSize: 9.sp))),
-                              DataCell(Text('₹67.00',
-                                  style: TextStyle(
-                                      fontSize: 9.sp,
-                                      color: Colors.orange[800]))),
-                              DataCell(Text('₹81.00',
-                                  style: TextStyle(
-                                      fontSize: 9.sp,
-                                      color: Colors.orange[800]))),
-                            ])),
+                child: Text(
+                  status,
+                  style: GoogleFonts.poppins(
+                    fontSize: 8,
+                    fontWeight: FontWeight.w600,
+                    color: statusColor,
                   ),
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 10),
+
+          // Details Grid
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'ID',
+                      style: GoogleFonts.poppins(
+                        fontSize: 7,
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      settlementId.toString().length > 15
+                          ? '${settlementId.toString().substring(0, 12)}...'
+                          : settlementId.toString(),
+                      style: GoogleFonts.poppins(
+                        fontSize: 9,
+                        color: Colors.black87,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Total Amount',
+                      style: GoogleFonts.poppins(
+                        fontSize: 7,
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '₹${totalAmount.toStringAsFixed(2)}',
+                      style: GoogleFonts.poppins(
+                        fontSize: 9,
+                        color: Colors.black87,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Settlement Direction',
+                      style: GoogleFonts.poppins(
+                        fontSize: 7,
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      settlementDirection,
+                      style: GoogleFonts.poppins(
+                        fontSize: 9,
+                        color: Colors.green[700],
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Amount',
+                      style: GoogleFonts.poppins(
+                        fontSize: 7,
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '₹${displayAmount.toStringAsFixed(2)}',
+                      style: GoogleFonts.poppins(
+                        fontSize: 9,
+                        color: Colors.green[700],
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Action Buttons
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: onViewDetails,
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    side: BorderSide(color: Colors.grey[400]!),
+                  ),
+                  child: Text(
+                    'View Details',
+                    style: GoogleFonts.poppins(
+                      fontSize: 9,
+                      color: Colors.black87,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: status == 'Settled' ? null : onPayAdmin,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    backgroundColor: Colors.red,
+                    disabledBackgroundColor: Colors.grey[300],
+                  ),
+                  child: Text(
+                    'Pay Admin',
+                    style: GoogleFonts.poppins(
+                      fontSize: 9,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Settlement Details Sheet
+class _SettlementDetailsSheet extends StatelessWidget {
+  final Map<String, dynamic> settlement;
+  final VoidCallback onPaymentRecorded;
+
+  const _SettlementDetailsSheet({
+    required this.settlement,
+    required this.onPaymentRecorded,
+    Key? key,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final vendorName = settlement['vendorName'] ?? 'N/A';
+    final ownerName = settlement['ownerName'] ?? 'N/A';
+    final contactNo = settlement['contactNo'] ?? 'N/A';
+    final settlementId = settlement['id'] ?? 'N/A';
+
+    final totalAmount = (settlement['totalAmount'] ?? 0.0).toDouble();
+    final adminOwesVendor = (settlement['adminOwesVendor'] ?? 0.0).toDouble();
+    final vendorOwesAdmin = (settlement['vendorOwesAdmin'] ?? 0.0).toDouble();
+    final netSettlement = (settlement['netSettlement'] ?? 0.0).toDouble();
+
+    final platformFeeTotal = (settlement['platformFeeTotal'] ?? 0.0).toDouble();
+    final serviceTaxTotal = (settlement['serviceTaxTotal'] ?? 0.0).toDouble();
+
+    final amountPaid = (settlement['amountPaid'] ?? 0.0).toDouble();
+    final status = settlement['status'] ?? 'Pending';
+
+    final paymentHistory = settlement['paymentHistory'] as List? ?? [];
+    final appointments = settlement['appointments'] as List? ?? [];
+    final amountPending = (settlement['amountPending'] ?? 0.0).toDouble();
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.9,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      builder: (_, controller) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Settlement Details',
+                          style: GoogleFonts.poppins(
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          'Detailed breakdown of vendor settlement',
+                          style: GoogleFonts.poppins(
+                            fontSize: 9.sp,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 20),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+
+            Expanded(
+              child: SingleChildScrollView(
+                controller: controller,
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Vendor Details - 2 Column Grid
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Vendor Name',
+                                  style: GoogleFonts.poppins(
+                                      fontSize: 9, color: Colors.grey[600])),
+                              const SizedBox(height: 2),
+                              Text(vendorName,
+                                  style: GoogleFonts.poppins(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Owner Name',
+                                  style: GoogleFonts.poppins(
+                                      fontSize: 9, color: Colors.grey[600])),
+                              const SizedBox(height: 2),
+                              Text(ownerName,
+                                  style: GoogleFonts.poppins(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Contact',
+                                  style: GoogleFonts.poppins(
+                                      fontSize: 9, color: Colors.grey[600])),
+                              const SizedBox(height: 2),
+                              Text(contactNo,
+                                  style: GoogleFonts.poppins(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Settlement ID',
+                                  style: GoogleFonts.poppins(
+                                      fontSize: 9, color: Colors.grey[600])),
+                              const SizedBox(height: 2),
+                              Text(
+                                settlementId.length > 25
+                                    ? '${settlementId.substring(0, 22)}...'
+                                    : settlementId,
+                                style: GoogleFonts.poppins(
+                                    fontSize: 10, fontWeight: FontWeight.w600),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Amount Cards Row
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _AmountCard(
+                            title: 'Total Volume',
+                            amount: totalAmount,
+                            subtitle: '',
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _AmountCard(
+                            title: 'From Online Bookings',
+                            amount: adminOwesVendor,
+                            subtitle: 'Service amount admin owes you',
+                            color: Colors.green[700]!,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _AmountCard(
+                            title: 'From Salon Bookings',
+                            amount: vendorOwesAdmin,
+                            subtitle: 'Fees you owe admin',
+                            color: Colors.red[700]!,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _AmountCard(
+                            title: 'Net Pending',
+                            amount: netSettlement.abs(),
+                            subtitle: 'Payable to Admin',
+                            color: Colors.blue[700]!,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Two Column Layout for Fees and Summary
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Tax & Fees Breakdown
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.orange[50],
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'TAX & FEES BREAKDOWN',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.orange[900],
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                _buildFeeRow(
+                                    'Platform Fees:', platformFeeTotal),
+                                const SizedBox(height: 4),
+                                _buildFeeRow('Service Tax:', serviceTaxTotal),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Settlement Summary
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.blue[50],
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'SETTLEMENT SUMMARY',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.blue[900],
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                _buildFeeRow('Amount Settled:', amountPaid),
+                                const SizedBox(height: 4),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text('Current Status:',
+                                        style: GoogleFonts.poppins(
+                                            fontSize: 9,
+                                            color: Colors.grey[700])),
+                                    Text(status,
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w600,
+                                          color: status == 'Settled'
+                                              ? Colors.green[700]
+                                              : Colors.red[700],
+                                        )),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Payment History
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Row(
+                              children: [
+                                Icon(Icons.currency_rupee,
+                                    size: 16, color: Colors.grey[700]),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Payment History',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Divider(height: 1),
+                          if (paymentHistory.isEmpty)
+                            Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Center(
+                                child: Text(
+                                  'No payments recorded yet for this period.',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 9,
+                                    color: Colors.grey[600],
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ),
+                            )
+                          else
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: DataTable(
+                                headingRowHeight: 35,
+                                dataRowHeight: 35,
+                                columnSpacing: 20,
+                                headingTextStyle: GoogleFonts.poppins(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black87,
+                                ),
+                                dataTextStyle: GoogleFonts.poppins(fontSize: 9),
+                                columns: const [
+                                  DataColumn(label: Text('Date')),
+                                  DataColumn(label: Text('Type')),
+                                  DataColumn(label: Text('Method')),
+                                  DataColumn(label: Text('Ref ID')),
+                                  DataColumn(label: Text('Amount')),
+                                ],
+                                rows: paymentHistory.map<DataRow>((payment) {
+                                  return DataRow(cells: [
+                                    DataCell(Text(payment['date'] ?? 'N/A')),
+                                    DataCell(Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red[50],
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        payment['type'] ?? 'N/A',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 8,
+                                          color: Colors.red[700],
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    )),
+                                    DataCell(Text(payment['paymentMethod'] ??
+                                        payment['method'] ??
+                                        'N/A')),
+                                    DataCell(Text(payment['transactionId'] ??
+                                        payment['refId'] ??
+                                        '--')),
+                                    DataCell(Text(
+                                        '₹${(payment['amount'] ?? 0.0).toStringAsFixed(2)}')),
+                                  ]);
+                                }).toList(),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Quick Actions
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.red[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red[100]!),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'QUICK ACTIONS',
+                            style: GoogleFonts.poppins(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.red[900],
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'You have a pending settlement of ₹${amountPending.toStringAsFixed(2)} to pay to Admin for Salon bookings.',
+                            style: GoogleFonts.poppins(
+                              fontSize: 8,
+                              color: Colors.grey[700],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          ElevatedButton(
+                            onPressed:
+                                status == 'Settled' ? null : onPaymentRecorded,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              minimumSize: const Size(double.infinity, 40),
+                              disabledBackgroundColor: Colors.grey[400],
+                            ),
+                            child: Text(
+                              'Record Payment to Admin',
+                              style: GoogleFonts.poppins(
+                                fontSize: 10,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Center(
+                            child: Text(
+                              '(For Cash, Agent, or Online payments)',
+                              style: GoogleFonts.poppins(
+                                fontSize: 7,
+                                color: Colors.grey[600],
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Included Appointments
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Text(
+                              'Included Appointments (${appointments.length})',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          const Divider(height: 1),
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: DataTable(
+                              headingRowHeight: 35,
+                              dataRowHeight: 35,
+                              columnSpacing: 20,
+                              headingTextStyle: GoogleFonts.poppins(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                              dataTextStyle: GoogleFonts.poppins(fontSize: 9),
+                              columns: const [
+                                DataColumn(label: Text('Date')),
+                                DataColumn(label: Text('Client')),
+                                DataColumn(label: Text('Service')),
+                                DataColumn(label: Text('Method')),
+                                DataColumn(label: Text('Amount')),
+                                DataColumn(label: Text('Owner Owed')),
+                              ],
+                              rows: appointments.map<DataRow>((apt) {
+                                final date = apt['date'] != null
+                                    ? DateFormat('d/M/yyyy')
+                                        .format(DateTime.parse(apt['date']))
+                                    : 'N/A';
+                                final amount =
+                                    (apt['totalAmount'] ?? 0.0).toDouble();
+                                final platformFee =
+                                    (apt['platformFee'] ?? 0.0).toDouble();
+                                final serviceTax =
+                                    (apt['serviceTax'] ?? 0.0).toDouble();
+                                final ownerOwed = -(platformFee + serviceTax);
+
+                                return DataRow(cells: [
+                                  DataCell(Text(date)),
+                                  DataCell(Text(apt['clientName'] ?? 'N/A')),
+                                  DataCell(Text(apt['serviceName'] ?? 'N/A')),
+                                  DataCell(Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange[50],
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      apt['paymentMethod'] ?? 'N/A',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 8,
+                                        color: Colors.orange[700],
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  )),
+                                  DataCell(
+                                      Text('₹${amount.toStringAsFixed(2)}')),
+                                  DataCell(Text(
+                                    ownerOwed >= 0
+                                        ? '₹${ownerOwed.toStringAsFixed(2)}'
+                                        : '-₹${ownerOwed.abs().toStringAsFixed(2)}',
+                                    style: GoogleFonts.poppins(
+                                      color: ownerOwed < 0
+                                          ? Colors.red[700]
+                                          : Colors.green[700],
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  )),
+                                ]);
+                              }).toList(),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildFieldLabel(String label) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: 6.h),
-      child: Text(label,
-          style: GoogleFonts.poppins(
-              fontSize: 10.sp, fontWeight: FontWeight.w500)),
+  Widget _buildFeeRow(String label, double amount) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label,
+            style: GoogleFonts.poppins(fontSize: 9, color: Colors.grey[700])),
+        Text('₹${amount.toStringAsFixed(2)}',
+            style:
+                GoogleFonts.poppins(fontSize: 9, fontWeight: FontWeight.w600)),
+      ],
     );
   }
+}
 
-  InputDecoration _inputDecoration({String? hintText}) {
-    return InputDecoration(
-      hintText: hintText,
-      isDense: true,
-      contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
-      border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8.r),
-          borderSide: BorderSide(color: Colors.grey[300]!)),
-      enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8.r),
-          borderSide: BorderSide(color: Colors.grey[300]!)),
-    );
-  }
+// Amount Card Widget for Settlement Details
+class _AmountCard extends StatelessWidget {
+  final String title;
+  final double amount;
+  final String subtitle;
+  final Color color;
 
-  Widget _buildDetailItem(String label, String value, {int flex = 1}) {
-    return Expanded(
-      flex: flex,
+  const _AmountCard({
+    required this.title,
+    required this.amount,
+    required this.subtitle,
+    required this.color,
+    Key? key,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label,
-              style:
-                  GoogleFonts.poppins(fontSize: 9.sp, color: Colors.grey[500])),
-          SizedBox(height: 2.h),
-          Text(value,
-              style: GoogleFonts.poppins(
-                  fontSize: 10.sp,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMetric(String label, String value, Color color) {
-    return SizedBox(
-      width: 130.w,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label,
-              style: GoogleFonts.poppins(
-                  fontSize: 10.sp, color: Colors.grey[500])),
-          SizedBox(height: 4.h),
-          Text(value,
-              style: GoogleFonts.poppins(
-                  fontSize: 14.sp, fontWeight: FontWeight.bold, color: color)),
-        ],
-      ),
-    );
-  }
-
-  DataColumn _buildDataColumn(String label) {
-    return DataColumn(
-        label: Text(label,
+          Text(
+            title,
             style: GoogleFonts.poppins(
-                fontSize: 9.sp,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[600])));
+              fontSize: 8,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[700],
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '₹${amount.toStringAsFixed(2)}',
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+          if (subtitle.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: GoogleFonts.poppins(
+                fontSize: 7,
+                color: Colors.grey[600],
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// Pay Admin Dialog
+class _PayAdminDialog extends StatefulWidget {
+  final Map<String, dynamic> settlement;
+  final VoidCallback onPaymentRecorded;
+
+  const _PayAdminDialog({
+    required this.settlement,
+    required this.onPaymentRecorded,
+    Key? key,
+  }) : super(key: key);
+
+  @override
+  State<_PayAdminDialog> createState() => _PayAdminDialogState();
+}
+
+class _PayAdminDialogState extends State<_PayAdminDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _amountController = TextEditingController();
+  final _transactionIdController = TextEditingController();
+  final _notesController = TextEditingController();
+  String _selectedMethod = 'Bank Transfer';
+
+  final List<String> _paymentMethods = [
+    'Bank Transfer',
+    'UPI',
+    'Cash',
+    'Cheque',
+    'Online Payment'
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    final pendingAmount = (widget.settlement['amountPending'] ??
+            widget.settlement['netPending'] ??
+            0.0)
+        .toDouble();
+    _amountController.text = pendingAmount.toStringAsFixed(2);
+  }
+
+  Future<void> _recordPayment() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    try {
+      await ApiService.recordSettlementPayment({
+        'vendorId': widget.settlement['vendorId'] ?? widget.settlement['id'],
+        'amount': double.parse(_amountController.text),
+        'type': 'Payment to Admin',
+        'paymentMethod': _selectedMethod,
+        'transactionId': _transactionIdController.text,
+        'notes': _notesController.text,
+      });
+
+      widget.onPaymentRecorded();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Payment recorded successfully',
+              style: GoogleFonts.poppins(fontSize: 10)),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to record payment',
+              style: GoogleFonts.poppins(fontSize: 10)),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pendingAmount = (widget.settlement['amountPending'] ??
+            widget.settlement['netPending'] ??
+            0.0)
+        .toDouble();
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Pay Admin — Platform Fees',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          'Record your payment of platform fees owed to Admin for Pay at Salon appointments. Pending: ₹$pendingAmount',
+                          style: GoogleFonts.poppins(
+                            fontSize: 8.sp,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 20),
+                      onPressed: () => Navigator.pop(context),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Amount
+                Text('Amount',
+                    style: GoogleFonts.poppins(
+                        fontSize: 10, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: _amountController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    hintText: 'Enter amount',
+                    hintStyle: GoogleFonts.poppins(fontSize: 10),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6)),
+                  ),
+                  style: GoogleFonts.poppins(fontSize: 10),
+                  validator: (v) =>
+                      v == null || v.isEmpty ? 'Amount is required' : null,
+                ),
+                const SizedBox(height: 4),
+                Text('Pending: ₹$pendingAmount',
+                    style: GoogleFonts.poppins(
+                        fontSize: 8, color: Colors.grey[600])),
+                const SizedBox(height: 12),
+
+                // Payment Method
+                Text('Payment Method',
+                    style: GoogleFonts.poppins(
+                        fontSize: 10, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 6),
+                DropdownButtonFormField<String>(
+                  value: _selectedMethod,
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6)),
+                  ),
+                  style:
+                      GoogleFonts.poppins(fontSize: 10, color: Colors.black87),
+                  items: _paymentMethods.map((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      _selectedMethod = newValue ?? 'Bank Transfer';
+                    });
+                  },
+                ),
+                const SizedBox(height: 12),
+
+                // Transaction ID
+                Text('Transaction ID (Optional)',
+                    style: GoogleFonts.poppins(
+                        fontSize: 10, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: _transactionIdController,
+                  decoration: InputDecoration(
+                    hintText: 'Enter transaction ID',
+                    hintStyle: GoogleFonts.poppins(fontSize: 10),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6)),
+                  ),
+                  style: GoogleFonts.poppins(fontSize: 10),
+                ),
+                const SizedBox(height: 12),
+
+                // Notes
+                Text('Notes (Optional)',
+                    style: GoogleFonts.poppins(
+                        fontSize: 10, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: _notesController,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    hintText: 'Add any notes...',
+                    hintStyle: GoogleFonts.poppins(fontSize: 10),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6)),
+                  ),
+                  style: GoogleFonts.poppins(fontSize: 10),
+                ),
+                const SizedBox(height: 16),
+
+                // Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: Text('Cancel',
+                            style: GoogleFonts.poppins(fontSize: 10)),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _recordPayment,
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          backgroundColor: Colors.red[900],
+                        ),
+                        child: Text('Record Payment',
+                            style: GoogleFonts.poppins(
+                                fontSize: 10, color: Colors.white)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    _transactionIdController.dispose();
+    _notesController.dispose();
+    super.dispose();
   }
 }
