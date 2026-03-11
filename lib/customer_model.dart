@@ -22,6 +22,15 @@ class Customer {
   final bool isOnline;
   final String? source;
 
+  DateTime? get birthDay {
+    if (dateOfBirth == null || dateOfBirth!.isEmpty) return null;
+    try {
+      return DateFormat('dd/MM/yyyy').parse(dateOfBirth!);
+    } catch (e) {
+      return null;
+    }
+  }
+
   Customer({
     this.id,
     this.vendorId,
@@ -115,5 +124,33 @@ class Customer {
       'updatedAt': updatedAt?.toIso8601String(),
       'source': source,
     };
+  }
+
+  Customer copyWith({
+    int? totalBookings,
+    double? totalSpent,
+  }) {
+    return Customer(
+      id: id,
+      vendorId: vendorId,
+      fullName: fullName,
+      mobile: mobile,
+      email: email,
+      dateOfBirth: dateOfBirth,
+      gender: gender,
+      country: country,
+      occupation: occupation,
+      address: address,
+      note: note,
+      imagePath: imagePath,
+      lastVisit: lastVisit,
+      totalBookings: totalBookings ?? this.totalBookings,
+      totalSpent: totalSpent ?? this.totalSpent,
+      status: status,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+      isOnline: isOnline,
+      source: source,
+    );
   }
 }
