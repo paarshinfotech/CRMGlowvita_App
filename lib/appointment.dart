@@ -1,9 +1,18 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:glowvita/my_Profile.dart';
 import 'package:glowvita/widgets/create_appointment_form.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:csv/csv.dart';
+import 'package:excel/excel.dart' hide Border, TextSpan;
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'package:open_file/open_file.dart';
 import 'Notification.dart';
 import 'widgets/custom_drawer.dart';
 import 'services/api_service.dart';
@@ -252,23 +261,6 @@ class _AppointmentState extends State<Appointment>
     }
   }
 
-  int _getTodayCount() {
-    final today = DateTime.now();
-    return _apiAppointments.where((a) {
-      final d = a.date;
-      if (d == null) return false;
-      return d.year == today.year &&
-          d.month == today.month &&
-          d.day == today.day;
-    }).length;
-  }
-
-  int _getPendingCount() => _apiAppointments
-      .where((a) =>
-          a.status?.toLowerCase() == 'pending' ||
-          a.status?.toLowerCase() == 'scheduled')
-      .length;
-
   void _goToPage(int page) {
     if (page < 1) return;
     setState(() {
@@ -280,6 +272,594 @@ class _AppointmentState extends State<Appointment>
     if (_scrollController.hasClients) {
       _scrollController.animateTo(0,
           duration: const Duration(milliseconds: 300), curve: Curves.easeIn);
+    }
+  }
+
+  // ══════════════════════════════════════════════════
+  // EXPORT FUNCTIONS
+  // ══════════════════════════════════════════════════
+
+  void _handleExport(String type) {
+    switch (type) {
+      case 'copy':
+        _exportToCopy();
+        break;
+      case 'csv':
+        _exportToCSV();
+        break;
+      case 'excel':
+        _exportToExcel();
+        break;
+      case 'pdf':
+        _exportToPDF();
+        break;
+      case 'print':
+        _exportToPrint();
+        break;
+    }
+  }
+
+  Future<void> _exportToCopy() async {
+    try {
+      StringBuffer buffer = StringBuffer();
+      buffer.writeln(
+          'Date\tTime\tClient\tService\tStaff\tStatus\tAmount Paid\tTotal Amount\tPayment Status');
+
+      for (var appt in _filteredAppointments) {
+        final dateStr = appt.date != null
+            ? DateFormat('MMM d, yyyy').format(appt.date!)
+            : '-';
+        final timeStr = '${appt.startTime ?? '--'} - ${appt.endTime ?? '--'}';
+        final paid = appt.amountPaid ?? 0;
+        final total = appt.totalAmount ?? appt.amount ?? 0;
+        final paymentStatus = paid >= total && total > 0
+            ? 'Paid'
+            : paid > 0
+                ? 'Partial'
+                : 'Unpaid';
+
+        buffer.writeln(
+            '$dateStr\t$timeStr\t${appt.clientName ?? 'Unknown'}\t${appt.serviceName ?? '-'}\t${appt.staffName ?? '-'}\t${appt.status ?? 'Schedule'}\t₹${paid.toStringAsFixed(2)}\t₹${total.toStringAsFixed(2)}\t$paymentStatus');
+      }
+
+      await Clipboard.setData(ClipboardData(text: buffer.toString()));
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                '${_filteredAppointments.length} appointments copied to clipboard!',
+                style: GoogleFonts.poppins(fontSize: 10)),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error copying to clipboard: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to copy: $e',
+                style: GoogleFonts.poppins(fontSize: 10)),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _exportToCSV() async {
+    try {
+      List<List<dynamic>> rows = [];
+
+      // Header row
+      rows.add([
+        'Date',
+        'Time',
+        'Client',
+        'Service',
+        'Staff',
+        'Status',
+        'Amount Paid (₹)',
+        'Total Amount (₹)',
+        'Payment Status'
+      ]);
+
+      // Data rows
+      for (var appt in _filteredAppointments) {
+        final dateStr = appt.date != null
+            ? DateFormat('MMM d, yyyy').format(appt.date!)
+            : '-';
+        final timeStr = '${appt.startTime ?? '--'} - ${appt.endTime ?? '--'}';
+        final paid = appt.amountPaid ?? 0;
+        final total = appt.totalAmount ?? appt.amount ?? 0;
+        final paymentStatus = paid >= total && total > 0
+            ? 'Paid'
+            : paid > 0
+                ? 'Partial'
+                : 'Unpaid';
+
+        rows.add([
+          dateStr,
+          timeStr,
+          appt.clientName ?? 'Unknown',
+          appt.serviceName ?? '-',
+          appt.staffName ?? '-',
+          appt.status ?? 'Schedule',
+          paid.toStringAsFixed(2),
+          total.toStringAsFixed(2),
+          paymentStatus,
+        ]);
+      }
+
+      String csv = const ListToCsvConverter().convert(rows);
+
+      // Get app directory
+      final directory = await getApplicationDocumentsDirectory();
+      final path =
+          '${directory.path}/appointments_export_${DateTime.now().millisecondsSinceEpoch}.csv';
+      final file = File(path);
+
+      await file.writeAsString(csv);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('CSV exported successfully!',
+                style: GoogleFonts.poppins(fontSize: 10)),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'OPEN',
+              textColor: Colors.white,
+              onPressed: () => OpenFile.open(file.path),
+            ),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+
+      // Automatically open the file
+      await OpenFile.open(file.path);
+    } catch (e) {
+      debugPrint('Error exporting to CSV: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to export CSV: $e',
+                style: GoogleFonts.poppins(fontSize: 10)),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _exportToExcel() async {
+    try {
+      var excel = Excel.createExcel();
+      Sheet sheetObject = excel['Appointments'];
+
+      // Set column widths
+      sheetObject.setColumnWidth(0, 15); // Date
+      sheetObject.setColumnWidth(1, 20); // Time
+      sheetObject.setColumnWidth(2, 25); // Client
+      sheetObject.setColumnWidth(3, 30); // Service
+      sheetObject.setColumnWidth(4, 20); // Staff
+      sheetObject.setColumnWidth(5, 15); // Status
+      sheetObject.setColumnWidth(6, 15); // Amount Paid
+      sheetObject.setColumnWidth(7, 15); // Total Amount
+      sheetObject.setColumnWidth(8, 15); // Payment Status
+
+      // Header style
+      CellStyle headerStyle = CellStyle(
+        bold: true,
+        fontSize: 12,
+        backgroundColorHex: ExcelColor.fromHexString('#4A90E2'),
+        fontColorHex: ExcelColor.fromHexString('#FFFFFF'),
+      );
+
+      // Add headers
+      var headers = [
+        'Date',
+        'Time',
+        'Client',
+        'Service',
+        'Staff',
+        'Status',
+        'Amount Paid (₹)',
+        'Total Amount (₹)',
+        'Payment Status'
+      ];
+      for (int i = 0; i < headers.length; i++) {
+        var cell = sheetObject
+            .cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0));
+        cell.value = TextCellValue(headers[i]);
+        cell.cellStyle = headerStyle;
+      }
+
+      // Add data rows
+      for (int i = 0; i < _filteredAppointments.length; i++) {
+        var appt = _filteredAppointments[i];
+        int rowIndex = i + 1;
+
+        final dateStr = appt.date != null
+            ? DateFormat('MMM d, yyyy').format(appt.date!)
+            : '-';
+        final timeStr = '${appt.startTime ?? '--'} - ${appt.endTime ?? '--'}';
+        final paid = appt.amountPaid ?? 0;
+        final total = appt.totalAmount ?? appt.amount ?? 0;
+        final paymentStatus = paid >= total && total > 0
+            ? 'Paid'
+            : paid > 0
+                ? 'Partial'
+                : 'Unpaid';
+
+        sheetObject
+            .cell(
+                CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+            .value = TextCellValue(dateStr);
+        sheetObject
+            .cell(
+                CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex))
+            .value = TextCellValue(timeStr);
+        sheetObject
+            .cell(
+                CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex))
+            .value = TextCellValue(appt.clientName ?? 'Unknown');
+        sheetObject
+            .cell(
+                CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex))
+            .value = TextCellValue(appt.serviceName ?? '-');
+        sheetObject
+            .cell(
+                CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex))
+            .value = TextCellValue(appt.staffName ?? '-');
+        sheetObject
+            .cell(
+                CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex))
+            .value = TextCellValue(appt.status ?? 'Schedule');
+        sheetObject
+            .cell(
+                CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: rowIndex))
+            .value = TextCellValue(paid.toStringAsFixed(2));
+        sheetObject
+            .cell(
+                CellIndex.indexByColumnRow(columnIndex: 7, rowIndex: rowIndex))
+            .value = TextCellValue(total.toStringAsFixed(2));
+        sheetObject
+            .cell(
+                CellIndex.indexByColumnRow(columnIndex: 8, rowIndex: rowIndex))
+            .value = TextCellValue(paymentStatus);
+      }
+
+      // Save file
+      var directory = await getApplicationDocumentsDirectory();
+      var filePath =
+          '${directory.path}/appointments_export_${DateTime.now().millisecondsSinceEpoch}.xlsx';
+
+      var fileBytes = excel.save();
+      if (fileBytes != null) {
+        File(filePath)
+          ..createSync(recursive: true)
+          ..writeAsBytesSync(fileBytes);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Excel exported successfully!',
+                  style: GoogleFonts.poppins(fontSize: 10)),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              action: SnackBarAction(
+                label: 'OPEN',
+                textColor: Colors.white,
+                onPressed: () => OpenFile.open(filePath),
+              ),
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+
+        // Automatically open the file
+        await OpenFile.open(filePath);
+      }
+    } catch (e) {
+      debugPrint('Error exporting to Excel: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to export Excel: $e',
+                style: GoogleFonts.poppins(fontSize: 10)),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _exportToPDF() async {
+    try {
+      final pdf = pw.Document();
+
+      // Add page
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4.landscape,
+          margin: const pw.EdgeInsets.all(32),
+          build: (pw.Context context) {
+            return [
+              // Title
+              pw.Header(
+                level: 0,
+                child: pw.Text(
+                  'Appointments Report',
+                  style: pw.TextStyle(
+                    fontSize: 24,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+              ),
+              pw.SizedBox(height: 10),
+
+              // Summary info
+              pw.Text(
+                'Generated on: ${DateTime.now().toString().split('.')[0]}',
+                style:
+                    const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
+              ),
+              pw.Text(
+                'Total Appointments: ${_filteredAppointments.length}',
+                style:
+                    const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
+              ),
+              pw.SizedBox(height: 20),
+
+              // Table
+              pw.TableHelper.fromTextArray(
+                border: pw.TableBorder.all(color: PdfColors.grey300),
+                headerStyle: pw.TextStyle(
+                  fontWeight: pw.FontWeight.bold,
+                  fontSize: 9,
+                  color: PdfColors.white,
+                ),
+                headerDecoration: const pw.BoxDecoration(
+                  color: PdfColors.blue700,
+                ),
+                cellStyle: const pw.TextStyle(fontSize: 8),
+                cellHeight: 25,
+                cellAlignments: {
+                  0: pw.Alignment.centerLeft,
+                  1: pw.Alignment.centerLeft,
+                  2: pw.Alignment.centerLeft,
+                  3: pw.Alignment.centerLeft,
+                  4: pw.Alignment.centerLeft,
+                  5: pw.Alignment.center,
+                  6: pw.Alignment.centerRight,
+                  7: pw.Alignment.centerRight,
+                  8: pw.Alignment.center,
+                },
+                headers: [
+                  'Date',
+                  'Time',
+                  'Client',
+                  'Service',
+                  'Staff',
+                  'Status',
+                  'Paid',
+                  'Total',
+                  'Payment'
+                ],
+                data: _filteredAppointments.map((appt) {
+                  final dateStr = appt.date != null
+                      ? DateFormat('MMM d, yyyy').format(appt.date!)
+                      : '-';
+                  final timeStr =
+                      '${appt.startTime ?? '--'} - ${appt.endTime ?? '--'}';
+                  final paid = appt.amountPaid ?? 0;
+                  final total = appt.totalAmount ?? appt.amount ?? 0;
+                  final paymentStatus = paid >= total && total > 0
+                      ? 'Paid'
+                      : paid > 0
+                          ? 'Partial'
+                          : 'Unpaid';
+
+                  return [
+                    dateStr,
+                    timeStr,
+                    appt.clientName ?? 'Unknown',
+                    appt.serviceName ?? '-',
+                    appt.staffName ?? '-',
+                    appt.status ?? 'Schedule',
+                    '₹${paid.toStringAsFixed(2)}',
+                    '₹${total.toStringAsFixed(2)}',
+                    paymentStatus,
+                  ];
+                }).toList(),
+              ),
+            ];
+          },
+        ),
+      );
+
+      // Save PDF
+      final directory = await getApplicationDocumentsDirectory();
+      final filePath =
+          '${directory.path}/appointments_report_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      final file = File(filePath);
+
+      await file.writeAsBytes(await pdf.save());
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('PDF exported successfully!',
+                style: GoogleFonts.poppins(fontSize: 10)),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'OPEN',
+              textColor: Colors.white,
+              onPressed: () => OpenFile.open(filePath),
+            ),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+
+      // Automatically open the file
+      await OpenFile.open(filePath);
+    } catch (e) {
+      debugPrint('Error exporting to PDF: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to export PDF: $e',
+                style: GoogleFonts.poppins(fontSize: 10)),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _exportToPrint() async {
+    try {
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async {
+          final pdf = pw.Document();
+
+          pdf.addPage(
+            pw.MultiPage(
+              pageFormat: format,
+              margin: const pw.EdgeInsets.all(32),
+              build: (pw.Context context) {
+                return [
+                  // Title
+                  pw.Header(
+                    level: 0,
+                    child: pw.Text(
+                      'Appointments Report',
+                      style: pw.TextStyle(
+                        fontSize: 24,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  pw.SizedBox(height: 10),
+
+                  // Summary
+                  pw.Text(
+                    'Generated on: ${DateTime.now().toString().split('.')[0]}',
+                    style: const pw.TextStyle(
+                        fontSize: 10, color: PdfColors.grey700),
+                  ),
+                  pw.Text(
+                    'Total Appointments: ${_filteredAppointments.length}',
+                    style: const pw.TextStyle(
+                        fontSize: 10, color: PdfColors.grey700),
+                  ),
+                  pw.SizedBox(height: 20),
+
+                  // Table
+                  pw.TableHelper.fromTextArray(
+                    border: pw.TableBorder.all(color: PdfColors.grey300),
+                    headerStyle: pw.TextStyle(
+                      fontWeight: pw.FontWeight.bold,
+                      fontSize: 9,
+                      color: PdfColors.white,
+                    ),
+                    headerDecoration: const pw.BoxDecoration(
+                      color: PdfColors.blue700,
+                    ),
+                    cellStyle: const pw.TextStyle(fontSize: 8),
+                    cellHeight: 25,
+                    cellAlignments: {
+                      0: pw.Alignment.centerLeft,
+                      1: pw.Alignment.centerLeft,
+                      2: pw.Alignment.centerLeft,
+                      3: pw.Alignment.centerLeft,
+                      4: pw.Alignment.centerLeft,
+                      5: pw.Alignment.center,
+                      6: pw.Alignment.centerRight,
+                      7: pw.Alignment.centerRight,
+                      8: pw.Alignment.center,
+                    },
+                    headers: [
+                      'Date',
+                      'Time',
+                      'Client',
+                      'Service',
+                      'Staff',
+                      'Status',
+                      'Paid',
+                      'Total',
+                      'Payment'
+                    ],
+                    data: _filteredAppointments.map((appt) {
+                      final dateStr = appt.date != null
+                          ? DateFormat('MMM d, yyyy').format(appt.date!)
+                          : '-';
+                      final timeStr =
+                          '${appt.startTime ?? '--'} - ${appt.endTime ?? '--'}';
+                      final paid = appt.amountPaid ?? 0;
+                      final total = appt.totalAmount ?? appt.amount ?? 0;
+                      final paymentStatus = paid >= total && total > 0
+                          ? 'Paid'
+                          : paid > 0
+                              ? 'Partial'
+                              : 'Unpaid';
+
+                      return [
+                        dateStr,
+                        timeStr,
+                        appt.clientName ?? 'Unknown',
+                        appt.serviceName ?? '-',
+                        appt.staffName ?? '-',
+                        appt.status ?? 'Schedule',
+                        '₹${paid.toStringAsFixed(2)}',
+                        '₹${total.toStringAsFixed(2)}',
+                        paymentStatus,
+                      ];
+                    }).toList(),
+                  ),
+                ];
+              },
+            ),
+          );
+
+          return pdf.save();
+        },
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Print dialog opened',
+                style: GoogleFonts.poppins(fontSize: 10)),
+            backgroundColor: Colors.blue,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error printing: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to print: $e',
+                style: GoogleFonts.poppins(fontSize: 10)),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -419,7 +999,7 @@ class _AppointmentState extends State<Appointment>
           SizedBox(width: 4.w),
           Icon(Icons.person_outline,
               size: 8.sp,
-              color: Theme.of(context).primaryColor.withOpacity(0.6)),
+              color: Theme.of(context).primaryColor.withValues(alpha: 0.6)),
           SizedBox(width: 2.w),
           Text(staff,
               style: GoogleFonts.poppins(
@@ -453,7 +1033,6 @@ class _AppointmentState extends State<Appointment>
     required ValueChanged<T?> onChanged,
     double? width,
   }) {
-    // Add "All" or "Any" behavior if needed, but items should be managed by caller
     return Container(
       width: width,
       height: 28.h,
@@ -541,9 +1120,9 @@ class _AppointmentState extends State<Appointment>
                     end = DateTime(now.year - 1, 12, 31);
                     break;
                   case QuickDateRange.allTime:
-                  default:
                     start = DateTime(2000);
                     end = DateTime(2100);
+                    break;
                 }
                 setState(() =>
                     _selectedDateRange = DateTimeRange(start: start, end: end));
@@ -622,7 +1201,7 @@ class _AppointmentState extends State<Appointment>
           border: Border.all(color: Colors.grey.shade100),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.03),
+                color: Colors.black.withValues(alpha: 0.03),
                 blurRadius: 5,
                 offset: const Offset(0, 2))
           ],
@@ -637,7 +1216,7 @@ class _AppointmentState extends State<Appointment>
                 CircleAvatar(
                   radius: 14.r,
                   backgroundColor:
-                      Theme.of(context).primaryColor.withOpacity(0.12),
+                      Theme.of(context).primaryColor.withValues(alpha: 0.12),
                   child: Text(initials,
                       style: GoogleFonts.poppins(
                           fontSize: 9.sp,
@@ -673,10 +1252,10 @@ class _AppointmentState extends State<Appointment>
                             padding: EdgeInsets.symmetric(
                                 horizontal: 5.w, vertical: 1.h),
                             decoration: BoxDecoration(
-                              color: Colors.pink.withOpacity(0.08),
+                              color: Colors.pink.withValues(alpha: 0.08),
                               borderRadius: BorderRadius.circular(4.r),
                               border: Border.all(
-                                  color: Colors.pink.withOpacity(0.25)),
+                                  color: Colors.pink.withValues(alpha: 0.25)),
                             ),
                             child:
                                 Row(mainAxisSize: MainAxisSize.min, children: [
@@ -1064,6 +1643,112 @@ class _AppointmentState extends State<Appointment>
               ),
 
               SizedBox(height: 8.h),
+
+              // Export Button Row
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 10.w),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    PopupMenuButton<String>(
+                      onSelected: (value) => _handleExport(value),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 10.w, vertical: 5.h),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(6.r),
+                          border: Border.all(color: Colors.grey.shade200),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.file_download_outlined,
+                                size: 14.sp, color: Colors.blue[700]),
+                            SizedBox(width: 4.w),
+                            Text('Export',
+                                style: GoogleFonts.poppins(
+                                    fontSize: 9.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.blue[700])),
+                          ],
+                        ),
+                      ),
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          value: 'copy',
+                          child: Row(
+                            children: [
+                              Icon(Icons.copy,
+                                  size: 14.sp, color: Colors.grey[700]),
+                              SizedBox(width: 8.w),
+                              Text('Copy',
+                                  style: GoogleFonts.poppins(fontSize: 10.sp)),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'csv',
+                          child: Row(
+                            children: [
+                              Icon(Icons.table_chart,
+                                  size: 14.sp, color: Colors.grey[700]),
+                              SizedBox(width: 8.w),
+                              Text('CSV',
+                                  style: GoogleFonts.poppins(fontSize: 10.sp)),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'excel',
+                          child: Row(
+                            children: [
+                              Icon(Icons.grid_on,
+                                  size: 14.sp, color: Colors.green[700]),
+                              SizedBox(width: 8.w),
+                              Text('Excel',
+                                  style: GoogleFonts.poppins(fontSize: 10.sp)),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'pdf',
+                          child: Row(
+                            children: [
+                              Icon(Icons.picture_as_pdf,
+                                  size: 14.sp, color: Colors.red[700]),
+                              SizedBox(width: 8.w),
+                              Text('PDF',
+                                  style: GoogleFonts.poppins(fontSize: 10.sp)),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'print',
+                          child: Row(
+                            children: [
+                              Icon(Icons.print,
+                                  size: 14.sp, color: Colors.grey[700]),
+                              SizedBox(width: 8.w),
+                              Text('Print',
+                                  style: GoogleFonts.poppins(fontSize: 10.sp)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              SizedBox(height: 8.h),
               // List header
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 10.w),
@@ -1079,7 +1764,9 @@ class _AppointmentState extends State<Appointment>
                       padding:
                           EdgeInsets.symmetric(horizontal: 7.w, vertical: 2.h),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).primaryColor.withOpacity(0.1),
+                        color: Theme.of(context)
+                            .primaryColor
+                            .withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10.r),
                       ),
                       child: Text('$_totalCount',
@@ -1179,14 +1866,14 @@ class _AppointmentState extends State<Appointment>
                             color: _hasPrev
                                 ? Theme.of(context)
                                     .primaryColor
-                                    .withOpacity(0.08)
+                                    .withValues(alpha: 0.08)
                                 : Colors.grey.shade100,
                             borderRadius: BorderRadius.circular(5.r),
                             border: Border.all(
                                 color: _hasPrev
                                     ? Theme.of(context)
                                         .primaryColor
-                                        .withOpacity(0.3)
+                                        .withValues(alpha: 0.3)
                                     : Colors.grey.shade200),
                           ),
                           child: Icon(Icons.chevron_left,
@@ -1213,14 +1900,14 @@ class _AppointmentState extends State<Appointment>
                             color: _hasNext
                                 ? Theme.of(context)
                                     .primaryColor
-                                    .withOpacity(0.08)
+                                    .withValues(alpha: 0.08)
                                 : Colors.grey.shade100,
                             borderRadius: BorderRadius.circular(5.r),
                             border: Border.all(
                                 color: _hasNext
                                     ? Theme.of(context)
                                         .primaryColor
-                                        .withOpacity(0.3)
+                                        .withValues(alpha: 0.3)
                                     : Colors.grey.shade200),
                           ),
                           child: Icon(Icons.chevron_right,
