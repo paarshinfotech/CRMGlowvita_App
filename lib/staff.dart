@@ -1,11 +1,20 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'services/api_service.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:csv/csv.dart';
+import 'package:excel/excel.dart' hide Border;
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'package:open_file/open_file.dart';
 
+import 'services/api_service.dart';
 import 'add_staff.dart';
 import 'widgets/custom_drawer.dart';
 import 'vendor_model.dart';
@@ -24,6 +33,8 @@ class _StaffState extends State<Staff> {
   bool isLoading = true;
   String? errorMessage;
   String _searchQuery = '';
+  String _selectedPosition = 'All Positions';
+  String _selectedCommission = 'All Commission';
 
   int? _sortColumn;
   bool _sortAsc = true;
@@ -94,7 +105,7 @@ class _StaffState extends State<Staff> {
           'mobile': item.mobileNo ?? '',
           'position': item.position ?? '',
           'status': item.status ?? 'Active',
-          'image': item.photo, // used by UI avatar
+          'image': item.photo,
           'raw': item.toJson(),
           'balance': balance,
           'isCommissionEnabled': item.commission == true,
@@ -123,7 +134,7 @@ class _StaffState extends State<Staff> {
       barrierDismissible: false,
       builder: (ctx) => Theme(
         data: Theme.of(ctx).copyWith(
-          dialogBackgroundColor: Colors.white,
+          dialogTheme: const DialogThemeData(backgroundColor: Colors.white),
           textTheme: GoogleFonts.poppinsTextTheme(Theme.of(ctx).textTheme)
               .apply(fontSizeFactor: 0.9),
         ),
@@ -131,15 +142,13 @@ class _StaffState extends State<Staff> {
       ),
     );
 
-    if (result != null && result is Map) {
+    if (result != null) {
       if (editIndex != null) {
         await _updateStaff(
             result['id'].toString(), Map<String, dynamic>.from(result));
       } else {
         await _createStaff(Map<String, dynamic>.from(result));
       }
-
-      // IMPORTANT: refresh after save so all saved data reflects
       await fetchStaff();
     }
   }
@@ -162,17 +171,14 @@ class _StaffState extends State<Staff> {
 
       staffData['vendorId'] = vendorId;
 
-      // Ensure permissions are included in the staff data
       if (!staffData.containsKey('permissions')) {
         staffData['permissions'] = staffData['permission'] ?? [];
       }
       debugPrint('Activities: Permissions: ${staffData['permissions']}');
 
-      // Process availability data to match backend format
       if (staffData.containsKey('availability')) {
         final availability = staffData['availability'] as Map<String, dynamic>?;
         if (availability != null) {
-          // Convert availability object to individual day fields
           for (final day in [
             'monday',
             'tuesday',
@@ -194,23 +200,18 @@ class _StaffState extends State<Staff> {
                 debugPrint(
                     'Activities: Processed $day - Available: $available, Slots: $slots');
               } else {
-                // Set default values if dayData is null
                 staffData['${day}Available'] = false;
                 staffData['${day}Slots'] = [];
               }
             } else {
-              // Set default values if day is not in availability
               staffData['${day}Available'] = false;
               staffData['${day}Slots'] = [];
             }
           }
         }
-        // Remove the original availability object since we've converted it
         staffData.remove('availability');
       }
 
-      // Remove photo from data if it's a local file path (not URL)
-      // The backend likely handles photo upload separately
       if (staffData.containsKey('photo') && staffData['photo'] != null) {
         if (!staffData['photo'].toString().startsWith('http')) {
           debugPrint(
@@ -263,7 +264,6 @@ class _StaffState extends State<Staff> {
   Future<void> _updateStaff(
       String staffId, Map<String, dynamic> staffData) async {
     try {
-      // Process availability data to match backend format (flattening)
       if (staffData.containsKey('availability')) {
         final availability = staffData['availability'] as Map<String, dynamic>?;
         if (availability != null) {
@@ -334,7 +334,7 @@ class _StaffState extends State<Staff> {
             backgroundColor: Colors.green,
             content: Text(
               'Staff member updated successfully',
-              style: GoogleFonts.poppins(fontSize: 12, color: Colors.white),
+              style: GoogleFonts.poppins(fontSize: 10, color: Colors.white),
             ),
             behavior: SnackBarBehavior.floating,
           ),
@@ -352,7 +352,7 @@ class _StaffState extends State<Staff> {
           backgroundColor: Colors.red,
           content: Text(
             'Error updating staff: $e',
-            style: GoogleFonts.poppins(fontSize: 12, color: Colors.white),
+            style: GoogleFonts.poppins(fontSize: 10, color: Colors.white),
           ),
           behavior: SnackBarBehavior.floating,
         ),
@@ -361,7 +361,6 @@ class _StaffState extends State<Staff> {
   }
 
   Future<void> _deleteStaff(String staffId, String staffName) async {
-    // Show confirmation dialog before deletion
     bool confirmDelete = await showDialog(
           context: context,
           builder: (context) {
@@ -370,7 +369,7 @@ class _StaffState extends State<Staff> {
                   style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
               content: Text(
                   'Are you sure you want to delete staff member "$staffName"? This action cannot be undone.',
-                  style: GoogleFonts.poppins(fontSize: 12)),
+                  style: GoogleFonts.poppins(fontSize: 10)),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
@@ -388,7 +387,7 @@ class _StaffState extends State<Staff> {
         ) ??
         false;
 
-    if (!confirmDelete) return; // If user cancels, do nothing
+    if (!confirmDelete) return;
 
     try {
       final response = await ApiService.deleteStaff(staffId);
@@ -403,7 +402,6 @@ class _StaffState extends State<Staff> {
             behavior: SnackBarBehavior.floating,
           ),
         );
-        // Refresh the staff list after successful deletion
         await fetchStaff();
       } else {
         final errorData = json.decode(response.body);
@@ -423,20 +421,31 @@ class _StaffState extends State<Staff> {
 
   List<Map<String, dynamic>> get _filteredStaff {
     final q = _searchQuery.trim().toLowerCase();
-    if (q.isEmpty) return List.from(staffList);
-    return staffList.where((s) {
-      final name = s['fullName'].toString().toLowerCase();
-      final email = (s['email'] ?? '').toString().toLowerCase();
-      final phone = (s['mobile'] ?? '').toString().toLowerCase();
-      return name.contains(q) || email.contains(q) || phone.contains(q);
-    }).toList();
-  }
+    List<Map<String, dynamic>> result = List.from(staffList);
 
-  void _sortBy(int columnIndex) {
-    setState(() {
-      _sortAsc = (_sortColumn == columnIndex) ? !_sortAsc : true;
-      _sortColumn = columnIndex;
-    });
+    // Apply search filter
+    if (q.isNotEmpty) {
+      result = result.where((s) {
+        final name = s['fullName'].toString().toLowerCase();
+        final email = (s['email'] ?? '').toString().toLowerCase();
+        final phone = (s['mobile'] ?? '').toString().toLowerCase();
+        return name.contains(q) || email.contains(q) || phone.contains(q);
+      }).toList();
+    }
+
+    // Apply position filter
+    if (_selectedPosition != 'All Positions') {
+      result = result.where((s) => s['position'] == _selectedPosition).toList();
+    }
+
+    // Apply commission filter
+    if (_selectedCommission == 'Commission Enabled') {
+      result = result.where((s) => s['isCommissionEnabled'] == true).toList();
+    } else if (_selectedCommission == 'Commission Disabled') {
+      result = result.where((s) => s['isCommissionEnabled'] != true).toList();
+    }
+
+    return result;
   }
 
   List<Map<String, dynamic>> _applySort(List<Map<String, dynamic>> input) {
@@ -482,15 +491,15 @@ class _StaffState extends State<Staff> {
 
     return Theme(
       data: Theme.of(context).copyWith(
-        scaffoldBackgroundColor: Colors.white,
+        scaffoldBackgroundColor: const Color(0xFFF8F9FA),
         cardColor: Colors.white,
         cardTheme: const CardThemeData(
             color: Colors.white,
             surfaceTintColor: Colors.white,
-            elevation: 0,
+            elevation: 1,
             margin: EdgeInsets.zero),
         textTheme: GoogleFonts.poppinsTextTheme(Theme.of(context).textTheme)
-            .apply(fontSizeFactor: 0.8),
+            .apply(fontSizeFactor: 0.75),
       ),
       child: Scaffold(
         drawer: const CustomDrawer(currentPage: 'Staff'),
@@ -500,13 +509,17 @@ class _StaffState extends State<Staff> {
             style: GoogleFonts.poppins(
                 color: Colors.black,
                 fontWeight: FontWeight.w600,
-                fontSize: 16.sp),
+                fontSize: 14.sp),
           ),
           backgroundColor: Colors.white,
-          elevation: 1,
+          elevation: 0.5,
           iconTheme: const IconThemeData(color: Colors.black),
           surfaceTintColor: Colors.white,
           actions: [
+            IconButton(
+                icon: const Icon(Icons.search, size: 20),
+                onPressed: () {},
+                tooltip: 'Search'),
             IconButton(
                 icon: const Icon(Icons.refresh, size: 20),
                 onPressed: fetchStaff,
@@ -517,17 +530,20 @@ class _StaffState extends State<Staff> {
               child: Padding(
                 padding: EdgeInsets.only(right: 12.w),
                 child: CircleAvatar(
-                  radius: 16.r,
+                  radius: 14.r,
                   backgroundColor: Theme.of(context).primaryColor,
-                  backgroundImage: (_profile != null && _profile!.profileImage.isNotEmpty)
-                      ? NetworkImage(_profile!.profileImage)
-                      : null,
+                  backgroundImage:
+                      (_profile != null && _profile!.profileImage.isNotEmpty)
+                          ? NetworkImage(_profile!.profileImage)
+                          : null,
                   child: (_profile == null || _profile!.profileImage.isEmpty)
                       ? Text(
-                          (_profile?.businessName ?? 'H').substring(0, 1).toUpperCase(),
+                          (_profile?.businessName ?? 'H')
+                              .substring(0, 1)
+                              .toUpperCase(),
                           style: TextStyle(
                               color: Colors.white,
-                              fontSize: 12.sp,
+                              fontSize: 10.sp,
                               fontWeight: FontWeight.bold),
                         )
                       : null,
@@ -537,121 +553,255 @@ class _StaffState extends State<Staff> {
           ],
         ),
         body: Padding(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(12),
           child: Column(
             children: [
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  if (constraints.maxWidth < 600) {
-                    return Column(
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                                child: _InfoCard(
-                                    title: 'Total Staff',
-                                    value: '$total',
-                                    subtitle: 'team members')),
-                            const SizedBox(width: 8),
-                            Expanded(
-                                child: _InfoCard(
-                                    title: 'Active Staff',
-                                    value: '$activeCount',
-                                    subtitle: 'active members')),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                                child: _InfoCard(
-                                    title: 'Commission Active',
-                                    value: '$commissionActiveCount',
-                                    subtitle: 'earning commission')),
-                            const SizedBox(width: 8),
-                            Expanded(
-                                child: _InfoCard(
-                                    title: 'Pending Payouts',
-                                    value:
-                                        '₹${pendingPayoutsSum.toStringAsFixed(0)}',
-                                    subtitle: 'total due')),
-                          ],
-                        )
-                      ],
-                    );
-                  }
-                  return Row(
+              // Search bar and filters
+              Column(
+                children: [
+                  // Search bar - Full width
+                  Container(
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: TextField(
+                      decoration: InputDecoration(
+                        isDense: true,
+                        prefixIcon: Icon(Icons.search,
+                            size: 18, color: Colors.grey[400]),
+                        hintText: 'Search by name or email....',
+                        hintStyle: GoogleFonts.poppins(
+                            fontSize: 11, color: Colors.grey[400]),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                            vertical: 12, horizontal: 12),
+                      ),
+                      style: GoogleFonts.poppins(fontSize: 11),
+                      onChanged: (v) => setState(() => _searchQuery = v),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Filters row
+                  Row(
                     children: [
                       Expanded(
-                          child: _InfoCard(
-                              title: 'Total Staff',
-                              value: '$total',
-                              subtitle: 'team members')),
-                      const SizedBox(width: 10),
-                      Expanded(
-                          child: _InfoCard(
-                              title: 'Active Staff',
-                              value: '$activeCount',
-                              subtitle: 'active members')),
-                      const SizedBox(width: 10),
-                      Expanded(
-                          child: _InfoCard(
-                              title: 'Commission Active',
-                              value: '$commissionActiveCount',
-                              subtitle: 'earning commission')),
-                      const SizedBox(width: 10),
-                      Expanded(
-                          child: _InfoCard(
-                              title: 'Pending Payouts',
-                              value: '₹${pendingPayoutsSum.toStringAsFixed(0)}',
-                              subtitle: 'total due')),
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(height: 15),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 200,
-                      child: TextField(
-                        decoration: InputDecoration(
-                          isDense: true,
-                          prefixIcon: const Icon(Icons.search, size: 16),
-                          hintText: 'Search staff...',
-                          hintStyle: GoogleFonts.poppins(
-                              fontSize: 11, color: Colors.grey[600]),
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(6)),
-                          contentPadding: const EdgeInsets.symmetric(
-                              vertical: 8, horizontal: 8),
-                          fillColor: Colors.white,
-                          filled: true,
+                        child: Container(
+                          height: 38,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: Colors.grey[300]!),
+                          ),
+                          child: DropdownButton<String>(
+                            value: _selectedPosition,
+                            icon: Icon(Icons.keyboard_arrow_down,
+                                size: 18, color: Colors.grey[600]),
+                            underline: const SizedBox(),
+                            isExpanded: true,
+                            style: GoogleFonts.poppins(
+                                fontSize: 11, color: Colors.black87),
+                            items: [
+                              'All Positions',
+                              'Senior Stylist',
+                              'Junior Barber',
+                              'Manager'
+                            ].map((String value) {
+                              return DropdownMenuItem<String>(
+                                value: value,
+                                child: Text(value),
+                              );
+                            }).toList(),
+                            onChanged: (String? newValue) {
+                              setState(() {
+                                _selectedPosition = newValue ?? 'All Positions';
+                              });
+                            },
+                          ),
                         ),
-                        style: GoogleFonts.poppins(fontSize: 11),
-                        onChanged: (v) => setState(() => _searchQuery = v),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton.icon(
-                      onPressed: () => _openAddStaff(),
-                      icon: const Icon(Icons.add, size: 16),
-                      label: Text('Add Staff',
-                          style: GoogleFonts.poppins(
-                              color: Colors.white, fontSize: 11)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).primaryColor,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 8),
-                        minimumSize: const Size(0, 32),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Container(
+                          height: 38,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: Colors.grey[300]!),
+                          ),
+                          child: DropdownButton<String>(
+                            value: _selectedCommission,
+                            icon: Icon(Icons.keyboard_arrow_down,
+                                size: 18, color: Colors.grey[600]),
+                            underline: const SizedBox(),
+                            isExpanded: true,
+                            style: GoogleFonts.poppins(
+                                fontSize: 11, color: Colors.black87),
+                            items: [
+                              'All Commission',
+                              'Commission Enabled',
+                              'Commission Disabled'
+                            ].map((String value) {
+                              return DropdownMenuItem<String>(
+                                value: value,
+                                child: Text(value),
+                              );
+                            }).toList(),
+                            onChanged: (String? newValue) {
+                              setState(() {
+                                _selectedCommission =
+                                    newValue ?? 'All Commission';
+                              });
+                            },
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                      const SizedBox(width: 8),
+                      PopupMenuButton<String>(
+                        onSelected: (value) => _handleExport(value),
+                        itemBuilder: (context) => [
+                          PopupMenuItem(
+                            value: 'copy',
+                            child: Row(
+                              children: [
+                                Icon(Icons.copy,
+                                    size: 16, color: Colors.grey[700]),
+                                const SizedBox(width: 8),
+                                Text('Copy',
+                                    style: GoogleFonts.poppins(fontSize: 11)),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'csv',
+                            child: Row(
+                              children: [
+                                Icon(Icons.table_chart,
+                                    size: 16, color: Colors.grey[700]),
+                                const SizedBox(width: 8),
+                                Text('CSV',
+                                    style: GoogleFonts.poppins(fontSize: 11)),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'excel',
+                            child: Row(
+                              children: [
+                                Icon(Icons.grid_on,
+                                    size: 16, color: Colors.green[700]),
+                                const SizedBox(width: 8),
+                                Text('Excel',
+                                    style: GoogleFonts.poppins(fontSize: 11)),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'pdf',
+                            child: Row(
+                              children: [
+                                Icon(Icons.picture_as_pdf,
+                                    size: 16, color: Colors.red[700]),
+                                const SizedBox(width: 8),
+                                Text('PDF',
+                                    style: GoogleFonts.poppins(fontSize: 11)),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'print',
+                            child: Row(
+                              children: [
+                                Icon(Icons.print,
+                                    size: 16, color: Colors.grey[700]),
+                                const SizedBox(width: 8),
+                                Text('Print',
+                                    style: GoogleFonts.poppins(fontSize: 11)),
+                              ],
+                            ),
+                          ),
+                        ],
+                        child: Container(
+                          height: 38,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: Colors.grey[300]!),
+                          ),
+                          child: Center(
+                            child: Text(
+                              'Export',
+                              style: GoogleFonts.poppins(
+                                  fontSize: 11,
+                                  color: Colors.black87,
+                                  fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
+
+              // Stats Cards - 2x2 Grid
+              Row(
+                children: [
+                  Expanded(
+                    child: _StatCard(
+                      icon: Icons.group_outlined,
+                      iconColor: Colors.blue,
+                      iconBg: Colors.blue[50]!,
+                      title: 'Total Team Members',
+                      value: '$total',
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _StatCard(
+                      icon: Icons.person_outline,
+                      iconColor: Colors.purple,
+                      iconBg: Colors.purple[50]!,
+                      title: 'Currently Active Members',
+                      value: '$activeCount',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: _StatCard(
+                      icon: Icons.trending_up,
+                      iconColor: Colors.green,
+                      iconBg: Colors.green[50]!,
+                      title: 'Staff Earning Commission',
+                      value: '$commissionActiveCount',
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _StatCard(
+                      icon: Icons.account_balance_wallet_outlined,
+                      iconColor: Colors.orange,
+                      iconBg: Colors.orange[50]!,
+                      title: 'Total Balance Due',
+                      value: '₹ ${pendingPayoutsSum.toStringAsFixed(2)}',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Staff List
               Expanded(
                 child: isLoading
                     ? const Center(child: CircularProgressIndicator())
@@ -662,13 +812,13 @@ class _StaffState extends State<Staff> {
                               children: [
                                 Text(errorMessage!,
                                     style: GoogleFonts.poppins(
-                                        color: Colors.red, fontSize: 12)),
+                                        color: Colors.red, fontSize: 9)),
                                 const SizedBox(height: 10),
                                 ElevatedButton(
                                     onPressed: fetchStaff,
                                     child: Text('Retry',
                                         style:
-                                            GoogleFonts.poppins(fontSize: 12))),
+                                            GoogleFonts.poppins(fontSize: 9))),
                               ],
                             ),
                           )
@@ -676,531 +826,39 @@ class _StaffState extends State<Staff> {
                             ? Center(
                                 child: Text('No staff found.',
                                     style: GoogleFonts.poppins(
-                                        color: Colors.grey[600], fontSize: 11)))
-                            : Scrollbar(
-                                child: SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  child: SizedBox(
-                                    width: 1200,
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        // header row
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 6, vertical: 6),
-                                          decoration: const BoxDecoration(
-                                            color: Colors.white,
-                                            border: Border(
-                                                bottom: BorderSide(
-                                                    color: Color(0xFFEAEAEA),
-                                                    width: 1)),
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              SizedBox(
-                                                width: 200,
-                                                child: InkWell(
-                                                  onTap: () => _sortBy(0),
-                                                  child: Row(
-                                                    children: [
-                                                      Text('Name',
-                                                          style: GoogleFonts
-                                                              .poppins(
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w600,
-                                                                  fontSize:
-                                                                      11)),
-                                                      const SizedBox(width: 4),
-                                                      if (_sortColumn == 0)
-                                                        Icon(
-                                                            _sortAsc
-                                                                ? Icons
-                                                                    .arrow_upward
-                                                                : Icons
-                                                                    .arrow_downward,
-                                                            size: 12,
-                                                            color:
-                                                                Colors.black54),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 10),
-                                              SizedBox(
-                                                  width: 120,
-                                                  child: Text('Contact',
-                                                      style:
-                                                          GoogleFonts.poppins(
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w600,
-                                                              fontSize: 11))),
-                                              const SizedBox(width: 10),
-                                              SizedBox(
-                                                width: 140,
-                                                child: InkWell(
-                                                  onTap: () => _sortBy(2),
-                                                  child: Row(
-                                                    children: [
-                                                      Text('Position',
-                                                          style: GoogleFonts
-                                                              .poppins(
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w600,
-                                                                  fontSize:
-                                                                      11)),
-                                                      const SizedBox(width: 4),
-                                                      if (_sortColumn == 2)
-                                                        Icon(
-                                                            _sortAsc
-                                                                ? Icons
-                                                                    .arrow_upward
-                                                                : Icons
-                                                                    .arrow_downward,
-                                                            size: 12,
-                                                            color:
-                                                                Colors.black54),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 10),
-                                              SizedBox(
-                                                  width: 90,
-                                                  child: Text('Balance',
-                                                      style:
-                                                          GoogleFonts.poppins(
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w600,
-                                                              fontSize: 11))),
-                                              const SizedBox(width: 10),
-                                              SizedBox(
-                                                width: 90,
-                                                child: InkWell(
-                                                  onTap: () => _sortBy(3),
-                                                  child: Row(
-                                                    children: [
-                                                      Text('Status',
-                                                          style: GoogleFonts
-                                                              .poppins(
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w600,
-                                                                  fontSize:
-                                                                      11)),
-                                                      const SizedBox(width: 4),
-                                                      if (_sortColumn == 3)
-                                                        Icon(
-                                                            _sortAsc
-                                                                ? Icons
-                                                                    .arrow_upward
-                                                                : Icons
-                                                                    .arrow_downward,
-                                                            size: 12,
-                                                            color:
-                                                                Colors.black54),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 10),
-                                              SizedBox(
-                                                  width: 100,
-                                                  child: Text('Actions',
-                                                      style:
-                                                          GoogleFonts.poppins(
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w600,
-                                                              fontSize: 11))),
-                                            ],
-                                          ),
-                                        ),
+                                        color: Colors.grey[600], fontSize: 9)))
+                            : ListView.separated(
+                                itemCount: rows.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(height: 8),
+                                itemBuilder: (context, idx) {
+                                  final s = rows[idx];
+                                  final actualIndex = staffList.indexOf(s);
 
-                                        // data rows
-                                        Flexible(
-                                          child: ListView.separated(
-                                            shrinkWrap: true,
-                                            itemCount: rows.length,
-                                            separatorBuilder: (_, __) =>
-                                                const Divider(
-                                                    height: 1,
-                                                    color: Color(0xFFEFEFEF)),
-                                            itemBuilder: (context, idx) {
-                                              final s = rows[idx];
-                                              final actualIndex =
-                                                  staffList.indexOf(s);
-
-                                              final commissionRate =
-                                                  s['commissionRate'] ?? 0.0;
-                                              final netBalance =
-                                                  s['balance'] ?? 0.0;
-
-                                              return Container(
-                                                color: Colors.white,
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 6,
-                                                        vertical: 6),
-                                                child: Row(
-                                                  children: [
-                                                    SizedBox(
-                                                      width: 200,
-                                                      child: Row(
-                                                        children: [
-                                                          CircleAvatar(
-                                                            radius: 14,
-                                                            backgroundColor:
-                                                                Colors
-                                                                    .grey[300],
-                                                            child: (s['image'] !=
-                                                                        null &&
-                                                                    s['image']
-                                                                        .toString()
-                                                                        .isNotEmpty)
-                                                                ? (s['image']
-                                                                        .toString()
-                                                                        .startsWith(
-                                                                            'http')
-                                                                    ? ClipRRect(
-                                                                        borderRadius:
-                                                                            BorderRadius.circular(14),
-                                                                        child: Image
-                                                                            .network(
-                                                                          s['image'],
-                                                                          width:
-                                                                              28,
-                                                                          height:
-                                                                              28,
-                                                                          fit: BoxFit
-                                                                              .cover,
-                                                                          errorBuilder: (context,
-                                                                              error,
-                                                                              stackTrace) {
-                                                                            return Container(
-                                                                              color: Colors.grey[300],
-                                                                              child: Center(
-                                                                                child: Text(
-                                                                                  s['firstName'].toString().isNotEmpty ? s['firstName'][0].toUpperCase() : '',
-                                                                                  style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 10),
-                                                                                ),
-                                                                              ),
-                                                                            );
-                                                                          },
-                                                                        ),
-                                                                      )
-                                                                    : Container(
-                                                                        decoration:
-                                                                            BoxDecoration(
-                                                                          color:
-                                                                              Colors.grey[300],
-                                                                          borderRadius:
-                                                                              BorderRadius.circular(14),
-                                                                        ),
-                                                                        child:
-                                                                            Center(
-                                                                          child:
-                                                                              Text(
-                                                                            s['firstName'].toString().isNotEmpty
-                                                                                ? s['firstName'][0].toUpperCase()
-                                                                                : '',
-                                                                            style:
-                                                                                GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 10),
-                                                                          ),
-                                                                        ),
-                                                                      ))
-                                                                : Center(
-                                                                    child: Text(
-                                                                      s['firstName']
-                                                                              .toString()
-                                                                              .isNotEmpty
-                                                                          ? s['firstName'][0]
-                                                                              .toUpperCase()
-                                                                          : '',
-                                                                      style: GoogleFonts.poppins(
-                                                                          fontWeight: FontWeight
-                                                                              .w600,
-                                                                          fontSize:
-                                                                              10),
-                                                                    ),
-                                                                  ),
-                                                          ),
-                                                          const SizedBox(
-                                                              width: 6),
-                                                          Expanded(
-                                                            child: Column(
-                                                              crossAxisAlignment:
-                                                                  CrossAxisAlignment
-                                                                      .start,
-                                                              children: [
-                                                                Builder(
-                                                                  builder:
-                                                                      (context) {
-                                                                    // Adding debug print for staff ID and name
-                                                                    // This will be executed when the widget is built
-                                                                    debugPrint(
-                                                                        'Staff ID: ${s['id']}, Staff Name: ${s['fullName']}');
-                                                                    return Text(
-                                                                      s['fullName'],
-                                                                      style: GoogleFonts.poppins(
-                                                                          fontWeight: FontWeight
-                                                                              .w600,
-                                                                          fontSize:
-                                                                              11),
-                                                                      overflow:
-                                                                          TextOverflow
-                                                                              .ellipsis,
-                                                                    );
-                                                                  },
-                                                                ),
-                                                                const SizedBox(
-                                                                    height: 1),
-                                                                Text(
-                                                                  s['email'],
-                                                                  style: GoogleFonts.poppins(
-                                                                      fontSize:
-                                                                          10,
-                                                                      color: Colors
-                                                                              .grey[
-                                                                          700]),
-                                                                  overflow:
-                                                                      TextOverflow
-                                                                          .ellipsis,
-                                                                ),
-                                                              ],
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                    const SizedBox(width: 10),
-                                                    SizedBox(
-                                                        width: 120,
-                                                        child: Text(s['mobile'],
-                                                            style: GoogleFonts
-                                                                .poppins(
-                                                                    fontSize:
-                                                                        10),
-                                                            overflow:
-                                                                TextOverflow
-                                                                    .ellipsis)),
-                                                    const SizedBox(width: 10),
-                                                    SizedBox(
-                                                        width: 140,
-                                                        child: Text(
-                                                            s['position'],
-                                                            style: GoogleFonts
-                                                                .poppins(
-                                                                    fontSize:
-                                                                        10),
-                                                            overflow:
-                                                                TextOverflow
-                                                                    .ellipsis)),
-                                                    const SizedBox(width: 10),
-                                                    SizedBox(
-                                                        width: 100,
-                                                        child: Text(
-                                                            '${commissionRate.toStringAsFixed(0)}%',
-                                                            style: GoogleFonts
-                                                                .poppins(
-                                                                    fontSize:
-                                                                        10),
-                                                            overflow:
-                                                                TextOverflow
-                                                                    .ellipsis)),
-                                                    const SizedBox(width: 10),
-                                                    SizedBox(
-                                                        width: 90,
-                                                        child: Text(
-                                                            '₹${netBalance.toStringAsFixed(0)}',
-                                                            style: GoogleFonts.poppins(
-                                                                fontSize: 10,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600,
-                                                                color: netBalance >
-                                                                        0
-                                                                    ? Colors.orange[
-                                                                        800]
-                                                                    : Colors.green[
-                                                                        800]),
-                                                            overflow:
-                                                                TextOverflow
-                                                                    .ellipsis)),
-                                                    const SizedBox(width: 10),
-                                                    SizedBox(
-                                                      width: 90,
-                                                      child: Align(
-                                                        alignment: Alignment
-                                                            .centerLeft,
-                                                        child: Container(
-                                                          padding:
-                                                              const EdgeInsets
-                                                                  .symmetric(
-                                                                  horizontal: 8,
-                                                                  vertical: 3),
-                                                          decoration:
-                                                              BoxDecoration(
-                                                            color: (s['status'] !=
-                                                                    'Active')
-                                                                ? Colors
-                                                                    .grey[200]
-                                                                : Colors
-                                                                    .green[50],
-                                                            borderRadius:
-                                                                BorderRadius
-                                                                    .circular(
-                                                                        14),
-                                                          ),
-                                                          child: Text(
-                                                            s['status'],
-                                                            style: GoogleFonts
-                                                                .poppins(
-                                                              fontSize: 9,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w600,
-                                                              color: (s['status'] !=
-                                                                      'Active')
-                                                                  ? Colors
-                                                                      .grey[800]
-                                                                  : Colors.green[
-                                                                      800],
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    const SizedBox(width: 10),
-                                                    SizedBox(
-                                                      width: 100,
-                                                      child: Row(
-                                                        mainAxisAlignment:
-                                                            MainAxisAlignment
-                                                                .start,
-                                                        children: [
-                                                          PopupMenuButton<
-                                                              String>(
-                                                            icon: const Icon(
-                                                                Icons.more_vert,
-                                                                size: 20,
-                                                                color: Color(
-                                                                    0xFF4A2C40)),
-                                                            padding:
-                                                                EdgeInsets.zero,
-                                                            tooltip: 'Actions',
-                                                            onSelected: (val) {
-                                                              if (val ==
-                                                                  'edit') {
-                                                                _openAddStaff(
-                                                                    existing: s,
-                                                                    editIndex:
-                                                                        actualIndex);
-                                                              } else if (val ==
-                                                                  'view') {
-                                                                _showEarningsDialog(
-                                                                    s);
-                                                              } else if (val ==
-                                                                  'delete') {
-                                                                _deleteStaff(
-                                                                    s['id'],
-                                                                    s['fullName']);
-                                                              }
-                                                            },
-                                                            itemBuilder:
-                                                                (ctx) => [
-                                                              PopupMenuItem(
-                                                                value: 'view',
-                                                                child: Row(
-                                                                  children: [
-                                                                    const Icon(
-                                                                        Icons
-                                                                            .visibility_outlined,
-                                                                        size:
-                                                                            16,
-                                                                        color: Color(
-                                                                            0xFF4A2C40)),
-                                                                    const SizedBox(
-                                                                        width:
-                                                                            8),
-                                                                    Text(
-                                                                        'View Earnings',
-                                                                        style: GoogleFonts.poppins(
-                                                                            fontSize:
-                                                                                11)),
-                                                                  ],
-                                                                ),
-                                                              ),
-                                                              PopupMenuItem(
-                                                                value: 'edit',
-                                                                child: Row(
-                                                                  children: [
-                                                                    const Icon(
-                                                                        Icons
-                                                                            .edit_outlined,
-                                                                        size:
-                                                                            16,
-                                                                        color: Colors
-                                                                            .blue),
-                                                                    const SizedBox(
-                                                                        width:
-                                                                            8),
-                                                                    Text(
-                                                                        'Edit Info',
-                                                                        style: GoogleFonts.poppins(
-                                                                            fontSize:
-                                                                                11)),
-                                                                  ],
-                                                                ),
-                                                              ),
-                                                              PopupMenuItem(
-                                                                value: 'delete',
-                                                                child: Row(
-                                                                  children: [
-                                                                    const Icon(
-                                                                        Icons
-                                                                            .delete_outline,
-                                                                        size:
-                                                                            16,
-                                                                        color: Colors
-                                                                            .red),
-                                                                    const SizedBox(
-                                                                        width:
-                                                                            8),
-                                                                    Text(
-                                                                        'Delete Staff',
-                                                                        style: GoogleFonts.poppins(
-                                                                            fontSize:
-                                                                                11,
-                                                                            color:
-                                                                                Colors.red)),
-                                                                  ],
-                                                                ),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
+                                  return _StaffCard(
+                                    staff: s,
+                                    onEdit: () => _openAddStaff(
+                                        existing: s, editIndex: actualIndex),
+                                    onDelete: () =>
+                                        _deleteStaff(s['id'], s['fullName']),
+                                    onViewEarnings: () =>
+                                        _showEarningsDialog(s),
+                                  );
+                                },
                               ),
               ),
             ],
           ),
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () => _openAddStaff(),
+          backgroundColor: Theme.of(context).primaryColor,
+          label: Text(
+            'Add Staff',
+            style: GoogleFonts.poppins(
+                color: Colors.white, fontSize: 10, fontWeight: FontWeight.w500),
+          ),
+          icon: const Icon(Icons.add, color: Colors.white, size: 18),
         ),
       ),
     );
@@ -1213,43 +871,775 @@ class _StaffState extends State<Staff> {
       builder: (ctx) => StaffEarningsDialog(staff: staff),
     );
   }
+
+  void _handleExport(String type) {
+    switch (type) {
+      case 'copy':
+        _exportToCopy();
+        break;
+      case 'csv':
+        _exportToCSV();
+        break;
+      case 'excel':
+        _exportToExcel();
+        break;
+      case 'pdf':
+        _exportToPDF();
+        break;
+      case 'print':
+        _exportToPrint();
+        break;
+    }
+  }
+
+  Future<void> _exportToCopy() async {
+    try {
+      StringBuffer buffer = StringBuffer();
+      buffer.writeln(
+          'Name\tEmail\tMobile\tPosition\tStatus\tCommission Rate\tBalance');
+
+      for (var staff in _filteredStaff) {
+        buffer.writeln(
+            '${staff['fullName']}\t${staff['email']}\t${staff['mobile']}\t${staff['position']}\t${staff['status']}\t${staff['commissionRate']?.toStringAsFixed(1) ?? '0'}%\t₹${staff['balance']?.toStringAsFixed(2) ?? '0.00'}');
+      }
+
+      await Clipboard.setData(ClipboardData(text: buffer.toString()));
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                '${_filteredStaff.length} staff members copied to clipboard!',
+                style: GoogleFonts.poppins(fontSize: 10)),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error copying to clipboard: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to copy: $e',
+                style: GoogleFonts.poppins(fontSize: 10)),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _exportToCSV() async {
+    try {
+      List<List<dynamic>> rows = [];
+
+      // Header row
+      rows.add([
+        'Name',
+        'Email',
+        'Mobile',
+        'Position',
+        'Status',
+        'Commission Rate (%)',
+        'Balance (₹)'
+      ]);
+
+      // Data rows
+      for (var staff in _filteredStaff) {
+        rows.add([
+          staff['fullName'] ?? '',
+          staff['email'] ?? '',
+          staff['mobile'] ?? '',
+          staff['position'] ?? '',
+          staff['status'] ?? 'Active',
+          staff['commissionRate']?.toStringAsFixed(1) ?? '0',
+          staff['balance']?.toStringAsFixed(2) ?? '0.00',
+        ]);
+      }
+
+      String csv = const ListToCsvConverter().convert(rows);
+
+      // Get app directory
+      final directory = await getApplicationDocumentsDirectory();
+      final path =
+          '${directory.path}/staff_export_${DateTime.now().millisecondsSinceEpoch}.csv';
+      final file = File(path);
+
+      await file.writeAsString(csv);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('CSV exported successfully!',
+                style: GoogleFonts.poppins(fontSize: 10)),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'OPEN',
+              textColor: Colors.white,
+              onPressed: () => OpenFile.open(file.path),
+            ),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+
+      // Automatically open the file
+      await OpenFile.open(file.path);
+    } catch (e) {
+      debugPrint('Error exporting to CSV: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to export CSV: $e',
+                style: GoogleFonts.poppins(fontSize: 10)),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _exportToExcel() async {
+    try {
+      var excel = Excel.createExcel();
+      Sheet sheetObject = excel['Staff'];
+
+      // Set column widths
+      sheetObject.setColumnWidth(0, 20); // Name
+      sheetObject.setColumnWidth(1, 30); // Email
+      sheetObject.setColumnWidth(2, 15); // Mobile
+      sheetObject.setColumnWidth(3, 20); // Position
+      sheetObject.setColumnWidth(4, 12); // Status
+      sheetObject.setColumnWidth(5, 15); // Commission
+      sheetObject.setColumnWidth(6, 12); // Balance
+
+      // Header style
+      CellStyle headerStyle = CellStyle(
+        bold: true,
+        fontSize: 12,
+        backgroundColorHex: ExcelColor.fromHexString('#4A90E2'),
+        fontColorHex: ExcelColor.fromHexString('#FFFFFF'),
+      );
+
+      // Add headers
+      var headers = [
+        'Name',
+        'Email',
+        'Mobile',
+        'Position',
+        'Status',
+        'Commission Rate (%)',
+        'Balance (₹)'
+      ];
+      for (int i = 0; i < headers.length; i++) {
+        var cell = sheetObject
+            .cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0));
+        cell.value = TextCellValue(headers[i]);
+        cell.cellStyle = headerStyle;
+      }
+
+      // Add data rows
+      for (int i = 0; i < _filteredStaff.length; i++) {
+        var staff = _filteredStaff[i];
+        int rowIndex = i + 1;
+
+        sheetObject
+            .cell(
+                CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+            .value = TextCellValue(staff['fullName'] ?? '');
+        sheetObject
+            .cell(
+                CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex))
+            .value = TextCellValue(staff['email'] ?? '');
+        sheetObject
+            .cell(
+                CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex))
+            .value = TextCellValue(staff['mobile'] ?? '');
+        sheetObject
+            .cell(
+                CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex))
+            .value = TextCellValue(staff['position'] ?? '');
+        sheetObject
+            .cell(
+                CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex))
+            .value = TextCellValue(staff['status'] ?? 'Active');
+        sheetObject
+                .cell(CellIndex.indexByColumnRow(
+                    columnIndex: 5, rowIndex: rowIndex))
+                .value =
+            TextCellValue(staff['commissionRate']?.toStringAsFixed(1) ?? '0');
+        sheetObject
+                .cell(CellIndex.indexByColumnRow(
+                    columnIndex: 6, rowIndex: rowIndex))
+                .value =
+            TextCellValue(staff['balance']?.toStringAsFixed(2) ?? '0.00');
+      }
+
+      // Save file
+      var directory = await getApplicationDocumentsDirectory();
+      var filePath =
+          '${directory.path}/staff_export_${DateTime.now().millisecondsSinceEpoch}.xlsx';
+
+      var fileBytes = excel.save();
+      if (fileBytes != null) {
+        File(filePath)
+          ..createSync(recursive: true)
+          ..writeAsBytesSync(fileBytes);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Excel exported successfully!',
+                  style: GoogleFonts.poppins(fontSize: 10)),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              action: SnackBarAction(
+                label: 'OPEN',
+                textColor: Colors.white,
+                onPressed: () => OpenFile.open(filePath),
+              ),
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+
+        // Automatically open the file
+        await OpenFile.open(filePath);
+      }
+    } catch (e) {
+      debugPrint('Error exporting to Excel: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to export Excel: $e',
+                style: GoogleFonts.poppins(fontSize: 10)),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _exportToPDF() async {
+    try {
+      final pdf = pw.Document();
+
+      // Add page
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (pw.Context context) {
+            return [
+              // Title
+              pw.Header(
+                level: 0,
+                child: pw.Text(
+                  'Staff Members Report',
+                  style: pw.TextStyle(
+                    fontSize: 24,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+              ),
+              pw.SizedBox(height: 10),
+
+              // Summary info
+              pw.Text(
+                'Generated on: ${DateTime.now().toString().split('.')[0]}',
+                style:
+                    const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
+              ),
+              pw.Text(
+                'Total Staff: ${_filteredStaff.length}',
+                style:
+                    const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
+              ),
+              pw.SizedBox(height: 20),
+
+              // Table
+              pw.TableHelper.fromTextArray(
+                border: pw.TableBorder.all(color: PdfColors.grey300),
+                headerStyle: pw.TextStyle(
+                  fontWeight: pw.FontWeight.bold,
+                  fontSize: 10,
+                  color: PdfColors.white,
+                ),
+                headerDecoration: const pw.BoxDecoration(
+                  color: PdfColors.blue700,
+                ),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                cellHeight: 30,
+                cellAlignments: {
+                  0: pw.Alignment.centerLeft,
+                  1: pw.Alignment.centerLeft,
+                  2: pw.Alignment.centerLeft,
+                  3: pw.Alignment.centerLeft,
+                  4: pw.Alignment.center,
+                  5: pw.Alignment.centerRight,
+                  6: pw.Alignment.centerRight,
+                },
+                headers: [
+                  'Name',
+                  'Email',
+                  'Mobile',
+                  'Position',
+                  'Status',
+                  'Commission %',
+                  'Balance'
+                ],
+                data: _filteredStaff.map((staff) {
+                  return [
+                    staff['fullName'] ?? '',
+                    staff['email'] ?? '',
+                    staff['mobile'] ?? '',
+                    staff['position'] ?? '',
+                    staff['status'] ?? 'Active',
+                    '${staff['commissionRate']?.toStringAsFixed(1) ?? '0'}%',
+                    '₹${staff['balance']?.toStringAsFixed(2) ?? '0.00'}',
+                  ];
+                }).toList(),
+              ),
+            ];
+          },
+        ),
+      );
+
+      // Save PDF
+      final directory = await getApplicationDocumentsDirectory();
+      final filePath =
+          '${directory.path}/staff_report_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      final file = File(filePath);
+
+      await file.writeAsBytes(await pdf.save());
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('PDF exported successfully!',
+                style: GoogleFonts.poppins(fontSize: 10)),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'OPEN',
+              textColor: Colors.white,
+              onPressed: () => OpenFile.open(filePath),
+            ),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+
+      // Automatically open the file
+      await OpenFile.open(filePath);
+    } catch (e) {
+      debugPrint('Error exporting to PDF: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to export PDF: $e',
+                style: GoogleFonts.poppins(fontSize: 10)),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _exportToPrint() async {
+    try {
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async {
+          final pdf = pw.Document();
+
+          pdf.addPage(
+            pw.MultiPage(
+              pageFormat: format,
+              margin: const pw.EdgeInsets.all(32),
+              build: (pw.Context context) {
+                return [
+                  // Title
+                  pw.Header(
+                    level: 0,
+                    child: pw.Text(
+                      'Staff Members Report',
+                      style: pw.TextStyle(
+                        fontSize: 24,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  pw.SizedBox(height: 10),
+
+                  // Summary
+                  pw.Text(
+                    'Generated on: ${DateTime.now().toString().split('.')[0]}',
+                    style: const pw.TextStyle(
+                        fontSize: 10, color: PdfColors.grey700),
+                  ),
+                  pw.Text(
+                    'Total Staff: ${_filteredStaff.length}',
+                    style: const pw.TextStyle(
+                        fontSize: 10, color: PdfColors.grey700),
+                  ),
+                  pw.SizedBox(height: 20),
+
+                  // Table
+                  pw.TableHelper.fromTextArray(
+                    border: pw.TableBorder.all(color: PdfColors.grey300),
+                    headerStyle: pw.TextStyle(
+                      fontWeight: pw.FontWeight.bold,
+                      fontSize: 10,
+                      color: PdfColors.white,
+                    ),
+                    headerDecoration: const pw.BoxDecoration(
+                      color: PdfColors.blue700,
+                    ),
+                    cellStyle: const pw.TextStyle(fontSize: 9),
+                    cellHeight: 30,
+                    cellAlignments: {
+                      0: pw.Alignment.centerLeft,
+                      1: pw.Alignment.centerLeft,
+                      2: pw.Alignment.centerLeft,
+                      3: pw.Alignment.centerLeft,
+                      4: pw.Alignment.center,
+                      5: pw.Alignment.centerRight,
+                      6: pw.Alignment.centerRight,
+                    },
+                    headers: [
+                      'Name',
+                      'Email',
+                      'Mobile',
+                      'Position',
+                      'Status',
+                      'Commission %',
+                      'Balance'
+                    ],
+                    data: _filteredStaff.map((staff) {
+                      return [
+                        staff['fullName'] ?? '',
+                        staff['email'] ?? '',
+                        staff['mobile'] ?? '',
+                        staff['position'] ?? '',
+                        staff['status'] ?? 'Active',
+                        '${staff['commissionRate']?.toStringAsFixed(1) ?? '0'}%',
+                        '₹${staff['balance']?.toStringAsFixed(2) ?? '0.00'}',
+                      ];
+                    }).toList(),
+                  ),
+                ];
+              },
+            ),
+          );
+
+          return pdf.save();
+        },
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Print dialog opened',
+                style: GoogleFonts.poppins(fontSize: 10)),
+            backgroundColor: Colors.blue,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error printing: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to print: $e',
+                style: GoogleFonts.poppins(fontSize: 10)),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
 }
 
-class _InfoCard extends StatelessWidget {
+// New Stat Card Widget
+class _StatCard extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final Color iconBg;
   final String title;
   final String value;
-  final String subtitle;
 
-  const _InfoCard(
-      {required this.title,
-      required this.value,
-      required this.subtitle,
-      Key? key})
-      : super(key: key);
+  const _StatCard({
+    required this.icon,
+    required this.iconColor,
+    required this.iconBg,
+    required this.title,
+    required this.value,
+    Key? key,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-      child: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title,
-                style:
-                    GoogleFonts.poppins(color: Colors.grey[600], fontSize: 10)),
-            const SizedBox(height: 4),
-            Text(value,
-                style: GoogleFonts.poppins(
-                    fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 2),
-            Text(subtitle,
-                style:
-                    GoogleFonts.poppins(color: Colors.grey[600], fontSize: 9)),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withValues(alpha: 0.1),
+            spreadRadius: 1,
+            blurRadius: 3,
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: iconColor, size: 20),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.poppins(
+                    fontSize: 8,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// New Staff Card Widget
+class _StaffCard extends StatelessWidget {
+  final Map<String, dynamic> staff;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  final VoidCallback onViewEarnings;
+
+  const _StaffCard({
+    required this.staff,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onViewEarnings,
+    Key? key,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final status = staff['status'] ?? 'Active';
+    final isActive = status == 'Active';
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withValues(alpha: 0.1),
+            spreadRadius: 1,
+            blurRadius: 3,
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Top Row: Profile, Name/Email, Status
+          Row(
+            children: [
+              // Profile Image
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: Colors.grey[200],
+                backgroundImage: (staff['image'] != null &&
+                        staff['image'].toString().isNotEmpty &&
+                        staff['image'].toString().startsWith('http'))
+                    ? NetworkImage(staff['image'])
+                    : null,
+                child: (staff['image'] == null ||
+                        staff['image'].toString().isEmpty ||
+                        !staff['image'].toString().startsWith('http'))
+                    ? Text(
+                        staff['firstName'].toString().isNotEmpty
+                            ? staff['firstName'][0].toUpperCase()
+                            : '?',
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: Colors.grey[700],
+                        ),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 12),
+
+              // Name, Email, Phone
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      staff['fullName'] ?? '',
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                        color: Colors.black87,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${staff['email'] ?? ''} • ${staff['mobile'] ?? ''}',
+                      style: GoogleFonts.poppins(
+                        fontSize: 9,
+                        color: Colors.grey[600],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+
+              // Status Badge
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isActive ? Colors.green[50] : Colors.grey[200],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  status,
+                  style: GoogleFonts.poppins(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                    color: isActive ? Colors.green[700] : Colors.grey[700],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Bottom Row: Position and Action Icons
+          Row(
+            children: [
+              // Position with icon
+              Row(
+                children: [
+                  Icon(Icons.work_outline, size: 14, color: Colors.grey[700]),
+                  const SizedBox(width: 4),
+                  Text(
+                    staff['position'] ?? '',
+                    style: GoogleFonts.poppins(
+                      fontSize: 10,
+                      color: Colors.grey[700],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+
+              // Action Icons
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  InkWell(
+                    onTap: onEdit,
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Icon(Icons.edit_outlined,
+                          size: 16, color: Colors.grey[700]),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  InkWell(
+                    onTap: onViewEarnings,
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Icon(Icons.currency_rupee,
+                          size: 16, color: Colors.green[700]),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  InkWell(
+                    onTap: () {
+                      // Email functionality
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Icon(Icons.email_outlined,
+                          size: 16, color: Colors.grey[700]),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  InkWell(
+                    onTap: onDelete,
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Icon(Icons.delete_outline,
+                          size: 16, color: Colors.grey[700]),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

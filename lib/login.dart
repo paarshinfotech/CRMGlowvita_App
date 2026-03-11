@@ -5,7 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:convert';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'calender.dart';
+import 'Dashboard.dart';
 import 'register.dart';
 import 'Suppliers/supp_dashboard.dart';
 import 'Suppliers/supp_register.dart';
@@ -71,7 +71,7 @@ class _LoginPageState extends State<Login> {
         if (role == 'vendor') {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const Calendar()),
+            MaterialPageRoute(builder: (_) => const DashboardPage()),
           );
         } else if (role == 'supplier') {
           Navigator.pushReplacement(
@@ -81,7 +81,7 @@ class _LoginPageState extends State<Login> {
         } else {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const Calendar()),
+            MaterialPageRoute(builder: (_) => const DashboardPage()),
           );
         }
       } else {
