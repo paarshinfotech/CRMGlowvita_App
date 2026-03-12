@@ -797,6 +797,24 @@ class ApiService {
     }
   }
 
+  /// Create a new order in the marketplace
+  static Future<Map<String, dynamic>> createOrder(
+      Map<String, dynamic> orderData) async {
+    try {
+      final response = await _post('$baseUrl/crm/orders', orderData);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return json.decode(response.body);
+      } else {
+        throw Exception(
+            'Failed to create order: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error creating order: $e');
+      rethrow;
+    }
+  }
+
   // ==================== PRODUCT QUESTIONS ==================== //
 
   /// Fetch all product questions for the vendor

@@ -124,6 +124,7 @@ class _SettlementsState extends State<Settlements> {
           Navigator.pop(context);
           _fetchSettlements();
         },
+        onPayAdmin: () => _showPayAdminDialog(settlement),
       ),
     );
   }
@@ -749,10 +750,12 @@ class _SettlementCard extends StatelessWidget {
 class _SettlementDetailsSheet extends StatelessWidget {
   final Map<String, dynamic> settlement;
   final VoidCallback onPaymentRecorded;
+  final VoidCallback onPayAdmin;
 
   const _SettlementDetailsSheet({
     required this.settlement,
     required this.onPaymentRecorded,
+    required this.onPayAdmin,
     Key? key,
   }) : super(key: key);
 
@@ -1166,8 +1169,7 @@ class _SettlementDetailsSheet extends StatelessWidget {
                           ),
                           const SizedBox(height: 8),
                           ElevatedButton(
-                            onPressed:
-                                status == 'Settled' ? null : onPaymentRecorded,
+                            onPressed: status == 'Settled' ? null : onPayAdmin,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.red,
                               minimumSize: const Size(double.infinity, 40),
@@ -1406,7 +1408,8 @@ class _PayAdminDialogState extends State<_PayAdminDialog> {
     'UPI',
     'Cash',
     'Cheque',
-    'Online Payment'
+    'Online',
+    'Agent'
   ];
 
   @override
@@ -1479,14 +1482,14 @@ class _PayAdminDialogState extends State<_PayAdminDialog> {
                         Text(
                           'Pay Admin — Platform Fees',
                           style: GoogleFonts.poppins(
-                            fontSize: 12.sp,
+                            fontSize: 10.sp,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         Text(
                           'Record your payment of platform fees owed to Admin for Pay at Salon appointments. Pending: ₹$pendingAmount',
                           style: GoogleFonts.poppins(
-                            fontSize: 8.sp,
+                            fontSize: 5.sp,
                             color: Colors.grey[600],
                           ),
                         ),

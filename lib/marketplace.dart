@@ -545,27 +545,35 @@ class _MarketplacePageState extends State<MarketplacePage> {
                     children: [
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: () {
-                            cartManager.addToCart(product);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                    '${product.productName} added to cart'),
-                                duration: const Duration(seconds: 1),
-                                action: SnackBarAction(
-                                  label: 'VIEW',
-                                  onPressed: () => _scaffoldKey.currentState
-                                      ?.openEndDrawer(),
-                                  textColor: Colors.white,
-                                ),
-                              ),
-                            );
-                          },
+                          onPressed: inStock
+                              ? () {
+                                  cartManager.addToCart(product);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                          '${product.productName} added to cart'),
+                                      duration: const Duration(seconds: 1),
+                                      action: SnackBarAction(
+                                        label: 'VIEW',
+                                        onPressed: () => _scaffoldKey
+                                            .currentState
+                                            ?.openEndDrawer(),
+                                        textColor: Colors.white,
+                                      ),
+                                    ),
+                                  );
+                                }
+                              : null,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: Theme.of(context).primaryColor,
+                            backgroundColor:
+                                inStock ? Colors.white : Colors.grey[200],
+                            foregroundColor: inStock
+                                ? Theme.of(context).primaryColor
+                                : Colors.grey[500],
                             side: BorderSide(
-                                color: Theme.of(context).primaryColor,
+                                color: inStock
+                                    ? Theme.of(context).primaryColor
+                                    : Colors.grey[300]!,
                                 width: 1),
                             padding: const EdgeInsets.symmetric(vertical: 6),
                             shape: RoundedRectangleBorder(
@@ -573,7 +581,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
                             minimumSize: const Size(0, 0),
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
-                          child: Text('Add',
+                          child: Text(inStock ? 'Add' : 'Out of Stock',
                               style: GoogleFonts.poppins(
                                   fontSize: 10, fontWeight: FontWeight.w500)),
                         ),
@@ -581,13 +589,18 @@ class _MarketplacePageState extends State<MarketplacePage> {
                       const SizedBox(width: 4),
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: () {
-                            cartManager.addToCart(product);
-                            _scaffoldKey.currentState?.openEndDrawer();
-                          },
+                          onPressed: inStock
+                              ? () {
+                                  cartManager.addToCart(product);
+                                  _scaffoldKey.currentState?.openEndDrawer();
+                                }
+                              : null,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).primaryColor,
-                            foregroundColor: Colors.white,
+                            backgroundColor: inStock
+                                ? Theme.of(context).primaryColor
+                                : Colors.grey[300],
+                            foregroundColor:
+                                inStock ? Colors.white : Colors.grey[600],
                             padding: const EdgeInsets.symmetric(vertical: 6),
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(6)),
@@ -730,28 +743,40 @@ class _ProductDetailsDialogState extends State<_ProductDetailsDialog> {
                     children: [
                       Expanded(
                         child: OutlinedButton(
-                          onPressed: () {
-                            cartManager.addToCart(p, quantity: _quantity);
-                            Navigator.pop(context);
-                          },
+                          onPressed: p.stock > 0
+                              ? () {
+                                  cartManager.addToCart(p, quantity: _quantity);
+                                  Navigator.pop(context);
+                                }
+                              : null,
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(
-                                color: Theme.of(context).primaryColor),
+                                color: p.stock > 0
+                                    ? Theme.of(context).primaryColor
+                                    : Colors.grey),
+                            foregroundColor: p.stock > 0
+                                ? Theme.of(context).primaryColor
+                                : Colors.grey,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
-                          child: const Text('ADD TO CART'),
+                          child: Text(p.stock > 0 ? 'ADD TO CART' : 'OUT OF STOCK'),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: () {
-                            cartManager.addToCart(p, quantity: _quantity);
-                            Navigator.pop(context);
-                          },
+                          onPressed: p.stock > 0
+                              ? () {
+                                  cartManager.addToCart(p, quantity: _quantity);
+                                  Navigator.pop(context);
+                                }
+                              : null,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).primaryColor,
-                            foregroundColor: Colors.white,
+                            backgroundColor: p.stock > 0
+                                ? Theme.of(context).primaryColor
+                                : Colors.grey[300],
+                            foregroundColor:
+                                p.stock > 0 ? Colors.white : Colors.grey[600],
                             padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
                           child: const Text('BUY NOW'),
@@ -984,6 +1009,114 @@ class _CheckoutDialog extends StatefulWidget {
 
 class _CheckoutDialogState extends State<_CheckoutDialog> {
   final _addressController = TextEditingController();
+  bool _isSubmitting = false;
+
+  Future<void> _placeOrder() async {
+    if (_addressController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter shipping address')));
+      return;
+    }
+
+    if (cartManager.items.isEmpty) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Your cart is empty')));
+      return;
+    }
+
+    if (cartManager.totalAmount < 1000) {
+      final shopName = cartManager.items.first.product.supplierName;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              'Issues: $shopName"shopName": min ₹1,000. Please add more items to proceed.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      // Prepare the request body as per requirements
+      final List<Map<String, dynamic>> items = cartManager.items.map((item) {
+        return {
+          "productId": item.product.id,
+          "productName": item.product.productName,
+          "quantity": item.quantity,
+          "price": item.product.salePrice
+        };
+      }).toList();
+
+      // Using the vendorId of the first item as the supplierId,
+      // as the marketplace groups products by supplier in the UI.
+      final String supplierId = cartManager.items.first.product.vendorId;
+
+      final Map<String, dynamic> orderData = {
+        "supplierId": supplierId,
+        "items": items,
+        "totalAmount": cartManager.totalAmount,
+        "shippingAddress": _addressController.text.trim()
+      };
+
+      final response = await ApiService.createOrder(orderData);
+
+      if (mounted) {
+        Navigator.pop(context); // Close checkout dialog
+        cartManager.clearCart();
+
+        // Show success dialog
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.green),
+                SizedBox(width: 10),
+                Text('Order Placed!'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                    'Order ID: ${(response['data']?['orderId'] ?? response['orderId']) ?? 'N/A'}',
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 10),
+                const Text(
+                    'Your order has been successfully sent to the suppliers. You will be notified once it is confirmed.'),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('GREAT',
+                    style: TextStyle(color: Theme.of(context).primaryColor)),
+              )
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to place order: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1007,6 +1140,7 @@ class _CheckoutDialogState extends State<_CheckoutDialog> {
             TextField(
               controller: _addressController,
               maxLines: 3,
+              enabled: !_isSubmitting,
               decoration: InputDecoration(
                 hintText: 'Enter your full delivery address...',
                 border:
@@ -1047,28 +1181,7 @@ class _CheckoutDialogState extends State<_CheckoutDialog> {
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () {
-                if (_addressController.text.trim().isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Please enter shipping address')));
-                  return;
-                }
-                Navigator.pop(context);
-                cartManager.clearCart();
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Order Placed!'),
-                    content: const Text(
-                        'Your order has been successfully sent to the suppliers. You will be notified once it is confirmed.'),
-                    actions: [
-                      TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('GREAT'))
-                    ],
-                  ),
-                );
-              },
+              onPressed: _isSubmitting ? null : _placeOrder,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).primaryColor,
                 foregroundColor: Colors.white,
@@ -1076,8 +1189,17 @@ class _CheckoutDialogState extends State<_CheckoutDialog> {
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text('PLACE ORDER',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+              child: _isSubmitting
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Text('PLACE ORDER',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         ),
