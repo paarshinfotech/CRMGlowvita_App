@@ -1019,6 +1019,29 @@ class _CartSidebar extends StatelessWidget {
                                         constraints: const BoxConstraints(
                                             minWidth: 28, minHeight: 28),
                                         padding: EdgeInsets.zero),
+                                    const SizedBox(width: 4),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline,
+                                          color: Colors.red, size: 18),
+                                      onPressed: () async {
+                                        try {
+                                          await cartManager
+                                              .removeFromCart(item.product.id);
+                                        } catch (e) {
+                                          if (context.mounted) {
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                  content: Text(
+                                                      'Failed to remove item: $e')),
+                                            );
+                                          }
+                                        }
+                                      },
+                                      constraints: const BoxConstraints(
+                                          minWidth: 32, minHeight: 32),
+                                      padding: EdgeInsets.zero,
+                                    ),
                                   ],
                                 ),
                               ],

@@ -1151,6 +1151,53 @@ class ApiService {
     }
   }
 
+  /// Update cart item quantity
+  static Future<Cart> updateCartQuantity(String productId, int quantity) async {
+    try {
+      final response = await _put('$baseUrl/crm/cart', {
+        "productId": productId,
+        "quantity": quantity
+      });
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return Cart.fromJson(data['data']);
+        } else {
+          throw Exception(data['message'] ?? 'Failed to update cart');
+        }
+      } else {
+        throw Exception(
+            'Failed to update cart: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error updating cart quantity: $e');
+      rethrow;
+    }
+  }
+
+  /// Delete item from cart
+  static Future<Cart> deleteFromCart(String productId) async {
+    try {
+      final response = await _delete('$baseUrl/crm/cart', body: {
+        "productId": productId
+      });
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return Cart.fromJson(data['data']);
+        } else {
+          throw Exception(data['message'] ?? 'Failed to delete from cart');
+        }
+      } else {
+        throw Exception(
+            'Failed to delete from cart: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error deleting from cart: $e');
+      rethrow;
+    }
+  }
+
   /// Fetch cart data
   static Future<Cart?> getCart() async {
     try {

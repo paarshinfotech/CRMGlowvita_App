@@ -109,20 +109,8 @@ class CartManager extends ChangeNotifier {
   }
 
   Future<void> removeFromCart(String productId) async {
-    // There's no specific remove API in the request, but we can update quantity to 0 if the backend supports it,
-    // or just handle it locally if the backend expects us to manage the full list (though the API seems to be item-based).
-    // Given the endpoint is 'api/crm/cart', and it takes one item, let's assume setting quantity 0 removes it.
-    
-    final item = _items.firstWhere((i) => i.product.id == productId);
     try {
-      await ApiService.addToCart({
-        "productId": productId,
-        "productName": item.product.productName,
-        "quantity": 0,
-        "price": item.product.salePrice,
-        "vendorId": item.product.vendorId,
-        "supplierName": item.product.supplierName,
-      });
+      await ApiService.deleteFromCart(productId);
       _items.removeWhere((item) => item.product.id == productId);
       notifyListeners();
     } catch (e) {
@@ -138,16 +126,8 @@ class CartManager extends ChangeNotifier {
 
     final index = _items.indexWhere((item) => item.product.id == productId);
     if (index >= 0) {
-      final item = _items[index];
       try {
-        await ApiService.addToCart({
-          "productId": productId,
-          "productName": item.product.productName,
-          "quantity": quantity,
-          "price": item.product.salePrice,
-          "vendorId": item.product.vendorId,
-          "supplierName": item.product.supplierName,
-        });
+        await ApiService.updateCartQuantity(productId, quantity);
         _items[index].quantity = quantity;
         notifyListeners();
       } catch (e) {
