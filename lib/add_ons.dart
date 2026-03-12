@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'widgets/custom_drawer.dart';
 import 'services/api_service.dart';
 import 'addon_model.dart';
-// Service class is defined in api_service.dart
 
 class AddOnsPage extends StatefulWidget {
   const AddOnsPage({super.key});
@@ -15,16 +14,44 @@ class AddOnsPage extends StatefulWidget {
 class _AddOnsPageState extends State<AddOnsPage> {
   bool _isLoading = true;
   List<AddOn> _addOns = [];
+  List<AddOn> _filteredAddOns = [];
   Map<String, String> _serviceNameMap = {};
 
   int _currentPage = 1;
   int _rowsPerPage = 10;
   final List<int> _rowsPerPageOptions = [5, 10, 15, 20, 25];
 
+  String _searchQuery = '';
+  String _statusFilter = 'All Status';
+  final List<String> _statusOptions = ['All Status', 'Active', 'Inactive'];
+
+  final TextEditingController _searchController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _applyFilters() {
+    setState(() {
+      _filteredAddOns = _addOns.where((addon) {
+        final matchesSearch = _searchQuery.isEmpty ||
+            (addon.name ?? '')
+                .toLowerCase()
+                .contains(_searchQuery.toLowerCase());
+        final matchesStatus = _statusFilter == 'All Status' ||
+            (addon.status ?? '').toLowerCase() == _statusFilter.toLowerCase();
+        return matchesSearch && matchesStatus;
+      }).toList();
+      _currentPage = 1;
+    });
   }
 
   Future<void> _loadData() async {
@@ -41,11 +68,13 @@ class _AddOnsPageState extends State<AddOnsPage> {
       if (mounted) {
         setState(() {
           _addOns = addons;
+          _filteredAddOns = addons;
           _serviceNameMap = {
             for (var s in services) s.id ?? '': s.name ?? 'Unknown Service'
           };
           _isLoading = false;
         });
+        _applyFilters();
       }
     } catch (e) {
       if (mounted) {
@@ -60,13 +89,9 @@ class _AddOnsPageState extends State<AddOnsPage> {
   void _openAddDialog([AddOn? edit]) {
     showDialog(
       context: context,
-      builder: (_) => AddEditAddOnDialog(
-        addOn: edit,
-      ),
+      builder: (_) => AddEditAddOnDialog(addOn: edit),
     ).then((result) {
-      if (result == true) {
-        _loadData();
-      }
+      if (result == true) _loadData();
     });
   }
 
@@ -114,26 +139,28 @@ class _AddOnsPageState extends State<AddOnsPage> {
   }
 
   List<AddOn> get _paginatedAddOns {
-    if (_addOns.isEmpty) return [];
+    if (_filteredAddOns.isEmpty) return [];
     final startIndex = (_currentPage - 1) * _rowsPerPage;
     final endIndex = startIndex + _rowsPerPage;
-    if (startIndex >= _addOns.length) return [];
-    return _addOns.sublist(
-        startIndex, endIndex > _addOns.length ? _addOns.length : endIndex);
+    if (startIndex >= _filteredAddOns.length) return [];
+    return _filteredAddOns.sublist(startIndex,
+        endIndex > _filteredAddOns.length ? _filteredAddOns.length : endIndex);
   }
 
-  int get _totalPages => (_addOns.length / _rowsPerPage).ceil();
+  int get _totalPages => _filteredAddOns.isEmpty
+      ? 1
+      : (_filteredAddOns.length / _rowsPerPage).ceil();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       drawer: const CustomDrawer(currentPage: 'Add Ons'),
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF7F7F7),
       appBar: AppBar(
         title: Text(
           'Add-Ons',
           style: GoogleFonts.poppins(
-            fontSize: 16,
+            fontSize: 15,
             fontWeight: FontWeight.w600,
             color: Colors.black87,
           ),
@@ -141,65 +168,44 @@ class _AddOnsPageState extends State<AddOnsPage> {
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black87, size: 20),
-        toolbarHeight: 50,
+        toolbarHeight: 48,
         surfaceTintColor: Colors.transparent,
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12.0),
-            child: FilledButton.icon(
-              onPressed: () => _openAddDialog(),
-              icon: const Icon(Icons.add, size: 14),
-              label: Text(
-                'Create',
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).primaryColor,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-                minimumSize: const Size(0, 32),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6)),
-              ),
-            ),
+          IconButton(
+            icon: const Icon(Icons.search, size: 20),
+            onPressed: () {},
+            padding: EdgeInsets.zero,
           ),
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, size: 20),
+            onPressed: _loadData,
+            padding: EdgeInsets.zero,
+          ),
+          const CircleAvatar(
+            radius: 16,
+          ),
+          const SizedBox(width: 12),
         ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
+                _buildSearchAndFilter(),
                 Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16.0, vertical: 12.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (_addOns.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 40),
-                            child: Center(
-                              child: Text('No add-ons found',
-                                  style:
-                                      GoogleFonts.poppins(color: Colors.grey)),
-                            ),
-                          )
-                        else
-                          ListView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: _paginatedAddOns.length,
-                              itemBuilder: (context, index) {
-                                final addon = _paginatedAddOns[index];
-                                return _buildAddOnCard(addon);
-                              }),
-                      ],
-                    ),
-                  ),
+                  child: _filteredAddOns.isEmpty
+                      ? Center(
+                          child: Text('No add-ons found',
+                              style: GoogleFonts.poppins(
+                                  color: Colors.grey, fontSize: 12)),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                          itemCount: _paginatedAddOns.length,
+                          itemBuilder: (context, index) {
+                            return _buildAddOnCard(_paginatedAddOns[index]);
+                          },
+                        ),
                 ),
                 _buildPaginationControls(),
               ],
@@ -207,90 +213,125 @@ class _AddOnsPageState extends State<AddOnsPage> {
     );
   }
 
-  Widget _buildPaginationControls() {
-    if (_addOns.isEmpty) return const SizedBox.shrink();
-
-    final startIndex = (_currentPage - 1) * _rowsPerPage + 1;
-    final endIndex = (_currentPage * _rowsPerPage) > _addOns.length
-        ? _addOns.length
-        : (_currentPage * _rowsPerPage);
-
+  Widget _buildSearchAndFilter() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.shade200)),
-      ),
-      child: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        runSpacing: 12,
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+      child: Column(
         children: [
-          Text(
-            'Showing $startIndex to $endIndex of ${_addOns.length} results',
-            style:
-                GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade600),
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Rows per page',
-                style: GoogleFonts.poppins(
-                    fontSize: 12, color: Colors.grey.shade700),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
+          // Search bar
+          SizedBox(
+            height: 38,
+            child: TextField(
+              controller: _searchController,
+              style: GoogleFonts.poppins(fontSize: 12),
+              onChanged: (v) {
+                _searchQuery = v;
+                _applyFilters();
+              },
+              decoration: InputDecoration(
+                hintText: 'Search services......',
+                hintStyle: GoogleFonts.poppins(
+                    fontSize: 12, color: Colors.grey.shade400),
+                prefixIcon:
+                    Icon(Icons.search, size: 17, color: Colors.grey.shade400),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                isDense: true,
+                border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
                 ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<int>(
-                    value: _rowsPerPage,
-                    items: _rowsPerPageOptions.map((int value) {
-                      return DropdownMenuItem<int>(
-                        value: value,
-                        child: Text('$value',
-                            style: GoogleFonts.poppins(fontSize: 12)),
-                      );
-                    }).toList(),
-                    onChanged: (int? newValue) {
-                      if (newValue != null) {
-                        setState(() {
-                          _rowsPerPage = newValue;
-                          _currentPage = 1;
-                        });
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                      color: Theme.of(context).primaryColor, width: 1.2),
+                ),
+                filled: true,
+                fillColor: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Status filter row + Add New button
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 38,
+                  child: DropdownButtonFormField<String>(
+                    value: _statusFilter,
+                    style: GoogleFonts.poppins(
+                        fontSize: 12, color: Colors.grey.shade800),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 9),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                            color: Theme.of(context).primaryColor, width: 1.2),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
+                    icon: Icon(Icons.keyboard_arrow_down_rounded,
+                        size: 18, color: Colors.grey.shade500),
+                    dropdownColor: Colors.white,
+                    items: _statusOptions
+                        .map((s) => DropdownMenuItem(
+                              value: s,
+                              child: Text(s,
+                                  style: GoogleFonts.poppins(fontSize: 12)),
+                            ))
+                        .toList(),
+                    onChanged: (v) {
+                      if (v != null) {
+                        _statusFilter = v;
+                        _applyFilters();
                       }
                     },
-                    isDense: true,
                   ),
                 ),
               ),
-              const SizedBox(width: 16),
-              IconButton(
-                onPressed: _currentPage > 1
-                    ? () => setState(() => _currentPage--)
-                    : null,
-                icon: const Icon(Icons.chevron_left, size: 20),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Page $_currentPage of $_totalPages',
-                style: GoogleFonts.poppins(
-                    fontSize: 12, color: Colors.grey.shade700),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                onPressed: _currentPage < _totalPages
-                    ? () => setState(() => _currentPage++)
-                    : null,
-                icon: const Icon(Icons.chevron_right, size: 20),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
+              const SizedBox(width: 10),
+              // Add New button
+              SizedBox(
+                height: 38,
+                child: ElevatedButton.icon(
+                  onPressed: () => _openAddDialog(),
+                  icon: const Icon(Icons.add_rounded,
+                      size: 16, color: Colors.white),
+                  label: Text(
+                    'Add New',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).primaryColor,
+                    elevation: 0,
+                    shadowColor: Colors.transparent,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
@@ -299,24 +340,128 @@ class _AddOnsPageState extends State<AddOnsPage> {
     );
   }
 
-  Widget _buildAddOnCard(AddOn addon) {
+  Widget _buildPaginationControls() {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Rows per page
+          Row(
+            children: [
+              Text('Show',
+                  style: GoogleFonts.poppins(
+                      fontSize: 12, color: Colors.grey.shade600)),
+              const SizedBox(width: 6),
+              Container(
+                height: 28,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    value: _rowsPerPage,
+                    isDense: true,
+                    style: GoogleFonts.poppins(
+                        fontSize: 12, color: Colors.grey.shade800),
+                    items: _rowsPerPageOptions
+                        .map((v) => DropdownMenuItem(
+                              value: v,
+                              child: Text('$v',
+                                  style: GoogleFonts.poppins(fontSize: 12)),
+                            ))
+                        .toList(),
+                    onChanged: (v) {
+                      if (v != null) {
+                        setState(() {
+                          _rowsPerPage = v;
+                          _currentPage = 1;
+                        });
+                      }
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+          // Page navigation
+          Row(
+            children: [
+              _pageNavBtn(
+                Icons.chevron_left,
+                _currentPage > 1 ? () => setState(() => _currentPage--) : null,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Page $_currentPage',
+                style: GoogleFonts.poppins(
+                    fontSize: 12, color: Colors.grey.shade700),
+              ),
+              const SizedBox(width: 8),
+              _pageNavBtn(
+                Icons.chevron_right,
+                _currentPage < _totalPages
+                    ? () => setState(() => _currentPage++)
+                    : null,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _pageNavBtn(IconData icon, VoidCallback? onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      child: Container(
+        width: 26,
+        height: 26,
+        decoration: BoxDecoration(
+          border: Border.all(
+              color:
+                  onTap != null ? Colors.grey.shade400 : Colors.grey.shade200),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Icon(icon,
+            size: 16,
+            color: onTap != null ? Colors.grey.shade700 : Colors.grey.shade300),
+      ),
+    );
+  }
+
+  Widget _buildAddOnCard(AddOn addon) {
+    // Get the first mapped service name as the "category" label shown in image
+    final categoryLabel = (addon.mappedServices ?? []).isNotEmpty
+        ? _getServiceName(addon.mappedServices!.first)
+        : '';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Colors.grey.shade100),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withOpacity(0.03),
             blurRadius: 4,
-            offset: const Offset(0, 2),
+            offset: const Offset(0, 1),
           ),
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Row 1: Name + Status badge
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -324,45 +469,66 @@ class _AddOnsPageState extends State<AddOnsPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(addon.name ?? '',
-                            style: GoogleFonts.poppins(
-                                fontSize: 13, fontWeight: FontWeight.w600)),
-                        Text('₹${(addon.price ?? 0).toStringAsFixed(0)}',
-                            style: GoogleFonts.poppins(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: Theme.of(context).primaryColor)),
-                      ],
+                    Text(
+                      addon.name ?? '',
+                      style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87),
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        _buildInfoTag(
-                            '${addon.duration ?? 0} min', Icons.access_time),
-                        const SizedBox(width: 8),
-                        StatusBadge(status: addon.status ?? 'active'),
-                      ],
-                    ),
+                    if (categoryLabel.isNotEmpty) ...[
+                      const SizedBox(height: 1),
+                      Text(
+                        categoryLabel,
+                        style: GoogleFonts.poppins(
+                            fontSize: 11, color: Colors.grey.shade500),
+                      ),
+                    ],
                   ],
                 ),
               ),
+              StatusBadge(status: addon.status ?? 'active'),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
+          // Row 2: Eye icon + Price + Clock + Duration | Edit + Delete
           Row(
             children: [
-              Expanded(
-                child: _buildServiceChips(addon.mappedServices ?? []),
+              // Eye icon
+              Icon(Icons.remove_red_eye_outlined,
+                  size: 13, color: Colors.grey.shade400),
+              const SizedBox(width: 6),
+              // Price
+              Text(
+                '₹${(addon.price ?? 0).toStringAsFixed(0)}',
+                style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black87),
+              ),
+              const SizedBox(width: 12),
+              // Clock + duration
+              Icon(Icons.access_time, size: 12, color: Colors.grey.shade400),
+              const SizedBox(width: 3),
+              Text(
+                _formatDuration(addon.duration ?? 0),
+                style: GoogleFonts.poppins(
+                    fontSize: 11, color: Colors.grey.shade600),
+              ),
+              const Spacer(),
+              // Edit
+              _iconAction(
+                Icons.edit_outlined,
+                () => _openAddDialog(addon),
+                color: Colors.grey.shade500,
               ),
               const SizedBox(width: 8),
-              _iconAction(Icons.edit_outlined, () => _openAddDialog(addon),
-                  color: Theme.of(context).primaryColor.withOpacity(0.7)),
-              const SizedBox(width: 8),
-              _iconAction(Icons.delete_outline, () => _deleteConfirm(addon.id!),
-                  color: Colors.red.shade300),
+              // Delete
+              _iconAction(
+                Icons.delete_outline,
+                () => _deleteConfirm(addon.id!),
+                color: Colors.grey.shade500,
+              ),
             ],
           ),
         ],
@@ -370,16 +536,11 @@ class _AddOnsPageState extends State<AddOnsPage> {
     );
   }
 
-  Widget _buildInfoTag(String text, IconData icon) {
-    return Row(
-      children: [
-        Icon(icon, size: 10, color: Colors.grey.shade400),
-        const SizedBox(width: 3),
-        Text(text,
-            style:
-                GoogleFonts.poppins(fontSize: 10, color: Colors.grey.shade600)),
-      ],
-    );
+  String _formatDuration(int minutes) {
+    if (minutes < 60) return '${minutes}min';
+    final h = minutes ~/ 60;
+    final m = minutes % 60;
+    return m == 0 ? '${h}hr' : '${h}hr ${m}min';
   }
 
   Widget _iconAction(IconData icon, VoidCallback onTap, {Color? color}) {
@@ -387,42 +548,16 @@ class _AddOnsPageState extends State<AddOnsPage> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(4),
       child: Padding(
-        padding: const EdgeInsets.all(4.0),
-        child: Icon(icon, size: 16, color: color ?? Colors.grey.shade400),
+        padding: const EdgeInsets.all(3.0),
+        child: Icon(icon, size: 15, color: color ?? Colors.grey.shade400),
       ),
     );
   }
-
-  Widget _buildServiceChips(List<String> serviceIds) {
-    if (serviceIds.isEmpty) {
-      return Text('No services mapped',
-          style:
-              GoogleFonts.poppins(fontSize: 10, color: Colors.grey.shade400));
-    }
-    // Limit to showing first 3 services to avoid overflow, or wrap all
-    return Wrap(
-      spacing: 6,
-      runSpacing: 4,
-      children: serviceIds.map((id) {
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
-            color: Colors.grey.shade50,
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: Colors.grey.shade200),
-          ),
-          child: Text(
-            _getServiceName(id),
-            style: GoogleFonts.poppins(
-              fontSize: 10,
-              color: Colors.grey.shade700,
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
 }
+
+// ──────────────────────────────────────────────────────────────
+//                       STATUS BADGE
+// ──────────────────────────────────────────────────────────────
 
 class StatusBadge extends StatelessWidget {
   final String status;
@@ -430,19 +565,19 @@ class StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isApproved = status.toLowerCase() == 'active';
+    final isActive = status.toLowerCase() == 'active';
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: isApproved ? Colors.green.shade50 : Colors.orange.shade50,
-        borderRadius: BorderRadius.circular(4),
+        color: isActive ? Colors.green.shade50 : Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(5),
       ),
       child: Text(
-        status.toUpperCase(),
+        isActive ? 'Active' : 'Inactive',
         style: GoogleFonts.poppins(
-          fontSize: 9,
+          fontSize: 10,
           fontWeight: FontWeight.w500,
-          color: isApproved ? Colors.green.shade700 : Colors.orange.shade700,
+          color: isActive ? Colors.green.shade700 : Colors.orange.shade700,
         ),
       ),
     );
@@ -584,7 +719,7 @@ class _AddEditAddOnDialogState extends State<AddEditAddOnDialog> {
                     Text(
                       widget.addOn == null ? 'Create Add-On' : 'Edit Add-On',
                       style: GoogleFonts.poppins(
-                        fontSize: 18,
+                        fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -599,19 +734,20 @@ class _AddEditAddOnDialogState extends State<AddEditAddOnDialog> {
                   'Add extra services your customers can choose',
                   style: GoogleFonts.poppins(
                     color: Colors.grey.shade600,
-                    fontSize: 12,
+                    fontSize: 11,
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
                 _label('Add-on Name'),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 TextFormField(
                   controller: _name,
+                  style: GoogleFonts.poppins(fontSize: 12),
                   decoration: _inputDecoration(),
                   validator: (v) =>
                       v?.trim().isEmpty ?? true ? 'Required' : null,
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -620,10 +756,11 @@ class _AddEditAddOnDialogState extends State<AddEditAddOnDialog> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _label('Price (₹)'),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6),
                           TextFormField(
                             controller: _price,
                             keyboardType: TextInputType.number,
+                            style: GoogleFonts.poppins(fontSize: 12),
                             decoration: _inputDecoration(),
                             validator: (v) =>
                                 v?.trim().isEmpty ?? true ? 'Required' : null,
@@ -631,16 +768,17 @@ class _AddEditAddOnDialogState extends State<AddEditAddOnDialog> {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 20),
+                    const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _label('Duration (min)'),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6),
                           TextFormField(
                             controller: _duration,
                             keyboardType: TextInputType.number,
+                            style: GoogleFonts.poppins(fontSize: 12),
                             decoration: _inputDecoration(),
                             validator: (v) =>
                                 v?.trim().isEmpty ?? true ? 'Required' : null,
@@ -650,7 +788,7 @@ class _AddEditAddOnDialogState extends State<AddEditAddOnDialog> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 20),
                 _label('Mapped Services'),
                 const SizedBox(height: 8),
                 Container(
@@ -660,7 +798,7 @@ class _AddEditAddOnDialogState extends State<AddEditAddOnDialog> {
                     color: Colors.grey.shade50.withOpacity(0.5),
                   ),
                   padding: const EdgeInsets.all(12),
-                  constraints: const BoxConstraints(maxHeight: 250),
+                  constraints: const BoxConstraints(maxHeight: 220),
                   child: _isLoadingServices
                       ? const Center(
                           child: SizedBox(
@@ -670,7 +808,9 @@ class _AddEditAddOnDialogState extends State<AddEditAddOnDialog> {
                           ),
                         )
                       : _availableServices.isEmpty
-                          ? const Center(child: Text("No services available"))
+                          ? Center(
+                              child: Text("No services available",
+                                  style: GoogleFonts.poppins(fontSize: 11)))
                           : GridView.builder(
                               shrinkWrap: true,
                               physics: const ClampingScrollPhysics(),
@@ -698,8 +838,8 @@ class _AddEditAddOnDialogState extends State<AddEditAddOnDialog> {
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       SizedBox(
-                                        width: 24,
-                                        height: 24,
+                                        width: 20,
+                                        height: 20,
                                         child: Checkbox(
                                           value: _selected.contains(s.id),
                                           onChanged: (v) {
@@ -714,7 +854,7 @@ class _AddEditAddOnDialogState extends State<AddEditAddOnDialog> {
                                           },
                                           shape: RoundedRectangleBorder(
                                             borderRadius:
-                                                BorderRadius.circular(4),
+                                                BorderRadius.circular(3),
                                           ),
                                           side: BorderSide(
                                             color: Colors.grey.shade400,
@@ -724,12 +864,12 @@ class _AddEditAddOnDialogState extends State<AddEditAddOnDialog> {
                                               Theme.of(context).primaryColor,
                                         ),
                                       ),
-                                      const SizedBox(width: 8),
+                                      const SizedBox(width: 6),
                                       Expanded(
                                         child: Text(
                                           s.name ?? 'Unknown',
                                           style: GoogleFonts.poppins(
-                                            fontSize: 13,
+                                            fontSize: 11,
                                             color: Colors.black87,
                                           ),
                                           maxLines: 1,
@@ -742,7 +882,7 @@ class _AddEditAddOnDialogState extends State<AddEditAddOnDialog> {
                               },
                             ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -750,7 +890,8 @@ class _AddEditAddOnDialogState extends State<AddEditAddOnDialog> {
                       onPressed: () => Navigator.pop(context),
                       child: Text(
                         'Cancel',
-                        style: GoogleFonts.poppins(color: Colors.grey.shade800),
+                        style: GoogleFonts.poppins(
+                            color: Colors.grey.shade800, fontSize: 12),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -759,14 +900,14 @@ class _AddEditAddOnDialogState extends State<AddEditAddOnDialog> {
                       style: FilledButton.styleFrom(
                         backgroundColor: Theme.of(context).primaryColor,
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 36, vertical: 16),
+                            horizontal: 28, vertical: 14),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
                       ),
                       child: _isSaving
                           ? const SizedBox(
-                              width: 20,
-                              height: 20,
+                              width: 18,
+                              height: 18,
                               child: CircularProgressIndicator(
                                   strokeWidth: 2, color: Colors.white))
                           : Text(
@@ -774,6 +915,7 @@ class _AddEditAddOnDialogState extends State<AddEditAddOnDialog> {
                               style: GoogleFonts.poppins(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w500,
+                                fontSize: 12,
                               ),
                             ),
                     ),
@@ -792,7 +934,7 @@ class _AddEditAddOnDialogState extends State<AddEditAddOnDialog> {
       text,
       style: GoogleFonts.poppins(
         fontWeight: FontWeight.w500,
-        fontSize: 13,
+        fontSize: 11,
         color: Colors.grey.shade800,
       ),
     );
@@ -801,7 +943,7 @@ class _AddEditAddOnDialogState extends State<AddEditAddOnDialog> {
   InputDecoration _inputDecoration() {
     return InputDecoration(
       isDense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: Colors.grey.shade300),
