@@ -11,6 +11,8 @@ import 'Suppliers/supp_dashboard.dart';
 import 'Suppliers/supp_register.dart';
 import 'services/api_service.dart';
 import 'intro_page.dart';
+import 'forgot_password.dart';
+
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -237,11 +239,11 @@ class _LoginPageState extends State<Login> {
                           alignment: Alignment.centerRight,
                           child: TextButton(
                             onPressed: () {
-                              // TODO: Implement forgot password flow
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text(
-                                        'Forgot password feature coming soon')),
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const ForgotPasswordPage(),
+                                ),
                               );
                             },
                             child: Text(

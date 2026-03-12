@@ -724,6 +724,16 @@ class ApiService {
     );
   }
 
+  // Forgot Password
+  static Future<http.Response> forgotPassword(String email) async {
+    return await _post(
+      '$baseUrl/crm/auth/forgot-password',
+      {'email': email},
+      useAuth: false,
+    );
+  }
+
+
   // Vendor Register
   static Future<http.Response> registerVendor(
       Map<String, dynamic> payload) async {
@@ -1154,10 +1164,8 @@ class ApiService {
   /// Update cart item quantity
   static Future<Cart> updateCartQuantity(String productId, int quantity) async {
     try {
-      final response = await _put('$baseUrl/crm/cart', {
-        "productId": productId,
-        "quantity": quantity
-      });
+      final response = await _put(
+          '$baseUrl/crm/cart', {"productId": productId, "quantity": quantity});
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true && data['data'] != null) {
@@ -1178,9 +1186,8 @@ class ApiService {
   /// Delete item from cart
   static Future<Cart> deleteFromCart(String productId) async {
     try {
-      final response = await _delete('$baseUrl/crm/cart', body: {
-        "productId": productId
-      });
+      final response =
+          await _delete('$baseUrl/crm/cart', body: {"productId": productId});
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true && data['data'] != null) {
