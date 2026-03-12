@@ -27,6 +27,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
   void initState() {
     super.initState();
     _fetchProducts();
+    cartManager.refreshCart();
     cartManager.addListener(_onCartChanged);
   }
 
@@ -546,22 +547,36 @@ class _MarketplacePageState extends State<MarketplacePage> {
                       Expanded(
                         child: ElevatedButton(
                           onPressed: inStock
-                              ? () {
-                                  cartManager.addToCart(product);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                          '${product.productName} added to cart'),
-                                      duration: const Duration(seconds: 1),
-                                      action: SnackBarAction(
-                                        label: 'VIEW',
-                                        onPressed: () => _scaffoldKey
-                                            .currentState
-                                            ?.openEndDrawer(),
-                                        textColor: Colors.white,
-                                      ),
-                                    ),
-                                  );
+                              ? () async {
+                                  try {
+                                    await cartManager.addToCart(product);
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                              '${product.productName} added to cart'),
+                                          duration: const Duration(seconds: 1),
+                                          action: SnackBarAction(
+                                            label: 'VIEW',
+                                            onPressed: () => _scaffoldKey
+                                                .currentState
+                                                ?.openEndDrawer(),
+                                            textColor: Colors.white,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                            content:
+                                                Text('Failed to add to cart')),
+                                      );
+                                    }
+                                  }
                                 }
                               : null,
                           style: ElevatedButton.styleFrom(
@@ -590,9 +605,23 @@ class _MarketplacePageState extends State<MarketplacePage> {
                       Expanded(
                         child: ElevatedButton(
                           onPressed: inStock
-                              ? () {
-                                  cartManager.addToCart(product);
-                                  _scaffoldKey.currentState?.openEndDrawer();
+                              ? () async {
+                                  try {
+                                    await cartManager.addToCart(product);
+                                    if (context.mounted) {
+                                      _scaffoldKey.currentState
+                                          ?.openEndDrawer();
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                            content:
+                                                Text('Failed to add to cart')),
+                                      );
+                                    }
+                                  }
                                 }
                               : null,
                           style: ElevatedButton.styleFrom(
@@ -626,15 +655,19 @@ class _MarketplacePageState extends State<MarketplacePage> {
   void _showProductDetails(MarketplaceProduct product) {
     showDialog(
       context: context,
-      builder: (context) =>
-          Center(child: _ProductDetailsDialog(product: product)),
+      builder: (context) => Center(
+          child: _ProductDetailsDialog(
+        product: product,
+        scaffoldKey: _scaffoldKey,
+      )),
     );
   }
 }
 
 class _ProductDetailsDialog extends StatefulWidget {
   final MarketplaceProduct product;
-  const _ProductDetailsDialog({required this.product});
+  final GlobalKey<ScaffoldState> scaffoldKey;
+  const _ProductDetailsDialog({required this.product, required this.scaffoldKey});
 
   @override
   State<_ProductDetailsDialog> createState() => _ProductDetailsDialogState();
@@ -735,7 +768,9 @@ class _ProductDetailsDialogState extends State<_ProductDetailsDialog> {
                                 fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
                       _buildQtyBtn(
-                          Icons.add, () => setState(() => _quantity++)),
+                          Icons.add, () {
+                            if (_quantity < p.stock) setState(() => _quantity++);
+                          }),
                     ],
                   ),
                   const SizedBox(height: 24),
@@ -744,9 +779,21 @@ class _ProductDetailsDialogState extends State<_ProductDetailsDialog> {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: p.stock > 0
-                              ? () {
-                                  cartManager.addToCart(p, quantity: _quantity);
-                                  Navigator.pop(context);
+                              ? () async {
+                                  try {
+                                    await cartManager.addToCart(p,
+                                        quantity: _quantity);
+                                    if (context.mounted) Navigator.pop(context);
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                            content:
+                                                Text('Failed to add to cart')),
+                                      );
+                                    }
+                                  }
                                 }
                               : null,
                           style: OutlinedButton.styleFrom(
@@ -759,16 +806,32 @@ class _ProductDetailsDialogState extends State<_ProductDetailsDialog> {
                                 : Colors.grey,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
-                          child: Text(p.stock > 0 ? 'ADD TO CART' : 'OUT OF STOCK'),
+                          child:
+                              Text(p.stock > 0 ? 'ADD TO CART' : 'OUT OF STOCK'),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton(
                           onPressed: p.stock > 0
-                              ? () {
-                                  cartManager.addToCart(p, quantity: _quantity);
-                                  Navigator.pop(context);
+                              ? () async {
+                                  try {
+                                    await cartManager.addToCart(p,
+                                        quantity: _quantity);
+                                    if (context.mounted) {
+                                      Navigator.pop(context);
+                                      widget.scaffoldKey.currentState?.openEndDrawer();
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                            content:
+                                                Text('Failed to add to cart')),
+                                      );
+                                    }
+                                  }
                                 }
                               : null,
                           style: ElevatedButton.styleFrom(
@@ -841,7 +904,10 @@ class _CartSidebar extends StatelessWidget {
                     ),
                   ),
                   const Divider(),
-                  if (cartManager.items.isEmpty)
+                  if (cartManager.isLoading)
+                    const Expanded(
+                        child: Center(child: CircularProgressIndicator()))
+                  else if (cartManager.items.isEmpty)
                     Expanded(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -904,10 +970,22 @@ class _CartSidebar extends StatelessWidget {
                                     IconButton(
                                         icon:
                                             const Icon(Icons.remove, size: 14),
-                                        onPressed: () =>
-                                            cartManager.updateQuantity(
+                                        onPressed: () async {
+                                          try {
+                                            await cartManager.updateQuantity(
                                                 item.product.id,
-                                                item.quantity - 1),
+                                                item.quantity - 1);
+                                          } catch (e) {
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                SnackBar(
+                                                    content: Text(
+                                                        'Failed to update quantity: $e')),
+                                              );
+                                            }
+                                          }
+                                        },
                                         constraints: const BoxConstraints(
                                             minWidth: 28, minHeight: 28),
                                         padding: EdgeInsets.zero),
@@ -917,10 +995,27 @@ class _CartSidebar extends StatelessWidget {
                                             fontSize: 13)),
                                     IconButton(
                                         icon: const Icon(Icons.add, size: 14),
-                                        onPressed: () =>
-                                            cartManager.updateQuantity(
-                                                item.product.id,
-                                                item.quantity + 1),
+                                        onPressed: item.product.stock >
+                                                item.quantity
+                                            ? () async {
+                                                try {
+                                                  await cartManager
+                                                      .updateQuantity(
+                                                          item.product.id,
+                                                          item.quantity + 1);
+                                                } catch (e) {
+                                                  if (context.mounted) {
+                                                    ScaffoldMessenger.of(
+                                                            context)
+                                                        .showSnackBar(
+                                                      SnackBar(
+                                                          content: Text(
+                                                              'Failed to update quantity: $e')),
+                                                    );
+                                                  }
+                                                }
+                                              }
+                                            : null,
                                         constraints: const BoxConstraints(
                                             minWidth: 28, minHeight: 28),
                                         padding: EdgeInsets.zero),

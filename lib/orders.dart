@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'Notification.dart';
-import 'my_Profile.dart';
 import 'widgets/custom_drawer.dart';
+import 'services/api_service.dart';
 
 class OrdersPage extends StatefulWidget {
   const OrdersPage({super.key});
@@ -14,45 +13,8 @@ class OrdersPage extends StatefulWidget {
 }
 
 class _OrdersPageState extends State<OrdersPage> {
-  final List<Map<String, dynamic>> orders = [
-    {
-      'orderId': '#ONLINE-12345',
-      'customer': 'Online Customer',
-      'items': 'Demo Product',
-      'count': 1,
-      'totalAmount': 357.12,
-      'status': 'Delivered',
-      'date': '2025-07-23',
-    },
-    {
-      'orderId': '#ONLINE-12346',
-      'customer': 'Rahul Sharma',
-      'items': 'Face Wash, Serum',
-      'count': 2,
-      'totalAmount': 850.00,
-      'status': 'Shipped',
-      'date': '2025-07-24',
-    },
-    {
-      'orderId': '#ONLINE-12347',
-      'customer': 'Priya Patel',
-      'items': 'Hair Oil',
-      'count': 1,
-      'totalAmount': 420.50,
-      'status': 'Pending',
-      'date': '2025-07-25',
-    },
-    {
-      'orderId': '#ONLINE-12348',
-      'customer': 'Amit Singh',
-      'items': 'Massage Oil, Cream',
-      'count': 2,
-      'totalAmount': 1200.00,
-      'status': 'Cancelled',
-      'date': '2025-07-26',
-    },
-  ];
-
+  List<UIOrder> _allOrders = [];
+  bool _isLoading = true;
   String _searchQuery = '';
   String _selectedStatus = 'All Statuses';
   String _activeView = 'Orders';
@@ -60,46 +22,68 @@ class _OrdersPageState extends State<OrdersPage> {
   @override
   void initState() {
     super.initState();
+    _fetchOrders();
+  }
+
+  Future<void> _fetchOrders() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+    try {
+      if (_activeView == 'Orders') {
+        final orders = await ApiService.getClientOrders();
+        if (mounted) {
+          setState(() {
+            _allOrders = orders.map((o) => UIOrder.fromClient(o)).toList();
+            _isLoading = false;
+          });
+        }
+      } else {
+        final orders = await ApiService.getOrders();
+        if (mounted) {
+          setState(() {
+            _allOrders = orders.map((o) => UIOrder.fromB2B(o)).toList();
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
   }
 
   Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Delivered':
+    switch (status.toLowerCase()) {
+      case 'delivered':
         return Colors.green;
-      case 'Shipped':
+      case 'shipped':
         return Colors.blue;
-      case 'Pending':
+      case 'pending':
         return Colors.orange;
-      case 'Cancelled':
+      case 'cancelled':
         return Colors.red;
+      case 'packed':
+        return Colors.purple;
+      case 'processing':
+        return Colors.indigo;
       default:
         return Colors.grey;
     }
   }
 
-  Color _getStatusBgColor(String status) {
-    switch (status) {
-      case 'Delivered':
-        return Colors.green.shade100;
-      case 'Shipped':
-        return Colors.blue.shade100;
-      case 'Pending':
-        return Colors.orange.shade100;
-      case 'Cancelled':
-        return Colors.red.shade100;
-      default:
-        return Colors.grey.shade200;
-    }
-  }
-
-  List<Map<String, dynamic>> get filteredOrders {
-    return orders.where((order) {
+  List<UIOrder> get filteredOrders {
+    return _allOrders.where((order) {
       final matchesSearch = _searchQuery.isEmpty ||
-          order['orderId'].toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          order['customer'].toLowerCase().contains(_searchQuery.toLowerCase());
+          order.displayOrderId.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          order.items.any((item) =>
+              item.name.toLowerCase().contains(_searchQuery.toLowerCase()));
 
       final matchesStatus = _selectedStatus == 'All Statuses' ||
-          order['status'] == _selectedStatus;
+          order.status.toLowerCase() == _selectedStatus.toLowerCase();
 
       return matchesSearch && matchesStatus;
     }).toList();
@@ -124,84 +108,90 @@ class _OrdersPageState extends State<OrdersPage> {
         iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Title Section
-              Text(
-                'Orders Management',
-                style: GoogleFonts.poppins(
-                  fontSize: 18.sp,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1F2937),
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : RefreshIndicator(
+                onRefresh: _fetchOrders,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title Section
+                      Text(
+                        'Orders Management',
+                        style: GoogleFonts.poppins(
+                          fontSize: 18.sp,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF1F2937),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Track and manage all your orders in one place.',
+                        style: GoogleFonts.poppins(
+                          fontSize: 10.sp,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Summary Cards
+                      GridView.count(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                        childAspectRatio: 2.0,
+                        children: [
+                          _buildSummaryCard(
+                            'Total Orders',
+                            '${_allOrders.length}',
+                            'All orders',
+                            Icons.inventory_2_outlined,
+                            const Color(0xFFF3F4F6),
+                            const Color(0xFF4B5563),
+                          ),
+                          _buildSummaryCard(
+                            'Pending',
+                            '${_allOrders.where((o) => o.status.toLowerCase() == 'pending').length}',
+                            'Awaiting processing',
+                            Icons.shopping_cart_outlined,
+                            const Color(0xFFF3F4F6),
+                            const Color(0xFF4B5563),
+                          ),
+                          _buildSummaryCard(
+                            'Shipped',
+                            '${_allOrders.where((o) => o.status.toLowerCase() == 'shipped').length}',
+                            'In transit',
+                            Icons.local_shipping_outlined,
+                            const Color(0xFFF3F4F6),
+                            const Color(0xFF4B5563),
+                          ),
+                          _buildSummaryCard(
+                            'Delivered',
+                            '${_allOrders.where((o) => o.status.toLowerCase() == 'delivered').length}',
+                            'Successfully delivered',
+                            Icons.check_circle_outline,
+                            const Color(0xFFF3F4F6),
+                            const Color(0xFF4B5563),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Control Row
+                      _buildControlRow(),
+                      const SizedBox(height: 20),
+
+                      // Order List (Cards)
+                      _buildOrdersList(),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                'Track and manage all your orders in one place.',
-                style: GoogleFonts.poppins(
-                  fontSize: 10.sp,
-                  color: Colors.grey.shade600,
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Summary Cards
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 2.0,
-                children: [
-                  _buildSummaryCard(
-                    'Total Orders',
-                    '${orders.length}',
-                    'All orders',
-                    Icons.inventory_2_outlined,
-                    const Color(0xFFF3F4F6),
-                    const Color(0xFF4B5563),
-                  ),
-                  _buildSummaryCard(
-                    'Pending',
-                    '${orders.where((o) => o['status'] == 'Pending').length}',
-                    'Awaiting processing',
-                    Icons.shopping_cart_outlined,
-                    const Color(0xFFF3F4F6),
-                    const Color(0xFF4B5563),
-                  ),
-                  _buildSummaryCard(
-                    'Shipped',
-                    '${orders.where((o) => o['status'] == 'Shipped').length}',
-                    'In transit',
-                    Icons.local_shipping_outlined,
-                    const Color(0xFFF3F4F6),
-                    const Color(0xFF4B5563),
-                  ),
-                  _buildSummaryCard(
-                    'Delivered',
-                    '${orders.where((o) => o['status'] == 'Delivered').length}',
-                    'Successfully delivered',
-                    Icons.check_circle_outline,
-                    const Color(0xFFF3F4F6),
-                    const Color(0xFF4B5563),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              // Control Row
-              _buildControlRow(),
-              const SizedBox(height: 20),
-
-              // Order List (Cards)
-              _buildOrdersList(),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -265,7 +255,6 @@ class _OrdersPageState extends State<OrdersPage> {
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           // Search Bar
-
           SizedBox(
             width: isMobile ? double.infinity : 300.w,
             child: Container(
@@ -321,6 +310,8 @@ class _OrdersPageState extends State<OrdersPage> {
                 items: [
                   'All Statuses',
                   'Pending',
+                  'Processing',
+                  'Packed',
                   'Shipped',
                   'Delivered',
                   'Cancelled'
@@ -335,23 +326,6 @@ class _OrdersPageState extends State<OrdersPage> {
               ),
             ),
           ),
-
-          // Export Button
-          OutlinedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.file_download_outlined, size: 18),
-            label: Text('Export',
-                style: GoogleFonts.poppins(
-                    fontSize: 13.sp, fontWeight: FontWeight.w600)),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF1F2937),
-              side: BorderSide(color: Colors.grey.shade300),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
-              minimumSize: const Size(0, 48),
-            ),
-          ),
         ],
       );
     });
@@ -360,7 +334,15 @@ class _OrdersPageState extends State<OrdersPage> {
   Widget _buildToggleButton(String label, IconData icon) {
     bool isActive = _activeView == label;
     return GestureDetector(
-      onTap: () => setState(() => _activeView = label),
+      onTap: () {
+        if (_activeView != label) {
+          setState(() {
+            _activeView = label;
+            _allOrders = [];
+          });
+          _fetchOrders();
+        }
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
@@ -423,9 +405,12 @@ class _OrdersPageState extends State<OrdersPage> {
     );
   }
 
-  Widget _buildOrderCard(Map<String, dynamic> order) {
-    final status = order['status'] as String;
+  Widget _buildOrderCard(UIOrder order) {
+    final status = order.status;
     final statusColor = _getStatusColor(status);
+    final itemsText =
+        order.items.map((e) => e.name).join(', ');
+    final itemsCount = order.items.length;
 
     return GestureDetector(
       onTap: () => _showOrderDetailDialog(order),
@@ -448,7 +433,7 @@ class _OrdersPageState extends State<OrdersPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        order['orderId'],
+                        order.displayOrderId,
                         style: GoogleFonts.poppins(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
@@ -457,11 +442,11 @@ class _OrdersPageState extends State<OrdersPage> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        order['customer'],
+                        'Order created on ${DateFormat('dd MMM yyyy').format(order.createdAt)}',
                         style: GoogleFonts.poppins(
                           fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF1F2937),
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey.shade600,
                         ),
                       ),
                     ],
@@ -493,7 +478,7 @@ class _OrdersPageState extends State<OrdersPage> {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    order['items'],
+                    itemsText,
                     style: GoogleFonts.poppins(
                       fontSize: 10,
                       color: Colors.grey.shade600,
@@ -503,7 +488,7 @@ class _OrdersPageState extends State<OrdersPage> {
                   ),
                 ),
                 Text(
-                  ' x${order['count']}',
+                  ' $itemsCount item(s)',
                   style: GoogleFonts.poppins(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
@@ -516,27 +501,84 @@ class _OrdersPageState extends State<OrdersPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Icon(Icons.calendar_today_outlined,
-                        size: 14, color: Colors.grey.shade500),
-                    const SizedBox(width: 6),
-                    Text(
-                      order['date'],
-                      style: GoogleFonts.poppins(
-                        fontSize: 10,
-                        color: Colors.grey.shade500,
+                Expanded(
+                  child: Row(
+                    children: [
+                      Icon(Icons.location_on_outlined,
+                          size: 14, color: Colors.grey.shade500),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          order.shippingAddress,
+                          style: GoogleFonts.poppins(
+                            fontSize: 10,
+                            color: Colors.grey.shade500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 Text(
-                  '₹${order['totalAmount']}',
+                  '₹${order.totalAmount.toStringAsFixed(2)}',
                   style: GoogleFonts.poppins(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFF111827),
                   ),
+                ),
+              ],
+            ),
+            const Divider(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    height: 36,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        hint: Text('Update Status',
+                            style: GoogleFonts.poppins(fontSize: 11)),
+                        items: [
+                          'Pending',
+                          'Processing',
+                          'Packed',
+                          'Shipped',
+                          'Delivered',
+                          'Cancelled'
+                        ]
+                            .map((s) => DropdownMenuItem(
+                                  value: s,
+                                  child: Text(s,
+                                      style: GoogleFonts.poppins(fontSize: 11)),
+                                ))
+                            .toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            _handleStatusUpdate(order, val);
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: () => _showOrderDetailDialog(order),
+                  child: Text('View Details',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      )),
                 ),
               ],
             ),
@@ -546,7 +588,79 @@ class _OrdersPageState extends State<OrdersPage> {
     );
   }
 
-  void _showOrderDetailDialog(Map<String, dynamic> order) {
+  void _handleStatusUpdate(UIOrder order, String newStatus) async {
+    final TextEditingController trackingController = TextEditingController();
+    final TextEditingController courierController = TextEditingController();
+
+    if (newStatus == 'Shipped') {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Shipping Details',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: courierController,
+                decoration: InputDecoration(
+                    labelText: 'Courier Name *',
+                    hintText: 'e.g. BlueDart',
+                    labelStyle: GoogleFonts.poppins(fontSize: 12)),
+              ),
+              TextField(
+                controller: trackingController,
+                decoration: InputDecoration(
+                    labelText: 'Tracking Number *',
+                    labelStyle: GoogleFonts.poppins(fontSize: 12)),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () {
+                if (courierController.text.isNotEmpty &&
+                    trackingController.text.isNotEmpty) {
+                  Navigator.pop(context, true);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('Please fill all required fields')));
+                }
+              },
+              child: const Text('Confirm'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true) return;
+    }
+
+    try {
+      setState(() => _isLoading = true);
+      await ApiService.updateOrderStatus(
+        orderId: order.displayOrderId,
+        status: newStatus,
+        trackingNumber: trackingController.text,
+        courier: courierController.text,
+        isClientOrder: order.isClientOrder,
+      );
+      _fetchOrders();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Status updated successfully')),
+      );
+    } catch (e) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+  }
+
+  void _showOrderDetailDialog(UIOrder order) {
     showDialog(
       context: context,
       builder: (context) {
@@ -587,7 +701,7 @@ class _OrdersPageState extends State<OrdersPage> {
                             ),
                           ),
                           Text(
-                            'Order ID: ${order['orderId']}',
+                            'Order ID: ${order.displayOrderId}',
                             style: GoogleFonts.poppins(
                               fontSize: 12,
                               color: Colors.grey.shade600,
@@ -610,7 +724,7 @@ class _OrdersPageState extends State<OrdersPage> {
                     child: Column(
                       children: [
                         // Order Progress
-                        _buildProgressTracker(order['status']),
+                        _buildProgressTracker(order.status),
                         const SizedBox(height: 24),
 
                         LayoutBuilder(builder: (context, constraints) {
@@ -618,28 +732,27 @@ class _OrdersPageState extends State<OrdersPage> {
                           return isNarrow
                               ? Column(
                                   children: [
-                                    _buildSectionTitle('Items Ordered (1)',
+                                    _buildSectionTitle(
+                                        'Items Ordered (${order.items.length})',
                                         Icons.shopping_cart_outlined),
                                     const SizedBox(height: 12),
-                                    _buildOrderItem(order),
+                                    ...order.items
+                                        .map((item) => _buildOrderItem(item))
+                                        .toList(),
                                     const SizedBox(height: 24),
                                     _buildTotalAmountSection(
-                                        order['totalAmount']),
+                                        order.totalAmount),
                                     const SizedBox(height: 32),
-                                    _buildSideInfoCard(
-                                        'Customer Details',
-                                        Icons.person_outline,
-                                        order['customer']),
                                     _buildSideInfoCard(
                                         'Shipping Address',
                                         Icons.location_on_outlined,
-                                        'Nashik, Maharashtra'),
-                                    _buildTrackingCard(),
-                                    _buildTimelineCard(order['date']),
+                                        order.shippingAddress),
+                                    _buildShippingDetailsCard(order),
                                   ],
                                 )
                               : Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
                                   children: [
                                     // Main content (Left)
                                     Expanded(
@@ -649,13 +762,16 @@ class _OrdersPageState extends State<OrdersPage> {
                                             CrossAxisAlignment.start,
                                         children: [
                                           _buildSectionTitle(
-                                              'Items Ordered (1)',
+                                              'Items Ordered (${order.items.length})',
                                               Icons.shopping_cart_outlined),
                                           const SizedBox(height: 12),
-                                          _buildOrderItem(order),
+                                          ...order.items
+                                              .map((item) =>
+                                                  _buildOrderItem(item))
+                                              .toList(),
                                           const SizedBox(height: 24),
                                           _buildTotalAmountSection(
-                                              order['totalAmount']),
+                                              order.totalAmount),
                                         ],
                                       ),
                                     ),
@@ -666,15 +782,10 @@ class _OrdersPageState extends State<OrdersPage> {
                                       child: Column(
                                         children: [
                                           _buildSideInfoCard(
-                                              'Customer Details',
-                                              Icons.person_outline,
-                                              order['customer']),
-                                          _buildSideInfoCard(
                                               'Shipping Address',
                                               Icons.location_on_outlined,
-                                              'Nashik, Maharashtra'),
-                                          _buildTrackingCard(),
-                                          _buildTimelineCard(order['date']),
+                                              order.shippingAddress),
+                                          _buildShippingDetailsCard(order),
                                         ],
                                       ),
                                     ),
@@ -693,6 +804,73 @@ class _OrdersPageState extends State<OrdersPage> {
     );
   }
 
+  Widget _buildShippingDetailsCard(UIOrder order) {
+    final hasShipping = order.courier != null && order.courier!.isNotEmpty;
+    
+    return Container(
+      padding: const EdgeInsets.all(12),
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.local_shipping_outlined,
+                  size: 14, color: Colors.grey.shade600),
+              const SizedBox(width: 6),
+              Text('Shipping Details',
+                  style: GoogleFonts.poppins(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade700)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (hasShipping) ...[
+             _buildDetailItem('Courier', order.courier!),
+             const SizedBox(height: 8),
+             _buildDetailItem('Tracking #', order.trackingNumber ?? 'N/A'),
+          ] else
+            Text(
+              'No shipping details available yet.',
+              style: GoogleFonts.poppins(
+                  fontSize: 10, 
+                  color: Colors.grey.shade500,
+                  fontStyle: FontStyle.italic),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailItem(String label, String value) {
+     return Container(
+        padding: const EdgeInsets.all(10),
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF3F4F6),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: GoogleFonts.poppins(fontSize: 9, color: Colors.grey.shade500)),
+            Text(
+              value,
+              style: GoogleFonts.poppins(
+                  fontSize: 11, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      );
+  }
+
+
   Widget _buildProgressTracker(String currentStatus) {
     final statuses = [
       'Pending',
@@ -701,8 +879,26 @@ class _OrdersPageState extends State<OrdersPage> {
       'Shipped',
       'Delivered'
     ];
-    int currentIndex = statuses.indexOf(currentStatus);
-    if (currentIndex == -1 && currentStatus == 'Cancelled') currentIndex = -1;
+    int currentIndex = statuses.indexWhere((s) => s.toLowerCase() == currentStatus.toLowerCase());
+    
+    // If not found in primary flow, check for Cancelled
+    if (currentIndex == -1 && currentStatus.toLowerCase() == 'cancelled') {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.red.shade50,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.red.shade100),
+          ),
+          child: Row(
+            children: [
+               const Icon(Icons.cancel, color: Colors.red),
+               const SizedBox(width: 12),
+               Text('Order Cancelled', style: GoogleFonts.poppins(color: Colors.red, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        );
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
@@ -731,7 +927,6 @@ class _OrdersPageState extends State<OrdersPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: List.generate(statuses.length, (index) {
               bool isDone = index <= currentIndex;
-              bool isActive = index == currentIndex;
 
               return Expanded(
                 child: Row(
@@ -821,8 +1016,9 @@ class _OrdersPageState extends State<OrdersPage> {
     );
   }
 
-  Widget _buildOrderItem(Map<String, dynamic> order) {
+  Widget _buildOrderItem(UIOrderItem item) {
     return Container(
+      margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -832,13 +1028,17 @@ class _OrdersPageState extends State<OrdersPage> {
       child: Row(
         children: [
           Container(
-            width: 60,
-            height: 60,
+            width: 50,
+            height: 50,
             decoration: BoxDecoration(
               color: Colors.grey.shade100,
               borderRadius: BorderRadius.circular(8),
+              image: item.image != null ? DecorationImage(
+                image: NetworkImage(item.image!),
+                fit: BoxFit.cover,
+              ) : null,
             ),
-            child: Icon(Icons.image_outlined, color: Colors.grey.shade400),
+            child: item.image == null ? Icon(Icons.inventory_2_outlined, color: Colors.grey.shade400, size: 24) : null,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -846,22 +1046,22 @@ class _OrdersPageState extends State<OrdersPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  order['items'],
+                  item.name,
                   style: GoogleFonts.poppins(
-                      fontSize: 13, fontWeight: FontWeight.w600),
+                      fontSize: 12, fontWeight: FontWeight.w600),
                 ),
                 Text(
-                  'Qty: ${order['count']}  ₹${(order['totalAmount'] / (order['count'] == 0 ? 1 : order['count'])).toStringAsFixed(2)} each',
+                  'Qty: ${item.quantity}  ₹${item.price.toStringAsFixed(2)} each',
                   style: GoogleFonts.poppins(
-                      fontSize: 11, color: Colors.grey.shade500),
+                      fontSize: 10, color: Colors.grey.shade500),
                 ),
               ],
             ),
           ),
           Text(
-            '₹${order['totalAmount']}',
+            '₹${(item.price * item.quantity).toStringAsFixed(2)}',
             style:
-                GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w700),
+                GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w700),
           ),
         ],
       ),
@@ -884,7 +1084,7 @@ class _OrdersPageState extends State<OrdersPage> {
                 GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w700),
           ),
           Text(
-            '₹$amount',
+            '₹${amount.toStringAsFixed(2)}',
             style: GoogleFonts.poppins(
               fontSize: 18,
               fontWeight: FontWeight.w700,
@@ -938,122 +1138,77 @@ class _OrdersPageState extends State<OrdersPage> {
       ),
     );
   }
+}
 
-  Widget _buildTrackingCard() {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.local_shipping_outlined,
-                  size: 14, color: Colors.grey.shade600),
-              const SizedBox(width: 6),
-              Text('Tracking Details',
-                  style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey.shade700)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          _buildTrackingRow(
-              Icons.account_balance_outlined, 'Courier', 'Not specified'),
-          const SizedBox(height: 8),
-          _buildTrackingRow(
-              Icons.qr_code_scanner_outlined, 'Tracking Number', '12345'),
-        ],
-      ),
-    );
-  }
+class UIOrder {
+  final String id;
+  final String displayOrderId;
+  final String status;
+  final double totalAmount;
+  final String shippingAddress;
+  final DateTime createdAt;
+  final List<UIOrderItem> items;
+  final String? courier;
+  final String? trackingNumber;
+  final bool isClientOrder;
 
-  Widget _buildTrackingRow(IconData icon, String label, String value) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF3F4F6),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 14, color: Colors.grey.shade500),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label,
-                  style: GoogleFonts.poppins(
-                      fontSize: 9, color: Colors.grey.shade600)),
-              Text(value,
-                  style: GoogleFonts.poppins(
-                      fontSize: 11, fontWeight: FontWeight.w600)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+  UIOrder({
+    required this.id,
+    required this.displayOrderId,
+    required this.status,
+    required this.totalAmount,
+    required this.shippingAddress,
+    required this.createdAt,
+    required this.items,
+    this.courier,
+    this.trackingNumber,
+    required this.isClientOrder,
+  });
 
-  Widget _buildTimelineCard(String date) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.calendar_month_outlined,
-                  size: 14, color: Colors.grey.shade600),
-              const SizedBox(width: 6),
-              Text('Order Timeline',
-                  style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey.shade700)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF3F4F6),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.calendar_today,
-                    size: 14, color: Colors.grey.shade500),
-                const SizedBox(width: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Order Placed',
-                        style: GoogleFonts.poppins(
-                            fontSize: 9, color: Colors.grey.shade600)),
-                    Text(date,
-                        style: GoogleFonts.poppins(
-                            fontSize: 11, fontWeight: FontWeight.w600)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  factory UIOrder.fromB2B(B2BOrder order) => UIOrder(
+        id: order.id,
+        displayOrderId: order.orderId,
+        status: order.status,
+        totalAmount: order.totalAmount,
+        shippingAddress: order.shippingAddress,
+        createdAt: order.createdAt,
+        items: order.items
+            .map((i) => UIOrderItem(
+                name: i.productName, quantity: i.quantity, price: i.price))
+            .toList(),
+        courier: order.courier,
+        trackingNumber: order.trackingNumber,
+        isClientOrder: false,
+      );
+
+  factory UIOrder.fromClient(ClientOrder order) => UIOrder(
+        id: order.id,
+        displayOrderId: order.id,
+        status: order.status,
+        totalAmount: order.totalAmount,
+        shippingAddress: order.shippingAddress,
+        createdAt: order.createdAt,
+        items: order.items
+            .map((i) => UIOrderItem(
+                name: i.name,
+                quantity: i.quantity,
+                price: i.price,
+                image: i.image))
+            .toList(),
+        courier: order.courier,
+        trackingNumber: order.trackingNumber,
+        isClientOrder: true,
+      );
+}
+
+class UIOrderItem {
+  final String name;
+  final int quantity;
+  final double price;
+  final String? image;
+  UIOrderItem(
+      {required this.name,
+      required this.quantity,
+      required this.price,
+      this.image});
 }

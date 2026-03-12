@@ -206,6 +206,251 @@ class StaffMember {
   }
 }
 
+class B2BOrder {
+  final String id;
+  final String orderId;
+  final String vendorId;
+  final String supplierId;
+  final String status;
+  final double totalAmount;
+  final String shippingAddress;
+  final DateTime createdAt;
+  final List<OrderItem> items;
+  final List<StatusHistory> statusHistory;
+  final String? courier;
+  final String? trackingNumber;
+
+  B2BOrder({
+    required this.id,
+    required this.orderId,
+    required this.vendorId,
+    required this.supplierId,
+    required this.status,
+    required this.totalAmount,
+    required this.shippingAddress,
+    required this.createdAt,
+    required this.items,
+    required this.statusHistory,
+    this.courier,
+    this.trackingNumber,
+  });
+
+  factory B2BOrder.fromJson(Map<String, dynamic> json) {
+    return B2BOrder(
+      id: json['_id'] ?? '',
+      orderId: json['orderId'] ?? '',
+      vendorId: json['vendorId'] ?? '',
+      supplierId: json['supplierId'] ?? '',
+      status: json['status'] ?? '',
+      totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? 0.0,
+      shippingAddress: json['shippingAddress'] ?? '',
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
+          : DateTime.now(),
+      items: (json['items'] as List?)
+              ?.map((i) => OrderItem.fromJson(i))
+              .toList() ??
+          [],
+      statusHistory: (json['statusHistory'] as List?)
+              ?.map((s) => StatusHistory.fromJson(s))
+              .toList() ??
+          [],
+      courier: json['courier'],
+      trackingNumber: json['trackingNumber'],
+    );
+  }
+}
+
+class ClientOrder {
+  final String id;
+  final String userId;
+  final String vendorId;
+  final String regionId;
+  final List<ClientOrderItem> items;
+  final double totalAmount;
+  final double shippingAmount;
+  final double taxAmount;
+  final String shippingAddress;
+  final String contactNumber;
+  final String paymentMethod;
+  final String status;
+  final DateTime createdAt;
+  final String? courier;
+  final String? trackingNumber;
+
+  ClientOrder({
+    required this.id,
+    required this.userId,
+    required this.vendorId,
+    required this.regionId,
+    required this.items,
+    required this.totalAmount,
+    required this.shippingAmount,
+    required this.taxAmount,
+    required this.shippingAddress,
+    required this.contactNumber,
+    required this.paymentMethod,
+    required this.status,
+    required this.createdAt,
+    this.courier,
+    this.trackingNumber,
+  });
+
+  factory ClientOrder.fromJson(Map<String, dynamic> json) {
+    return ClientOrder(
+      id: json['_id'] ?? '',
+      userId: json['userId'] ?? '',
+      vendorId: json['vendorId'] ?? '',
+      regionId: json['regionId'] ?? '',
+      items: (json['items'] as List?)
+              ?.map((i) => ClientOrderItem.fromJson(i))
+              .toList() ??
+          [],
+      totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? 0.0,
+      shippingAmount: (json['shippingAmount'] as num?)?.toDouble() ?? 0.0,
+      taxAmount: (json['taxAmount'] as num?)?.toDouble() ?? 0.0,
+      shippingAddress: json['shippingAddress'] ?? '',
+      contactNumber: json['contactNumber'] ?? '',
+      paymentMethod: json['paymentMethod'] ?? '',
+      status: json['status'] ?? 'Pending',
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
+          : DateTime.now(),
+      courier: json['courier'],
+      trackingNumber: json['trackingNumber'],
+    );
+  }
+}
+
+class ClientOrderItem {
+  final String productId;
+  final String name;
+  final int quantity;
+  final double price;
+  final String? image;
+
+  ClientOrderItem({
+    required this.productId,
+    required this.name,
+    required this.quantity,
+    required this.price,
+    this.image,
+  });
+
+  factory ClientOrderItem.fromJson(Map<String, dynamic> json) {
+    return ClientOrderItem(
+      productId: json['productId'] ?? '',
+      name: json['name'] ?? '',
+      quantity: json['quantity'] ?? 0,
+      price: (json['price'] as num?)?.toDouble() ?? 0.0,
+      image: json['image'],
+    );
+  }
+}
+
+class Cart {
+  final String id;
+  final String vendorId;
+  final List<CartItem> items;
+  final DateTime updatedAt;
+
+  Cart({
+    required this.id,
+    required this.vendorId,
+    required this.items,
+    required this.updatedAt,
+  });
+
+  factory Cart.fromJson(Map<String, dynamic> json) {
+    return Cart(
+      id: json['_id'] ?? '',
+      vendorId: json['vendorId'] ?? '',
+      items:
+          (json['items'] as List?)?.map((i) => CartItem.fromJson(i)).toList() ??
+              [],
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'])
+          : DateTime.now(),
+    );
+  }
+}
+
+class CartItem {
+  final String productId;
+  final String productName;
+  final int quantity;
+  final double price;
+  final String? vendorId;
+  final String? supplierName;
+  final double? minOrderValue;
+
+  CartItem({
+    required this.productId,
+    required this.productName,
+    required this.quantity,
+    required this.price,
+    this.vendorId,
+    this.supplierName,
+    this.minOrderValue,
+  });
+
+  factory CartItem.fromJson(Map<String, dynamic> json) {
+    return CartItem(
+      productId: json['productId'] ?? '',
+      productName: json['productName'] ?? '',
+      quantity: json['quantity'] ?? 0,
+      price: (json['price'] as num?)?.toDouble() ?? 0.0,
+      vendorId: json['vendorId'],
+      supplierName: json['supplierName'],
+      minOrderValue: (json['minOrderValue'] as num?)?.toDouble(),
+    );
+  }
+}
+
+class OrderItem {
+  final String productId;
+  final String productName;
+  final int quantity;
+  final double price;
+
+  OrderItem({
+    required this.productId,
+    required this.productName,
+    required this.quantity,
+    required this.price,
+  });
+
+  factory OrderItem.fromJson(Map<String, dynamic> json) {
+    return OrderItem(
+      productId: json['productId'] ?? '',
+      productName: json['productName'] ?? '',
+      quantity: json['quantity'] ?? 0,
+      price: (json['price'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
+class StatusHistory {
+  final String status;
+  final String notes;
+  final DateTime date;
+
+  StatusHistory({
+    required this.status,
+    required this.notes,
+    required this.date,
+  });
+
+  factory StatusHistory.fromJson(Map<String, dynamic> json) {
+    return StatusHistory(
+      status: json['status'] ?? '',
+      notes: json['notes'] ?? '',
+      date:
+          json['date'] != null ? DateTime.parse(json['date']) : DateTime.now(),
+    );
+  }
+}
+
 class ApiService {
   static const String baseUrl = 'https://partners.glowvitasalon.com/api';
   static const String clientsEndpoint = '/crm/clients';
@@ -811,6 +1056,117 @@ class ApiService {
       }
     } catch (e) {
       print('Error creating order: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetch all orders from the marketplace
+  static Future<List<B2BOrder>> getOrders() async {
+    try {
+      final response = await _get('$baseUrl/crm/orders');
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.map((json) => B2BOrder.fromJson(json)).toList();
+      } else {
+        throw Exception(
+            'Failed to load orders: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching orders: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetch all client orders
+  static Future<List<ClientOrder>> getClientOrders() async {
+    try {
+      final response = await _get('$baseUrl/crm/client-orders');
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.map((json) => ClientOrder.fromJson(json)).toList();
+      } else {
+        throw Exception(
+            'Failed to load client orders: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching client orders: $e');
+      rethrow;
+    }
+  }
+
+  /// Update the status of an existing order
+  static Future<Map<String, dynamic>> updateOrderStatus({
+    required String orderId,
+    required String status,
+    String? trackingNumber,
+    String? courier,
+    bool isClientOrder = false,
+  }) async {
+    try {
+      final Map<String, dynamic> body = {
+        'orderId': orderId,
+        'status': status,
+      };
+
+      if (trackingNumber != null && trackingNumber.isNotEmpty) {
+        body['trackingNumber'] = trackingNumber;
+      }
+      if (courier != null && courier.isNotEmpty) {
+        body['courier'] = courier;
+      }
+
+      final endpoint = isClientOrder ? '/crm/client-orders' : '/crm/orders';
+      final response = await _patch('$baseUrl$endpoint', body);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return json.decode(response.body);
+      } else {
+        throw Exception(
+            'Failed to update order status: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error updating order status: $e');
+      rethrow;
+    }
+  }
+
+  /// Add product to cart
+  static Future<Cart> addToCart(Map<String, dynamic> itemData) async {
+    try {
+      final response = await _post('$baseUrl/crm/cart', itemData);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return Cart.fromJson(data['data']);
+        } else {
+          throw Exception(data['message'] ?? 'Failed to add to cart');
+        }
+      } else {
+        throw Exception(
+            'Failed to add to cart: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error adding to cart: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetch cart data
+  static Future<Cart?> getCart() async {
+    try {
+      final response = await _get('$baseUrl/crm/cart');
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return Cart.fromJson(data['data']);
+        }
+        return null; // Cart might be empty
+      } else {
+        throw Exception(
+            'Failed to load cart: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching cart: $e');
       rethrow;
     }
   }
