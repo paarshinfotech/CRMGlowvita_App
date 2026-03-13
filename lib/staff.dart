@@ -843,6 +843,8 @@ class _StaffState extends State<Staff> {
                                         _deleteStaff(s['id'], s['fullName']),
                                     onViewEarnings: () =>
                                         _showEarningsDialog(s),
+                                    onSendCredentials: () =>
+                                        _sendCredentials(s),
                                   );
                                 },
                               ),
@@ -870,6 +872,77 @@ class _StaffState extends State<Staff> {
       barrierDismissible: true,
       builder: (ctx) => StaffEarningsDialog(staff: staff),
     );
+  }
+
+  Future<void> _sendCredentials(Map<String, dynamic> staff) async {
+    final staffId = staff['id']?.toString() ?? '';
+    if (staffId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Staff ID not found.',
+              style: GoogleFonts.poppins(fontSize: 10)),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Center(
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 12),
+              Text('Sending credentials...',
+                  style: GoogleFonts.poppins(fontSize: 12)),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    try {
+      final success = await ApiService.sendStaffCredentials(staffId);
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              success
+                  ? 'Credentials sent to ${staff['email'] ?? staff['fullName']}!'
+                  : 'Failed to send credentials.',
+              style: GoogleFonts.poppins(fontSize: 10),
+            ),
+            backgroundColor: success ? Colors.green : Colors.orange,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                Text('Error: $e', style: GoogleFonts.poppins(fontSize: 10)),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   void _handleExport(String type) {
@@ -1450,12 +1523,14 @@ class _StaffCard extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onViewEarnings;
+  final VoidCallback onSendCredentials;
 
   const _StaffCard({
     required this.staff,
     required this.onEdit,
     required this.onDelete,
     required this.onViewEarnings,
+    required this.onSendCredentials,
     Key? key,
   }) : super(key: key);
 
@@ -1609,14 +1684,13 @@ class _StaffCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 6),
                   InkWell(
-                    onTap: () {
-                      // Email functionality
-                    },
+                    onTap: onSendCredentials,
                     child: Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey[300]!),
+                        border: Border.all(color: Colors.blue[200]!),
                         borderRadius: BorderRadius.circular(4),
+                        color: Colors.blue[50],
                       ),
                       child: Icon(Icons.email_outlined,
                           size: 16, color: Colors.blue[700]),

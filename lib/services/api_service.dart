@@ -1026,6 +1026,30 @@ class ApiService {
     return await _post('$baseUrl$staffEndpoint/earnings/$staffId', payoutData);
   }
 
+  // Send login credentials to a staff member via email
+  static Future<bool> sendStaffCredentials(String staffId) async {
+    try {
+      final response = await _post(
+        '$baseUrl$staffEndpoint/send-credentials',
+        {'staffId': staffId},
+      );
+      print(
+          'Send Credentials Response [${response.statusCode}]: ${response.body}');
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        return data['success'] == true ||
+            data['message']?.toString().toLowerCase().contains('sent') == true ||
+            data['message']?.toString().toLowerCase().contains('success') == true;
+      } else {
+        throw Exception(
+            'Failed to send credentials: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error sending staff credentials: $e');
+      rethrow;
+    }
+  }
+
   // ==================== MARKETPLACE SUPPLIERS & PRODUCTS ==================== //
 
   /// Fetch all products from suppliers for the marketplace
@@ -2066,8 +2090,15 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['success'] == true && data['weddingPackages'] != null) {
-          List<dynamic> packagesData = data['weddingPackages'];
+        List<dynamic>? packagesData;
+        
+        if (data is List) {
+          packagesData = data;
+        } else if (data is Map) {
+          packagesData = data['weddingPackages'] ?? data['data'] ?? data['packages'];
+        }
+
+        if (packagesData != null) {
           return packagesData
               .map((json) => WeddingPackage.fromJson(json))
               .toList();
@@ -2919,15 +2950,15 @@ class WeddingPackage {
       id: json['_id'] ?? json['id'],
       name: json['name'],
       description: json['description'],
-      services: json['services'],
+      services: json['services'] is List ? json['services'] : null,
       totalPrice: (json['totalPrice'] as num?)?.toDouble(),
       discountedPrice: (json['discountedPrice'] as num?)?.toDouble(),
-      duration: json['duration'],
-      staffCount: json['staffCount'],
-      assignedStaff: json['assignedStaff'],
+      duration: (json['duration'] as num?)?.toInt(),
+      staffCount: (json['staffCount'] as num?)?.toInt(),
+      assignedStaff: json['assignedStaff'] is List ? json['assignedStaff'] : null,
       image: json['image'],
       status: json['status'],
-      isActive: json['isActive'],
+      isActive: json['isActive'] == true || json['isActive'] == 1,
     );
   }
 }

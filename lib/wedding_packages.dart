@@ -15,6 +15,13 @@ class WeddingPackagePage extends StatefulWidget {
 class _WeddingPackagePageState extends State<WeddingPackagePage> {
   final TextEditingController _searchController = TextEditingController();
   String searchQuery = '';
+  String _statusFilter = 'All Status';
+  final List<String> _statusOptions = [
+    'All Status',
+    'Approved',
+    'Rejected',
+    'Pending'
+  ];
 
   List<WeddingPackage> _allPackages = [];
   List<WeddingPackage> _filteredPackages = [];
@@ -25,6 +32,12 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -40,26 +53,25 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
         _filteredPackages = _allPackages;
         _isLoading = false;
       });
+      _applyFilters();
     } catch (e) {
       debugPrint('Error loading data: $e');
       setState(() => _isLoading = false);
     }
   }
 
-  void _filterPackages(String query) {
+  void _applyFilters() {
     setState(() {
-      searchQuery = query;
-      if (query.isEmpty) {
-        _filteredPackages = _allPackages;
-      } else {
-        _filteredPackages = _allPackages
-            .where((p) =>
-                (p.name?.toLowerCase().contains(query.toLowerCase()) ??
-                    false) ||
-                (p.description?.toLowerCase().contains(query.toLowerCase()) ??
-                    false))
-            .toList();
-      }
+      _filteredPackages = _allPackages.where((p) {
+        final matchesSearch = searchQuery.isEmpty ||
+            (p.name?.toLowerCase().contains(searchQuery.toLowerCase()) ??
+                false) ||
+            (p.description?.toLowerCase().contains(searchQuery.toLowerCase()) ??
+                false);
+        final matchesStatus = _statusFilter == 'All Status' ||
+            (p.status?.toLowerCase() == _statusFilter.toLowerCase());
+        return matchesSearch && matchesStatus;
+      }).toList();
     });
   }
 
@@ -75,16 +87,34 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
     if (success) _loadData();
   }
 
+  // ── Stats helpers ──────────────────────────────────────────
+  int get _totalPackages => _allPackages.length;
+
+  double get _avgPrice => _allPackages.isEmpty
+      ? 0
+      : _allPackages
+              .map((e) => e.discountedPrice ?? e.totalPrice ?? 0)
+              .reduce((a, b) => a + b) /
+          _allPackages.length;
+
+  String get _popularPackage =>
+      _allPackages.isEmpty ? '-' : (_allPackages.first.name ?? '-');
+
+  double get _avgDurationHours => _allPackages.isEmpty
+      ? 0
+      : _allPackages.map((e) => e.duration ?? 0).reduce((a, b) => a + b) /
+          (_allPackages.length * 60);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF7F7F7),
       drawer: const CustomDrawer(currentPage: 'Wedding Package'),
       appBar: AppBar(
         title: Text(
           'Wedding Packages',
           style: GoogleFonts.poppins(
-            fontSize: 16,
+            fontSize: 15,
             fontWeight: FontWeight.w600,
             color: Colors.black87,
           ),
@@ -92,265 +122,241 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black87, size: 20),
-        toolbarHeight: 50,
+        toolbarHeight: 48,
         surfaceTintColor: Colors.transparent,
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12.0),
-            child: FilledButton.icon(
-              onPressed: _showCreatePackageForm,
-              icon: const Icon(Icons.add, size: 14),
-              label: Text(
-                'Create',
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).primaryColor,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-                minimumSize: const Size(0, 32),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6)),
-              ),
-            ),
+          IconButton(
+            icon: const Icon(Icons.search, size: 20),
+            onPressed: () {},
+            padding: EdgeInsets.zero,
           ),
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined, size: 20),
+            onPressed: () {},
+            padding: EdgeInsets.zero,
+          ),
+          const CircleAvatar(
+            radius: 16,
+          ),
+          const SizedBox(width: 12),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Stats Grid ─ Minimal
-            LayoutBuilder(builder: (context, constraints) {
-              final isMobile = constraints.maxWidth < 600;
-              return GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: isMobile ? 2 : 4,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                childAspectRatio: isMobile ? 2.5 : 3.0,
-                children: [
-                  _buildStatCard('Total', '${_allPackages.length}',
-                      Icons.local_offer_outlined),
-                  _buildStatCard(
-                      'Avg Price',
-                      '₹${_allPackages.isEmpty ? 0 : (_allPackages.map((e) => e.discountedPrice ?? e.totalPrice ?? 0).reduce((a, b) => a + b) / _allPackages.length).toStringAsFixed(0)}',
-                      Icons.attach_money),
-                  _buildStatCard(
-                      'Popular',
-                      _allPackages.isEmpty ? '-' : _allPackages.first.name!,
-                      Icons.star_outline),
-                  _buildStatCard(
-                      'Avg Duration.',
-                      '${_allPackages.isEmpty ? 0 : (_allPackages.map((e) => e.duration ?? 0).reduce((a, b) => a + b) / (_allPackages.length * 60)).toStringAsFixed(1)}h',
-                      Icons.bar_chart),
-                ],
-              );
-            }),
-
-            const SizedBox(height: 16),
-
-            // Search Bar ─ Compact
-            Container(
-              height: 38,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: TextField(
-                controller: _searchController,
-                onChanged: _filterPackages,
-                style: GoogleFonts.poppins(fontSize: 13),
-                decoration: InputDecoration(
-                  hintText: 'Search packages...',
-                  hintStyle: GoogleFonts.poppins(
-                      fontSize: 12, color: Colors.grey.shade400),
-                  prefixIcon:
-                      Icon(Icons.search, size: 16, color: Colors.grey.shade400),
-                  border: InputBorder.none,
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            if (_isLoading)
-              const Center(child: CircularProgressIndicator())
-            else if (_filteredPackages.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 40),
-                child: Center(
-                  child: Text('No packages found',
-                      style: GoogleFonts.poppins(color: Colors.grey)),
-                ),
-              )
-            else
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _filteredPackages.length,
-                itemBuilder: (context, index) {
-                  final pkg = _filteredPackages[index];
-                  return Slidable(
-                    key: ValueKey(pkg.id),
-                    endActionPane: ActionPane(
-                      motion: const ScrollMotion(),
-                      children: [
-                        SlidableAction(
-                          onPressed: (context) async {
-                            final result = await showDialog<bool>(
-                              context: context,
-                              builder: (context) =>
-                                  CreateWeddingPackageDialog(package: pkg),
-                            );
-                            if (result == true) {
-                              _loadData();
-                            }
-                          },
-                          backgroundColor:
-                              Theme.of(context).primaryColor.withOpacity(0.1),
-                          foregroundColor: Theme.of(context).primaryColor,
-                          icon: Icons.edit_outlined,
-                          label: 'Edit',
-                        ),
-                        SlidableAction(
-                          onPressed: (context) async {
-                            // Delete logic
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: const Text('Delete Package'),
-                                content: const Text(
-                                    'Are you sure you want to delete this wedding package?'),
-                                actions: [
-                                  TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context, false),
-                                      child: const Text('Cancel')),
-                                  TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context, true),
-                                      child: const Text('Delete',
-                                          style: TextStyle(color: Colors.red))),
-                                ],
-                              ),
-                            );
-                            if (confirm == true) {
-                              // Perform delete API call
-                              try {
-                                final success =
-                                    await ApiService.deleteWeddingPackage(
-                                        pkg.id!);
-                                if (success && context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                        content: Text(
-                                            'Wedding package deleted successfully')),
-                                  );
-                                  _loadData();
-                                }
-                              } catch (e) {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                        content: Text('Failed to delete: $e')),
-                                  );
-                                }
-                              }
-                            }
-                          },
-                          backgroundColor: Colors.red.shade50,
-                          foregroundColor: Colors.red.shade700,
-                          icon: Icons.delete_outline,
-                          label: 'Delete',
-                        ),
-                      ],
-                    ),
-                    child: _buildPackageCard(pkg),
-                  );
-                },
-              ),
-
-            const SizedBox(height: 16),
-            // Pagination ─ Compact
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: Column(
+        children: [
+          // ── Search + Filter + Add ──────────────────────────
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+            child: Column(
               children: [
-                Text('${_filteredPackages.length} results',
-                    style:
-                        GoogleFonts.poppins(fontSize: 11, color: Colors.grey)),
+                // Search bar
+                SizedBox(
+                  height: 38,
+                  child: TextField(
+                    controller: _searchController,
+                    style: GoogleFonts.poppins(fontSize: 12),
+                    onChanged: (v) {
+                      searchQuery = v;
+                      _applyFilters();
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Search by name or description....',
+                      hintStyle: GoogleFonts.poppins(
+                          fontSize: 12, color: Colors.grey.shade400),
+                      prefixIcon: Icon(Icons.search,
+                          size: 17, color: Colors.grey.shade400),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 0),
+                      isDense: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                            color: Theme.of(context).primaryColor, width: 1.2),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // Filter + Add New
                 Row(
                   children: [
-                    IconButton(
-                        onPressed: null,
-                        icon: const Icon(Icons.chevron_left, size: 18),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints()),
-                    const SizedBox(width: 8),
-                    Text('Page 1 of 1',
-                        style: GoogleFonts.poppins(fontSize: 11)),
-                    const SizedBox(width: 8),
-                    IconButton(
-                        onPressed: null,
-                        icon: const Icon(Icons.chevron_right, size: 18),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints()),
+                    Expanded(
+                      child: SizedBox(
+                        height: 38,
+                        child: DropdownButtonFormField<String>(
+                          value: _statusFilter,
+                          style: GoogleFonts.poppins(
+                              fontSize: 12, color: Colors.grey.shade800),
+                          decoration: InputDecoration(
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 9),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide:
+                                  BorderSide(color: Colors.grey.shade300),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide:
+                                  BorderSide(color: Colors.grey.shade300),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                  color: Theme.of(context).primaryColor,
+                                  width: 1.2),
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                          ),
+                          icon: Icon(Icons.keyboard_arrow_down_rounded,
+                              size: 18, color: Colors.grey.shade500),
+                          dropdownColor: Colors.white,
+                          items: _statusOptions
+                              .map((s) => DropdownMenuItem(
+                                    value: s,
+                                    child: Text(s,
+                                        style:
+                                            GoogleFonts.poppins(fontSize: 12)),
+                                  ))
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) {
+                              setState(() => _statusFilter = v);
+                              _applyFilters();
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    SizedBox(
+                      height: 38,
+                      child: ElevatedButton.icon(
+                        onPressed: _showCreatePackageForm,
+                        icon: const Icon(Icons.add_rounded,
+                            size: 16, color: Colors.white),
+                        label: Text(
+                          'Add New',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).primaryColor,
+                          elevation: 0,
+                          shadowColor: Colors.transparent,
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ],
             ),
-          ],
-        ),
-      ),
-    );
-  }
+          ),
 
-  Widget _buildStatCard(String title, String value, IconData icon) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade100),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 14, color: Colors.grey.shade500),
-          const SizedBox(width: 8),
+          // ── Body ───────────────────────────────────────────
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(title,
-                    style: GoogleFonts.poppins(
-                        fontSize: 10, color: Colors.grey.shade600)),
-                Text(value,
-                    style: GoogleFonts.poppins(
-                        fontSize: 12, fontWeight: FontWeight.w600)),
-              ],
-            ),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                    child: Column(
+                      children: [
+                        // Stat Cards 2×2
+                        GridView.count(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 10,
+                          childAspectRatio: 2.6,
+                          children: [
+                            _buildStatCard(
+                              emoji: '🏷️',
+                              label: 'Total Packages',
+                              value: '$_totalPackages',
+                            ),
+                            _buildStatCard(
+                              emoji: '💰',
+                              label: 'Average\nPackage Price',
+                              value: '₹ ${_avgPrice.toStringAsFixed(0)}',
+                            ),
+                            _buildStatCard(
+                              emoji: '👑',
+                              label: 'Services in Top\nPackage',
+                              value: _popularPackage,
+                              valueSize: 11,
+                            ),
+                            _buildStatCard(
+                              emoji: '⏱️',
+                              label: 'Average Package\nDuration',
+                              value:
+                                  '${_avgDurationHours.toStringAsFixed(1)} Hours',
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        // Package list
+                        if (_filteredPackages.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 40),
+                            child: Center(
+                              child: Text('No packages found',
+                                  style: GoogleFonts.poppins(
+                                      color: Colors.grey, fontSize: 12)),
+                            ),
+                          )
+                        else
+                          ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: _filteredPackages.length,
+                            itemBuilder: (context, index) {
+                              final pkg = _filteredPackages[index];
+                              return _buildPackageCard(pkg);
+                            },
+                          ),
+                      ],
+                    ),
+                  ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildPackageCard(WeddingPackage pkg) {
+  // ── Stat Card ────────────────────────────────────────────────
+  Widget _buildStatCard({
+    required String emoji,
+    required String label,
+    required String value,
+    double valueSize = 14,
+  }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Colors.grey.shade100),
         boxShadow: [
           BoxShadow(
@@ -360,81 +366,175 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
           ),
         ],
       ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 22)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  label,
+                  style: GoogleFonts.poppins(
+                      fontSize: 10, color: Colors.grey.shade500, height: 1.3),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: GoogleFonts.poppins(
+                    fontSize: valueSize,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Package Card ─────────────────────────────────────────────
+  Widget _buildPackageCard(WeddingPackage pkg) {
+    final staffIds = pkg.assignedStaff ?? [];
+    final firstStaff = staffIds.isNotEmpty
+        ? _allStaff.firstWhere((s) => s.id == staffIds.first,
+            orElse: () => StaffMember(fullName: 'Unknown'))
+        : null;
+    final extraStaffCount = staffIds.length > 1 ? staffIds.length - 1 : 0;
+
+    // Build service subtitle: first service name + remaining count
+    final serviceCount = pkg.services?.length ?? 0;
+    String firstServiceName = 'Service';
+    if (serviceCount > 0) {
+      final first = pkg.services!.first;
+      if (first is Map) {
+        firstServiceName = first['serviceName'] ?? 'Service';
+      } else {
+        firstServiceName = first.toString();
+      }
+    }
+    final serviceSubtitle = serviceCount > 0
+        ? '$firstServiceName +${serviceCount - 1}'
+        : '$serviceCount services';
+
+    final durationH = (pkg.duration ?? 0) ~/ 60;
+    final durationM = (pkg.duration ?? 0) % 60;
+    final durationStr =
+        durationM == 0 ? '${durationH}hr' : '${durationH}hr ${durationM}min';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade100),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
       child: Column(
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(6),
-                  image: pkg.image != null
-                      ? DecorationImage(
-                          image: NetworkImage(pkg.image!), fit: BoxFit.cover)
-                      : null,
+          // ── Top row: image + info + toggle ──────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Thumbnail
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    width: 52,
+                    height: 52,
+                    color: Colors.grey.shade200,
+                    child: pkg.image != null
+                        ? Image.network(pkg.image!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Icon(
+                                Icons.image_outlined,
+                                size: 22,
+                                color: Colors.grey.shade400))
+                        : Icon(Icons.image_outlined,
+                            size: 22, color: Colors.grey.shade400),
+                  ),
                 ),
-                child: pkg.image == null
-                    ? const Icon(Icons.image_outlined,
-                        size: 20, color: Colors.grey)
-                    : null,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(pkg.name ?? 'Unnamed',
-                            style: GoogleFonts.poppins(
-                                fontSize: 13, fontWeight: FontWeight.w600)),
-                        Text(
-                            '₹${(pkg.discountedPrice ?? pkg.totalPrice ?? 0).toStringAsFixed(0)}',
-                            style: GoogleFonts.poppins(
+                const SizedBox(width: 10),
+                // Name + subtitle + price
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              pkg.name ?? 'Unnamed',
+                              style: GoogleFonts.poppins(
                                 fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: Theme.of(context).primaryColor)),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        _buildInfoTag('${pkg.services?.length ?? 0} services',
-                            Icons.settings_outlined),
-                        const SizedBox(width: 8),
-                        _buildInfoTag(
-                            '${(pkg.duration ?? 0) ~/ 60}h ${(pkg.duration ?? 0) % 60}m',
-                            Icons.access_time),
-                        const SizedBox(width: 8),
-                        StatusBadge(status: pkg.status ?? 'pending'),
-                      ],
-                    ),
-                  ],
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '₹ ${(pkg.discountedPrice ?? pkg.totalPrice ?? 0).toStringAsFixed(0)}',
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        serviceSubtitle,
+                        style: GoogleFonts.poppins(
+                            fontSize: 11, color: Colors.grey.shade500),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          Row(
-            children: [
-              Expanded(
-                child: _buildStaffChips(pkg.assignedStaff),
-              ),
-              const SizedBox(width: 8),
-              _iconAction(Icons.visibility_outlined, () {}),
-              const SizedBox(width: 4),
-              Text('Active',
+
+          // ── Status badge + duration + toggle ─────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
+            child: Row(
+              children: [
+                // Push content to align with text (after image)
+                const SizedBox(width: 62),
+                _StatusBadge(status: pkg.status ?? 'pending'),
+                const SizedBox(width: 8),
+                Icon(Icons.circle, size: 4, color: Colors.grey.shade400),
+                const SizedBox(width: 6),
+                Icon(Icons.access_time, size: 11, color: Colors.grey.shade400),
+                const SizedBox(width: 3),
+                Text(
+                  durationStr,
                   style: GoogleFonts.poppins(
-                      fontSize: 11, color: Colors.grey.shade600)),
-              const SizedBox(width: 2),
-              Transform.scale(
-                scale: 0.6,
-                child: SizedBox(
-                  height: 20,
-                  width: 34,
+                      fontSize: 11, color: Colors.grey.shade600),
+                ),
+                const Spacer(),
+                // Toggle
+                Transform.scale(
+                  scale: 0.75,
+                  alignment: Alignment.centerRight,
                   child: Switch(
                     value: pkg.isActive ?? false,
                     onChanged: (v) => _toggleStatus(pkg, v),
@@ -442,108 +542,172 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
+          ),
+
+          // ── Divider ──────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: Divider(height: 1, color: Colors.grey.shade100),
+          ),
+
+          // ── Bottom row: staff + actions ───────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 0, 6, 10),
+            child: Row(
+              children: [
+                // Staff name
+                if (firstStaff != null) ...[
+                  Text(
+                    firstStaff.fullName ?? '',
+                    style: GoogleFonts.poppins(
+                        fontSize: 11, color: Colors.grey.shade600),
+                  ),
+                  if (extraStaffCount > 0)
+                    Text(
+                      ' +$extraStaffCount',
+                      style: GoogleFonts.poppins(
+                          fontSize: 11, color: Colors.grey.shade500),
+                    ),
+                ] else
+                  Text(
+                    '0 staff',
+                    style: GoogleFonts.poppins(
+                        fontSize: 11, color: Colors.grey.shade400),
+                  ),
+                const Spacer(),
+                // Eye icon
+                _iconBtn(Icons.remove_red_eye_outlined, () {},
+                    color: Colors.grey.shade500),
+                // Edit icon
+                _iconBtn(
+                  Icons.edit_outlined,
+                  () async {
+                    final result = await showDialog<bool>(
+                      context: context,
+                      builder: (context) =>
+                          CreateWeddingPackageDialog(package: pkg),
+                    );
+                    if (result == true) _loadData();
+                  },
+                  color: Colors.grey.shade500,
+                ),
+                // Delete icon
+                _iconBtn(
+                  Icons.delete_outline,
+                  () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Delete Package'),
+                        content: const Text(
+                            'Are you sure you want to delete this wedding package?'),
+                        actions: [
+                          TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text('Cancel')),
+                          TextButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: const Text('Delete',
+                                  style: TextStyle(color: Colors.red))),
+                        ],
+                      ),
+                    );
+                    if (confirm == true) {
+                      try {
+                        final success =
+                            await ApiService.deleteWeddingPackage(pkg.id!);
+                        if (success && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text(
+                                    'Wedding package deleted successfully')),
+                          );
+                          _loadData();
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Failed to delete: $e')),
+                          );
+                        }
+                      }
+                    }
+                  },
+                  color: Colors.red.shade300,
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStaffChips(List<dynamic>? staffIds) {
-    if (staffIds == null || staffIds.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-            color: Colors.grey.shade50,
-            borderRadius: BorderRadius.circular(15)),
-        child: Text('0 staff',
-            style:
-                GoogleFonts.poppins(fontSize: 10, color: Colors.grey.shade500)),
-      );
-    }
-
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-          decoration: BoxDecoration(
-            color: Theme.of(context).primaryColor.withOpacity(0.12),
-            borderRadius: BorderRadius.circular(15),
-          ),
-          child: Text('${staffIds.length} staff',
-              style: GoogleFonts.poppins(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF424242))),
-        ),
-        ...staffIds.map((id) {
-          final staff = _allStaff.firstWhere((s) => s.id == id,
-              orElse: () => StaffMember(fullName: 'Unknown'));
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(5),
-            ),
-            child: Text(staff.fullName ?? '?',
-                style: GoogleFonts.poppins(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    color: Theme.of(context).primaryColor)),
-          );
-        }),
-      ],
-    );
-  }
-
-  Widget _buildInfoTag(String text, IconData icon) {
-    return Row(
-      children: [
-        Icon(icon, size: 10, color: Colors.grey.shade400),
-        const SizedBox(width: 3),
-        Text(text,
-            style:
-                GoogleFonts.poppins(fontSize: 10, color: Colors.grey.shade600)),
-      ],
-    );
-  }
-
-  Widget _iconAction(IconData icon, VoidCallback onTap, {Color? color}) {
-    return IconButton(
-      onPressed: onTap,
-      icon: Icon(icon, size: 16, color: color ?? Colors.grey.shade400),
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      constraints: const BoxConstraints(),
-      visualDensity: VisualDensity.compact,
+  Widget _iconBtn(IconData icon, VoidCallback onTap, {Color? color}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      child: Padding(
+        padding: const EdgeInsets.all(5.0),
+        child: Icon(icon, size: 16, color: color ?? Colors.grey.shade400),
+      ),
     );
   }
 }
 
+// ── Status Badge ────────────────────────────────────────────────
+
+class _StatusBadge extends StatelessWidget {
+  final String status;
+  const _StatusBadge({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = status.toLowerCase();
+    Color bg;
+    Color fg;
+    if (s == 'approved' || s == 'active') {
+      bg = Colors.green.shade50;
+      fg = Colors.green.shade700;
+    } else if (s == 'reject' || s == 'rejected') {
+      bg = Colors.red.shade50;
+      fg = Colors.red.shade600;
+    } else {
+      bg = Colors.orange.shade50;
+      fg = Colors.orange.shade700;
+    }
+
+    String label = status.isNotEmpty
+        ? status[0].toUpperCase() + status.substring(1)
+        : 'Unknown';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.poppins(
+          fontSize: 10,
+          fontWeight: FontWeight.w500,
+          color: fg,
+        ),
+      ),
+    );
+  }
+}
+
+// Keep public StatusBadge for backward compatibility
 class StatusBadge extends StatelessWidget {
   final String status;
   const StatusBadge({super.key, required this.status});
 
   @override
   Widget build(BuildContext context) {
-    final isApproved = status.toLowerCase() == 'approved';
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: isApproved ? Colors.green.shade50 : Colors.orange.shade50,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        status,
-        style: GoogleFonts.poppins(
-          fontSize: 9,
-          fontWeight: FontWeight.w500,
-          color: isApproved ? Colors.green.shade700 : Colors.orange.shade700,
-        ),
-      ),
-    );
+    return _StatusBadge(status: status);
   }
 }
