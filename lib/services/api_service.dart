@@ -2302,13 +2302,60 @@ class ApiService {
       if (response.statusCode == 200) {
         return true;
       } else {
-        throw Exception('Failed to update expense: ${response.body}');
+        throw Exception('Failed to update expense: ${response.statusCode}');
       }
     } catch (e) {
       print('Error updating expense: $e');
       rethrow;
     }
   }
+
+  // ==================== SUBSCRIPTION ==================== //
+
+  // ==================== SUBSCRIPTION ==================== //
+
+  static Future<List<Plan>> getSubscriptionPlans() async {
+    try {
+      final response = await _get('$baseUrl/crm/subscription/plans');
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final List<dynamic> list = (data is List) ? data : (data['data'] ?? []);
+        return list.map((i) => Plan.fromJson(i)).toList();
+      } else {
+        throw Exception(
+            'Failed to load subscription plans: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching subscription plans: $e');
+      rethrow;
+    }
+  }
+
+  static Future<bool> renewSubscription({
+    required String planId,
+    required String userType,
+    required int amount,
+  }) async {
+    try {
+      final response = await _post('$baseUrl/crm/subscription/renew', {
+        'planId': planId,
+        'userType': userType,
+        'amount': amount,
+      });
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true;
+      } else {
+        final data = json.decode(response.body);
+        throw Exception(
+            data['message'] ?? 'Failed to renew subscription: ${response.body}');
+      }
+    } catch (e) {
+      print('Error renewing subscription: $e');
+      rethrow;
+    }
+  }
+
 
   static Future<bool> deleteExpense(String id) async {
     try {
