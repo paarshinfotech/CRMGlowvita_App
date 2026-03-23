@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'widgets/custom_drawer.dart';
 import 'services/api_service.dart';
 import 'addon_model.dart';
+import 'widgets/subscription_wrapper.dart';
 
 class AddOnsPage extends StatefulWidget {
   const AddOnsPage({super.key});
@@ -187,29 +188,31 @@ class _AddOnsPageState extends State<AddOnsPage> {
           const SizedBox(width: 12),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                _buildSearchAndFilter(),
-                Expanded(
-                  child: _filteredAddOns.isEmpty
-                      ? Center(
-                          child: Text('No add-ons found',
-                              style: GoogleFonts.poppins(
-                                  color: Colors.grey, fontSize: 12)),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                          itemCount: _paginatedAddOns.length,
-                          itemBuilder: (context, index) {
-                            return _buildAddOnCard(_paginatedAddOns[index]);
-                          },
-                        ),
-                ),
-                _buildPaginationControls(),
-              ],
-            ),
+      body: SubscriptionWrapper(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+                children: [
+                  _buildSearchAndFilter(),
+                  Expanded(
+                    child: _filteredAddOns.isEmpty
+                        ? Center(
+                            child: Text('No add-ons found',
+                                style: GoogleFonts.poppins(
+                                    color: Colors.grey, fontSize: 12)),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                            itemCount: _paginatedAddOns.length,
+                            itemBuilder: (context, index) {
+                              return _buildAddOnCard(_paginatedAddOns[index]);
+                            },
+                          ),
+                  ),
+                  _buildPaginationControls(),
+                ],
+              ),
+      ),
     );
   }
 

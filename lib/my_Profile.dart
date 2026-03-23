@@ -378,7 +378,13 @@ class _My_ProfileState extends State<My_Profile>
     _salonNameController.text = profile.businessName;
     _descriptionController.text = profile.description;
     _profileImageController.text = profile.profileImage;
-    _selectedCategory = profile.category;
+    _selectedCategory = profile.category.toLowerCase();
+    // Normalize category to match dropdown items if necessary
+    if (_selectedCategory == "men") _selectedCategory = "male";
+    if (_selectedCategory == "women") _selectedCategory = "female";
+    if (!["unisex", "male", "female"].contains(_selectedCategory)) {
+      _selectedCategory = "unisex"; // Fallback
+    }
     _taxRateController.text = profile.taxes?.taxValue.toString() ?? "0.0";
 
     if (profile.bankDetails != null) {
@@ -640,87 +646,7 @@ class _My_ProfileState extends State<My_Profile>
               ],
             ),
           ),
-          if (isExpired) _buildExpiredOverlay(),
         ],
-      ),
-    );
-  }
-
-  Widget _buildExpiredOverlay() {
-    return Container(
-      color: Colors.white.withOpacity(0.4),
-      child: Center(
-        child: Container(
-          margin: EdgeInsets.symmetric(horizontal: 24.w),
-          padding: EdgeInsets.all(28.w),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16.r),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.15),
-                blurRadius: 30,
-                offset: const Offset(0, 10),
-              )
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: EdgeInsets.all(12.w),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.warning_amber_rounded,
-                    color: Colors.red.shade700, size: 40.sp),
-              ),
-              SizedBox(height: 16.h),
-              Text(
-                "Subscription Expired",
-                style: GoogleFonts.inter(
-                  fontSize: 18.sp,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.black87,
-                ),
-              ),
-              SizedBox(height: 8.h),
-              Text(
-                "Your subscription has expired. Please renew your plan to continue accessing all CRM features.",
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  fontSize: 12.sp,
-                  color: Colors.grey.shade600,
-                  height: 1.5,
-                ),
-              ),
-              SizedBox(height: 24.h),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    _tabController.animateTo(1); // Go to Subscription tab
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF432C39),
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: 14.h),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.r)),
-                  ),
-                  child: Text(
-                    "Renew Now",
-                    style: GoogleFonts.inter(
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -900,7 +826,10 @@ class _My_ProfileState extends State<My_Profile>
           SizedBox(height: 6.h),
           _dropdown(
               ["unisex", "male", "female"],
-              _selectedCategory.toLowerCase(),
+              ["unisex", "male", "female"]
+                      .contains(_selectedCategory.toLowerCase())
+                  ? _selectedCategory.toLowerCase()
+                  : "unisex",
               (v) => setState(() => _selectedCategory = v!)),
           SizedBox(height: 20.h),
           _label("Sub Categories"),
@@ -1117,7 +1046,7 @@ class _My_ProfileState extends State<My_Profile>
                         onPressed: () {
                           showDialog(
                             context: context,
-                            builder: (context) => _ChangePlanDialog(
+                            builder: (context) => ChangePlanDialog(
                               currentPlan: sub.plan,
                               onPlanChanged: () {
                                 _fetchProfileData();
@@ -1785,25 +1714,6 @@ class _My_ProfileState extends State<My_Profile>
     );
   }
 
-  Widget _buildSubItem(String label, String value, {Color? color}) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: 12.h),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label,
-              style: GoogleFonts.inter(
-                  fontSize: 11.sp, color: Colors.grey.shade600)),
-          Text(value,
-              style: GoogleFonts.inter(
-                  fontSize: 11.sp,
-                  fontWeight: FontWeight.w600,
-                  color: color ?? Colors.black87)),
-        ],
-      ),
-    );
-  }
-
   Widget _labelWithInfo(String text, String info) {
     return Row(
       children: [
@@ -1940,7 +1850,9 @@ class _My_ProfileState extends State<My_Profile>
           borderRadius: BorderRadius.circular(6.r)),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
-          value: value,
+          value: (items.isNotEmpty && items.contains(value))
+              ? value
+              : (items.isNotEmpty ? items.first : null),
           isExpanded: true,
           padding: EdgeInsets.symmetric(horizontal: 12.w),
           items: items
@@ -2408,17 +2320,17 @@ class _SubscriptionHistoryDialog extends StatelessWidget {
 // ──────────────────────────────────────────────
 //  Change Plan Dialog (Internal)
 // ──────────────────────────────────────────────
-class _ChangePlanDialog extends StatefulWidget {
+class ChangePlanDialog extends StatefulWidget {
   final Plan? currentPlan;
   final VoidCallback onPlanChanged;
 
-  const _ChangePlanDialog({this.currentPlan, required this.onPlanChanged});
+  const ChangePlanDialog({this.currentPlan, required this.onPlanChanged});
 
   @override
-  State<_ChangePlanDialog> createState() => _ChangePlanDialogState();
+  State<ChangePlanDialog> createState() => _ChangePlanDialogState();
 }
 
-class _ChangePlanDialogState extends State<_ChangePlanDialog> {
+class _ChangePlanDialogState extends State<ChangePlanDialog> {
   List<Plan> _plans = [];
   bool _isLoading = true;
   String? _selectedPlanId;

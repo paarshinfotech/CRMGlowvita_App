@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'widgets/custom_drawer.dart';
 import 'services/api_service.dart';
+import 'widgets/subscription_wrapper.dart';
 
 class ProductQuestionsPage extends StatefulWidget {
   const ProductQuestionsPage({super.key});
@@ -119,241 +120,245 @@ class _ProductQuestionsPageState extends State<ProductQuestionsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      drawer: const CustomDrawer(currentPage: 'Product Questions'),
-      backgroundColor: const Color(0xFFF6F7FB),
-      appBar: AppBar(
-        elevation: 0.5,
-        backgroundColor: Colors.white,
-        title: const Text(
-          'Product Questions',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700),
-        ),
-        iconTheme: const IconThemeData(color: Colors.black),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.black),
-            onPressed: _fetchQuestions,
+        drawer: const CustomDrawer(currentPage: 'Product Questions'),
+        backgroundColor: const Color(0xFFF6F7FB),
+        appBar: AppBar(
+          elevation: 0.5,
+          backgroundColor: Colors.white,
+          title: const Text(
+            'Product Questions',
+            style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700),
           ),
-        ],
-      ),
-      body: SafeArea(
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _errorMessage != null
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.error_outline,
-                            color: Colors.red.shade400, size: 48),
-                        const SizedBox(height: 12),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                          child: Text(
-                            _errorMessage!,
-                            style: GoogleFonts.poppins(
-                                fontSize: 13, color: Colors.red.shade600),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _fetchQuestions,
-                          child: const Text('Retry'),
-                        ),
-                      ],
-                    ),
-                  )
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Search bar
-                      Container(
-                        margin: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 10),
-                        child: TextField(
-                          controller: _searchController,
-                          onChanged: (value) =>
-                              setState(() => _searchQuery = value),
-                          textInputAction: TextInputAction.search,
-                          decoration: InputDecoration(
-                            hintText: 'Search questions...',
-                            hintStyle: GoogleFonts.poppins(fontSize: 13),
-                            prefixIcon: const Icon(Icons.search,
-                                color: Colors.grey, size: 20),
-                            suffixIcon: _searchQuery.isEmpty
-                                ? null
-                                : IconButton(
-                                    icon: const Icon(Icons.close, size: 18),
-                                    onPressed: () {
-                                      _searchController.clear();
-                                      setState(() => _searchQuery = '');
-                                    },
-                                  ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide.none,
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 10),
-                          ),
-                        ),
-                      ),
-                      // Status filter dropdown
-                      Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 16),
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey.shade300),
-                        ),
-                        child: DropdownButton<String>(
-                          value: _selectedStatus,
-                          isExpanded: true,
-                          underline: const SizedBox(),
-                          items: _statusFilters
-                              .map((status) => DropdownMenuItem(
-                                    value: status,
-                                    child: Text(status,
-                                        style:
-                                            GoogleFonts.poppins(fontSize: 12)),
-                                  ))
-                              .toList(),
-                          onChanged: (value) =>
-                              setState(() => _selectedStatus = value!),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      // Stats cards
-                      SizedBox(
-                        height: 100,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: _buildStatCard(
-                                  icon: Icons.check_circle_outline,
-                                  label: 'Answered',
-                                  count: _answeredCount,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: _buildStatCard(
-                                  icon: Icons.pending_outlined,
-                                  label: 'Pending',
-                                  count: _pendingCount,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      // Summary card
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
-                        margin: const EdgeInsets.symmetric(horizontal: 16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade200),
-                        ),
-                        child: Row(
+          iconTheme: const IconThemeData(color: Colors.black),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh, color: Colors.black),
+              onPressed: _fetchQuestions,
+            ),
+          ],
+        ),
+        body: SubscriptionWrapper(
+          child: SafeArea(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _errorMessage != null
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context)
-                                    .primaryColor
-                                    .withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Icon(Icons.question_answer,
-                                  color: Theme.of(context).primaryColor,
-                                  size: 20),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Product Questions',
-                                      style: GoogleFonts.poppins(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600)),
-                                  Text(
-                                      '${_filteredQuestions.length} questions in total',
-                                      style: GoogleFonts.poppins(
-                                          fontSize: 11,
-                                          color: Colors.grey.shade600)),
-                                ],
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context)
-                                    .primaryColor
-                                    .withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
+                            Icon(Icons.error_outline,
+                                color: Colors.red.shade400, size: 48),
+                            const SizedBox(height: 12),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 24),
                               child: Text(
-                                '${_filteredQuestions.length}',
+                                _errorMessage!,
                                 style: GoogleFonts.poppins(
-                                  color: Theme.of(context).primaryColor,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 12,
-                                ),
+                                    fontSize: 13, color: Colors.red.shade600),
+                                textAlign: TextAlign.center,
                               ),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _fetchQuestions,
+                              child: const Text('Retry'),
                             ),
                           ],
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      // List header
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'Customer Questions',
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      // Questions list
-                      Expanded(
-                        child: _filteredQuestions.isEmpty
-                            ? Center(
-                                child: Text(
-                                  'No questions found.',
-                                  style: GoogleFonts.poppins(
-                                      fontSize: 13,
-                                      color: Colors.grey.shade600),
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Search bar
+                          Container(
+                            margin: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 10),
+                            child: TextField(
+                              controller: _searchController,
+                              onChanged: (value) =>
+                                  setState(() => _searchQuery = value),
+                              textInputAction: TextInputAction.search,
+                              decoration: InputDecoration(
+                                hintText: 'Search questions...',
+                                hintStyle: GoogleFonts.poppins(fontSize: 13),
+                                prefixIcon: const Icon(Icons.search,
+                                    color: Colors.grey, size: 20),
+                                suffixIcon: _searchQuery.isEmpty
+                                    ? null
+                                    : IconButton(
+                                        icon: const Icon(Icons.close, size: 18),
+                                        onPressed: () {
+                                          _searchController.clear();
+                                          setState(() => _searchQuery = '');
+                                        },
+                                      ),
+                                filled: true,
+                                fillColor: Colors.white,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide.none,
                                 ),
-                              )
-                            : ListView.builder(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 16),
-                                itemCount: _filteredQuestions.length,
-                                itemBuilder: (context, index) =>
-                                    _buildQuestionCard(
-                                        _filteredQuestions[index]),
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 10),
                               ),
+                            ),
+                          ),
+                          // Status filter dropdown
+                          Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 16),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: DropdownButton<String>(
+                              value: _selectedStatus,
+                              isExpanded: true,
+                              underline: const SizedBox(),
+                              items: _statusFilters
+                                  .map((status) => DropdownMenuItem(
+                                        value: status,
+                                        child: Text(status,
+                                            style: GoogleFonts.poppins(
+                                                fontSize: 12)),
+                                      ))
+                                  .toList(),
+                              onChanged: (value) =>
+                                  setState(() => _selectedStatus = value!),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          // Stats cards
+                          SizedBox(
+                            height: 100,
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildStatCard(
+                                      icon: Icons.check_circle_outline,
+                                      label: 'Answered',
+                                      count: _answeredCount,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: _buildStatCard(
+                                      icon: Icons.pending_outlined,
+                                      label: 'Pending',
+                                      count: _pendingCount,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          // Summary card
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            margin: const EdgeInsets.symmetric(horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey.shade200),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context)
+                                        .primaryColor
+                                        .withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(Icons.question_answer,
+                                      color: Theme.of(context).primaryColor,
+                                      size: 20),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text('Product Questions',
+                                          style: GoogleFonts.poppins(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600)),
+                                      Text(
+                                          '${_filteredQuestions.length} questions in total',
+                                          style: GoogleFonts.poppins(
+                                              fontSize: 11,
+                                              color: Colors.grey.shade600)),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context)
+                                        .primaryColor
+                                        .withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    '${_filteredQuestions.length}',
+                                    style: GoogleFonts.poppins(
+                                      color: Theme.of(context).primaryColor,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          // List header
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              'Customer Questions',
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          // Questions list
+                          Expanded(
+                            child: _filteredQuestions.isEmpty
+                                ? Center(
+                                    child: Text(
+                                      'No questions found.',
+                                      style: GoogleFonts.poppins(
+                                          fontSize: 13,
+                                          color: Colors.grey.shade600),
+                                    ),
+                                  )
+                                : ListView.builder(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16),
+                                    itemCount: _filteredQuestions.length,
+                                    itemBuilder: (context, index) =>
+                                        _buildQuestionCard(
+                                            _filteredQuestions[index]),
+                                  ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-      ),
-    );
+          ),
+        ));
   }
 
   Widget _buildStatCard(

@@ -7,6 +7,7 @@ import 'utils/navigator_key.dart';
 import 'intro_page.dart';
 import 'Dashboard.dart';
 import 'Suppliers/supp_dashboard.dart';
+import 'widgets/subscription_banner.dart';
 
 void main() {
   runApp(const MyApp());
@@ -28,6 +29,21 @@ class MyApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           home: const SplashScreen(),
           theme: AppTheme.lightTheme,
+          builder: (context, materialChild) {
+            // Check if we should show the global banner
+            // We'll use a simple approach: if not My Profile, show it.
+            return Scaffold(
+              body: Column(
+                children: [
+                  // This will be above the Navigator, pushing everything down
+                  // It will be visible on all pages except we can't easily filter here
+                  // BUT the user said "dont disable the profile page and put that error msg... after the appbar"
+                  // If we put it here, it's BEFORE the appbar.
+                  Expanded(child: materialChild!),
+                ],
+              ),
+            );
+          },
         );
       },
     );
@@ -58,18 +74,27 @@ class _SplashScreenState extends State<SplashScreen> {
         if (role == 'supplier') {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const Supp_DashboardPage()),
+            MaterialPageRoute(
+              settings: const RouteSettings(name: 'Supplier Dashboard'),
+              builder: (_) => const Supp_DashboardPage(),
+            ),
           );
         } else {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const DashboardPage()),
+            MaterialPageRoute(
+              settings: const RouteSettings(name: 'Dashboard'),
+              builder: (_) => const DashboardPage(),
+            ),
           );
         }
       } else {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const IntroPage()),
+          MaterialPageRoute(
+            settings: const RouteSettings(name: 'Intro'),
+            builder: (context) => const IntroPage(),
+          ),
         );
       }
     });

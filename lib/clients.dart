@@ -22,6 +22,7 @@ import 'package:intl/intl.dart';
 import 'widgets/custom_drawer.dart';
 import 'services/api_service.dart';
 import 'widgets/customer_detail_popup.dart';
+import 'widgets/subscription_wrapper.dart';
 
 class Client extends StatefulWidget {
   const Client({super.key});
@@ -672,256 +673,260 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
             ),
           ],
         ),
-
-        body: Padding(
-          padding: EdgeInsets.all(12.w),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Search Bar ───────────────────────────
-              Container(
-                height: 38.h,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8.r),
-                  border: Border.all(color: Colors.grey[300]!),
-                ),
-                child: TextField(
-                  decoration: InputDecoration(
-                    isDense: true,
-                    prefixIcon: Icon(Icons.search,
-                        size: 16.sp, color: Colors.grey[400]),
-                    hintText: 'Search by name, email or phone...',
-                    hintStyle: GoogleFonts.poppins(
-                        fontSize: 10.sp, color: Colors.grey[400]),
-                    border: InputBorder.none,
-                    contentPadding:
-                        EdgeInsets.symmetric(vertical: 10.h, horizontal: 12.w),
+        body: SubscriptionWrapper(
+          child: Padding(
+            padding: EdgeInsets.all(12.w),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Search Bar ───────────────────────────
+                Container(
+                  height: 38.h,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8.r),
+                    border: Border.all(color: Colors.grey[300]!),
                   ),
-                  style: GoogleFonts.poppins(fontSize: 10.sp),
-                  onChanged: (v) => setState(() => _searchQuery = v),
-                ),
-              ),
-              SizedBox(height: 10.h),
-
-              // ── Tabs + Export ────────────────────────
-              Row(children: [
-                Expanded(
-                  child: Container(
-                    height: 36.h,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(6.r),
-                      border: Border.all(color: Colors.grey[300]!),
+                  child: TextField(
+                    decoration: InputDecoration(
+                      isDense: true,
+                      prefixIcon: Icon(Icons.search,
+                          size: 16.sp, color: Colors.grey[400]),
+                      hintText: 'Search by name, email or phone...',
+                      hintStyle: GoogleFonts.poppins(
+                          fontSize: 10.sp, color: Colors.grey[400]),
+                      border: InputBorder.none,
+                      contentPadding:
+                          EdgeInsets.symmetric(vertical: 10.h, horizontal: 12.w),
                     ),
-                    child: Theme(
-                      data: Theme.of(context).copyWith(
-                        tabBarTheme: const TabBarThemeData(
-                          dividerColor: Colors.transparent,
-                          dividerHeight: 0,
-                        ),
-                      ),
-                      child: TabBar(
-                        controller: _tabController,
-                        dividerColor: Colors.transparent,
-                        indicator: BoxDecoration(
-                          color: Theme.of(context).primaryColor,
-                          borderRadius: BorderRadius.circular(6.r),
-                        ),
-                        indicatorSize: TabBarIndicatorSize.tab,
-                        labelColor: Colors.white,
-                        unselectedLabelColor: Colors.black54,
-                        labelStyle: GoogleFonts.poppins(
-                            fontSize: 10.sp, fontWeight: FontWeight.w600),
-                        unselectedLabelStyle:
-                            GoogleFonts.poppins(fontSize: 10.sp),
-                        tabs: const [
-                          Tab(text: 'Offline Client'),
-                          Tab(text: 'Online Client'),
-                        ],
-                      ),
-                    ),
+                    style: GoogleFonts.poppins(fontSize: 10.sp),
+                    onChanged: (v) => setState(() => _searchQuery = v),
                   ),
                 ),
-              ]),
-              SizedBox(height: 10.h),
+                SizedBox(height: 10.h),
 
-              // ── 2×2 Stat Cards ───────────────────────
-              Row(children: [
-                Expanded(
-                  child: _StatCard(
-                    icon: Icons.group_outlined,
-                    iconColor: Colors.purple,
-                    iconBg: Colors.purple[50]!,
-                    title: 'Total Clients',
-                    value: '$total',
-                  ),
-                ),
-                SizedBox(width: 8.w),
-                Expanded(
-                  child: _StatCard(
-                    icon: Icons.person_outline,
-                    iconColor: Colors.blue,
-                    iconBg: Colors.blue[50]!,
-                    title: 'Currently Active Clients',
-                    value: '$activeClients',
-                  ),
-                ),
-              ]),
-              SizedBox(height: 8.h),
-              Row(children: [
-                Expanded(
-                  child: _StatCard(
-                    icon: Icons.calendar_today_outlined,
-                    iconColor: Colors.pink,
-                    iconBg: Colors.pink[50]!,
-                    title: 'Total Bookings',
-                    value: '$totalBookings',
-                  ),
-                ),
-                SizedBox(width: 8.w),
-                Expanded(
-                  child: _StatCard(
-                    icon: Icons.account_balance_wallet_outlined,
-                    iconColor: Colors.orange,
-                    iconBg: Colors.orange[50]!,
-                    title: 'Total Revenue',
-                    value: '₹ ${totalRevenue.toStringAsFixed(2)}',
-                  ),
-                ),
-              ]),
-              SizedBox(height: 8.h),
-
-              // ── Export + Add Customer (right-aligned, after stats) ──
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  PopupMenuButton<String>(
-                    onSelected: _handleExport,
-                    itemBuilder: (context) => [
-                      PopupMenuItem(
-                        value: 'copy',
-                        child: Row(children: [
-                          Icon(Icons.copy,
-                              size: 13.sp, color: Colors.grey[700]),
-                          SizedBox(width: 8.w),
-                          Text('Copy',
-                              style: GoogleFonts.poppins(fontSize: 10.sp)),
-                        ]),
-                      ),
-                      PopupMenuItem(
-                        value: 'csv',
-                        child: Row(children: [
-                          Icon(Icons.table_chart,
-                              size: 13.sp, color: Colors.grey[700]),
-                          SizedBox(width: 8.w),
-                          Text('CSV',
-                              style: GoogleFonts.poppins(fontSize: 10.sp)),
-                        ]),
-                      ),
-                      PopupMenuItem(
-                        value: 'excel',
-                        child: Row(children: [
-                          Icon(Icons.grid_on,
-                              size: 13.sp, color: Colors.green[700]),
-                          SizedBox(width: 8.w),
-                          Text('Excel',
-                              style: GoogleFonts.poppins(fontSize: 10.sp)),
-                        ]),
-                      ),
-                      PopupMenuItem(
-                        value: 'pdf',
-                        child: Row(children: [
-                          Icon(Icons.picture_as_pdf,
-                              size: 13.sp, color: Colors.red[700]),
-                          SizedBox(width: 8.w),
-                          Text('PDF',
-                              style: GoogleFonts.poppins(fontSize: 10.sp)),
-                        ]),
-                      ),
-                      PopupMenuItem(
-                        value: 'print',
-                        child: Row(children: [
-                          Icon(Icons.print,
-                              size: 13.sp, color: Colors.grey[700]),
-                          SizedBox(width: 8.w),
-                          Text('Print',
-                              style: GoogleFonts.poppins(fontSize: 10.sp)),
-                        ]),
-                      ),
-                    ],
+                // ── Tabs ────────────────────────
+                Row(children: [
+                  Expanded(
                     child: Container(
-                      height: 33.h,
-                      padding: EdgeInsets.symmetric(horizontal: 11.w),
+                      height: 36.h,
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(7.r),
+                        borderRadius: BorderRadius.circular(6.r),
                         border: Border.all(color: Colors.grey[300]!),
                       ),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(Icons.upload_outlined,
-                            size: 13.sp, color: Colors.black54),
-                        SizedBox(width: 5.w),
-                        Text('Export',
-                            style: GoogleFonts.poppins(
-                                fontSize: 10.sp,
-                                color: Colors.black87,
-                                fontWeight: FontWeight.w500)),
-                        SizedBox(width: 3.w),
-                        Icon(Icons.keyboard_arrow_down,
-                            size: 13.sp, color: Colors.black38),
-                      ]),
+                      child: Theme(
+                        data: Theme.of(context).copyWith(
+                          tabBarTheme: const TabBarThemeData(
+                            dividerColor: Colors.transparent,
+                            dividerHeight: 0,
+                          ),
+                        ),
+                        child: TabBar(
+                          controller: _tabController,
+                          dividerColor: Colors.transparent,
+                          indicator: BoxDecoration(
+                            color: Theme.of(context).primaryColor,
+                            borderRadius: BorderRadius.circular(6.r),
+                          ),
+                          indicatorSize: TabBarIndicatorSize.tab,
+                          labelColor: Colors.white,
+                          unselectedLabelColor: Colors.black54,
+                          labelStyle: GoogleFonts.poppins(
+                              fontSize: 10.sp, fontWeight: FontWeight.w600),
+                          unselectedLabelStyle:
+                              GoogleFonts.poppins(fontSize: 10.sp),
+                          tabs: const [
+                            Tab(text: 'Offline Client'),
+                            Tab(text: 'Online Client'),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ]),
+                SizedBox(height: 10.h),
+
+                // ── 2×2 Stat Cards ───────────────────────
+                Row(children: [
+                  Expanded(
+                    child: _StatCard(
+                      icon: Icons.group_outlined,
+                      iconColor: Colors.purple,
+                      iconBg: Colors.purple[50]!,
+                      title: 'Total Clients',
+                      value: '$total',
                     ),
                   ),
                   SizedBox(width: 8.w),
-                  GestureDetector(
-                    onTap: () => _navigateAndAddCustomer(context),
-                    child: Container(
-                      height: 33.h,
-                      padding: EdgeInsets.symmetric(horizontal: 12.w),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).primaryColor,
-                        borderRadius: BorderRadius.circular(7.r),
-                      ),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(Icons.add, size: 14.sp, color: Colors.white),
-                        SizedBox(width: 5.w),
-                        Text('Add Customer',
-                            style: GoogleFonts.poppins(
-                                fontSize: 10.sp,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600)),
-                      ]),
+                  Expanded(
+                    child: _StatCard(
+                      icon: Icons.person_outline,
+                      iconColor: Colors.blue,
+                      iconBg: Colors.blue[50]!,
+                      title: 'Currently Active Clients',
+                      value: '$activeClients',
                     ),
                   ),
-                ],
-              ),
-              SizedBox(height: 10.h),
+                ]),
+                SizedBox(height: 8.h),
+                Row(children: [
+                  Expanded(
+                    child: _StatCard(
+                      icon: Icons.calendar_today_outlined,
+                      iconColor: Colors.pink,
+                      iconBg: Colors.pink[50]!,
+                      title: 'Total Bookings',
+                      value: '$totalBookings',
+                    ),
+                  ),
+                  SizedBox(width: 8.w),
+                  Expanded(
+                    child: _StatCard(
+                      icon: Icons.account_balance_wallet_outlined,
+                      iconColor: Colors.orange,
+                      iconBg: Colors.orange[50]!,
+                      title: 'Total Revenue',
+                      value: '₹ ${totalRevenue.toStringAsFixed(2)}',
+                    ),
+                  ),
+                ]),
+                SizedBox(height: 8.h),
 
-              // ── Customer List ────────────────────────
-              Expanded(
-                child: _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : rows.isEmpty
-                        ? Center(
-                            child: Text('No customers found.',
-                                style: GoogleFonts.poppins(
-                                    color: Colors.grey[600], fontSize: 10.sp)))
-                        : ListView.separated(
-                            itemCount: rows.length,
-                            separatorBuilder: (_, __) => SizedBox(height: 10.h),
-                            itemBuilder: (context, idx) {
-                              final c = rows[idx];
-                              return _CustomerCard(
-                                customer: c,
-                                onEdit: () => _editCustomer(c),
-                                onDelete: () => _deleteCustomer(c),
-                                onView: () => _showCustomerDetails(context, c),
-                              );
-                            },
-                          ),
-              ),
-            ],
+                // ── Export + Add Customer (right-aligned, after stats) ──
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    PopupMenuButton<String>(
+                      onSelected: _handleExport,
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          value: 'copy',
+                          child: Row(children: [
+                            Icon(Icons.copy,
+                                size: 13.sp, color: Colors.grey[700]),
+                            SizedBox(width: 8.w),
+                            Text('Copy',
+                                style: GoogleFonts.poppins(fontSize: 10.sp)),
+                          ]),
+                        ),
+                        PopupMenuItem(
+                          value: 'csv',
+                          child: Row(children: [
+                            Icon(Icons.table_chart,
+                                size: 13.sp, color: Colors.grey[700]),
+                            SizedBox(width: 8.w),
+                            Text('CSV',
+                                style: GoogleFonts.poppins(fontSize: 10.sp)),
+                          ]),
+                        ),
+                        PopupMenuItem(
+                          value: 'excel',
+                          child: Row(children: [
+                            Icon(Icons.grid_on,
+                                size: 13.sp, color: Colors.green[700]),
+                            SizedBox(width: 8.w),
+                            Text('Excel',
+                                style: GoogleFonts.poppins(fontSize: 10.sp)),
+                          ]),
+                        ),
+                        PopupMenuItem(
+                          value: 'pdf',
+                          child: Row(children: [
+                            Icon(Icons.picture_as_pdf,
+                                size: 13.sp, color: Colors.red[700]),
+                            SizedBox(width: 8.w),
+                            Text('PDF',
+                                style: GoogleFonts.poppins(fontSize: 10.sp)),
+                          ]),
+                        ),
+                        PopupMenuItem(
+                          value: 'print',
+                          child: Row(children: [
+                            Icon(Icons.print,
+                                size: 13.sp, color: Colors.grey[700]),
+                            SizedBox(width: 8.w),
+                            Text('Print',
+                                style: GoogleFonts.poppins(fontSize: 10.sp)),
+                          ]),
+                        ),
+                      ],
+                      child: Container(
+                        height: 33.h,
+                        padding: EdgeInsets.symmetric(horizontal: 11.w),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(7.r),
+                          border: Border.all(color: Colors.grey[300]!),
+                        ),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(Icons.upload_outlined,
+                              size: 13.sp, color: Colors.black54),
+                          SizedBox(width: 5.w),
+                          Text('Export',
+                              style: GoogleFonts.poppins(
+                                  fontSize: 10.sp,
+                                  color: Colors.black87,
+                                  fontWeight: FontWeight.w500)),
+                          SizedBox(width: 3.w),
+                          Icon(Icons.keyboard_arrow_down,
+                              size: 13.sp, color: Colors.black38),
+                        ]),
+                      ),
+                    ),
+                    SizedBox(width: 8.w),
+                    GestureDetector(
+                      onTap: () => _navigateAndAddCustomer(context),
+                      child: Container(
+                        height: 33.h,
+                        padding: EdgeInsets.symmetric(horizontal: 12.w),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).primaryColor,
+                          borderRadius: BorderRadius.circular(7.r),
+                        ),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(Icons.add, size: 14.sp, color: Colors.white),
+                          SizedBox(width: 5.w),
+                          Text('Add Customer',
+                              style: GoogleFonts.poppins(
+                                  fontSize: 10.sp,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600)),
+                        ]),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 10.h),
+
+                // ── Customer List ────────────────────────
+                Expanded(
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : rows.isEmpty
+                          ? Center(
+                              child: Text('No customers found.',
+                                  style: GoogleFonts.poppins(
+                                      color: Colors.grey[600],
+                                      fontSize: 10.sp)))
+                          : ListView.separated(
+                              itemCount: rows.length,
+                              separatorBuilder: (_, __) =>
+                                  SizedBox(height: 10.h),
+                              itemBuilder: (context, idx) {
+                                final c = rows[idx];
+                                return _CustomerCard(
+                                  customer: c,
+                                  onEdit: () => _editCustomer(c),
+                                  onDelete: () => _deleteCustomer(c),
+                                  onView: () =>
+                                      _showCustomerDetails(context, c),
+                                );
+                              },
+                            ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

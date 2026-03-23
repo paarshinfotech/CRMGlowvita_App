@@ -15,6 +15,7 @@ import 'services/api_service.dart';
 import 'vendor_model.dart';
 import 'appointment_model.dart';
 import 'billing_invoice_model.dart';
+import 'widgets/subscription_wrapper.dart';
 
 // ─────────────────────────────────────────────
 // BRAND COLORS  (deep plum from the Apply button)
@@ -398,72 +399,91 @@ class _DashboardPageState extends State<DashboardPage>
           backgroundColor: kBg,
           body: _isLoading
               ? const Center(child: CircularProgressIndicator())
-              : CustomScrollView(
-                  slivers: [
-                    // ... existing code for AppBar and Filter Row ...
+              : NestedScrollView(
+                  headerSliverBuilder: (context, innerBoxIsScrolled) => [
                     // ── AppBar ─────────────────────────────────
-                    SliverAppBar(
-                      backgroundColor: kCard,
-                      elevation: 0,
-                      pinned: true,
-                      leading: Builder(
-                        builder: (ctx) => IconButton(
-                          icon: const Icon(Icons.menu, color: Colors.black),
-                          onPressed: () => Scaffold.of(ctx).openDrawer(),
-                        ),
-                      ),
-                      title: Text('Vendor Dashboard',
-                          style: TextStyle(
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.black)),
-                      actions: [
-                        IconButton(
-                          icon: const Icon(Icons.notifications_outlined,
-                              color: Colors.black),
-                          onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => const NotificationPage())),
-                        ),
-                        GestureDetector(
-                          onTap: () => Navigator.push(context,
-                              MaterialPageRoute(builder: (_) => My_Profile())),
-                          child: Padding(
-                            padding: EdgeInsets.only(right: 10.w),
-                            child: CircleAvatar(
-                              radius: 16,
-                              backgroundColor: kPrimary,
-                              child: ClipOval(
-                                child: (_profile != null &&
-                                        _profile!.profileImage.isNotEmpty)
-                                    ? Image.network(
-                                        _profile!.profileImage,
-                                        width: 32,
-                                        height: 32,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (ctx, _, __) =>
-                                            _buildInitialAvatar(),
-                                        loadingBuilder:
-                                            (ctx, child, progress) =>
+                    ValueListenableBuilder(
+                      valueListenable: ApiService.vendorProfileNotifier,
+                      builder: (context, vendorProfile, _) {
+                        final sub = vendorProfile?.subscription;
+                        final bool isActive = sub != null &&
+                            sub.status.toLowerCase() == 'active';
+                        final bool isExpired = sub != null &&
+                            sub.endDate != null &&
+                            sub.endDate!.isBefore(DateTime.now());
+                        final bool subscriptionOk = !(!isActive || isExpired);
+
+                        return SliverAppBar(
+                          backgroundColor: kCard,
+                          elevation: 0,
+                          pinned: true,
+                          automaticallyImplyLeading: subscriptionOk,
+                          leading: subscriptionOk
+                              ? Builder(
+                                  builder: (ctx) => IconButton(
+                                    icon: const Icon(Icons.menu,
+                                        color: Colors.black),
+                                    onPressed: () =>
+                                        Scaffold.of(ctx).openDrawer(),
+                                  ),
+                                )
+                              : const SizedBox.shrink(),
+                          title: Text('Vendor Dashboard',
+                              style: TextStyle(
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.black)),
+                          actions: [
+                            IconButton(
+                              icon: const Icon(Icons.notifications_outlined,
+                                  color: Colors.black),
+                              onPressed: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) =>
+                                          const NotificationPage())),
+                            ),
+                            GestureDetector(
+                              onTap: () => Navigator.push(context,
+                                  MaterialPageRoute(
+                                      builder: (_) => My_Profile())),
+                              child: Padding(
+                                padding: EdgeInsets.only(right: 10.w),
+                                child: CircleAvatar(
+                                  radius: 16,
+                                  backgroundColor: kPrimary,
+                                  child: ClipOval(
+                                    child: (_profile != null &&
+                                            _profile!.profileImage.isNotEmpty)
+                                        ? Image.network(
+                                            _profile!.profileImage,
+                                            width: 32,
+                                            height: 32,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (ctx, _, __) =>
+                                                _buildInitialAvatar(),
+                                            loadingBuilder: (ctx, child,
+                                                    progress) =>
                                                 progress == null
                                                     ? child
-                                                    : _buildInitialAvatar(),
-                                      )
-                                    : _buildInitialAvatar(),
+                                                    : const CircularProgressIndicator(),
+                                          )
+                                        : _buildInitialAvatar(),
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                        ),
-                      ],
+                          ],
+                        );
+                      },
                     ),
 
-                    // ── Smart Filter Row ───────────────────────
+                    // ── Filter Row (Sliver) ─────────────────────
                     SliverToBoxAdapter(
                       child: Container(
-                        color: kCard,
                         padding: EdgeInsets.symmetric(
-                            horizontal: 12.w, vertical: 10.h),
+                            horizontal: 10.w, vertical: 8.h),
+                        color: kCard,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -565,445 +585,465 @@ class _DashboardPageState extends State<DashboardPage>
                         ),
                       ),
                     ),
+                  ],
+                  body: SubscriptionWrapper(
+                    child: CustomScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      slivers: [
+                        SliverToBoxAdapter(child: SizedBox(height: 8.h)),
 
-                    SliverToBoxAdapter(child: SizedBox(height: 8.h)),
-
-                    // ── KPI Grid ───────────────────────────────
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12.w),
-                        child: FadeTransition(
-                          opacity: _kpiFade,
-                          child: Column(children: [
-                            _kpiRow([
-                              _KpiGridCard(
-                                  title: 'Total Revenue',
-                                  value:
-                                      '₹ ${_totalRevenue.toStringAsFixed(2)}',
-                                  icon: '🛒',
-                                  iconBg: const Color(0xFFFFF3E0)),
-                              _KpiGridCard(
-                                  title: 'Total Bookings',
-                                  value: '$_totalBookings',
-                                  icon: '📅',
-                                  iconBg: const Color(0xFFE3F2FD)),
-                              _KpiGridCard(
-                                  title: 'Booking Hours',
-                                  value: '${_bookingHours.toStringAsFixed(1)}h',
-                                  icon: '❤️',
-                                  iconBg: const Color(0xFFFCE4EC)),
-                              _KpiGridCard(
-                                  title: 'Selling Service Revenue',
-                                  value:
-                                      '₹ ${_serviceRevenue.toStringAsFixed(2)}',
-                                  icon: '🏷️',
-                                  iconBg: const Color(0xFFF3E5F5)),
-                            ]),
-                            SizedBox(height: 8.h),
-                            _kpiRow([
-                              _KpiGridCard(
-                                  title: 'Selling Products Revenue',
-                                  value:
-                                      '₹ ${_productRevenue.toStringAsFixed(2)}',
-                                  icon: '🧴',
-                                  iconBg: const Color(0xFFE8F5E9)),
-                              _KpiGridCard(
-                                  title: 'Cancelled Appointments',
-                                  value: '$_cancelledAppts',
-                                  icon: '❌',
-                                  iconBg: const Color(0xFFFFEBEE)),
-                              _KpiGridCard(
-                                  title: 'Upcoming Appointments',
-                                  value: '$_upcomingAppts',
-                                  icon: '📋',
-                                  iconBg: const Color(0xFFFFF8E1)),
-                              _KpiGridCard(
-                                  title: 'Total Business',
-                                  value:
-                                      '₹ ${_totalBusiness.toStringAsFixed(2)}',
-                                  icon: '💰',
-                                  iconBg: const Color(0xFFFFF3E0)),
-                            ]),
-                            SizedBox(height: 8.h),
-                            Row(children: [
-                              Expanded(
-                                  child: _KpiGridCard(
-                                      title: 'Completed Appointments',
-                                      value: '$_completedAppts',
-                                      icon: '✅',
-                                      iconBg: const Color(0xFFE8F5E9))),
-                              SizedBox(width: 8.w),
-                              Expanded(
-                                  child: _KpiGridCard(
-                                      title: 'Total Expense',
+                        // ── KPI Grid ───────────────────────────────
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 12.w),
+                            child: FadeTransition(
+                              opacity: _kpiFade,
+                              child: Column(children: [
+                                _kpiRow([
+                                  _KpiGridCard(
+                                      title: 'Total Revenue',
                                       value:
-                                          '₹ ${_totalExpense.toStringAsFixed(2)}',
-                                      icon: '💸',
-                                      iconBg: const Color(0xFFFCE4EC))),
-                              SizedBox(width: 8.w),
-                              Expanded(
-                                  child: _KpiGridCard(
-                                      title: 'Total Counter Sale',
+                                          '₹ ${_totalRevenue.toStringAsFixed(2)}',
+                                      icon: '🛒',
+                                      iconBg: const Color(0xFFFFF3E0)),
+                                  _KpiGridCard(
+                                      title: 'Total Bookings',
+                                      value: '$_totalBookings',
+                                      icon: '📅',
+                                      iconBg: const Color(0xFFE3F2FD)),
+                                  _KpiGridCard(
+                                      title: 'Booking Hours',
                                       value:
-                                          '₹ ${_counterSale.toStringAsFixed(2)}',
-                                      icon: '🖥️',
-                                      iconBg: const Color(0xFFE3F2FD))),
-                              SizedBox(width: 8.w),
-                              const Expanded(child: SizedBox()),
-                            ]),
-                          ]),
+                                          '${_bookingHours.toStringAsFixed(1)}h',
+                                      icon: '❤️',
+                                      iconBg: const Color(0xFFFCE4EC)),
+                                  _KpiGridCard(
+                                      title: 'Selling Service Revenue',
+                                      value:
+                                          '₹ ${_serviceRevenue.toStringAsFixed(2)}',
+                                      icon: '🏷️',
+                                      iconBg: const Color(0xFFF3E5F5)),
+                                ]),
+                                SizedBox(height: 8.h),
+                                _kpiRow([
+                                  _KpiGridCard(
+                                      title: 'Selling Products Revenue',
+                                      value:
+                                          '₹ ${_productRevenue.toStringAsFixed(2)}',
+                                      icon: '🧴',
+                                      iconBg: const Color(0xFFE8F5E9)),
+                                  _KpiGridCard(
+                                      title: 'Cancelled Appointments',
+                                      value: '$_cancelledAppts',
+                                      icon: '❌',
+                                      iconBg: const Color(0xFFFFEBEE)),
+                                  _KpiGridCard(
+                                      title: 'Upcoming Appointments',
+                                      value: '$_upcomingAppts',
+                                      icon: '📋',
+                                      iconBg: const Color(0xFFFFF8E1)),
+                                  _KpiGridCard(
+                                      title: 'Total Business',
+                                      value:
+                                          '₹ ${_totalBusiness.toStringAsFixed(2)}',
+                                      icon: '💰',
+                                      iconBg: const Color(0xFFFFF3E0)),
+                                ]),
+                                SizedBox(height: 8.h),
+                                Row(children: [
+                                  Expanded(
+                                      child: _KpiGridCard(
+                                          title: 'Completed Appointments',
+                                          value: '$_completedAppts',
+                                          icon: '✅',
+                                          iconBg: const Color(0xFFE8F5E9))),
+                                  SizedBox(width: 8.w),
+                                  Expanded(
+                                      child: _KpiGridCard(
+                                          title: 'Total Expense',
+                                          value:
+                                              '₹ ${_totalExpense.toStringAsFixed(2)}',
+                                          icon: '💸',
+                                          iconBg: const Color(0xFFFCE4EC))),
+                                  SizedBox(width: 8.w),
+                                  Expanded(
+                                      child: _KpiGridCard(
+                                          title: 'Total Counter Sale',
+                                          value:
+                                              '₹ ${_counterSale.toStringAsFixed(2)}',
+                                          icon: '🖥️',
+                                          iconBg: const Color(0xFFE3F2FD))),
+                                  SizedBox(width: 8.w),
+                                  const Expanded(child: SizedBox()),
+                                ]),
+                              ]),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
 
-                    SliverToBoxAdapter(child: SizedBox(height: 12.h)),
+                        SliverToBoxAdapter(child: SizedBox(height: 12.h)),
 
-                    // ── Upcoming Appointments ──────────────────
-                    SliverToBoxAdapter(
-                      child: Container(
-                        margin: EdgeInsets.symmetric(horizontal: 12.w),
-                        decoration: BoxDecoration(
-                            color: kCard,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: kBorder)),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding:
-                                  EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 4.h),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                        // ── Upcoming Appointments ──────────────────
+                        SliverToBoxAdapter(
+                          child: Container(
+                            margin: EdgeInsets.symmetric(horizontal: 12.w),
+                            decoration: BoxDecoration(
+                                color: kCard,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: kBorder)),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding: EdgeInsets.fromLTRB(
+                                      12.w, 12.h, 12.w, 4.h),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Text('Upcoming Appointments',
-                                          style: TextStyle(
-                                              fontSize: 12.sp,
-                                              fontWeight: FontWeight.w700)),
-                                      Text(
-                                          'You have $_upcomingAppts upcoming appointments',
-                                          style: TextStyle(
-                                              fontSize: 9.sp,
-                                              color: Colors.grey[500])),
-                                    ],
-                                  ),
-                                  GestureDetector(
-                                    onTap: () => Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                            builder: (_) =>
-                                                const Appointment())),
-                                    child: Container(
-                                      padding: EdgeInsets.symmetric(
-                                          horizontal: 10.w, vertical: 5.h),
-                                      decoration: BoxDecoration(
-                                          border: Border.all(color: kBorder),
-                                          borderRadius:
-                                              BorderRadius.circular(8)),
-                                      child: Text('View All',
-                                          style: TextStyle(
-                                              fontSize: 9.sp,
-                                              fontWeight: FontWeight.w600)),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const Divider(height: 1),
-                            Padding(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 12.w, vertical: 10.h),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                      flex: 2,
-                                      child: Text('Client',
-                                          style: TextStyle(
-                                              fontSize: 10.sp,
-                                              color: Colors.grey[600],
-                                              fontWeight: FontWeight.w500))),
-                                  Expanded(
-                                      flex: 2,
-                                      child: Text('Service',
-                                          style: TextStyle(
-                                              fontSize: 10.sp,
-                                              color: Colors.grey[600],
-                                              fontWeight: FontWeight.w500))),
-                                  Expanded(
-                                      flex: 2,
-                                      child: Text('Date',
-                                          style: TextStyle(
-                                              fontSize: 10.sp,
-                                              color: Colors.grey[600],
-                                              fontWeight: FontWeight.w500))),
-                                  Expanded(
-                                      flex: 1,
-                                      child: Text('Time',
-                                          style: TextStyle(
-                                              fontSize: 10.sp,
-                                              color: Colors.grey[600],
-                                              fontWeight: FontWeight.w500),
-                                          textAlign: TextAlign.end)),
-                                ],
-                              ),
-                            ),
-                            const Divider(height: 1),
-                            ..._allAppointments
-                                .where((a) =>
-                                    a.date != null &&
-                                    a.date!.isAfter(DateTime.now()) &&
-                                    a.status?.toLowerCase() != 'cancelled')
-                                .take(4)
-                                .map((a) => Padding(
-                                      padding: EdgeInsets.symmetric(
-                                          horizontal: 12.w, vertical: 12.h),
-                                      child: Row(
-                                        children: [
-                                          Expanded(
-                                              flex: 2,
-                                              child: Text(a.clientName ?? 'N/A',
-                                                  style: TextStyle(
-                                                      fontSize: 10.sp,
-                                                      fontWeight:
-                                                          FontWeight.w600))),
-                                          Expanded(
-                                              flex: 2,
-                                              child: Text(
-                                                  a.serviceName ?? 'N/A',
-                                                  style: TextStyle(
-                                                      fontSize: 10.sp,
-                                                      color:
-                                                          Colors.grey[700]))),
-                                          Expanded(
-                                              flex: 2,
-                                              child: Text(
-                                                  a.date != null
-                                                      ? DateFormat('MMM d, y')
-                                                          .format(a.date!)
-                                                      : '--',
-                                                  style: TextStyle(
-                                                      fontSize: 10.sp,
-                                                      color:
-                                                          Colors.grey[700]))),
-                                          Expanded(
-                                              flex: 1,
-                                              child: Text(
-                                                  a.startTime ?? '--:--',
-                                                  style: TextStyle(
-                                                      fontSize: 10.sp,
-                                                      fontWeight:
-                                                          FontWeight.w600),
-                                                  textAlign: TextAlign.end)),
-                                        ],
-                                      ),
-                                    )),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    SliverToBoxAdapter(child: SizedBox(height: 12.h)),
-
-                    // ── Top Services ───────────────────────────
-                    SliverToBoxAdapter(
-                      child: Container(
-                        margin: EdgeInsets.symmetric(horizontal: 12.w),
-                        padding: EdgeInsets.all(12.w),
-                        decoration: BoxDecoration(
-                            color: kCard,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: kBorder)),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Top Services',
-                                style: TextStyle(
-                                    fontSize: 12.sp,
-                                    fontWeight: FontWeight.w700)),
-                            Text('Top services based on customer bookings',
-                                style: TextStyle(
-                                    fontSize: 9.sp, color: Colors.grey[500])),
-                            SizedBox(height: 12.h),
-                            Row(children: [
-                              SizedBox(
-                                width: 90.w,
-                                height: 90.w,
-                                child: _servicePieSegments.isEmpty
-                                    ? Center(
-                                        child: Text('No data',
-                                            style: TextStyle(fontSize: 8.sp)))
-                                    : CustomPaint(
-                                        painter: _PieChartPainter(
-                                            segments: _servicePieSegments),
-                                      ),
-                              ),
-                              SizedBox(width: 16.w),
-                              Expanded(
-                                child: _topServicesLegend.isEmpty
-                                    ? Text('No services found',
-                                        style: TextStyle(fontSize: 9.sp))
-                                    : Column(
+                                      Column(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
-                                        children: _topServicesLegend
-                                            .map((e) => Padding(
-                                                  padding: EdgeInsets.only(
-                                                      bottom: 6.h),
-                                                  child: _ServiceLegendRow(
-                                                      color: e['color'],
-                                                      label: e['label'],
-                                                      percent: e['percent']),
-                                                ))
-                                            .toList(),
+                                        children: [
+                                          Text('Upcoming Appointments',
+                                              style: TextStyle(
+                                                  fontSize: 12.sp,
+                                                  fontWeight: FontWeight.w700)),
+                                          Text(
+                                              'You have $_upcomingAppts upcoming appointments',
+                                              style: TextStyle(
+                                                  fontSize: 9.sp,
+                                                  color: Colors.grey[500])),
+                                        ],
                                       ),
-                              ),
-                            ]),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    SliverToBoxAdapter(child: SizedBox(height: 12.h)),
-
-                    // ── Sales Overview (scrollable Jan–Dec) ────
-                    SliverToBoxAdapter(
-                      child: Container(
-                        margin: EdgeInsets.symmetric(horizontal: 12.w),
-                        padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 8.h),
-                        decoration: BoxDecoration(
-                            color: kCard,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: kBorder)),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text('Sales Overview',
-                                          style: TextStyle(
-                                              fontSize: 12.sp,
-                                              fontWeight: FontWeight.w700)),
-                                      Text(
-                                          'A detailed summary of your sales activity for the last 7 months.',
-                                          style: TextStyle(
-                                              fontSize: 9.sp,
-                                              color: Colors.grey[500])),
+                                      GestureDetector(
+                                        onTap: () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder: (_) =>
+                                                    const Appointment())),
+                                        child: Container(
+                                          padding: EdgeInsets.symmetric(
+                                              horizontal: 10.w, vertical: 5.h),
+                                          decoration: BoxDecoration(
+                                              border:
+                                                  Border.all(color: kBorder),
+                                              borderRadius:
+                                                  BorderRadius.circular(8)),
+                                          child: Text('View All',
+                                              style: TextStyle(
+                                                  fontSize: 9.sp,
+                                                  fontWeight: FontWeight.w600)),
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
-                                // Year selector removed
+                                const Divider(height: 1),
+                                Padding(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 12.w, vertical: 10.h),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                          flex: 2,
+                                          child: Text('Client',
+                                              style: TextStyle(
+                                                  fontSize: 10.sp,
+                                                  color: Colors.grey[600],
+                                                  fontWeight:
+                                                      FontWeight.w500))),
+                                      Expanded(
+                                          flex: 2,
+                                          child: Text('Service',
+                                              style: TextStyle(
+                                                  fontSize: 10.sp,
+                                                  color: Colors.grey[600],
+                                                  fontWeight:
+                                                      FontWeight.w500))),
+                                      Expanded(
+                                          flex: 2,
+                                          child: Text('Date',
+                                              style: TextStyle(
+                                                  fontSize: 10.sp,
+                                                  color: Colors.grey[600],
+                                                  fontWeight:
+                                                      FontWeight.w500))),
+                                      Expanded(
+                                          flex: 1,
+                                          child: Text('Time',
+                                              style: TextStyle(
+                                                  fontSize: 10.sp,
+                                                  color: Colors.grey[600],
+                                                  fontWeight: FontWeight.w500),
+                                              textAlign: TextAlign.end)),
+                                    ],
+                                  ),
+                                ),
+                                const Divider(height: 1),
+                                ..._allAppointments
+                                    .where((a) =>
+                                        a.date != null &&
+                                        a.date!.isAfter(DateTime.now()) &&
+                                        a.status?.toLowerCase() != 'cancelled')
+                                    .take(4)
+                                    .map((a) => Padding(
+                                          padding: EdgeInsets.symmetric(
+                                              horizontal: 12.w, vertical: 12.h),
+                                          child: Row(
+                                            children: [
+                                              Expanded(
+                                                  flex: 2,
+                                                  child: Text(
+                                                      a.clientName ?? 'N/A',
+                                                      style: TextStyle(
+                                                          fontSize: 10.sp,
+                                                          fontWeight: FontWeight
+                                                              .w600))),
+                                              Expanded(
+                                                  flex: 2,
+                                                  child: Text(
+                                                      a.serviceName ?? 'N/A',
+                                                      style: TextStyle(
+                                                          fontSize: 10.sp,
+                                                          color: Colors
+                                                              .grey[700]))),
+                                              Expanded(
+                                                  flex: 2,
+                                                  child: Text(
+                                                      a.date != null
+                                                          ? DateFormat(
+                                                                  'MMM d, y')
+                                                              .format(a.date!)
+                                                          : '--',
+                                                      style: TextStyle(
+                                                          fontSize: 10.sp,
+                                                          color: Colors
+                                                              .grey[700]))),
+                                              Expanded(
+                                                  flex: 1,
+                                                  child: Text(
+                                                      a.startTime ?? '--:--',
+                                                      style: TextStyle(
+                                                          fontSize: 10.sp,
+                                                          fontWeight:
+                                                              FontWeight.w600),
+                                                      textAlign:
+                                                          TextAlign.end)),
+                                            ],
+                                          ),
+                                        )),
                               ],
                             ),
-                            SizedBox(height: 12.h),
-                            _SalesOverviewChart(data: _monthlySalesData),
-                          ],
+                          ),
                         ),
-                      ),
-                    ),
 
-                    SliverToBoxAdapter(child: SizedBox(height: 12.h)),
+                        SliverToBoxAdapter(child: SizedBox(height: 12.h)),
 
-                    // ── Top Selling Products ───────────────────
-                    SliverToBoxAdapter(
-                      child: Container(
-                        margin: EdgeInsets.symmetric(horizontal: 12.w),
-                        padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 8.h),
-                        decoration: BoxDecoration(
-                            color: kCard,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: kBorder)),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Top Selling Products',
-                                style: TextStyle(
-                                    fontSize: 12.sp,
-                                    fontWeight: FontWeight.w700)),
-                            Text('Products with the highest sales volume',
-                                style: TextStyle(
-                                    fontSize: 9.sp, color: Colors.grey[500])),
-                            SizedBox(height: 12.h),
-                            _TopProductsChart(
-                                products: _topProductNames,
-                                values: _topProductValues),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    SliverToBoxAdapter(child: SizedBox(height: 12.h)),
-
-                    // ── Client Feedback ────────────────────────
-                    SliverToBoxAdapter(
-                      child: Container(
-                        margin: EdgeInsets.symmetric(horizontal: 12.w),
-                        padding: EdgeInsets.all(12.w),
-                        decoration: BoxDecoration(
-                            color: kCard,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: kBorder)),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Client Feedback',
-                                style: TextStyle(
-                                    fontSize: 12.sp,
-                                    fontWeight: FontWeight.w700)),
-                            Text('Straight from your clients hearts',
-                                style: TextStyle(
-                                    fontSize: 9.sp, color: Colors.grey[500])),
-                            SizedBox(height: 16.h),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        // ── Top Services ───────────────────────────
+                        SliverToBoxAdapter(
+                          child: Container(
+                            margin: EdgeInsets.symmetric(horizontal: 12.w),
+                            padding: EdgeInsets.all(12.w),
+                            decoration: BoxDecoration(
+                                color: kCard,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: kBorder)),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _GaugeWidget(
-                                    label: '✂️ Salon',
-                                    labelBg: const Color(0xFFFFF9C4),
-                                    value: _salonFeedback),
-                                _GaugeWidget(
-                                    label: '🛍️ Product',
-                                    labelBg: const Color(0xFFFFE0B2),
-                                    value: _productFeedback),
-                                _GaugeWidget(
-                                    label: '💆 Services',
-                                    labelBg: const Color(0xFFE8F5E9),
-                                    value: _serviceFeedback),
+                                Text('Top Services',
+                                    style: TextStyle(
+                                        fontSize: 12.sp,
+                                        fontWeight: FontWeight.w700)),
+                                Text('Top services based on customer bookings',
+                                    style: TextStyle(
+                                        fontSize: 9.sp,
+                                        color: Colors.grey[500])),
+                                SizedBox(height: 12.h),
+                                Row(children: [
+                                  SizedBox(
+                                    width: 90.w,
+                                    height: 90.w,
+                                    child: _servicePieSegments.isEmpty
+                                        ? Center(
+                                            child: Text('No data',
+                                                style:
+                                                    TextStyle(fontSize: 8.sp)))
+                                        : CustomPaint(
+                                            painter: _PieChartPainter(
+                                                segments: _servicePieSegments),
+                                          ),
+                                  ),
+                                  SizedBox(width: 16.w),
+                                  Expanded(
+                                    child: _topServicesLegend.isEmpty
+                                        ? Text('No services found',
+                                            style: TextStyle(fontSize: 9.sp))
+                                        : Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: _topServicesLegend
+                                                .map((e) => Padding(
+                                                      padding: EdgeInsets.only(
+                                                          bottom: 6.h),
+                                                      child: _ServiceLegendRow(
+                                                          color: e['color'],
+                                                          label: e['label'],
+                                                          percent:
+                                                              e['percent']),
+                                                    ))
+                                                .toList(),
+                                          ),
+                                  ),
+                                ]),
                               ],
                             ),
-                            SizedBox(height: 12.h),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                _LegendDot(
-                                    color: const Color(0xFFB3E5FC),
-                                    label: 'Low (0-2.5)'),
-                                SizedBox(width: 10.w),
-                                _LegendDot(
-                                    color: const Color(0xFF42A5F5),
-                                    label: 'Medium (2.5-4.0)'),
-                                SizedBox(width: 10.w),
-                                _LegendDot(
-                                    color: const Color(0xFF1565C0),
-                                    label: 'High (4.0-5.0)'),
-                              ],
-                            ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ),
 
-                    SliverToBoxAdapter(child: SizedBox(height: 32.h)),
-                  ],
+                        SliverToBoxAdapter(child: SizedBox(height: 12.h)),
+
+                        // ── Sales Overview (scrollable Jan–Dec) ────
+                        SliverToBoxAdapter(
+                          child: Container(
+                            margin: EdgeInsets.symmetric(horizontal: 12.w),
+                            padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 8.h),
+                            decoration: BoxDecoration(
+                                color: kCard,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: kBorder)),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text('Sales Overview',
+                                              style: TextStyle(
+                                                  fontSize: 12.sp,
+                                                  fontWeight: FontWeight.w700)),
+                                          Text(
+                                              'A detailed summary of your sales activity for the last 7 months.',
+                                              style: TextStyle(
+                                                  fontSize: 9.sp,
+                                                  color: Colors.grey[500])),
+                                        ],
+                                      ),
+                                    ),
+                                    // Year selector removed
+                                  ],
+                                ),
+                                SizedBox(height: 12.h),
+                                _SalesOverviewChart(data: _monthlySalesData),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        SliverToBoxAdapter(child: SizedBox(height: 12.h)),
+
+                        // ── Top Selling Products ───────────────────
+                        SliverToBoxAdapter(
+                          child: Container(
+                            margin: EdgeInsets.symmetric(horizontal: 12.w),
+                            padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 8.h),
+                            decoration: BoxDecoration(
+                                color: kCard,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: kBorder)),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Top Selling Products',
+                                    style: TextStyle(
+                                        fontSize: 12.sp,
+                                        fontWeight: FontWeight.w700)),
+                                Text('Products with the highest sales volume',
+                                    style: TextStyle(
+                                        fontSize: 9.sp,
+                                        color: Colors.grey[500])),
+                                SizedBox(height: 12.h),
+                                _TopProductsChart(
+                                    products: _topProductNames,
+                                    values: _topProductValues),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        SliverToBoxAdapter(child: SizedBox(height: 12.h)),
+
+                        // ── Client Feedback ────────────────────────
+                        SliverToBoxAdapter(
+                          child: Container(
+                            margin: EdgeInsets.symmetric(horizontal: 12.w),
+                            padding: EdgeInsets.all(12.w),
+                            decoration: BoxDecoration(
+                                color: kCard,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: kBorder)),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Client Feedback',
+                                    style: TextStyle(
+                                        fontSize: 12.sp,
+                                        fontWeight: FontWeight.w700)),
+                                Text('Straight from your clients hearts',
+                                    style: TextStyle(
+                                        fontSize: 9.sp,
+                                        color: Colors.grey[500])),
+                                SizedBox(height: 16.h),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceAround,
+                                  children: [
+                                    _GaugeWidget(
+                                        label: '✂️ Salon',
+                                        labelBg: const Color(0xFFFFF9C4),
+                                        value: _salonFeedback),
+                                    _GaugeWidget(
+                                        label: '🛍️ Product',
+                                        labelBg: const Color(0xFFFFE0B2),
+                                        value: _productFeedback),
+                                    _GaugeWidget(
+                                        label: '💆 Services',
+                                        labelBg: const Color(0xFFE8F5E9),
+                                        value: _serviceFeedback),
+                                  ],
+                                ),
+                                SizedBox(height: 12.h),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    _LegendDot(
+                                        color: const Color(0xFFB3E5FC),
+                                        label: 'Low (0-2.5)'),
+                                    SizedBox(width: 10.w),
+                                    _LegendDot(
+                                        color: const Color(0xFF42A5F5),
+                                        label: 'Medium (2.5-4.0)'),
+                                    SizedBox(width: 10.w),
+                                    _LegendDot(
+                                        color: const Color(0xFF1565C0),
+                                        label: 'High (4.0-5.0)'),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SliverToBoxAdapter(child: SizedBox(height: 70)),
+                      ],
+                    ),
+                  ),
                 ),
         ),
       ),

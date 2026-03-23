@@ -20,6 +20,7 @@ import 'appointment_model.dart';
 import 'widgets/collect_payment_dialog.dart';
 import 'widgets/appointment_detail_dialog.dart';
 import 'vendor_model.dart';
+import 'widgets/subscription_wrapper.dart';
 
 extension StringExtension on String {
   String capitalize() {
@@ -1485,7 +1486,8 @@ class _AppointmentState extends State<Appointment>
           ),
         ],
       ),
-      body: SafeArea(
+      body: SubscriptionWrapper(
+        child: SafeArea(
         child: SingleChildScrollView(
           controller: _scrollController,
           child: Column(
@@ -1925,6 +1927,7 @@ class _AppointmentState extends State<Appointment>
               SizedBox(height: 70.h),
             ],
           ),
+        ),
         ),
       ),
       floatingActionButton: FloatingActionButton(

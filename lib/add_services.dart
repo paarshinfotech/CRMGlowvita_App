@@ -273,10 +273,11 @@ class _AddServicePageState extends State<AddServicePage>
                     (val) {
                       setState(() {
                         selectedCategory = val;
+                        // Use ID if available for fetching services, otherwise name
                         selectedCategoryId = categoryIdMap[val];
                         selectedServiceName = null;
                         if (val != null) {
-                          _fetchServicesByCategory(val);
+                          _fetchServicesByCategory(selectedCategoryId ?? val);
                         }
                       });
                     },
@@ -1158,14 +1159,21 @@ class _AddServicePageState extends State<AddServicePage>
       }
 
       setState(() {
-        categoryServicesMap[categoryName] = names;
+        // If we were passed an ID, we might not have the name, so we use selectedCategory
+        final String? catName = (categoryName == selectedCategoryId)
+            ? selectedCategory
+            : categoryName;
+        if (catName != null) {
+          categoryServicesMap[catName] = names;
+        }
 
-        if (selectedCategory == categoryName) {
-          serviceNames = names;
-          if (selectedServiceName != null &&
-              !serviceNames.contains(selectedServiceName)) {
-            serviceNames.add(selectedServiceName!);
-          }
+        serviceNames = names;
+        // Ensure effectiveValue check in dropdown likes the current selected name
+        if (selectedServiceName != null &&
+            !serviceNames.contains(selectedServiceName)) {
+          // Verify if it is really in the names list (e.g. by comparing trimmed/lower case)
+          // or just add it if we are editing
+          serviceNames.add(selectedServiceName!);
         }
         _isServicesLoading = false;
       });
@@ -1426,7 +1434,7 @@ class _AddServicePageState extends State<AddServicePage>
 
                           try {
                             final response =
-                                await ApiService.createMasterCategory(payload);
+                                await ApiService.createServiceCategory(payload);
 
                             if (response.statusCode == 200 ||
                                 response.statusCode == 201) {
@@ -1642,6 +1650,7 @@ class _AddServicePageState extends State<AddServicePage>
                           };
 
                           try {
+                            // Adding to global services master list
                             final response =
                                 await ApiService.createMasterService(payload);
 
@@ -1655,32 +1664,22 @@ class _AddServicePageState extends State<AddServicePage>
                                   data['name'] ?? 'New Service';
 
                               setState(() {
-                                // Add to current category services list
-                                if (categoryServicesMap[selectedCategory] !=
-                                    null) {
-                                  if (!categoryServicesMap[selectedCategory]!
-                                      .contains(newName)) {
-                                    categoryServicesMap[selectedCategory]!
-                                        .add(newName);
-                                  }
-                                } else {
-                                  categoryServicesMap[selectedCategory!] = [
-                                    newName
-                                  ];
-                                }
+                                // Update local list
                                 if (!serviceNames.contains(newName)) {
                                   serviceNames.add(newName);
                                 }
                                 selectedServiceName = newName;
                               });
+
                               _newServiceNameController.clear();
                               _newServiceDescController.clear();
                               _selectedImage = null;
 
                               Navigator.pop(context);
-                              // Refresh services for the current category
+                              // Refresh services for the current category to ensure the dropdown is in sync
                               if (selectedCategory != null) {
-                                _fetchServicesByCategory(selectedCategory!);
+                                _fetchServicesByCategory(
+                                    selectedCategoryId ?? selectedCategory!);
                               }
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(

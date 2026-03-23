@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'widgets/subscription_wrapper.dart';
 import 'package:intl/intl.dart';
 import 'services/api_service.dart';
 import 'appointment_model.dart';
@@ -186,60 +187,70 @@ class _BookingCalendarPageState extends State<BookingCalendarPage> {
           profileImageUrl: _profile?.profileImage ?? '',
         ),
         backgroundColor: _kBg,
-        body: Column(
-          children: [
-            // ── Header
-            _Header(
-              monthYearLabel: _monthYearLabel,
-              selDayIndex: _selDayIndex,
-              days: _days,
-              onDayTap: (i) => setState(() => _selDayIndex = i),
-              onPrev: () => setState(() =>
-                  _weekStart = _weekStart.subtract(const Duration(days: 7))),
-              onNext: () => setState(
-                  () => _weekStart = _weekStart.add(const Duration(days: 7))),
-              onRefresh: _loadData,
-              staff: _staff,
-              selStaffId: _selStaffId,
-              onStaffChanged: (id) => setState(() => _selStaffId = id),
-              onAddTap: _openCreateForm,
-              onBlockTap: _openBlockTimeDialog,
-              onMonthYearTap: _selectMonthYear,
-              profile: _profile,
-            ),
-            // ── Summary bar
-            _SummaryBar(
-              date: _selectedDate,
-              total: _filteredAppointments.length,
-              confirmed: _confirmedCount,
-              pending: _pendingCount,
-              cancelled: _cancelledCount,
-            ),
-            // ── Category filter chips
-            _FilterRow(
-              filters: _filters,
-              selected: _selFilter,
-              onSelect: (f) => setState(() => _selFilter = f),
-            ),
-            // ── List
-            Expanded(
-              child: _isLoading
-                  ? const Center(
-                      child: CircularProgressIndicator(color: _kPrimary))
-                  : _filteredAppointments.isEmpty
-                      ? _EmptyState()
-                      : ListView.builder(
-                          padding: EdgeInsets.fromLTRB(12.w, 8.h, 12.w, 80.h),
-                          itemCount: _filteredAppointments.length,
-                          itemBuilder: (_, i) => _AppointmentCard(
-                            appt: _filteredAppointments[i],
-                            onTap: () =>
-                                _openCalendar(_filteredAppointments[i]),
-                          ),
-                        ),
-            ),
-          ],
-        ),
+          body: Column(
+            children: [
+              // ── Header (Unblurred)
+              _Header(
+                monthYearLabel: _monthYearLabel,
+                selDayIndex: _selDayIndex,
+                days: _days,
+                onDayTap: (i) => setState(() => _selDayIndex = i),
+                onPrev: () => setState(() =>
+                    _weekStart = _weekStart.subtract(const Duration(days: 7))),
+                onNext: () => setState(
+                    () => _weekStart = _weekStart.add(const Duration(days: 7))),
+                onRefresh: _loadData,
+                staff: _staff,
+                selStaffId: _selStaffId,
+                onStaffChanged: (id) => setState(() => _selStaffId = id),
+                onAddTap: _openCreateForm,
+                onBlockTap: _openBlockTimeDialog,
+                onMonthYearTap: _selectMonthYear,
+                profile: _profile,
+              ),
+              Expanded(
+                child: SubscriptionWrapper(
+                  child: Column(
+                    children: [
+                      // ── Summary bar
+                      _SummaryBar(
+                        date: _selectedDate,
+                        total: _filteredAppointments.length,
+                        confirmed: _confirmedCount,
+                        pending: _pendingCount,
+                        cancelled: _cancelledCount,
+                      ),
+                      // ── Category filter chips
+                      _FilterRow(
+                        filters: _filters,
+                        selected: _selFilter,
+                        onSelect: (f) => setState(() => _selFilter = f),
+                      ),
+                      // ── List
+                      Expanded(
+                        child: _isLoading
+                            ? const Center(
+                                child:
+                                    CircularProgressIndicator(color: _kPrimary))
+                            : _filteredAppointments.isEmpty
+                                ? _EmptyState()
+                                : ListView.builder(
+                                    padding: EdgeInsets.fromLTRB(
+                                        12.w, 8.h, 12.w, 80.h),
+                                    itemCount: _filteredAppointments.length,
+                                    itemBuilder: (_, i) => _AppointmentCard(
+                                      appt: _filteredAppointments[i],
+                                      onTap: () => _openCalendar(
+                                          _filteredAppointments[i]),
+                                    ),
+                                  ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
       ),
     );
   }

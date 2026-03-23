@@ -582,7 +582,9 @@ class _CustomDrawerState extends State<CustomDrawer> {
     Navigator.pop(context); // Close drawer
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => page),
+      MaterialPageRoute(
+        builder: (context) => page,
+      ),
     );
   }
 

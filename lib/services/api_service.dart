@@ -459,6 +459,10 @@ class ApiService {
   static const String adminBaseUrl = 'https://admin.glowvitasalon.com/api';
   static const String productCategoriesEndpoint = '/admin/product-categories';
 
+  // Static notifier for vendor profile
+  static final ValueNotifier<VendorProfile?> vendorProfileNotifier =
+      ValueNotifier<VendorProfile?>(null);
+
   // Get auth token from shared preferences
   static Future<String?> _getAuthToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -732,7 +736,6 @@ class ApiService {
       useAuth: false,
     );
   }
-
 
   // Vendor Register
   static Future<http.Response> registerVendor(
@@ -1038,8 +1041,10 @@ class ApiService {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
         return data['success'] == true ||
-            data['message']?.toString().toLowerCase().contains('sent') == true ||
-            data['message']?.toString().toLowerCase().contains('success') == true;
+            data['message']?.toString().toLowerCase().contains('sent') ==
+                true ||
+            data['message']?.toString().toLowerCase().contains('success') ==
+                true;
       } else {
         throw Exception(
             'Failed to send credentials: ${response.statusCode} - ${response.body}');
@@ -1520,6 +1525,7 @@ class ApiService {
   static Future<List<Map<String, dynamic>>> getServicesByCategory(
       String categoryName) async {
     try {
+      // Filtering by category (can be ID or name depending on server)
       final response =
           await _get('$baseUrl/crm/services?category=$categoryName');
       if (response.statusCode == 200) {
@@ -1704,11 +1710,30 @@ class ApiService {
         'gender': serviceData['gender'] ?? 'unisex',
         'staff': staffIds,
         'commission': serviceData['allow_commission'] ?? false,
-        'homeService': serviceData['home_service'] ?? false,
-        'weddingService': serviceData['wedding_service'] ?? false,
+        'homeService': serviceData['home_service'] is Map
+            ? serviceData['home_service']
+            : serviceData['homeService'] ??
+                {
+                  'available': serviceData['home_service'] ?? false,
+                  'charges': null
+                },
+        'weddingService': serviceData['wedding_service'] is Map
+            ? serviceData['wedding_service']
+            : serviceData['weddingService'] ??
+                {
+                  'available': serviceData['wedding_service'] ?? false,
+                  'charges': null
+                },
         'bookingInterval':
-            int.tryParse(serviceData['booking_interval'] ?? '0') ?? 0,
-        'tax': serviceData['enable_tax'] ?? false,
+            int.tryParse(serviceData['booking_interval']?.toString() ?? '0') ??
+                0,
+        'tax': serviceData['tax'] is Map
+            ? serviceData['tax']
+            : {
+                'enabled': serviceData['enable_tax'] ?? false,
+                'type': 'percentage',
+                'value': serviceData['tax_value'] ?? 0
+              },
         'onlineBooking': serviceData['online_booking'] ?? true,
         if (serviceData['image'] != null)
           'image': serviceData['image'], // base64 data URL
@@ -2091,11 +2116,12 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         List<dynamic>? packagesData;
-        
+
         if (data is List) {
           packagesData = data;
         } else if (data is Map) {
-          packagesData = data['weddingPackages'] ?? data['data'] ?? data['packages'];
+          packagesData =
+              data['weddingPackages'] ?? data['data'] ?? data['packages'];
         }
 
         if (packagesData != null) {
@@ -2219,7 +2245,9 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true && data['data'] != null) {
-          return VendorProfile.fromJson(data['data']);
+          final profile = VendorProfile.fromJson(data['data']);
+          vendorProfileNotifier.value = profile; // Update the global notifier
+          return profile;
         } else {
           throw Exception(
               'Failed to load vendor profile: ${data['message'] ?? 'Unknown error'}');
@@ -2347,15 +2375,14 @@ class ApiService {
         return true;
       } else {
         final data = json.decode(response.body);
-        throw Exception(
-            data['message'] ?? 'Failed to renew subscription: ${response.body}');
+        throw Exception(data['message'] ??
+            'Failed to renew subscription: ${response.body}');
       }
     } catch (e) {
       print('Error renewing subscription: $e');
       rethrow;
     }
   }
-
 
   static Future<bool> deleteExpense(String id) async {
     try {
@@ -3002,7 +3029,8 @@ class WeddingPackage {
       discountedPrice: (json['discountedPrice'] as num?)?.toDouble(),
       duration: (json['duration'] as num?)?.toInt(),
       staffCount: (json['staffCount'] as num?)?.toInt(),
-      assignedStaff: json['assignedStaff'] is List ? json['assignedStaff'] : null,
+      assignedStaff:
+          json['assignedStaff'] is List ? json['assignedStaff'] : null,
       image: json['image'],
       status: json['status'],
       isActive: json['isActive'] == true || json['isActive'] == 1,

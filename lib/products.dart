@@ -9,6 +9,7 @@ import 'services/api_service.dart';
 import 'vendor_model.dart';
 import 'my_Profile.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'widgets/subscription_wrapper.dart';
 
 class Products extends StatefulWidget {
   const Products({super.key});
@@ -375,274 +376,276 @@ class _ProductsPageState extends State<Products> {
         ],
       ),
       backgroundColor: scaffoldBg,
-      body: Padding(
-        padding: const EdgeInsets.all(_gap),
-        child: Column(
-          children: [
-            // Search
-            TextField(
-              controller: _searchController,
-              onChanged: (v) => setState(() => searchQuery = v),
-              textInputAction: TextInputAction.search,
-              decoration: InputDecoration(
-                hintText: 'Search Products...',
-                hintStyle: GoogleFonts.poppins(fontSize: 13),
-                prefixIcon:
-                    const Icon(Icons.search, color: Colors.grey, size: 20),
-                suffixIcon: searchQuery.isEmpty
-                    ? null
-                    : IconButton(
-                        icon: const Icon(Icons.close, size: 18),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() => searchQuery = '');
-                        },
-                      ),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(_radius),
-                  borderSide: BorderSide.none,
+      body: SubscriptionWrapper(
+        child: Padding(
+          padding: const EdgeInsets.all(_gap),
+          child: Column(
+            children: [
+              // Search
+              TextField(
+                controller: _searchController,
+                onChanged: (v) => setState(() => searchQuery = v),
+                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  hintText: 'Search Products...',
+                  hintStyle: GoogleFonts.poppins(fontSize: 13),
+                  prefixIcon:
+                      const Icon(Icons.search, color: Colors.grey, size: 20),
+                  suffixIcon: searchQuery.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.close, size: 18),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => searchQuery = '');
+                          },
+                        ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(_radius),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 ),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               ),
-            ),
-            const SizedBox(height: 10),
+              const SizedBox(height: 10),
 
-            // Filters + toggle + add
-            Row(
-              children: [
-                // Status dropdown
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey.shade300),
-                  ),
-                  child: DropdownButton<String>(
-                    value: selectedStatus,
-                    underline: const SizedBox(),
-                    items: statusFilters
-                        .map((status) => DropdownMenuItem(
-                              value: status,
-                              child: Text(
-                                status,
-                                style: GoogleFonts.poppins(fontSize: 12),
-                              ),
-                            ))
-                        .toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        selectedStatus = value!;
-                      });
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
-
-                // Grid/List Segmented toggle (explicit colors)
-                SegmentedButton<bool>(
-                  showSelectedIcon: false,
-                  segments: const [
-                    ButtonSegment(
-                      value: true,
-                      icon: Icon(Icons.grid_view, size: 16),
-                    ),
-                    ButtonSegment(
-                      value: false,
-                      icon: Icon(Icons.view_list, size: 16),
-                    ),
-                  ],
-                  selected: {isGridView},
-                  onSelectionChanged: (s) =>
-                      setState(() => isGridView = s.first),
-                  style: ButtonStyle(
-                    backgroundColor:
-                        WidgetStateProperty.all<Color>(Colors.white),
-                    side: WidgetStateProperty.all(
-                      BorderSide(color: Colors.grey.shade300),
-                    ),
-                    shape: WidgetStateProperty.all(
-                      RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    foregroundColor: WidgetStateProperty.resolveWith((states) {
-                      return states.contains(WidgetState.selected)
-                          ? Theme.of(context).primaryColor
-                          : Colors.grey;
-                    }),
-                    padding: WidgetStateProperty.all(
-                      const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(width: 8),
-
-                // Add (kept blue)
-                ElevatedButton.icon(
-                  onPressed: _navigateToAddProduct,
-                  icon: const Icon(Icons.add, color: Colors.white, size: 16),
-                  label: Text(
-                    "Add",
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 12,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).primaryColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-
-            // Count card (unchanged colors)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: cardBg,
-                borderRadius: BorderRadius.circular(_radius),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: Row(
+              // Filters + toggle + add
+              Row(
                 children: [
+                  // Status dropdown
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300),
                     ),
-                    child: Icon(Icons.inventory_2,
-                        color: Theme.of(context).primaryColor, size: 20),
+                    child: DropdownButton<String>(
+                      value: selectedStatus,
+                      underline: const SizedBox(),
+                      items: statusFilters
+                          .map((status) => DropdownMenuItem(
+                                value: status,
+                                child: Text(
+                                  status,
+                                  style: GoogleFonts.poppins(fontSize: 12),
+                                ),
+                              ))
+                          .toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          selectedStatus = value!;
+                        });
+                      },
+                    ),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('My Products',
-                            style: GoogleFonts.poppins(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            )),
-                        Text('$productCount products in catalog',
-                            style: GoogleFonts.poppins(
-                              fontSize: 10,
-                              color: Colors.grey.shade600,
-                            )),
-                      ],
+                  const SizedBox(width: 8),
+
+                  // Grid/List Segmented toggle (explicit colors)
+                  SegmentedButton<bool>(
+                    showSelectedIcon: false,
+                    segments: const [
+                      ButtonSegment(
+                        value: true,
+                        icon: Icon(Icons.grid_view, size: 16),
+                      ),
+                      ButtonSegment(
+                        value: false,
+                        icon: Icon(Icons.view_list, size: 16),
+                      ),
+                    ],
+                    selected: {isGridView},
+                    onSelectionChanged: (s) =>
+                        setState(() => isGridView = s.first),
+                    style: ButtonStyle(
+                      backgroundColor:
+                          WidgetStateProperty.all<Color>(Colors.white),
+                      side: WidgetStateProperty.all(
+                        BorderSide(color: Colors.grey.shade300),
+                      ),
+                      shape: WidgetStateProperty.all(
+                        RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      foregroundColor: WidgetStateProperty.resolveWith((states) {
+                        return states.contains(WidgetState.selected)
+                            ? Theme.of(context).primaryColor
+                            : Colors.grey;
+                      }),
+                      padding: WidgetStateProperty.all(
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                      ),
                     ),
                   ),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
+
+                  const SizedBox(width: 8),
+
+                  // Add (kept blue)
+                  ElevatedButton.icon(
+                    onPressed: _navigateToAddProduct,
+                    icon: const Icon(Icons.add, color: Colors.white, size: 16),
+                    label: Text(
+                      "Add",
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 12,
+                      ),
                     ),
-                    child: Text('$productCount',
-                        style: GoogleFonts.poppins(
-                          color: Theme.of(context).primaryColor,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 11,
-                        )),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 10),
+              const SizedBox(height: 10),
 
-            // Content
-            Expanded(
-              child: isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : filteredProducts.isEmpty
-                      ? _EmptyState(onAdd: _navigateToAddProduct)
-                      : AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 180),
-                          child: isGridView
-                              ? GridView.builder(
-                                  key: const ValueKey('grid'),
-                                  padding: EdgeInsets.zero,
-                                  gridDelegate:
-                                      const SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: 2,
-                                    childAspectRatio: 0.60,
-                                    crossAxisSpacing: 12,
-                                    mainAxisSpacing: 16,
+              // Count card (unchanged colors)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: cardBg,
+                  borderRadius: BorderRadius.circular(_radius),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).primaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(Icons.inventory_2,
+                          color: Theme.of(context).primaryColor, size: 20),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('My Products',
+                              style: GoogleFonts.poppins(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              )),
+                          Text('$productCount products in catalog',
+                              style: GoogleFonts.poppins(
+                                fontSize: 10,
+                                color: Colors.grey.shade600,
+                              )),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).primaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text('$productCount',
+                          style: GoogleFonts.poppins(
+                            color: Theme.of(context).primaryColor,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 11,
+                          )),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // Content
+              Expanded(
+                child: isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : filteredProducts.isEmpty
+                        ? _EmptyState(onAdd: _navigateToAddProduct)
+                        : AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 180),
+                            child: isGridView
+                                ? GridView.builder(
+                                    key: const ValueKey('grid'),
+                                    padding: EdgeInsets.zero,
+                                    gridDelegate:
+                                        const SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: 2,
+                                      childAspectRatio: 0.60,
+                                      crossAxisSpacing: 12,
+                                      mainAxisSpacing: 16,
+                                    ),
+                                    itemCount: filteredProducts.length,
+                                    itemBuilder: (context, index) {
+                                      final product = filteredProducts[index];
+                                      return _GridCard(
+                                        product: product,
+                                        accent: accent,
+                                        approved: approved,
+                                        disapproved: disapproved,
+                                        pending: pending,
+                                        onEdit: () => _editProduct(
+                                            products.indexOf(product)),
+                                        onDelete: () => _deleteProduct(
+                                            products.indexOf(product)),
+                                        onPreview: (images, i) => Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => ImagePreviewPage(
+                                              images: images,
+                                              initialIndex: i,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  )
+                                : ListView.separated(
+                                    key: const ValueKey('list'),
+                                    padding: EdgeInsets.zero,
+                                    itemCount: filteredProducts.length,
+                                    separatorBuilder: (_, __) =>
+                                        const SizedBox(height: 8),
+                                    itemBuilder: (context, index) {
+                                      final product = filteredProducts[index];
+                                      return _ListTileCard(
+                                        product: product,
+                                        accent: accent,
+                                        approved: approved,
+                                        disapproved: disapproved,
+                                        pending: pending,
+                                        onEdit: () => _editProduct(
+                                            products.indexOf(product)),
+                                        onDelete: () => _deleteProduct(
+                                            products.indexOf(product)),
+                                        onPreview: (images, i) => Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => ImagePreviewPage(
+                                              images: images,
+                                              initialIndex: i,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   ),
-                                  itemCount: filteredProducts.length,
-                                  itemBuilder: (context, index) {
-                                    final product = filteredProducts[index];
-                                    return _GridCard(
-                                      product: product,
-                                      accent: accent,
-                                      approved: approved,
-                                      disapproved: disapproved,
-                                      pending: pending,
-                                      onEdit: () => _editProduct(
-                                          products.indexOf(product)),
-                                      onDelete: () => _deleteProduct(
-                                          products.indexOf(product)),
-                                      onPreview: (images, i) => Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => ImagePreviewPage(
-                                            images: images,
-                                            initialIndex: i,
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                )
-                              : ListView.separated(
-                                  key: const ValueKey('list'),
-                                  padding: EdgeInsets.zero,
-                                  itemCount: filteredProducts.length,
-                                  separatorBuilder: (_, __) =>
-                                      const SizedBox(height: 8),
-                                  itemBuilder: (context, index) {
-                                    final product = filteredProducts[index];
-                                    return _ListTileCard(
-                                      product: product,
-                                      accent: accent,
-                                      approved: approved,
-                                      disapproved: disapproved,
-                                      pending: pending,
-                                      onEdit: () => _editProduct(
-                                          products.indexOf(product)),
-                                      onDelete: () => _deleteProduct(
-                                          products.indexOf(product)),
-                                      onPreview: (images, i) => Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => ImagePreviewPage(
-                                            images: images,
-                                            initialIndex: i,
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                        ),
-            ),
-          ],
+                          ),
+              ),
+            ],
+          ),
         ),
       ),
     );
