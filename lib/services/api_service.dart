@@ -2760,7 +2760,114 @@ class ApiService {
       rethrow;
     }
   }
+
+  /// Fetches completed appointments report from
+  /// GET /api/crm/vendor/reports/completed-appointments
+  ///
+  /// Returns the full decoded response map which contains:
+  ///   data.complete.total, data.complete.appointments[],
+  ///   data.complete.totalRevenue, data.complete.totalDuration
+  static Future<Map<String, dynamic>> getCompletedAppointmentsReport({
+    String? period,
+    String? startDate,
+    String? endDate,
+    String? client,
+    String? service,
+    String? staff,
+    String? status,
+    String? bookingType,
+  }) async {
+    try {
+      final queryParams = <String, String>{};
+      if (period != null) queryParams['period'] = period;
+      if (startDate != null) queryParams['startDate'] = startDate;
+      if (endDate != null) queryParams['endDate'] = endDate;
+      if (client != null) queryParams['client'] = client;
+      if (service != null) queryParams['service'] = service;
+      if (staff != null) queryParams['staff'] = staff;
+      if (status != null) queryParams['status'] = status;
+      if (bookingType != null) queryParams['bookingType'] = bookingType;
+
+      final uri =
+          Uri.parse('$baseUrl/crm/vendor/reports/completed-appointments')
+              .replace(
+                  queryParameters:
+                      queryParams.isEmpty ? null : queryParams);
+
+      final response = await _get(uri.toString());
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return data;
+        } else {
+          throw Exception(
+              'Failed to load completed appointments report: ${data['message'] ?? 'Unknown error'}');
+        }
+      } else {
+        throw Exception(
+            'Failed to load completed appointments report: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching completed appointments report: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetches cancelled appointments report from
+  /// GET /api/crm/vendor/reports/cancelled-appointments
+  ///
+  /// Returns the full decoded response map which contains:
+  ///   data.cancellations.totalCancelled, data.cancellations.cancellations[],
+  ///   data.cancellations.revenueLoss
+  static Future<Map<String, dynamic>> getCancelledAppointmentsReport({
+    String? period,
+    String? startDate,
+    String? endDate,
+    String? client,
+    String? service,
+    String? staff,
+    String? status,
+    String? bookingType,
+  }) async {
+    try {
+      final queryParams = <String, String>{};
+      if (period != null) queryParams['period'] = period;
+      if (startDate != null) queryParams['startDate'] = startDate;
+      if (endDate != null) queryParams['endDate'] = endDate;
+      if (client != null) queryParams['client'] = client;
+      if (service != null) queryParams['service'] = service;
+      if (staff != null) queryParams['staff'] = staff;
+      if (status != null) queryParams['status'] = status;
+      if (bookingType != null) queryParams['bookingType'] = bookingType;
+
+      final uri =
+          Uri.parse('$baseUrl/crm/vendor/reports/cancelled-appointments')
+              .replace(
+                  queryParameters:
+                      queryParams.isEmpty ? null : queryParams);
+
+      final response = await _get(uri.toString());
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return data;
+        } else {
+          throw Exception(
+              'Failed to load cancelled appointments report: ${data['message'] ?? 'Unknown error'}');
+        }
+      } else {
+        throw Exception(
+            'Failed to load cancelled appointments report: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching cancelled appointments report: $e');
+      rethrow;
+    }
+  }
 }
+
 
 class Service {
   String? id;

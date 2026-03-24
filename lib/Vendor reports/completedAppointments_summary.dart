@@ -6,18 +6,19 @@ import '../services/api_service.dart';
 
 const Color _primary = Color(0xFF372935);
 
-class AppointmentsCancellationSummary extends StatefulWidget {
+class CompletedAppointmentsSummary extends StatefulWidget {
   @override
-  State<AppointmentsCancellationSummary> createState() =>
-      _AppointmentsCancellationSummaryState();
+  State<CompletedAppointmentsSummary> createState() =>
+      _CompletedAppointmentsSummaryState();
 }
 
-class _AppointmentsCancellationSummaryState
-    extends State<AppointmentsCancellationSummary> {
+class _CompletedAppointmentsSummaryState
+    extends State<CompletedAppointmentsSummary> {
   // ── API state ────────────────────────────────────────────────────────────────
   bool _isLoading = true;
   String? _error;
   List<Map<String, dynamic>> _appointments = [];
+  int _totalDuration = 0;
 
   // ── Pagination ───────────────────────────────────────────────────────────────
   int _rowsPerPage = 10;
@@ -45,7 +46,7 @@ class _AppointmentsCancellationSummaryState
       _error = null;
     });
     try {
-      final result = await ApiService.getCancelledAppointmentsReport(
+      final result = await ApiService.getCompletedAppointmentsReport(
         startDate: _filterStartDate?.toIso8601String(),
         endDate: _filterEndDate?.toIso8601String(),
         bookingType: _filterBookingType?.toLowerCase(),
@@ -54,12 +55,13 @@ class _AppointmentsCancellationSummaryState
         staff: _filterStaff,
       );
 
-      final block = result['data']['cancellations'] as Map<String, dynamic>;
+      final block = result['data']['complete'] as Map<String, dynamic>;
       final raw =
-          (block['cancellations'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+          (block['appointments'] as List?)?.cast<Map<String, dynamic>>() ?? [];
 
       setState(() {
         _appointments = raw;
+        _totalDuration = (block['totalDuration'] as num?)?.toInt() ?? 0;
         _isLoading = false;
         _currentPage = 0;
       });
@@ -184,14 +186,14 @@ class _AppointmentsCancellationSummaryState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Title
-                      Text('Cancelled Appointments Report',
+                      Text('Completed Appointments',
                           style: GoogleFonts.poppins(
                               fontSize: 14.sp,
                               fontWeight: FontWeight.w600,
                               color: const Color(0xFF1E293B))),
                       SizedBox(height: 2.h),
                       Text(
-                        'Comprehensive analysis of cancelled appointments with reasons and impact.',
+                        'Detailed record of all completed appointments.',
                         style: GoogleFonts.poppins(
                             fontSize: 10.sp, color: const Color(0xFF94A3B8)),
                       ),
@@ -225,13 +227,22 @@ class _AppointmentsCancellationSummaryState
                       Row(
                         children: [
                           _statCard(
-                              'Total Cancelled', _filtered.length.toString()),
+                              'Total Completed', _filtered.length.toString()),
                           SizedBox(width: 10.w),
-                          _statCard('Online Cancelled', _onlineCount.toString()),
+                          _statCard('Online', _onlineCount.toString()),
                           SizedBox(width: 10.w),
-                          _statCard('Offline Cancelled', _offlineCount.toString()),
+                          _statCard('Offline', _offlineCount.toString()),
+                        ],
+                      ),
+                      SizedBox(height: 10.h),
+                      // Stats row 2
+                      Row(
+                        children: [
+                          _statCard('Total Revenue', _fmtInt(_filteredRevenue)),
                           SizedBox(width: 10.w),
-                          _statCard('Revenue Loss', _fmtInt(_filteredRevenue)),
+                          _statCard('Total Duration', '${_totalDuration} min'),
+                          SizedBox(width: 10.w),
+                          const Expanded(child: SizedBox()),
                         ],
                       ),
                       SizedBox(height: 14.h),
@@ -354,7 +365,7 @@ class _AppointmentsCancellationSummaryState
         child: Padding(
           padding: EdgeInsets.all(32.w),
           child: Center(
-            child: Text('No cancelled appointments found.',
+            child: Text('No completed appointments found.',
                 style: GoogleFonts.poppins(
                     fontSize: 12.sp, color: const Color(0xFF94A3B8))),
           ),
@@ -384,23 +395,22 @@ class _AppointmentsCancellationSummaryState
         _col('Scheduled On'),
         _col('Created On'),
         _col('Time'),
-        _col('Cancelled By'),
-        _col('Cancelled On'),
-        _col('Base Amount', numeric: true),
+        _col('Duration'),
+        _col('Mode'),
+        _col('Base Amt', numeric: true),
         _col('Platform Fee', numeric: true),
         _col('Service Tax', numeric: true),
-        _col('Final Amount', numeric: true),
+        _col('Final Amt', numeric: true),
+        _col('Payment'),
       ],
       rows: [
         ...List.generate(rows.length, (i) {
           final a = rows[i];
           final isEven = i % 2 == 0;
           final scheduledDate =
-              a['scheduledDate'] != null ? DateTime.tryParse(a['scheduledDate']) : null;
+              a['date'] != null ? DateTime.tryParse(a['date']) : null;
           final createdAt =
               a['createdAt'] != null ? DateTime.tryParse(a['createdAt']) : null;
-          final cancelledDate =
-              a['cancelledDate'] != null ? DateTime.tryParse(a['cancelledDate']) : null;
 
           return DataRow(
             color: MaterialStateProperty.resolveWith(
@@ -423,13 +433,11 @@ class _AppointmentsCancellationSummaryState
                       ? DateFormat('dd MMM yy').format(createdAt)
                       : '—',
                   style: _cellStyle())),
-              DataCell(Text(a['startTime'] ?? '—', style: _cellStyle())),
-              DataCell(Text(a['cancelledBy'] ?? '—', style: _cellStyle())),
-              DataCell(Text(
-                  cancelledDate != null
-                      ? DateFormat('dd MMM yy').format(cancelledDate)
-                      : '—',
+              DataCell(Text('${a['startTime'] ?? '—'}–${a['endTime'] ?? '—'}',
                   style: _cellStyle())),
+              DataCell(Text(a['duration'] != null ? '${a['duration']}m' : '—',
+                  style: _cellStyle())),
+              DataCell(_modeBadge(a['mode'] ?? '')),
               DataCell(Text(_fmt(_n(a['amount'])), style: _cellStyle())),
               DataCell(Text(_fmt(_n(a['platformFee'])), style: _cellStyle())),
               DataCell(Text(_fmt(_n(a['serviceTax'])), style: _cellStyle())),
@@ -438,6 +446,7 @@ class _AppointmentsCancellationSummaryState
                       fontSize: 8.sp,
                       fontWeight: FontWeight.w600,
                       color: _primary))),
+              DataCell(_paymentBadge(a['paymentStatus'] ?? '')),
             ],
           );
         }),
@@ -466,6 +475,7 @@ class _AppointmentsCancellationSummaryState
                     fontSize: 10.sp,
                     fontWeight: FontWeight.w700,
                     color: _primary))),
+            const DataCell(Text('')),
           ],
         ),
       ],
@@ -562,6 +572,50 @@ class _AppointmentsCancellationSummaryState
       fontSize: 8.sp,
       fontWeight: FontWeight.w700,
       color: const Color(0xFF1E293B));
+
+  Widget _modeBadge(String mode) {
+    final isOnline = mode.toLowerCase() == 'online';
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
+      decoration: BoxDecoration(
+        color: isOnline ? const Color(0xFFEFF6FF) : const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(20.r),
+      ),
+      child: Text(
+        isOnline ? 'Online' : 'Offline',
+        style: GoogleFonts.poppins(
+            fontSize: 8.sp,
+            fontWeight: FontWeight.w600,
+            color:
+                isOnline ? const Color(0xFF2563EB) : const Color(0xFF64748B)),
+      ),
+    );
+  }
+
+  Widget _paymentBadge(String status) {
+    Color bg, fg;
+    switch (status.toLowerCase()) {
+      case 'completed':
+        bg = const Color(0xFFDCFCE7);
+        fg = const Color(0xFF16A34A);
+        break;
+      case 'pending':
+        bg = const Color(0xFFFFF7ED);
+        fg = const Color(0xFFEA580C);
+        break;
+      default:
+        bg = const Color(0xFFF1F5F9);
+        fg = const Color(0xFF64748B);
+    }
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
+      decoration:
+          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20.r)),
+      child: Text(status,
+          style: GoogleFonts.poppins(
+              fontSize: 8.sp, fontWeight: FontWeight.w600, color: fg)),
+    );
+  }
 
   Widget _pageBtn(IconData icon, bool enabled, VoidCallback onTap) => InkWell(
         onTap: enabled ? onTap : null,
@@ -731,7 +785,7 @@ class _AppointmentsCancellationSummaryState
           children: [
             SizedBox(width: 4.w),
             Expanded(
-              child: Text('Cancelled Appointments Report',
+              child: Text('Completed Appointments Report',
                   style: GoogleFonts.poppins(
                       fontSize: 13.sp,
                       fontWeight: FontWeight.w600,
@@ -982,7 +1036,7 @@ class _FilterSheetState extends State<_FilterSheet> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(has ? DateFormat('dd MMM yyyy').format(date) : 'Select',
+            Text(has ? DateFormat('dd MMM yyyy').format(date!) : 'Select',
                 style: GoogleFonts.poppins(
                     fontSize: 11.sp,
                     color: has

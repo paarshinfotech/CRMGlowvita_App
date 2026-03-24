@@ -23,6 +23,7 @@ import 'Vendor reports/allAppointments_summary.dart';
 import 'Vendor reports/appointmentsbystaff_summary.dart';
 import 'Vendor reports/appointmentsbyservice_summary.dart';
 import 'Vendor reports/appointmentsCancellation_summary.dart';
+import 'Vendor reports/completedAppointments_summary.dart';
 
 const Color _primaryDark = Color(0xFF372935);
 
@@ -151,7 +152,7 @@ class ReportsPage extends StatelessWidget {
                 onView: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => AllAppointmentsSummary())),
+                        builder: (context) => CompletedAppointmentsSummary())),
                 onDownload: () {},
               ),
               _ReportCard(
