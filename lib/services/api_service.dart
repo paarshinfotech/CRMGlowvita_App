@@ -2702,6 +2702,64 @@ class ApiService {
       rethrow;
     }
   }
+
+  // ─── Vendor Reports ────────────────────────────────────────────────────────
+
+  /// Fetches all appointments report from
+  /// GET /api/crm/vendor/reports/all-appointments
+  ///
+  /// Optional filters (passed as query params):
+  ///   [period]      – e.g. 'all', 'today', 'week', 'month', 'custom'
+  ///   [startDate]   – ISO-8601 date string for custom range start
+  ///   [endDate]     – ISO-8601 date string for custom range end
+  ///   [client]      – client id / name filter
+  ///   [service]     – service id / name filter
+  ///   [staff]       – staff id / name filter
+  ///   [status]      – appointment status filter
+  ///   [bookingType] – 'online' | 'offline'
+  static Future<Map<String, dynamic>> getAllAppointmentsReport({
+    String? period,
+    String? startDate,
+    String? endDate,
+    String? client,
+    String? service,
+    String? staff,
+    String? status,
+    String? bookingType,
+  }) async {
+    try {
+      final queryParams = <String, String>{};
+      if (period != null) queryParams['period'] = period;
+      if (startDate != null) queryParams['startDate'] = startDate;
+      if (endDate != null) queryParams['endDate'] = endDate;
+      if (client != null) queryParams['client'] = client;
+      if (service != null) queryParams['service'] = service;
+      if (staff != null) queryParams['staff'] = staff;
+      if (status != null) queryParams['status'] = status;
+      if (bookingType != null) queryParams['bookingType'] = bookingType;
+
+      final uri = Uri.parse('$baseUrl/crm/vendor/reports/all-appointments')
+          .replace(queryParameters: queryParams.isEmpty ? null : queryParams);
+
+      final response = await _get(uri.toString());
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return data;
+        } else {
+          throw Exception(
+              'Failed to load appointments report: ${data['message'] ?? 'Unknown error'}');
+        }
+      } else {
+        throw Exception(
+            'Failed to load appointments report: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching appointments report: $e');
+      rethrow;
+    }
+  }
 }
 
 class Service {
@@ -3089,6 +3147,7 @@ class OfferModel {
     this.businessId,
     this.regionId,
   });
+
 
   factory OfferModel.fromJson(Map<String, dynamic> json) {
     return OfferModel(

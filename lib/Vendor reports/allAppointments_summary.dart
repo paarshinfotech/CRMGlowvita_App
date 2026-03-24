@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../Notification.dart';
 import '../my_Profile.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../services/api_service.dart';
 
 const Color _primaryDark = Color(0xFF372935);
 
@@ -13,112 +14,76 @@ class AllAppointmentsSummary extends StatefulWidget {
 }
 
 class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
-  DateTimeRange? _selectedDateRange;
+  // ── API state ────────────────────────────────────────────────────────────────
+  bool _isLoading = true;
+  String? _error;
+  List<Map<String, dynamic>> allAppointment = [];
+  int _totalFromApi = 0;
+
+  // ── UI state ─────────────────────────────────────────────────────────────────
   String searchText = '';
   int _rowsPerPage = 10;
   int _currentPage = 0;
 
-  String? _filterBookingType;
+  // ── Active filters ───────────────────────────────────────────────────────────
+  DateTime? _filterStartDate;
+  DateTime? _filterEndDate;
+  String? _filterBookingType; // 'online' | 'offline'
   String? _filterClient;
   String? _filterService;
   String? _filterStaff;
   String? _filterStatus;
 
-  final List<Map<String, dynamic>> allAppointment = [
-    {
-      'ref': '#00001265',
-      'client': 'Siddhi Shinde',
-      'services': 'Haircut, Styling',
-      'staffName': 'Priya Sharma',
-      'createdOn': DateTime(2025, 7, 26, 12, 52),
-      'scheduledOn': DateTime(2025, 7, 27, 14, 00),
-      'scheduledEnd': DateTime(2025, 7, 27, 15, 30),
-      'duration': '1h 30m',
-      'baseAmount': 400.0,
-      'platformFee': 5.0,
-      'serviceTax': 5.0,
-      'price': 410.0,
-      'bookingType': 'Online',
-      'status': 'PENDING',
-    },
-    {
-      'ref': '#00001264',
-      'client': 'Anita Desai',
-      'services': 'Manicure',
-      'staffName': 'Riya Patel',
-      'createdOn': DateTime(2025, 7, 26, 12, 48),
-      'scheduledOn': DateTime(2025, 7, 27, 10, 30),
-      'scheduledEnd': DateTime(2025, 7, 27, 11, 15),
-      'duration': '45m',
-      'baseAmount': 300.0,
-      'platformFee': 5.0,
-      'serviceTax': 5.0,
-      'price': 310.0,
-      'bookingType': 'Offline',
-      'status': 'PENDING',
-    },
-    {
-      'ref': '#00001263',
-      'client': 'Neha Gupta',
-      'services': 'Massage',
-      'staffName': 'Sonia Verma',
-      'createdOn': DateTime(2025, 7, 26, 12, 48),
-      'scheduledOn': DateTime(2025, 7, 26, 15, 00),
-      'scheduledEnd': DateTime(2025, 7, 26, 16, 00),
-      'duration': '1h',
-      'baseAmount': 300.0,
-      'platformFee': 5.0,
-      'serviceTax': 5.0,
-      'price': 310.0,
-      'bookingType': 'Online',
-      'status': 'PAID',
-    },
-    {
-      'ref': '#00001262',
-      'client': 'Pooja Mehta',
-      'services': 'Facial',
-      'staffName': 'Kavita Singh',
-      'createdOn': DateTime(2025, 7, 26, 12, 25),
-      'scheduledOn': DateTime(2025, 7, 26, 11, 00),
-      'scheduledEnd': DateTime(2025, 7, 26, 12, 00),
-      'duration': '1h',
-      'baseAmount': 300.0,
-      'platformFee': 5.0,
-      'serviceTax': 5.0,
-      'price': 310.0,
-      'bookingType': 'Offline',
-      'status': 'CANCELLED',
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _fetchReport();
+  }
 
+  // ── Fetch from API ────────────────────────────────────────────────────────────
+  Future<void> _fetchReport() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final result = await ApiService.getAllAppointmentsReport(
+        startDate: _filterStartDate?.toIso8601String(),
+        endDate: _filterEndDate?.toIso8601String(),
+        bookingType:
+            _filterBookingType != null ? _filterBookingType!.toLowerCase() : null,
+        client: _filterClient,
+        service: _filterService,
+        staff: _filterStaff,
+        status: _filterStatus?.toLowerCase(),
+      );
+
+      final allData = result['data']['allAppointments'];
+      final List<dynamic> raw = allData['appointments'] ?? [];
+
+      setState(() {
+        _totalFromApi = (allData['total'] as num?)?.toInt() ?? raw.length;
+        allAppointment = raw.cast<Map<String, dynamic>>();
+        _isLoading = false;
+        _currentPage = 0;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  // ── Client-side search (on top of server-filtered data) ───────────────────────
   List<Map<String, dynamic>> get filteredAppointments {
+    if (searchText.isEmpty) return allAppointment;
+    final q = searchText.toLowerCase();
     return allAppointment.where((a) {
-      final matchesSearch = a['client']
-          .toString()
-          .toLowerCase()
-          .contains(searchText.toLowerCase());
-      final matchesDate = _selectedDateRange == null ||
-          (a['scheduledOn'].isAfter(_selectedDateRange!.start
-                  .subtract(const Duration(days: 1))) &&
-              a['scheduledOn'].isBefore(
-                  _selectedDateRange!.end.add(const Duration(days: 1))));
-      final matchesBooking =
-          _filterBookingType == null || a['bookingType'] == _filterBookingType;
-      final matchesClient =
-          _filterClient == null || a['client'] == _filterClient;
-      final matchesService =
-          _filterService == null || a['services'] == _filterService;
-      final matchesStaff =
-          _filterStaff == null || a['staffName'] == _filterStaff;
-      final matchesStatus =
-          _filterStatus == null || a['status'] == _filterStatus;
-      return matchesSearch &&
-          matchesDate &&
-          matchesBooking &&
-          matchesClient &&
-          matchesService &&
-          matchesStaff &&
-          matchesStatus;
+      return (a['clientName'] ?? '').toString().toLowerCase().contains(q) ||
+          (a['serviceName'] ?? '').toString().toLowerCase().contains(q) ||
+          (a['staffName'] ?? '').toString().toLowerCase().contains(q);
     }).toList();
   }
 
@@ -131,21 +96,35 @@ class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
   int get totalPages =>
       (filteredAppointments.length / _rowsPerPage).ceil().clamp(1, 9999);
 
+  // ── Totals (over all filtered data, not just the current page) ─────────────
   double get totalBaseAmount =>
-      filteredAppointments.fold(0, (s, a) => s + (a['baseAmount'] as double));
+      filteredAppointments.fold(0, (s, a) => s + _toDouble(a['amount']));
   double get totalPlatformFee =>
-      filteredAppointments.fold(0, (s, a) => s + (a['platformFee'] as double));
+      filteredAppointments.fold(0, (s, a) => s + _toDouble(a['platformFee']));
   double get totalServiceTax =>
-      filteredAppointments.fold(0, (s, a) => s + (a['serviceTax'] as double));
+      filteredAppointments.fold(0, (s, a) => s + _toDouble(a['serviceTax']));
   double get totalFinal =>
-      filteredAppointments.fold(0, (s, a) => s + (a['price'] as double));
+      filteredAppointments.fold(0, (s, a) => s + _toDouble(a['finalAmount']));
 
   int get onlineCount =>
-      filteredAppointments.where((a) => a['bookingType'] == 'Online').length;
+      filteredAppointments.where((a) => a['mode'] == 'online').length;
   int get offlineCount =>
-      filteredAppointments.where((a) => a['bookingType'] == 'Offline').length;
+      filteredAppointments.where((a) => a['mode'] == 'offline').length;
 
+  double _toDouble(dynamic v) => (v as num?)?.toDouble() ?? 0.0;
+
+  // ── Filter sheet ──────────────────────────────────────────────────────────────
   Future<void> _openFilters() async {
+    final clients =
+        allAppointment.map((a) => a['clientName'] as String? ?? '').toSet().toList()
+          ..sort();
+    final services =
+        allAppointment.map((a) => a['serviceName'] as String? ?? '').toSet().toList()
+          ..sort();
+    final staff =
+        allAppointment.map((a) => a['staffName'] as String? ?? '').toSet().toList()
+          ..sort();
+
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -154,24 +133,21 @@ class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(14.r)),
       ),
       builder: (ctx) => _FilterSheet(
-        initialDateRange: _selectedDateRange,
+        initialStartDate: _filterStartDate,
+        initialEndDate: _filterEndDate,
         initialBookingType: _filterBookingType,
         initialClient: _filterClient,
         initialService: _filterService,
         initialStaff: _filterStaff,
         initialStatus: _filterStatus,
-        clients:
-            allAppointment.map((a) => a['client'] as String).toSet().toList()
-              ..sort(),
-        services:
-            allAppointment.map((a) => a['services'] as String).toSet().toList()
-              ..sort(),
-        staff:
-            allAppointment.map((a) => a['staffName'] as String).toSet().toList()
-              ..sort(),
-        onApply: (range, bookingType, client, service, staffName, status) {
+        clients: clients,
+        services: services,
+        staff: staff,
+        onApply: (startDate, endDate, bookingType, client, service, staffName,
+            status) {
           setState(() {
-            _selectedDateRange = range;
+            _filterStartDate = startDate;
+            _filterEndDate = endDate;
             _filterBookingType = bookingType;
             _filterClient = client;
             _filterService = service;
@@ -179,6 +155,7 @@ class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
             _filterStatus = status;
             _currentPage = 0;
           });
+          _fetchReport();
         },
       ),
     );
@@ -187,148 +164,279 @@ class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
   String _fmt(num amount) => '₹${NumberFormat('#,##0.00').format(amount)}';
   String _fmtInt(num amount) => '₹${NumberFormat('#,##0').format(amount)}';
 
+  // ── Build ─────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: _buildAppBar(context),
-      // ── Full page vertical scroll ─────────────────────────────────────────
-      body: SingleChildScrollView(
-        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? _buildError()
+              : SingleChildScrollView(
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title
+                      Text('All Appointments',
+                          style: GoogleFonts.poppins(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF1E293B))),
+                      SizedBox(height: 2.h),
+                      Text(
+                        'Complete record of all appointments with detailed information.',
+                        style: GoogleFonts.poppins(
+                            fontSize: 10.sp, color: const Color(0xFF94A3B8)),
+                      ),
+                      SizedBox(height: 14.h),
+
+                      // Search + Filters + Export
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              height: 36.h,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                border: Border.all(
+                                    color: const Color(0xFFE2E8F0)),
+                                borderRadius: BorderRadius.circular(6.r),
+                              ),
+                              padding:
+                                  EdgeInsets.symmetric(horizontal: 10.w),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.search,
+                                      size: 14.sp,
+                                      color: const Color(0xFF94A3B8)),
+                                  SizedBox(width: 6.w),
+                                  Expanded(
+                                    child: TextField(
+                                      onChanged: (v) => setState(() {
+                                        searchText = v;
+                                        _currentPage = 0;
+                                      }),
+                                      decoration: InputDecoration(
+                                        hintText: 'Search client, service…',
+                                        hintStyle: GoogleFonts.poppins(
+                                            fontSize: 10.sp,
+                                            color:
+                                                const Color(0xFF94A3B8)),
+                                        border: InputBorder.none,
+                                        isDense: true,
+                                      ),
+                                      style:
+                                          GoogleFonts.poppins(fontSize: 10.sp),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 8.w),
+                          _topButton(
+                              icon: Icons.tune,
+                              label: 'Filters',
+                              onTap: _openFilters,
+                              filled: true),
+                          SizedBox(width: 6.w),
+                          _refreshButton(),
+                          SizedBox(width: 6.w),
+                          _exportDropdown(),
+                        ],
+                      ),
+                      SizedBox(height: 14.h),
+
+                      // Active filter chips
+                      if (_hasActiveFilters()) ...[
+                        _buildFilterChips(),
+                        SizedBox(height: 10.h),
+                      ],
+
+                      // Stats row 1
+                      Row(
+                        children: [
+                          _statCard('Total Bookings',
+                              filteredAppointments.length.toString()),
+                          SizedBox(width: 10.w),
+                          _statCard('Online', onlineCount.toString()),
+                          SizedBox(width: 10.w),
+                          _statCard('Offline', offlineCount.toString()),
+                        ],
+                      ),
+                      SizedBox(height: 10.h),
+                      // Stats row 2
+                      Row(
+                        children: [
+                          _statCard('Total Revenue', _fmtInt(totalFinal)),
+                          SizedBox(width: 10.w),
+                          _statCard('Base Amount', _fmtInt(totalBaseAmount)),
+                          SizedBox(width: 10.w),
+                          const Expanded(child: SizedBox()),
+                        ],
+                      ),
+                      SizedBox(height: 10.h),
+
+                      Text(
+                        '* Multi-service appointments are shown individually per service.',
+                        style: GoogleFonts.poppins(
+                            fontSize: 9.sp, color: const Color(0xFF94A3B8)),
+                      ),
+                      SizedBox(height: 10.h),
+
+                      // Table
+                      Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8.r),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.03),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8.r),
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: _buildTable(),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 12.h),
+
+                      // Pagination
+                      _buildPagination(),
+                      SizedBox(height: 20.h),
+                    ],
+                  ),
+                ),
+    );
+  }
+
+  // ── Error widget ──────────────────────────────────────────────────────────────
+  Widget _buildError() {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(24.w),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Title + subtitle
-            Text('All Appointments',
+            Icon(Icons.error_outline, color: Colors.red.shade300, size: 48.sp),
+            SizedBox(height: 12.h),
+            Text('Failed to load appointments',
                 style: GoogleFonts.poppins(
                     fontSize: 14.sp,
                     fontWeight: FontWeight.w600,
                     color: const Color(0xFF1E293B))),
-            SizedBox(height: 2.h),
-            Text(
-              'Complete record of all appointments with detailed information.',
-              style: GoogleFonts.poppins(
-                  fontSize: 10.sp, color: const Color(0xFF94A3B8)),
-            ),
-            SizedBox(height: 14.h),
-
-            // Search + Filters + Export
-            Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    height: 36.h,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                      borderRadius: BorderRadius.circular(6.r),
-                    ),
-                    padding: EdgeInsets.symmetric(horizontal: 10.w),
-                    child: Row(
-                      children: [
-                        Icon(Icons.search,
-                            size: 14.sp, color: const Color(0xFF94A3B8)),
-                        SizedBox(width: 6.w),
-                        Expanded(
-                          child: TextField(
-                            onChanged: (v) => setState(() {
-                              searchText = v;
-                              _currentPage = 0;
-                            }),
-                            decoration: InputDecoration(
-                              hintText: 'Search...',
-                              hintStyle: GoogleFonts.poppins(
-                                  fontSize: 10.sp,
-                                  color: const Color(0xFF94A3B8)),
-                              border: InputBorder.none,
-                              isDense: true,
-                            ),
-                            style: GoogleFonts.poppins(fontSize: 10.sp),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                SizedBox(width: 8.w),
-                _topButton(
-                    icon: Icons.tune,
-                    label: 'Filters',
-                    onTap: _openFilters,
-                    filled: true),
-                SizedBox(width: 6.w),
-                _exportDropdown(),
-              ],
-            ),
-            SizedBox(height: 14.h),
-
-            // Stats row 1 — 3 cards
-            Row(
-              children: [
-                _statCard(
-                    'Total Bookings', filteredAppointments.length.toString()),
-                SizedBox(width: 10.w),
-                _statCard('Online Bookings', onlineCount.toString()),
-                SizedBox(width: 10.w),
-                _statCard('Offline Bookings', offlineCount.toString()),
-              ],
-            ),
-            SizedBox(height: 10.h),
-            // Stats row 2 — 2 cards + spacer
-            Row(
-              children: [
-                _statCard('Total Revenue', _fmtInt(totalFinal)),
-                SizedBox(width: 10.w),
-                _statCard('Total Business', _fmtInt(totalBaseAmount)),
-                SizedBox(width: 10.w),
-                const Expanded(child: SizedBox()),
-              ],
-            ),
-            SizedBox(height: 10.h),
-
-            Text(
-              '* Multi-service appointments are shown individually for each service.',
-              style: GoogleFonts.poppins(
-                  fontSize: 9.sp, color: const Color(0xFF94A3B8)),
-            ),
-            SizedBox(height: 10.h),
-
-            // ── Table: only horizontal scroll ──────────────────────────────
-            Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8.r),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.03),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8.r),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: _buildTable(),
-                ),
-              ),
-            ),
-            SizedBox(height: 12.h),
-
-            // ── Pagination ──────────────────────────────────────────────────
-            _buildPagination(),
+            SizedBox(height: 6.h),
+            Text(_error ?? '',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                    fontSize: 11.sp, color: const Color(0xFF64748B))),
             SizedBox(height: 20.h),
+            ElevatedButton.icon(
+              onPressed: _fetchReport,
+              icon: const Icon(Icons.refresh, size: 16),
+              label: Text('Retry', style: GoogleFonts.poppins()),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _primaryDark,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8.r)),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  // ── Table ──────────────────────────────────────────────────────────────────
+  // ── Active filter chips ───────────────────────────────────────────────────────
+  bool _hasActiveFilters() =>
+      _filterStartDate != null ||
+      _filterEndDate != null ||
+      _filterBookingType != null ||
+      _filterClient != null ||
+      _filterService != null ||
+      _filterStaff != null ||
+      _filterStatus != null;
+
+  Widget _buildFilterChips() {
+    final chips = <Widget>[];
+
+    void addChip(String label, VoidCallback onRemove) {
+      chips.add(Padding(
+        padding: EdgeInsets.only(right: 6.w),
+        child: Chip(
+          label: Text(label,
+              style:
+                  GoogleFonts.poppins(fontSize: 9.sp, color: Colors.white)),
+          backgroundColor: _primaryDark,
+          deleteIcon: const Icon(Icons.close, size: 12, color: Colors.white),
+          onDeleted: onRemove,
+          padding: EdgeInsets.symmetric(horizontal: 4.w),
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+      ));
+    }
+
+    if (_filterStartDate != null) {
+      addChip(
+          'From: ${DateFormat('dd MMM yy').format(_filterStartDate!)}',
+          () => setState(() => _filterStartDate = null));
+    }
+    if (_filterEndDate != null) {
+      addChip(
+          'To: ${DateFormat('dd MMM yy').format(_filterEndDate!)}',
+          () => setState(() => _filterEndDate = null));
+    }
+    if (_filterBookingType != null) {
+      addChip(_filterBookingType!,
+          () => setState(() => _filterBookingType = null));
+    }
+    if (_filterClient != null) {
+      addChip(_filterClient!, () => setState(() => _filterClient = null));
+    }
+    if (_filterService != null) {
+      addChip(_filterService!, () => setState(() => _filterService = null));
+    }
+    if (_filterStaff != null) {
+      addChip(_filterStaff!, () => setState(() => _filterStaff = null));
+    }
+    if (_filterStatus != null) {
+      addChip(_filterStatus!, () => setState(() => _filterStatus = null));
+    }
+
+    return Wrap(children: chips);
+  }
+
+  // ── Table ─────────────────────────────────────────────────────────────────────
   Widget _buildTable() {
+    final rows = pagedAppointments;
+
+    if (rows.isEmpty) {
+      return SizedBox(
+        width: MediaQuery.of(context).size.width,
+        child: Padding(
+          padding: EdgeInsets.all(32.w),
+          child: Center(
+            child: Text('No appointments found.',
+                style: GoogleFonts.poppins(
+                    fontSize: 12.sp, color: const Color(0xFF94A3B8))),
+          ),
+        ),
+      );
+    }
+
     return DataTable(
       headingRowColor: MaterialStateProperty.all(const Color(0xFFF1F5F9)),
       headingRowHeight: 40.h,
@@ -352,58 +460,82 @@ class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
         _col('Created On'),
         _col('Time'),
         _col('Duration'),
-        _col('Base Amount', numeric: true),
+        _col('Mode'),
+        _col('Base Amt', numeric: true),
         _col('Platform Fee', numeric: true),
         _col('Service Tax', numeric: true),
-        _col('Final Amount', numeric: true),
+        _col('Final Amt', numeric: true),
         _col('Status'),
+        _col('Payment'),
       ],
       rows: [
-        ...List.generate(pagedAppointments.length, (index) {
-          final a = pagedAppointments[index];
+        ...List.generate(rows.length, (index) {
+          final a = rows[index];
           final isEven = index % 2 == 0;
+
+          final scheduledDate = a['date'] != null
+              ? DateTime.tryParse(a['date'])
+              : null;
+          final createdAt = a['createdAt'] != null
+              ? DateTime.tryParse(a['createdAt'])
+              : null;
+
           return DataRow(
             color: MaterialStateProperty.resolveWith(
               (_) => isEven ? Colors.white : const Color(0xFFFAFAFB),
             ),
             cells: [
-              // Client with avatar
-              DataCell(Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(a['client'],
-                      style: GoogleFonts.poppins(
-                          fontSize: 8.sp,
-                          fontWeight: FontWeight.w500,
-                          color: const Color(0xFF1E293B))),
-                ],
-              )),
-              DataCell(Text(a['services'], style: _cellStyle())),
-              DataCell(Text(a['staffName'], style: _cellStyle())),
-              DataCell(Text(DateFormat('dd MMM yy').format(a['scheduledOn']),
-                  style: _cellStyle())),
-              DataCell(Text(DateFormat('dd MMM yy').format(a['createdOn']),
-                  style: _cellStyle())),
+              // Client
+              DataCell(Text(a['clientName'] ?? '—',
+                  style: GoogleFonts.poppins(
+                      fontSize: 8.sp,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF1E293B)))),
+              DataCell(Text(a['serviceName'] ?? '—', style: _cellStyle())),
+              DataCell(Text(a['staffName'] ?? '—', style: _cellStyle())),
+              // Scheduled date
               DataCell(Text(
-                '${DateFormat('HH:mm').format(a['scheduledOn'])}-'
-                '${DateFormat('HH:mm').format(a['scheduledEnd'])}',
+                  scheduledDate != null
+                      ? DateFormat('dd MMM yy').format(scheduledDate)
+                      : '—',
+                  style: _cellStyle())),
+              // Created at
+              DataCell(Text(
+                  createdAt != null
+                      ? DateFormat('dd MMM yy').format(createdAt)
+                      : '—',
+                  style: _cellStyle())),
+              // Time range
+              DataCell(Text(
+                '${a['startTime'] ?? '—'}–${a['endTime'] ?? '—'}',
                 style: _cellStyle(),
               )),
-              DataCell(Text(a['duration'], style: _cellStyle())),
-              DataCell(Text(_fmt(a['baseAmount']), style: _cellStyle())),
-              DataCell(Text(_fmt(a['platformFee']), style: _cellStyle())),
-              DataCell(Text(_fmt(a['serviceTax']), style: _cellStyle())),
-              DataCell(Text(_fmt(a['price']),
+              // Duration (minutes)
+              DataCell(Text(
+                  a['duration'] != null ? '${a['duration']}m' : '—',
+                  style: _cellStyle())),
+              // Mode badge
+              DataCell(_modeBadge(a['mode'] ?? '')),
+              // Amounts
+              DataCell(Text(_fmt(_toDouble(a['amount'])), style: _cellStyle())),
+              DataCell(
+                  Text(_fmt(_toDouble(a['platformFee'])), style: _cellStyle())),
+              DataCell(
+                  Text(_fmt(_toDouble(a['serviceTax'])), style: _cellStyle())),
+              DataCell(Text(_fmt(_toDouble(a['finalAmount'])),
                   style: GoogleFonts.poppins(
                       fontSize: 8.sp,
                       fontWeight: FontWeight.w600,
                       color: _primaryDark))),
-              DataCell(_statusBadge(a['status'])),
+              // Status
+              DataCell(_statusBadge(a['status'] ?? '')),
+              // Payment status
+              DataCell(_paymentBadge(a['paymentStatus'] ?? '')),
             ],
           );
         }),
 
-        // Total row
+        // Totals row
         DataRow(
           color: MaterialStateProperty.all(const Color(0xFFFFF9EC)),
           cells: [
@@ -412,6 +544,7 @@ class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
                     fontSize: 10.sp,
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFF1E293B)))),
+            const DataCell(Text('')),
             const DataCell(Text('')),
             const DataCell(Text('')),
             const DataCell(Text('')),
@@ -427,13 +560,14 @@ class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
                     fontWeight: FontWeight.w700,
                     color: _primaryDark))),
             const DataCell(Text('')),
+            const DataCell(Text('')),
           ],
         ),
       ],
     );
   }
 
-  // ── Pagination (2 rows to avoid overflow) ─────────────────────────────────
+  // ── Pagination ────────────────────────────────────────────────────────────────
   Widget _buildPagination() {
     final start =
         filteredAppointments.isEmpty ? 0 : _currentPage * _rowsPerPage + 1;
@@ -451,7 +585,6 @@ class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Row 1: result count + rows per page
           Row(
             children: [
               Text(
@@ -492,7 +625,6 @@ class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
             ],
           ),
           SizedBox(height: 8.h),
-          // Row 2: page info + nav buttons
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
@@ -514,7 +646,7 @@ class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
     );
   }
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
+  // ── Helpers ───────────────────────────────────────────────────────────────────
   DataColumn _col(String label, {bool numeric = false}) => DataColumn(
         numeric: numeric,
         label: Text(label,
@@ -532,33 +664,24 @@ class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
       fontWeight: FontWeight.w700,
       color: const Color(0xFF1E293B));
 
-  Color _avatarColor(String name) {
-    const colors = [
-      Color(0xFF6366F1),
-      Color(0xFF8B5CF6),
-      Color(0xFF06B6D4),
-      Color(0xFF10B981),
-      Color(0xFFF59E0B),
-      Color(0xFFEF4444),
-      _primaryDark,
-    ];
-    return colors[name.codeUnitAt(0) % colors.length];
-  }
-
   Widget _statusBadge(String status) {
     Color bg, fg;
     switch (status.toLowerCase()) {
-      case 'paid':
+      case 'completed':
         bg = const Color(0xFFDCFCE7);
         fg = const Color(0xFF16A34A);
         break;
-      case 'pending':
-        bg = const Color(0xFFFFF7ED);
-        fg = const Color(0xFFEA580C);
+      case 'scheduled':
+        bg = const Color(0xFFEFF6FF);
+        fg = const Color(0xFF2563EB);
         break;
       case 'cancelled':
         bg = const Color(0xFFFEF2F2);
         fg = const Color(0xFFDC2626);
+        break;
+      case 'temp-locked':
+        bg = const Color(0xFFFFFBEB);
+        fg = const Color(0xFFD97706);
         break;
       default:
         bg = const Color(0xFFF1F5F9);
@@ -570,7 +693,54 @@ class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
           BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20.r)),
       child: Text(status,
           style: GoogleFonts.poppins(
-              fontSize: 9.sp, fontWeight: FontWeight.w600, color: fg)),
+              fontSize: 8.sp, fontWeight: FontWeight.w600, color: fg)),
+    );
+  }
+
+  Widget _paymentBadge(String status) {
+    Color bg, fg;
+    switch (status.toLowerCase()) {
+      case 'completed':
+        bg = const Color(0xFFDCFCE7);
+        fg = const Color(0xFF16A34A);
+        break;
+      case 'pending':
+        bg = const Color(0xFFFFF7ED);
+        fg = const Color(0xFFEA580C);
+        break;
+      default:
+        bg = const Color(0xFFF1F5F9);
+        fg = const Color(0xFF64748B);
+    }
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+      decoration:
+          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20.r)),
+      child: Text(status,
+          style: GoogleFonts.poppins(
+              fontSize: 8.sp, fontWeight: FontWeight.w600, color: fg)),
+    );
+  }
+
+  Widget _modeBadge(String mode) {
+    final isOnline = mode.toLowerCase() == 'online';
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
+      decoration: BoxDecoration(
+        color: isOnline
+            ? const Color(0xFFEFF6FF)
+            : const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(20.r),
+      ),
+      child: Text(
+        isOnline ? 'Online' : 'Offline',
+        style: GoogleFonts.poppins(
+            fontSize: 8.sp,
+            fontWeight: FontWeight.w600,
+            color: isOnline
+                ? const Color(0xFF2563EB)
+                : const Color(0xFF64748B)),
+      ),
     );
   }
 
@@ -588,7 +758,8 @@ class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
         ),
         child: Icon(icon,
             size: 14.sp,
-            color: enabled ? const Color(0xFF1E293B) : const Color(0xFFCBD5E1)),
+            color:
+                enabled ? const Color(0xFF1E293B) : const Color(0xFFCBD5E1)),
       ),
     );
   }
@@ -655,6 +826,24 @@ class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
     );
   }
 
+  Widget _refreshButton() {
+    return InkWell(
+      onTap: _fetchReport,
+      borderRadius: BorderRadius.circular(6.r),
+      child: Container(
+        height: 36.h,
+        width: 36.h,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(6.r),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Icon(Icons.refresh,
+            size: 14.sp, color: const Color(0xFF1E293B)),
+      ),
+    );
+  }
+
   Widget _exportDropdown() {
     return Container(
       height: 36.h,
@@ -716,7 +905,8 @@ class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
 // ─── Filter Bottom Sheet ──────────────────────────────────────────────────────
 
 class _FilterSheet extends StatefulWidget {
-  final DateTimeRange? initialDateRange;
+  final DateTime? initialStartDate;
+  final DateTime? initialEndDate;
   final String? initialBookingType;
   final String? initialClient;
   final String? initialService;
@@ -726,7 +916,8 @@ class _FilterSheet extends StatefulWidget {
   final List<String> services;
   final List<String> staff;
   final void Function(
-    DateTimeRange? range,
+    DateTime? startDate,
+    DateTime? endDate,
     String? bookingType,
     String? client,
     String? service,
@@ -735,7 +926,8 @@ class _FilterSheet extends StatefulWidget {
   ) onApply;
 
   const _FilterSheet({
-    required this.initialDateRange,
+    required this.initialStartDate,
+    required this.initialEndDate,
     required this.initialBookingType,
     required this.initialClient,
     required this.initialService,
@@ -763,8 +955,8 @@ class _FilterSheetState extends State<_FilterSheet> {
   @override
   void initState() {
     super.initState();
-    _startDate = widget.initialDateRange?.start;
-    _endDate = widget.initialDateRange?.end;
+    _startDate = widget.initialStartDate;
+    _endDate = widget.initialEndDate;
     _bookingType = widget.initialBookingType;
     _client = widget.initialClient;
     _service = widget.initialService;
@@ -851,13 +1043,12 @@ class _FilterSheetState extends State<_FilterSheet> {
             const Divider(color: Color(0xFFF1F5F9), height: 1),
             SizedBox(height: 14.h),
 
-            // Scrollable fields
             Expanded(
               child: ListView(
                 controller: controller,
                 padding: EdgeInsets.zero,
                 children: [
-                  // Dates side by side
+                  // Dates
                   Row(
                     children: [
                       Expanded(
@@ -929,7 +1120,12 @@ class _FilterSheetState extends State<_FilterSheet> {
                   SizedBox(height: 6.h),
                   _dropdown(
                     value: _status,
-                    items: ['PENDING', 'PAID', 'CANCELLED'],
+                    items: [
+                      'completed',
+                      'scheduled',
+                      'cancelled',
+                      'temp-locked'
+                    ],
                     hint: 'All statuses',
                     onChanged: (v) => setState(() => _status = v),
                   ),
@@ -938,7 +1134,7 @@ class _FilterSheetState extends State<_FilterSheet> {
               ),
             ),
 
-            // Action buttons — always visible at bottom
+            // Action buttons
             Padding(
               padding: EdgeInsets.only(
                   bottom: MediaQuery.of(context).viewInsets.bottom + 16.h),
@@ -947,16 +1143,8 @@ class _FilterSheetState extends State<_FilterSheet> {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () {
-                        setState(() {
-                          _startDate = null;
-                          _endDate = null;
-                          _bookingType = null;
-                          _client = null;
-                          _service = null;
-                          _staff = null;
-                          _status = null;
-                        });
-                        widget.onApply(null, null, null, null, null, null);
+                        widget.onApply(
+                            null, null, null, null, null, null, null);
                         Navigator.pop(context);
                       },
                       style: OutlinedButton.styleFrom(
@@ -976,11 +1164,8 @@ class _FilterSheetState extends State<_FilterSheet> {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
-                        final range = (_startDate != null && _endDate != null)
-                            ? DateTimeRange(start: _startDate!, end: _endDate!)
-                            : null;
-                        widget.onApply(range, _bookingType, _client, _service,
-                            _staff, _status);
+                        widget.onApply(_startDate, _endDate, _bookingType,
+                            _client, _service, _staff, _status);
                         Navigator.pop(context);
                       },
                       style: ElevatedButton.styleFrom(
@@ -1052,6 +1237,8 @@ class _FilterSheetState extends State<_FilterSheet> {
     required String hint,
     required void Function(String?) onChanged,
   }) {
+    // Guard: if current value is not in items, reset to null
+    final safeValue = items.contains(value) ? value : null;
     return Container(
       height: 40.h,
       padding: EdgeInsets.symmetric(horizontal: 12.w),
@@ -1059,13 +1246,14 @@ class _FilterSheetState extends State<_FilterSheet> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(6.r),
         border: Border.all(
-          color: value != null ? _primaryDark : const Color(0xFFE2E8F0),
-          width: value != null ? 1.5 : 1,
+          color:
+              safeValue != null ? _primaryDark : const Color(0xFFE2E8F0),
+          width: safeValue != null ? 1.5 : 1,
         ),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
-          value: value,
+          value: safeValue,
           isExpanded: true,
           hint: Text(hint,
               style: GoogleFonts.poppins(
@@ -1080,7 +1268,8 @@ class _FilterSheetState extends State<_FilterSheet> {
               value: null,
               child: Text('All', style: GoogleFonts.poppins(fontSize: 11.sp)),
             ),
-            ...items.map((e) => DropdownMenuItem(value: e, child: Text(e))),
+            ...items
+                .map((e) => DropdownMenuItem(value: e, child: Text(e))),
           ],
           onChanged: onChanged,
         ),
