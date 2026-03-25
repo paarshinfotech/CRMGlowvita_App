@@ -1,385 +1,654 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
-import '../Notification.dart';
-import '../my_Profile.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../services/api_service.dart';
 
-class SalesByCustomers extends StatefulWidget {
+const Color _primary = Color(0xFF372935);
+const Color _bg = Color(0xFFF8FAFC);
+
+class SalesByCustomer extends StatefulWidget {
+  const SalesByCustomer({Key? key}) : super(key: key);
+
   @override
-  State<SalesByCustomers> createState() => _SalesByCustomersState();
+  State<SalesByCustomer> createState() => _SalesByCustomerState();
 }
 
-class _SalesByCustomersState extends State<SalesByCustomers> {
-  DateTimeRange? _selectedDateRange;
-  Future<void> _selectDateRange() async {
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      initialDateRange: _selectedDateRange ??
-          DateTimeRange(
-            start: DateTime.now().subtract(Duration(days: 7)),
-            end: DateTime.now(),
-          ),
-    );
-    if (picked != null)
-      setState(() {
-        _selectedDateRange = picked;
-        _filterData();
-      });
-  }
+class _SalesByCustomerState extends State<SalesByCustomer> {
+  // ── API state ────────────────────────────────────────────────────────────────
+  bool _isLoading = true;
+  String? _error;
+  List<Map<String, dynamic>> _salesList = [];
 
-  final List<Map<String, dynamic>> allServices = [
-    {
-      'customer': 'Shivani',
-      'sales': 30,
-      'grossSale': 3000,
-      'discount': 200,
-      'offers': 100,
-      'netSale': 2700,
-      'tax': 135,
-      'totalSales': 2835,
-      'date': DateTime(2025, 7, 25),
-    },
-    {
-      'customer': 'Om',
-      'sales': 18,
-      'grossSale': 3600,
-      'discount': 300,
-      'offers': 200,
-      'netSale': 3100,
-      'tax': 155,
-      'totalSales': 3255,
-      'date': DateTime(2025, 7, 20),
-    },
-    {
-      'customer': 'Siddhi',
-      'sales': 12,
-      'grossSale': 1800,
-      'discount': 150,
-      'offers': 50,
-      'netSale': 1600,
-      'tax': 80,
-      'totalSales': 1680,
-      'date': DateTime(2025, 7, 22),
-    },
-  ];
+  // ── Pagination ───────────────────────────────────────────────────────────────
+  int _rowsPerPage = 10;
+  int _currentPage = 0;
 
-  List<Map<String, dynamic>> filteredServices = [];
-  String searchText = '';
+  // ── Filters & Search ─────────────────────────────────────────────────────────
+  String _searchText = '';
+  DateTime? _filterStartDate;
+  DateTime? _filterEndDate;
 
   @override
   void initState() {
     super.initState();
-    filteredServices = List.from(allServices);
+    _fetchReport();
   }
 
-  void _filterData() {
+  // ── Fetch ─────────────────────────────────────────────────────────────────────
+  Future<void> _fetchReport() async {
     setState(() {
-      filteredServices = allServices.where((service) {
-        final matchesSearch = service['customer']
-            .toString()
-            .toLowerCase()
-            .contains(searchText.toLowerCase());
-
-        final matchesDate = _selectedDateRange == null ||
-            (service['date'].isAfter(_selectedDateRange!.start
-                    .subtract(const Duration(days: 1))) &&
-                service['date'].isBefore(
-                    _selectedDateRange!.end.add(const Duration(days: 1))));
-
-        return matchesSearch && matchesDate;
-      }).toList();
+      _isLoading = true;
+      _error = null;
     });
+    try {
+      final result = await ApiService.getSalesByCustomerReport(
+        startDate: _filterStartDate?.toIso8601String(),
+        endDate: _filterEndDate?.toIso8601String(),
+      );
+
+      final raw = (result['data']['salesByCustomer'] as List?)
+              ?.cast<Map<String, dynamic>>() ??
+          [];
+
+      setState(() {
+        _salesList = raw;
+        _isLoading = false;
+        _currentPage = 0;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
   }
 
-  String _currencyFormat(num amount) {
-    return '₹${NumberFormat('#,##0').format(amount)}';
+  // ── Data Computed ─────────────────────────────────────────────────────────────
+  List<Map<String, dynamic>> get _filtered {
+    if (_searchText.isEmpty) return _salesList;
+    final q = _searchText.toLowerCase();
+    return _salesList.where((a) {
+      return (a['customer'] ?? '').toString().toLowerCase().contains(q);
+    }).toList();
   }
 
+  List<Map<String, dynamic>> get _paged {
+    final all = _filtered;
+    final start = _currentPage * _rowsPerPage;
+    final end = (start + _rowsPerPage).clamp(0, all.length);
+    if (start >= all.length) return [];
+    return all.sublist(start, end);
+  }
+
+  int get _totalPages =>
+      (_filtered.length / _rowsPerPage).ceil().clamp(1, 9999);
+
+  // ── Build ─────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
+      backgroundColor: _bg,
+      appBar: _buildAppBar(context),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? _buildError()
+              : _buildContent(),
+    );
+  }
+
+  Widget _buildContent() {
+    return SingleChildScrollView(
+      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Sales by Customer',
+              style: GoogleFonts.poppins(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF1E293B))),
+          SizedBox(height: 2.h),
+          Text('Analysis of revenue generated by individual customers.',
+              style: GoogleFonts.poppins(
+                  fontSize: 10.sp, color: const Color(0xFF94A3B8))),
+          SizedBox(height: 14.h),
+
+          // Search + Filters + Export
+          Row(
+            children: [
+              Expanded(child: _searchBar()),
+              SizedBox(width: 8.w),
+              _filterBtn(),
+              SizedBox(width: 8.w),
+              _exportBtn(),
+            ],
+          ),
+          SizedBox(height: 16.h),
+
+          // Table
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8.r),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.01),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8.r),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: _buildTable(),
+              ),
+            ),
+          ),
+          SizedBox(height: 12.h),
+
+          _buildPagination(),
+          SizedBox(height: 24.h),
+
+          Align(
+            alignment: Alignment.centerRight,
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE2E8F0),
+                foregroundColor: const Color(0xFF1E293B),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6.r)),
+                padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 8.h),
+              ),
+              child: Text('Close',
+                  style: GoogleFonts.poppins(
+                      fontSize: 11.sp, fontWeight: FontWeight.w600)),
+            ),
+          ),
+          SizedBox(height: 20.h),
+        ],
+      ),
+    );
+  }
+
+  // ── Table ─────────────────────────────────────────────────────────────────────
+  double _n(dynamic v) => (v as num?)?.toDouble() ?? 0.0;
+  String _fmt(num v) => '₹${NumberFormat('#,##0.00').format(v)}';
+
+  Widget _buildTable() {
+    final rows = _paged;
+
+    if (_filtered.isEmpty) {
+      return SizedBox(
+        width: MediaQuery.of(context).size.width,
+        child: Padding(
+          padding: EdgeInsets.all(32.w),
+          child: Center(
+            child: Text('No matching records found.',
+                style: GoogleFonts.poppins(
+                    fontSize: 12.sp, color: const Color(0xFF94A3B8))),
+          ),
         ),
-        toolbarHeight: 50.h,
-        titleSpacing: 0,
-        automaticallyImplyLeading: false,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.1),
-                spreadRadius: 1,
-                blurRadius: 3,
-                offset: const Offset(0, 1),
+      );
+    }
+
+    // Totals logic
+    int tSold = 0;
+    double tGross = 0;
+    double tDisc = 0;
+    double tOffs = 0;
+    double tNet = 0;
+    double tTax = 0;
+    double tTotal = 0;
+
+    for (var r in _filtered) {
+      tSold += (r['serviceSold'] as num?)?.toInt() ?? 0;
+      tGross += _n(r['grossSale']);
+      tDisc += _n(r['discounts']);
+      tOffs += _n(r['offers']);
+      tNet += _n(r['netSale']);
+      tTax += _n(r['tax']);
+      tTotal += _n(r['totalSales']);
+    }
+
+    return DataTable(
+      headingRowColor: MaterialStateProperty.all(const Color(0xFFFAFAFB)),
+      headingRowHeight: 46.h,
+      dataRowMinHeight: 44.h,
+      dataRowMaxHeight: 52.h,
+      columnSpacing: 24.w,
+      horizontalMargin: 16.w,
+      dividerThickness: 1,
+      border: const TableBorder(
+        top: BorderSide.none,
+        bottom: BorderSide.none,
+        left: BorderSide.none,
+        right: BorderSide.none,
+        horizontalInside: BorderSide(color: Color(0xFFF1F5F9)),
+      ),
+      columns: [
+        _col('Customer'),
+        _col('Service Sold'),
+        _col('Gross Sale'),
+        _col('Discounts'),
+        _col('Offers'),
+        _col('Net Sale'),
+        _col('Tax'),
+        _col('Total Sales'),
+      ],
+      rows: [
+        ...rows.map((row) {
+          return DataRow(
+            color: MaterialStateProperty.all(Colors.white),
+            cells: [
+              DataCell(Text((row['customer'] ?? '—').toString(),
+                  style: GoogleFonts.poppins(
+                      fontSize: 10.sp,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF1E293B)))),
+              DataCell(Text(row['serviceSold'].toString(),
+                  style: _cellStyle())),
+              DataCell(Text(_fmt(_n(row['grossSale'])), style: _cellStyle())),
+              DataCell(Text(_fmt(_n(row['discounts'])), style: _cellStyle())),
+              DataCell(Text(_fmt(_n(row['offers'])), style: _cellStyle())),
+              DataCell(Text(_fmt(_n(row['netSale'])), style: _cellStyle())),
+              DataCell(Text(_fmt(_n(row['tax'])), style: _cellStyle())),
+              DataCell(Text(_fmt(_n(row['totalSales'])), style: _cellStyle())),
+            ],
+          );
+        }),
+        // Totals Row
+        DataRow(
+          color: MaterialStateProperty.all(const Color(0xFFFAFAFB)),
+          cells: [
+            DataCell(Text('Total',
+                style: GoogleFonts.poppins(
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF1E293B)))),
+            DataCell(Text(tSold.toString(), style: _sumStyle())),
+            DataCell(Text(_fmt(tGross), style: _sumStyle())),
+            DataCell(Text(_fmt(tDisc), style: _sumStyle())),
+            DataCell(Text(_fmt(tOffs), style: _sumStyle())),
+            DataCell(Text(_fmt(tNet), style: _sumStyle())),
+            DataCell(Text(_fmt(tTax), style: _sumStyle())),
+            DataCell(Text(_fmt(tTotal), style: _sumStyle())),
+          ],
+        ),
+      ],
+    );
+  }
+
+  DataColumn _col(String label) => DataColumn(
+        label: Text(label,
+            style: GoogleFonts.poppins(
+                fontSize: 10.sp,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF64748B))),
+      );
+
+  TextStyle _cellStyle() =>
+      GoogleFonts.poppins(fontSize: 10.sp, color: const Color(0xFF475569));
+
+  TextStyle _sumStyle() => GoogleFonts.poppins(
+      fontSize: 10.sp,
+      fontWeight: FontWeight.w700,
+      color: const Color(0xFF1E293B));
+
+  // ── Pagination ────────────────────────────────────────────────────────────────
+  Widget _buildPagination() {
+    final start = _filtered.isEmpty ? 0 : _currentPage * _rowsPerPage + 1;
+    final end = ((_currentPage + 1) * _rowsPerPage).clamp(0, _filtered.length);
+    final total = _filtered.length;
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(6.r),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Text('Showing $start to $end of $total results',
+                  style: GoogleFonts.poppins(
+                      fontSize: 10.sp, color: const Color(0xFF64748B))),
+              const Spacer(),
+              Text('Rows per page:',
+                  style: GoogleFonts.poppins(
+                      fontSize: 10.sp, color: const Color(0xFF64748B))),
+              SizedBox(width: 6.w),
+              Container(
+                height: 28.h,
+                padding: EdgeInsets.symmetric(horizontal: 8.w),
+                decoration: BoxDecoration(
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  borderRadius: BorderRadius.circular(4.r),
+                  color: const Color(0xFFF8FAFC),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    value: _rowsPerPage,
+                    isDense: true,
+                    style: GoogleFonts.poppins(
+                        fontSize: 10.sp, color: const Color(0xFF1E293B)),
+                    items: [5, 10, 20, 50]
+                        .map((e) => DropdownMenuItem(
+                            value: e, child: Text(e.toString())))
+                        .toList(),
+                    onChanged: (v) => setState(() {
+                      _rowsPerPage = v!;
+                      _currentPage = 0;
+                    }),
+                  ),
+                ),
               ),
             ],
           ),
+          SizedBox(height: 8.h),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Text('Page ${_currentPage + 1} of $_totalPages',
+                  style: GoogleFonts.poppins(
+                      fontSize: 10.sp, color: const Color(0xFF1E293B))),
+              SizedBox(width: 10.w),
+              _pageBtn(Icons.chevron_left, _currentPage > 0,
+                  () => setState(() => _currentPage--)),
+              SizedBox(width: 4.w),
+              _pageBtn(Icons.chevron_right, _currentPage < _totalPages - 1,
+                  () => setState(() => _currentPage++)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _pageBtn(IconData icon, bool enabled, VoidCallback onTap) => InkWell(
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(4.r),
+        child: Container(
+          width: 26.w,
+          height: 26.h,
+          decoration: BoxDecoration(
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+            borderRadius: BorderRadius.circular(4.r),
+            color: Colors.white,
+          ),
+          child: Icon(icon,
+              size: 14.sp,
+              color:
+                  enabled ? const Color(0xFF1E293B) : const Color(0xFFCBD5E1)),
         ),
+      );
+
+  // ── Widgets ───────────────────────────────────────────────────────────────────
+  Widget _buildError() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.error_outline, color: Colors.red.shade300, size: 48.sp),
+          SizedBox(height: 12.h),
+          Text(_error ?? 'Error', style: GoogleFonts.poppins(fontSize: 11.sp)),
+          SizedBox(height: 20.h),
+          ElevatedButton(onPressed: _fetchReport, child: const Text('Retry')),
+        ],
+      ),
+    );
+  }
+
+  Widget _searchBar() => Container(
+        height: 38.h,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          borderRadius: BorderRadius.circular(6.r),
+        ),
+        padding: EdgeInsets.symmetric(horizontal: 10.w),
+        child: Row(
+          children: [
+            Icon(Icons.search, size: 14.sp, color: const Color(0xFF94A3B8)),
+            SizedBox(width: 8.w),
+            Expanded(
+              child: TextField(
+                onChanged: (v) => setState(() {
+                  _searchText = v;
+                  _currentPage = 0;
+                }),
+                decoration: InputDecoration(
+                  hintText: 'Search...',
+                  hintStyle: GoogleFonts.poppins(
+                      fontSize: 10.sp, color: const Color(0xFF94A3B8)),
+                  border: InputBorder.none,
+                  isDense: true,
+                ),
+                style: GoogleFonts.poppins(fontSize: 10.sp),
+              ),
+            ),
+          ],
+        ),
+      );
+
+  Widget _filterBtn() => InkWell(
+        onTap: _openFilters,
+        borderRadius: BorderRadius.circular(6.r),
+        child: Container(
+          height: 38.h,
+          padding: EdgeInsets.symmetric(horizontal: 16.w),
+          decoration: BoxDecoration(
+            color: _primary,
+            borderRadius: BorderRadius.circular(6.r),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.tune, color: Colors.white, size: 13.sp),
+              SizedBox(width: 6.w),
+              Text('Filters',
+                  style: GoogleFonts.poppins(
+                      fontSize: 10.sp,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white)),
+            ],
+          ),
+        ),
+      );
+
+  Widget _exportBtn() => InkWell(
+        onTap: () {},
+        borderRadius: BorderRadius.circular(6.r),
+        child: Container(
+          height: 38.h,
+          padding: EdgeInsets.symmetric(horizontal: 16.w),
+          decoration: BoxDecoration(
+            color: _primary,
+            borderRadius: BorderRadius.circular(6.r),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.file_download_outlined,
+                  color: Colors.white, size: 13.sp),
+              SizedBox(width: 6.w),
+              Text('Export',
+                  style: GoogleFonts.poppins(
+                      fontSize: 10.sp,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white)),
+            ],
+          ),
+        ),
+      );
+
+  PreferredSizeWidget _buildAppBar(BuildContext context) => AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        surfaceTintColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black, size: 18),
+          onPressed: () => Navigator.pop(context),
+        ),
+        toolbarHeight: 46.h,
+        titleSpacing: 0,
         title: Row(
           children: [
-            const SizedBox(width: 20),
+            SizedBox(width: 4.w),
             Expanded(
-              child: Text(
-                'Sales by Customer',
-                style: GoogleFonts.poppins(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.notifications),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const NotificationPage()),
-                );
-              },
-            ),
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const My_Profile()),
-                );
-              },
-              child: Padding(
-                padding: EdgeInsets.only(right: 10.w),
-                child: Container(
-                  padding: EdgeInsets.all(2.w),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.black, width: 1.w),
-                  ),
-                  child: const CircleAvatar(
-                    radius: 18,
-                    backgroundImage: AssetImage('assets/images/profile.jpeg'),
-                    backgroundColor: Colors.white,
-                  ),
-                ),
-              ),
+              child: Text('Sales by Customer',
+                  style: GoogleFonts.poppins(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black),
+                  overflow: TextOverflow.ellipsis),
             ),
           ],
         ),
-      ),
+      );
+
+  // ── Minimal Filter Sheet ──────────────────────────────────────────────────────
+  Future<void> _openFilters() async {
+    DateTime? tempStart = _filterStartDate;
+    DateTime? tempEnd = _filterEndDate;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.white,
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Text(
-              "View Sales Reports by Each Customer",
-              style: TextStyle(fontSize: 16, color: Colors.black),
-            ),
-            const SizedBox(height: 4),
-            Container(height: 2, width: 200, color: Colors.black),
-            const SizedBox(height: 24),
-
-            // Search Bar
-            TextField(
-              decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.search),
-                hintText: "Search customer",
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Colors.black12),
-                ),
-              ),
-              onChanged: (value) {
-                searchText = value;
-                _filterData();
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // Range Picker & Export Dropdown
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(14.r))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return Padding(
+            padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w,
+                MediaQuery.of(context).viewInsets.bottom + 16.h),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ElevatedButton.icon(
-                  onPressed: _selectDateRange,
-                  icon: const Icon(Icons.date_range, size: 20),
-                  label: Text(
-                    _selectedDateRange != null
-                        ? "${DateFormat('dd MMM').format(_selectedDateRange!.start)} - ${DateFormat('dd MMM').format(_selectedDateRange!.end)}"
-                        : "Pick Range",
-                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black87,
-                    side: BorderSide(color: Colors.black54),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8)),
-                    elevation: 0,
+                Center(
+                  child: Container(
+                    width: 36.w,
+                    height: 4.h,
+                    margin: EdgeInsets.only(bottom: 16.h),
+                    decoration: BoxDecoration(
+                        color: const Color(0xFFE2E8F0),
+                        borderRadius: BorderRadius.circular(2.r)),
                   ),
                 ),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.black, width: 1),
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      icon: const Icon(Icons.file_download_outlined,
-                          color: Colors.black),
-                      items: const [
-                        DropdownMenuItem(value: 'csv', child: Text('CSV')),
-                        DropdownMenuItem(value: 'pdf', child: Text('PDF')),
-                        DropdownMenuItem(value: 'copy', child: Text('Copy')),
-                        DropdownMenuItem(value: 'excel', child: Text('Excel')),
-                        DropdownMenuItem(value: 'print', child: Text('Print')),
-                      ],
-                      hint: const Text("Export"),
-                      onChanged: (value) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text("Selected: $value")),
-                        );
-                      },
+                Text('Filters',
+                    style: GoogleFonts.poppins(
+                        fontSize: 14.sp, fontWeight: FontWeight.w700)),
+                SizedBox(height: 14.h),
+                Text('Start Date',
+                    style: GoogleFonts.poppins(
+                        fontSize: 11.sp, fontWeight: FontWeight.w500)),
+                SizedBox(height: 6.h),
+                GestureDetector(
+                  onTap: () async {
+                    final d = await showDatePicker(
+                      context: context,
+                      initialDate: tempStart ?? DateTime.now(),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    if (d != null) setModalState(() => tempStart = d);
+                  },
+                  child: Container(
+                    height: 40.h,
+                    padding: EdgeInsets.symmetric(horizontal: 12.w),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                      borderRadius: BorderRadius.circular(6.r),
                     ),
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                        tempStart != null
+                            ? DateFormat('dd MMM yyyy').format(tempStart!)
+                            : 'Select',
+                        style: GoogleFonts.poppins(fontSize: 11.sp)),
                   ),
-                )
+                ),
+                SizedBox(height: 14.h),
+                Text('End Date',
+                    style: GoogleFonts.poppins(
+                        fontSize: 11.sp, fontWeight: FontWeight.w500)),
+                SizedBox(height: 6.h),
+                GestureDetector(
+                  onTap: () async {
+                    final d = await showDatePicker(
+                      context: context,
+                      initialDate: tempEnd ?? DateTime.now(),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    if (d != null) setModalState(() => tempEnd = d);
+                  },
+                  child: Container(
+                    height: 40.h,
+                    padding: EdgeInsets.symmetric(horizontal: 12.w),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                      borderRadius: BorderRadius.circular(6.r),
+                    ),
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                        tempEnd != null
+                            ? DateFormat('dd MMM yyyy').format(tempEnd!)
+                            : 'Select',
+                        style: GoogleFonts.poppins(fontSize: 11.sp)),
+                  ),
+                ),
+                SizedBox(height: 24.h),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          setState(() {
+                            _filterStartDate = null;
+                            _filterEndDate = null;
+                            _currentPage = 0;
+                          });
+                          Navigator.pop(context);
+                          _fetchReport();
+                        },
+                        child: const Text('Clear Filters'),
+                      ),
+                    ),
+                    SizedBox(width: 10.w),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          setState(() {
+                            _filterStartDate = tempStart;
+                            _filterEndDate = tempEnd;
+                            _currentPage = 0;
+                          });
+                          Navigator.pop(context);
+                          _fetchReport();
+                        },
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: _primary,
+                            foregroundColor: Colors.white),
+                        child: const Text('Apply'),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
-            const SizedBox(height: 20),
-
-            // Data Table
-            Expanded(
-              child: Card(
-                elevation: 0,
-                color: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: DataTable(
-                      headingRowColor: MaterialStateColor.resolveWith(
-                          (states) => Colors.grey.shade200),
-                      columnSpacing: 24,
-                      dataRowHeight: 60,
-                      headingTextStyle: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                      columns: const [
-                        DataColumn(label: Text("Customer")),
-                        DataColumn(label: Text("Sales QTY")),
-                        DataColumn(label: Text("Gross Sale")),
-                        DataColumn(label: Text("Discounts")),
-                        DataColumn(label: Text("Offers")),
-                        DataColumn(label: Text("Net Sale")),
-                        DataColumn(label: Text("Tax")),
-                        DataColumn(label: Text("Total Sales")),
-                      ],
-                      rows: [
-                        ...List.generate(filteredServices.length, (index) {
-                          final service = filteredServices[index];
-                          final isEven = index % 2 == 0;
-                          return DataRow(
-                            color: MaterialStateColor.resolveWith((states) =>
-                                isEven ? Colors.grey.shade50 : Colors.white),
-                            cells: [
-                              DataCell(Text(service['customer'])),
-                              DataCell(Text(service['sales'].toString())),
-                              DataCell(
-                                  Text(_currencyFormat(service['grossSale']))),
-                              DataCell(
-                                  Text(_currencyFormat(service['discount']))),
-                              DataCell(
-                                  Text(_currencyFormat(service['offers']))),
-                              DataCell(
-                                  Text(_currencyFormat(service['netSale']))),
-                              DataCell(Text(_currencyFormat(service['tax']))),
-                              DataCell(
-                                Text(
-                                  _currencyFormat(service['totalSales']),
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w600),
-                                ),
-                              ),
-                            ],
-                          );
-                        }),
-                        // Total Row
-                        DataRow(
-                          color: MaterialStateColor.resolveWith(
-                              (states) => Colors.yellow.shade50),
-                          cells: [
-                            const DataCell(Text(
-                              'Total',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            )),
-                            DataCell(Text(
-                              filteredServices
-                                  .fold<num>(
-                                      0, (sum, item) => sum + item['sales'])
-                                  .toString(),
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold),
-                            )),
-                            DataCell(Text(
-                              _currencyFormat(filteredServices.fold<num>(
-                                  0, (sum, item) => sum + item['grossSale'])),
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold),
-                            )),
-                            DataCell(Text(
-                              _currencyFormat(filteredServices.fold<num>(
-                                  0, (sum, item) => sum + item['discount'])),
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold),
-                            )),
-                            DataCell(Text(
-                              _currencyFormat(filteredServices.fold<num>(
-                                  0, (sum, item) => sum + item['offers'])),
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold),
-                            )),
-                            DataCell(Text(
-                              _currencyFormat(filteredServices.fold<num>(
-                                  0, (sum, item) => sum + item['netSale'])),
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold),
-                            )),
-                            DataCell(Text(
-                              _currencyFormat(filteredServices.fold<num>(
-                                  0, (sum, item) => sum + item['tax'])),
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold),
-                            )),
-                            DataCell(Text(
-                              _currencyFormat(filteredServices.fold<num>(
-                                  0, (sum, item) => sum + item['totalSales'])),
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold),
-                            )),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

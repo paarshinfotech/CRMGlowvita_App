@@ -2791,8 +2791,7 @@ class ApiService {
       final uri =
           Uri.parse('$baseUrl/crm/vendor/reports/completed-appointments')
               .replace(
-                  queryParameters:
-                      queryParams.isEmpty ? null : queryParams);
+                  queryParameters: queryParams.isEmpty ? null : queryParams);
 
       final response = await _get(uri.toString());
 
@@ -2844,8 +2843,7 @@ class ApiService {
       final uri =
           Uri.parse('$baseUrl/crm/vendor/reports/cancelled-appointments')
               .replace(
-                  queryParameters:
-                      queryParams.isEmpty ? null : queryParams);
+                  queryParameters: queryParams.isEmpty ? null : queryParams);
 
       final response = await _get(uri.toString());
 
@@ -2866,8 +2864,303 @@ class ApiService {
       rethrow;
     }
   }
-}
 
+  /// Fetches summary by service report from
+  /// GET /api/crm/vendor/reports/summary-by-service
+  ///
+  /// Returns the full decoded response map which contains:
+  ///   data.summaryByService[] (serviceName, count, totalAmount, totalDuration, averageAmount, averageDuration)
+  static Future<Map<String, dynamic>> getSummaryByServiceReport({
+    String? period,
+    String? startDate,
+    String? endDate,
+    String? client,
+    String? service,
+    String? staff,
+    String? status,
+    String? bookingType,
+  }) async {
+    try {
+      final queryParams = <String, String>{};
+      if (period != null) queryParams['period'] = period;
+      if (startDate != null) queryParams['startDate'] = startDate;
+      if (endDate != null) queryParams['endDate'] = endDate;
+      if (client != null) queryParams['client'] = client;
+      if (service != null) queryParams['service'] = service;
+      if (staff != null) queryParams['staff'] = staff;
+      if (status != null) queryParams['status'] = status;
+      if (bookingType != null) queryParams['bookingType'] = bookingType;
+
+      final uri = Uri.parse('$baseUrl/crm/vendor/reports/summary-by-service')
+          .replace(queryParameters: queryParams.isEmpty ? null : queryParams);
+
+      final response = await _get(uri.toString());
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return data;
+        } else {
+          throw Exception(
+              'Failed to load summary by service report: ${data['message'] ?? 'Unknown error'}');
+        }
+      } else {
+        throw Exception(
+            'Failed to load summary by service report: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching summary by service report: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetches settlement summary report from
+  /// GET /api/crm/vendor/reports/settlement-summary
+  ///
+  /// Returns the full decoded response map which contains:
+  ///   data.settlementSummary.appointments[]
+  ///   data.settlementSummary.transfers[]
+  ///   data.settlementSummary.totals{}
+  static Future<Map<String, dynamic>> getSettlementSummaryReport({
+    String? period,
+    String? startDate,
+    String? endDate,
+    String? settlementFromDate,
+    String? settlementToDate,
+    String? client,
+    String? service,
+    String? staff,
+    String? status,
+    String? bookingType,
+  }) async {
+    try {
+      final queryParams = <String, String>{};
+      if (period != null) queryParams['period'] = period;
+      if (startDate != null) queryParams['startDate'] = startDate;
+      if (endDate != null) queryParams['endDate'] = endDate;
+      if (settlementFromDate != null)
+        queryParams['settlementFromDate'] = settlementFromDate;
+      if (settlementToDate != null)
+        queryParams['settlementToDate'] = settlementToDate;
+      if (client != null) queryParams['client'] = client;
+      if (service != null) queryParams['service'] = service;
+      if (staff != null) queryParams['staff'] = staff;
+      if (status != null) queryParams['status'] = status;
+      if (bookingType != null) queryParams['bookingType'] = bookingType;
+
+      final uri = Uri.parse('$baseUrl/crm/vendor/reports/settlement-summary')
+          .replace(queryParameters: queryParams.isEmpty ? null : queryParams);
+
+      final response = await _get(uri.toString());
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return data;
+        } else {
+          throw Exception(
+              'Failed to load settlement summary report: ${data['message'] ?? 'Unknown error'}');
+        }
+      } else {
+        throw Exception(
+            'Failed to load settlement summary report: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching settlement summary report: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetches product summary report
+  static Future<Map<String, dynamic>> getProductSummaryReport() async {
+    try {
+      final response =
+          await _get('$baseUrl/crm/vendor/reports/product-summary');
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return data;
+        } else {
+          throw Exception(
+              'Failed to load product summary report: ${data['message'] ?? 'Unknown error'}');
+        }
+      } else {
+        throw Exception(
+            'Failed to load product summary report: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching product summary report: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetches inventory stock report
+  static Future<Map<String, dynamic>> getInventoryStockReport() async {
+    try {
+      final response =
+          await _get('$baseUrl/crm/vendor/reports/inventory-stock');
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return data;
+        } else {
+          throw Exception(
+              'Failed to load inventory stock report: ${data['message'] ?? 'Unknown error'}');
+        }
+      } else {
+        throw Exception(
+            'Failed to load inventory stock report: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching inventory stock report: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetches category-wise product report
+  static Future<Map<String, dynamic>> getCategoryWiseProductReport() async {
+    try {
+      final response =
+          await _get('$baseUrl/crm/vendor/reports/category-wise-product');
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return data;
+        } else {
+          throw Exception(
+              'Failed to load category-wise product report: ${data['message'] ?? 'Unknown error'}');
+        }
+      } else {
+        throw Exception(
+            'Failed to load category-wise product report: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching category-wise product report: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetches sales by customer report
+  static Future<Map<String, dynamic>> getSalesByCustomerReport({
+    String? period,
+    String? startDate,
+    String? endDate,
+    String? client,
+    String? service,
+    String? staff,
+    String? status,
+    String? bookingType,
+  }) async {
+    try {
+      final queryParams = <String, String>{};
+      if (period != null) queryParams['period'] = period;
+      if (startDate != null) queryParams['startDate'] = startDate;
+      if (endDate != null) queryParams['endDate'] = endDate;
+      if (client != null) queryParams['client'] = client;
+      if (service != null) queryParams['service'] = service;
+      if (staff != null) queryParams['staff'] = staff;
+      if (status != null) queryParams['status'] = status;
+      if (bookingType != null) queryParams['bookingType'] = bookingType;
+
+      final uri = Uri.parse('$baseUrl/crm/vendor/reports/sales-by-customer')
+          .replace(queryParameters: queryParams.isEmpty ? null : queryParams);
+
+      final response = await _get(uri.toString());
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) return data;
+        throw Exception(data['message'] ?? 'Unknown error');
+      } else {
+        throw Exception(
+            'Failed to load sales by customer: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching sales by customer: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetches sales by service report
+  static Future<Map<String, dynamic>> getSalesByServiceReport({
+    String? period,
+    String? startDate,
+    String? endDate,
+    String? client,
+    String? service,
+    String? staff,
+    String? status,
+    String? bookingType,
+  }) async {
+    try {
+      final queryParams = <String, String>{};
+      if (period != null) queryParams['period'] = period;
+      if (startDate != null) queryParams['startDate'] = startDate;
+      if (endDate != null) queryParams['endDate'] = endDate;
+      if (client != null) queryParams['client'] = client;
+      if (service != null) queryParams['service'] = service;
+      if (staff != null) queryParams['staff'] = staff;
+      if (status != null) queryParams['status'] = status;
+      if (bookingType != null) queryParams['bookingType'] = bookingType;
+
+      final uri = Uri.parse('$baseUrl/crm/vendor/reports/sales-by-service')
+          .replace(queryParameters: queryParams.isEmpty ? null : queryParams);
+
+      final response = await _get(uri.toString());
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) return data;
+        throw Exception(data['message'] ?? 'Unknown error');
+      } else {
+        throw Exception(
+            'Failed to load sales by service: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching sales by service: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetches staff commission summary report
+
+  static Future<List<dynamic>> getStaffCommissionReport({
+    String? startDate,
+    String? endDate,
+  }) async {
+    try {
+      final queryParams = <String, String>{};
+      if (startDate != null) queryParams['startDate'] = startDate;
+      if (endDate != null) queryParams['endDate'] = endDate;
+
+      final uri =
+          Uri.parse('$baseUrl/crm/reports/vendor/staff-commission').replace(
+        queryParameters: queryParams.isEmpty ? null : queryParams,
+      );
+
+      final response = await _get(uri.toString());
+
+      debugPrint('Staff Commission Report - Status: ${response.statusCode}');
+      debugPrint('Staff Commission Report - Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final dynamic decoded = json.decode(response.body);
+        // API returns a plain JSON array
+        if (decoded is List) return decoded;
+        // Or wrapped: { success: true, data: [...] }
+        if (decoded is Map && decoded['data'] is List) return decoded['data'];
+        throw Exception(
+            'Unexpected response format for staff commission report');
+      } else {
+        throw Exception(
+            'Failed to load staff commission report: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching staff commission report: $e');
+      rethrow;
+    }
+  }
+}
 
 class Service {
   String? id;
@@ -3254,7 +3547,6 @@ class OfferModel {
     this.businessId,
     this.regionId,
   });
-
 
   factory OfferModel.fromJson(Map<String, dynamic> json) {
     return OfferModel(

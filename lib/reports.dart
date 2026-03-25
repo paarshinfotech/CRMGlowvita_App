@@ -24,7 +24,9 @@ import 'Vendor reports/appointmentsbystaff_summary.dart';
 import 'Vendor reports/appointmentsbyservice_summary.dart';
 import 'Vendor reports/appointmentsCancellation_summary.dart';
 import 'Vendor reports/completedAppointments_summary.dart';
-
+import 'Vendor reports/all_products_report.dart';
+import 'Vendor reports/inventory_stock_report.dart';
+import 'Vendor reports/category_wise_product_report.dart';
 const Color _primaryDark = Color(0xFF372935);
 
 class ReportsPage extends StatelessWidget {
@@ -101,6 +103,30 @@ class ReportsPage extends StatelessWidget {
               SizedBox(height: 12.h),
               _buildSearchBar(),
             ],
+            SizedBox(height: 32.h),
+
+            // Settlement Summary Section
+            _buildSectionHeader('Settlement Summary'),
+            SizedBox(height: 16.h),
+            _buildTwoColumnGrid(context, [
+              _ReportCard(
+                title: 'Settlement Summary Report',
+                description:
+                    'Overview of fund settlements between vendors and the platform.',
+                details: [
+                  'Settlement ID',
+                  'Vendor Name',
+                  'Transfer Amount',
+                  'Status'
+                ],
+                onView: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => SettlementSummary())),
+                onDownload: () {},
+              ),
+            ]),
+
             SizedBox(height: 32.h),
 
             // Appointment Summary Section
@@ -188,12 +214,27 @@ class ReportsPage extends StatelessWidget {
                         builder: (context) => AppointmentsbyStaffSummary())),
                 onDownload: () {},
               ),
+              _ReportCard(
+                title: 'Staff Commission Summary',
+                description: 'Overview of commissions earned by staff members.',
+                details: [
+                  'Staff Name',
+                  'Total Sales',
+                  'Commission Rate',
+                  'Earned Amount'
+                ],
+                onView: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => StaffCommissionSummary())),
+                onDownload: () {},
+              ),
             ]),
 
             SizedBox(height: 32.h),
 
-            // Finance & Sales Section
-            _buildSectionHeader('Finance & Sales'),
+            // Sales Summary
+            _buildSectionHeader('Sales Summary'),
             SizedBox(height: 16.h),
             _buildTwoColumnGrid(context, [
               _ReportCard(
@@ -220,14 +261,12 @@ class ReportsPage extends StatelessWidget {
                   'Visit Frequency',
                   'Last Visit'
                 ],
-                onView: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => SalesByCustomers())),
+                onView: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => SalesByCustomer())),
                 onDownload: () {},
               ),
               _ReportCard(
-                title: 'Sales History',
+                title: 'Sales by Products',
                 description:
                     'Historical record of all sales transactions over time.',
                 details: ['Date', 'Invoice ID', 'Client Name', 'Payment Mode'],
@@ -235,213 +274,56 @@ class ReportsPage extends StatelessWidget {
                     MaterialPageRoute(builder: (context) => SalesHistory())),
                 onDownload: () {},
               ),
-              _ReportCard(
-                title: 'Sales Commission',
-                description:
-                    'Tracking commissions earned from sales transactions.',
-                details: [
-                  'Sales ID',
-                  'Commission Earned',
-                  'Staff Name',
-                  'Status'
-                ],
-                onView: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => SalesCommission())),
-                onDownload: () {},
-              ),
-              _ReportCard(
-                title: 'Finance Summary',
-                description:
-                    'High-level overview of business financial health.',
-                details: ['Total Revenue', 'Expenses', 'Net Profit', 'Growth'],
-                onView: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => FinanceSummary())),
-                onDownload: () {},
-              ),
-              _ReportCard(
-                title: 'Payments Summary',
-                description:
-                    'Summary of payments received across different channels.',
-                details: [
-                  'Payment Mode',
-                  'Total Collected',
-                  'Processing Fees',
-                  'Net Amount'
-                ],
-                onView: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => PaymentSummary())),
-                onDownload: () {},
-              ),
-              _ReportCard(
-                title: 'Taxes Summary',
-                description:
-                    'Comprehensive report on taxes collected and liabilities.',
-                details: [
-                  'CGST/SGST Breakdown',
-                  'Taxable Amount',
-                  'Tax Percentage',
-                  'Period'
-                ],
-                onView: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => TaxesSummary())),
-                onDownload: () {},
-              ),
-              _ReportCard(
-                title: 'Discount Summary',
-                description:
-                    'Analysis of discounts given and their impact on revenue.',
-                details: [
-                  'Discount Code',
-                  'Usage Count',
-                  'Total Discount Amount',
-                  'Campaign'
-                ],
-                onView: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => DiscountSummary())),
-                onDownload: () {},
-              ),
-              _ReportCard(
-                title: 'Outstanding Sales',
-                description: 'Tracking unpaid invoices and overdue payments.',
-                details: ['Invoice ID', 'Due Amount', 'Customer Name', 'Aging'],
-                onView: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => OutstandingSaleSummary())),
-                onDownload: () {},
-              ),
-              _ReportCard(
-                title: 'Expenses Summary',
-                description:
-                    'Detailed record of business expenditures and overheads.',
-                details: ['Expense Category', 'Amount', 'Date', 'Vendor'],
-                onView: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => ExpensesSummary())),
-                onDownload: () {},
-              ),
-              _ReportCard(
-                title: 'Profit Margin',
-                description:
-                    'Calculating the profitability of services and overall business.',
-                details: [
-                  'Net Margin %',
-                  'Service Cost',
-                  'Operating Cost',
-                  'Revenue'
-                ],
-                onView: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => ProfitAndLossSummary())),
-                onDownload: () {},
-              ),
             ]),
 
             SizedBox(height: 32.h),
-
-            // Staff Performance Section
-            _buildSectionHeader('Staff Performance'),
+            // Products Summary
+            _buildSectionHeader('Products Summary'),
             SizedBox(height: 16.h),
             _buildTwoColumnGrid(context, [
               _ReportCard(
-                title: 'Staff Commission Summary',
-                description: 'Overview of commissions earned by staff members.',
+                title: 'All Products Report',
+                description:
+                    'Complete record of all products with detailed information.',
                 details: [
-                  'Staff Name',
-                  'Total Sales',
-                  'Commission Rate',
-                  'Earned Amount'
+                  'Product Name, Brand, Category',
+                  'Price, Sale Price, Stock',
+                  'Status, Is Active, Created Date'
                 ],
                 onView: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => StaffCommissionSummary())),
+                        builder: (context) => const AllProductsReport())),
                 onDownload: () {},
               ),
               _ReportCard(
-                title: 'Staff Performance',
+                title: 'Inventory / Stock Report',
                 description:
-                    'Detailed metrics tracking individual staff efficiency and customer ratings.',
+                    'Detailed analysis of product inventory and stock levels.',
                 details: [
-                  'Appointment Count',
-                  'Revenue Contribution',
-                  'Customer Rating',
-                  'Utilization %'
+                  'Product Name',
+                  'Stock Available',
+                  'Stock Status'
                 ],
                 onView: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => StaffPerformance())),
+                        builder: (context) => const InventoryStockReport())),
                 onDownload: () {},
               ),
-            ]),
-
-            SizedBox(height: 32.h),
-
-            // Referral & Payouts Section
-            _buildSectionHeader('Referral & Payouts'),
-            SizedBox(height: 16.h),
-            _buildTwoColumnGrid(context, [
               _ReportCard(
-                title: 'Referral Invites Summary',
+                title: 'Category-wise Product Report',
                 description:
-                    'Tracking status of referral invitations sent by users.',
+                    'Aggregated view showing product counts and sales by category.',
                 details: [
-                  'Inviter Name',
-                  'Invitee Status',
-                  'Sign-up Date',
-                  'Reward Status'
+                  'Category Name',
+                  'Number of Products, Active Products',
+                  'Average Price, Average Sale Price'
                 ],
                 onView: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => ReferralInvitesSummary())),
-                onDownload: () {},
-              ),
-              _ReportCard(
-                title: 'Referral Commission',
-                description:
-                    'Summary of commissions earned through the referral program.',
-                details: [
-                  'Commission Earned',
-                  'Payout Status',
-                  'Reference ID',
-                  'Date'
-                ],
-                onView: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => ReferralCommissionSummary())),
-                onDownload: () {},
-              ),
-              _ReportCard(
-                title: 'Settlement Summary',
-                description:
-                    'Overview of fund settlements between vendors and the platform.',
-                details: [
-                  'Settlement ID',
-                  'Vendor Name',
-                  'Transfer Amount',
-                  'Status'
-                ],
-                onView: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => SettlementSummary())),
-                onDownload: () {},
-              ),
-              _ReportCard(
-                title: 'Payout Summary',
-                description:
-                    'Detailed listing of all completed payouts to staff and vendors.',
-                details: [
-                  'Payout Date',
-                  'Recipient',
-                  'Method',
-                  'Transaction Ref'
-                ],
-                onView: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => PayoutSummary())),
+                        builder: (context) => const CategoryWiseProductReport())),
                 onDownload: () {},
               ),
             ]),

@@ -1,14 +1,46 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+
 import '../Notification.dart';
 import '../my_Profile.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:csv/csv.dart';
-import 'package:path_provider/path_provider.dart';
-import 'dart:io';
+import '../services/api_service.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Model
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _StaffSummary {
+  final String staffName;
+  final int totalAppointments;
+  final int totalMinutes; // for sorting / display
+  final double totalSale;
+
+  _StaffSummary({
+    required this.staffName,
+    required this.totalAppointments,
+    required this.totalMinutes,
+    required this.totalSale,
+  });
+
+  /// e.g. "1 hr 30 min"
+  String get durationLabel {
+    final h = totalMinutes ~/ 60;
+    final m = totalMinutes % 60;
+    if (h == 0) return '$m min';
+    if (m == 0) return '$h hr';
+    return '$h hr $m min';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Page
+// ─────────────────────────────────────────────────────────────────────────────
 
 class AppointmentsbyStaffSummary extends StatefulWidget {
+  const AppointmentsbyStaffSummary({super.key});
+
   @override
   State<AppointmentsbyStaffSummary> createState() =>
       _AppointmentsbyStaffSummaryState();
@@ -16,592 +48,440 @@ class AppointmentsbyStaffSummary extends StatefulWidget {
 
 class _AppointmentsbyStaffSummaryState
     extends State<AppointmentsbyStaffSummary> {
-  DateTimeRange? _selectedDateRange;
-  String _sortColumn = 'staffName';
-  bool _sortAscending = true;
+  // ── constants ───────────────────────────────────────────────────────────────
+  static const Color _purple = Color(0xFF6C3EB8);
 
-  final List<Map<String, dynamic>> AppointmentsbyStaff = [
-    {
-      'ref': '#00001265',
-      'client': 'Siddhi Shinde',
-      'services': 'Haircut, Styling',
-      'staffName': 'Priya Sharma',
-      'createdOn': DateTime(2025, 7, 26, 12, 52),
-      'scheduledOn': DateTime(2025, 7, 27, 14, 00),
-      'duration': '1h 30m',
-      'price': 410,
-      'status': 'PENDING',
-    },
-    {
-      'ref': '#00001264',
-      'client': 'Anita Desai',
-      'services': 'Manicure',
-      'staffName': 'Riya Patel',
-      'createdOn': DateTime(2025, 7, 26, 12, 48),
-      'scheduledOn': DateTime(2025, 7, 27, 10, 30),
-      'duration': '45m',
-      'price': 310,
-      'status': 'PENDING',
-    },
-    {
-      'ref': '#00001263',
-      'client': 'Neha Gupta',
-      'services': 'Massage',
-      'staffName': 'Sonia Verma',
-      'createdOn': DateTime(2025, 7, 26, 12, 48),
-      'scheduledOn': DateTime(2025, 7, 26, 15, 00),
-      'duration': '1h',
-      'price': 310,
-      'status': 'PAID',
-    },
-    {
-      'ref': '#00001262',
-      'client': 'Pooja Mehta',
-      'services': 'Facial',
-      'staffName': 'Kavita Singh',
-      'createdOn': DateTime(2025, 7, 26, 12, 25),
-      'scheduledOn': DateTime(2025, 7, 26, 11, 00),
-      'duration': '1h',
-      'price': 310,
-      'status': 'CANCELLED',
-    },
-  ];
+  // ── state ───────────────────────────────────────────────────────────────────
+  bool _isLoading = false;
+  String? _errorMsg;
 
-  List<Map<String, dynamic>> filteredStaffSummary = [];
-  String searchText = '';
+  List<_StaffSummary> _all = [];
+  List<_StaffSummary> _filtered = [];
 
-  // Totals
-  int totalAppointments = 0;
-  String totalDuration = '';
-  double totalSales = 0;
+  String _searchText = '';
+  DateTimeRange? _dateRange;
 
+  // pagination
+  int _rowsPerPage = 10;
+  int _currentPage = 0;
+
+  final _searchCtrl = TextEditingController();
+
+  // ─────────────────────────────────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
-    _calculateStaffSummary();
+    _fetchData();
   }
 
-  String _calculateTotalDuration(List<Map<String, dynamic>> appointments) {
-    int totalMinutes = 0;
-    for (var appointment in appointments) {
-      String duration = appointment['duration'] ?? '0h';
-      RegExp regex = RegExp(r'(\d+)h\s*(\d*)m?');
-      var match = regex.firstMatch(duration);
-      if (match != null) {
-        int hours = int.parse(match.group(1) ?? '0');
-        int minutes = match.group(2)!.isEmpty ? 0 : int.parse(match.group(2)!);
-        totalMinutes += hours * 60 + minutes;
-      }
-    }
-    int hours = totalMinutes ~/ 60;
-    int minutes = totalMinutes % 60;
-    return '${hours}h ${minutes}m';
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
-  void _calculateStaffSummary() {
-    Map<String, List<Map<String, dynamic>>> staffAppointments = {};
-    List<Map<String, dynamic>> filteredAppointments =
-        AppointmentsbyStaff.where((appointment) {
-      final matchesDate = _selectedDateRange == null ||
-          (appointment['scheduledOn'].isAfter(_selectedDateRange!.start
-                  .subtract(const Duration(days: 1))) &&
-              appointment['scheduledOn'].isBefore(
-                  _selectedDateRange!.end.add(const Duration(days: 1))));
-      return matchesDate;
-    }).toList();
-
-    for (var appointment in filteredAppointments) {
-      String staffName = appointment['staffName'];
-      if (!staffAppointments.containsKey(staffName)) {
-        staffAppointments[staffName] = [];
-      }
-      staffAppointments[staffName]!.add(appointment);
-    }
-
-    filteredStaffSummary = staffAppointments.entries.map((entry) {
-      String staffName = entry.key;
-      List<Map<String, dynamic>> appointments = entry.value;
-      int appointmentCount = appointments.length;
-      String totalDuration = _calculateTotalDuration(appointments);
-      double totalSale = appointments.fold(0,
-          (sum, app) => sum + (double.tryParse(app['price'].toString()) ?? 0));
-
-      return {
-        'staffName': staffName,
-        'totalAppointments': appointmentCount,
-        'totalDuration': totalDuration,
-        'totalSale': totalSale,
-      };
-    }).toList();
-
-    // Apply search filter
-    filteredStaffSummary = filteredStaffSummary.where((staff) {
-      return staff['staffName']
-          .toString()
-          .toLowerCase()
-          .contains(searchText.toLowerCase());
-    }).toList();
-
-    // Sort the summary
-    filteredStaffSummary.sort((a, b) {
-      var aValue = a[_sortColumn];
-      var bValue = b[_sortColumn];
-      if (_sortColumn == 'staffName') {
-        return _sortAscending
-            ? aValue.compareTo(bValue)
-            : bValue.compareTo(aValue);
-      } else if (_sortColumn == 'totalAppointments' ||
-          _sortColumn == 'totalSale') {
-        return _sortAscending
-            ? aValue.compareTo(bValue)
-            : bValue.compareTo(aValue);
-      } else {
-        int aMinutes = _durationToMinutes(aValue);
-        int bMinutes = _durationToMinutes(bValue);
-        return _sortAscending
-            ? aMinutes.compareTo(bMinutes)
-            : bMinutes.compareTo(aMinutes);
-      }
+  // ── fetch & aggregate ──────────────────────────────────────────────────────
+  Future<void> _fetchData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMsg = null;
     });
+    try {
+      final response = await ApiService.getAllAppointmentsReport(
+        startDate: _dateRange != null
+            ? DateFormat('yyyy-MM-dd').format(_dateRange!.start)
+            : null,
+        endDate: _dateRange != null
+            ? DateFormat('yyyy-MM-dd').format(_dateRange!.end)
+            : null,
+      );
 
-    _calculateTotals(filteredAppointments);
-  }
+      // Response: { success, data: { allAppointments: { total, appointments: [...] } } }
+      final allAppointments =
+          response['data']?['allAppointments'] as Map<String, dynamic>?;
+      final List<dynamic> appointments =
+          (allAppointments?['appointments'] as List?) ?? [];
 
-  int _durationToMinutes(String duration) {
-    RegExp regex = RegExp(r'(\d+)h\s*(\d*)m?');
-    var match = regex.firstMatch(duration);
-    if (match != null) {
-      int hours = int.parse(match.group(1) ?? '0');
-      int minutes = match.group(2)!.isEmpty ? 0 : int.parse(match.group(2)!);
-      return hours * 60 + minutes;
+      _all = _aggregate(appointments);
+      _applyFilter();
+    } catch (e) {
+      setState(() => _errorMsg = e.toString());
+    } finally {
+      setState(() => _isLoading = false);
     }
-    return 0;
   }
 
-  void _calculateTotals(List<Map<String, dynamic>> filteredAppointments) {
-    totalAppointments = filteredStaffSummary.fold(
-        0, (sum, staff) => sum + (staff['totalAppointments'] as int));
-    totalSales = filteredStaffSummary.fold(
-        0, (sum, staff) => sum + (staff['totalSale'] as double));
-    totalDuration = _calculateTotalDuration(filteredAppointments);
+  /// Group raw appointment list by staff and compute totals.
+  /// API fields used: staffName (String), duration (int, minutes), totalAmount (num).
+  List<_StaffSummary> _aggregate(List<dynamic> appointments) {
+    final Map<String, Map<String, dynamic>> map = {};
+
+    for (final raw in appointments) {
+      if (raw is! Map<String, dynamic>) continue;
+
+      // ── staff name (plain string in this API) ─────────────────────────
+      final String staffName =
+          (raw['staffName'] as String?)?.trim().isNotEmpty == true
+              ? (raw['staffName'] as String).trim()
+              : 'Unassigned';
+
+      // ── duration already in minutes (int) ────────────────────────────
+      final int minutes = (raw['duration'] as num?)?.toInt() ?? 0;
+
+      // ── use totalAmount as the sale figure ────────────────────────────
+      final double amount =
+          ((raw['totalAmount'] ?? raw['amount']) as num?)?.toDouble() ?? 0.0;
+
+      // ── accumulate ───────────────────────────────────────────────────
+      map.putIfAbsent(staffName, () => {'count': 0, 'minutes': 0, 'sale': 0.0});
+      map[staffName]!['count'] = (map[staffName]!['count'] as int) + 1;
+      map[staffName]!['minutes'] = (map[staffName]!['minutes'] as int) + minutes;
+      map[staffName]!['sale'] = (map[staffName]!['sale'] as double) + amount;
+    }
+
+    return map.entries
+        .map((e) => _StaffSummary(
+              staffName: e.key,
+              totalAppointments: e.value['count'] as int,
+              totalMinutes: e.value['minutes'] as int,
+              totalSale: e.value['sale'] as double,
+            ))
+        .toList()
+      ..sort((a, b) => a.staffName.compareTo(b.staffName));
   }
 
-  Future<void> _selectDateRange() async {
+  void _applyFilter() {
+    final q = _searchText.toLowerCase();
+    setState(() {
+      _currentPage = 0;
+      _filtered = _all
+          .where((s) => s.staffName.toLowerCase().contains(q))
+          .toList();
+    });
+  }
+
+  Future<void> _pickDateRange() async {
     final picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
-      initialDateRange: _selectedDateRange ??
+      initialDateRange: _dateRange ??
           DateTimeRange(
-            start: DateTime.now().subtract(Duration(days: 7)),
+            start: DateTime.now().subtract(const Duration(days: 30)),
             end: DateTime.now(),
           ),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: _purple,
+            onPrimary: Colors.white,
+          ),
+        ),
+        child: child!,
+      ),
     );
     if (picked != null) {
-      setState(() {
-        _selectedDateRange = picked;
-        _calculateStaffSummary();
-      });
+      _dateRange = picked;
+      _fetchData();
     }
   }
 
-  String _currencyFormat(num amount) {
-    return '₹${NumberFormat('#,##0').format(amount)}';
+  void _clearDateRange() {
+    _dateRange = null;
+    _fetchData();
   }
 
-  Future<void> _exportToCsv() async {
-    List<List<dynamic>> rows = [
-      ['Staff Name', 'Total Appointments', 'Total Duration', 'Total Sale'],
-      ...filteredStaffSummary.map((staff) => [
-            staff['staffName'],
-            staff['totalAppointments'],
-            staff['totalDuration'],
-            _currencyFormat(staff['totalSale']),
-          ]),
-      ['Total', totalAppointments, totalDuration, _currencyFormat(totalSales)],
-    ];
-
-    String csv = const ListToCsvConverter().convert(rows);
-    final directory = await getTemporaryDirectory();
-    final path = '${directory.path}/staff_summary.csv';
-    final file = File(path);
-    await file.writeAsString(csv);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('CSV exported to $path')),
-    );
+  // ── pagination ─────────────────────────────────────────────────────────────
+  List<_StaffSummary> get _pageItems {
+    final start = _currentPage * _rowsPerPage;
+    final end = (start + _rowsPerPage).clamp(0, _filtered.length);
+    if (start >= _filtered.length) return [];
+    return _filtered.sublist(start, end);
   }
 
-  void _sort(String column) {
-    setState(() {
-      if (_sortColumn == column) {
-        _sortAscending = !_sortAscending;
-      } else {
-        _sortColumn = column;
-        _sortAscending = true;
-      }
-      _calculateStaffSummary();
-    });
-  }
+  int get _totalPages =>
+      (_filtered.length / _rowsPerPage).ceil().clamp(1, 9999);
 
+  // ── helpers ────────────────────────────────────────────────────────────────
+  String _fmtCurrency(num v) => '₹${NumberFormat('#,##0.00').format(v)}';
+
+  // ─────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: true,
-      onPopInvoked: (didPop) {
-        if (!didPop) {
-          Navigator.pop(context);
-        }
-      },
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        appBar: _buildAppBar(context),
-        body: Padding(
-          padding: EdgeInsets.all(20.w),
-          child: Column(
-            children: [
-              Text(
-                "Appointments by Staff Summary",
-                style:
-                    GoogleFonts.poppins(fontSize: 12.sp, color: Colors.black),
-              ),
-              SizedBox(height: 4.h),
-              Container(height: 2.h, width: 200.w, color: Colors.black),
-              SizedBox(height: 24.h),
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F6FA),
+      appBar: _buildAppBar(),
+      body: Padding(
+        padding: EdgeInsets.all(16.w),
+        child: Column(
+          children: [
+            // Stats Row
+            Row(
+              children: [
+                _statCard('Total Bookings', '${_filtered.fold(0, (sum, s) => sum + s.totalAppointments)}', Icons.event_available_rounded, Colors.blue),
+                SizedBox(width: 10.w),
+                _statCard('Total Revenue', _fmtCompact(_filtered.fold(0, (sum, s) => sum + s.totalSale)), Icons.payments_rounded, Colors.green),
+              ],
+            ),
+            SizedBox(height: 16.h),
 
-              // Search
-              TextField(
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.search),
-                  hintText: "Search Staff...",
-                  hintStyle: GoogleFonts.poppins(),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10.r),
-                  ),
+            // Table Container
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x12000000),
+                      blurRadius: 10,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
                 ),
-                style: GoogleFonts.poppins(),
-                onChanged: (value) {
-                  searchText = value;
-                  _calculateStaffSummary();
-                },
-              ),
-              SizedBox(height: 16.h),
-
-              // Date picker + Export
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: _selectDateRange,
-                    icon: Icon(Icons.date_range, size: 20.sp),
-                    label: Text(
-                      _selectedDateRange != null
-                          ? "${DateFormat('dd MMM').format(_selectedDateRange!.start)} - ${DateFormat('dd MMM').format(_selectedDateRange!.end)}"
-                          : "Pick Range",
-                      style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.w600, fontSize: 10.sp),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.black87,
-                      side: BorderSide(color: Colors.black54),
-                      padding: EdgeInsets.symmetric(
-                          horizontal: 16.w, vertical: 12.h),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.r)),
-                      elevation: 0,
-                    ),
-                  ),
-                  Container(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.black),
-                      borderRadius: BorderRadius.circular(5.r),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        icon: Icon(Icons.file_download_outlined,
-                            color: Colors.black, size: 20.sp),
-                        items: const [
-                          DropdownMenuItem(value: 'csv', child: Text('CSV')),
-                          DropdownMenuItem(value: 'pdf', child: Text('PDF')),
-                          DropdownMenuItem(value: 'copy', child: Text('Copy')),
-                          DropdownMenuItem(
-                              value: 'excel', child: Text('Excel')),
-                          DropdownMenuItem(
-                              value: 'print', child: Text('Print')),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── Title ──────────────────────────────────────────────────
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 8.h),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'All Appointments by Staff',
+                            style: GoogleFonts.poppins(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          Text(
+                            'Detailed report showing appointment statistics aggregated by staff member.',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11.5,
+                              color: Colors.grey.shade500,
+                            ),
+                          ),
                         ],
-                        hint: Text("Export", style: GoogleFonts.poppins()),
-                        onChanged: (value) {
-                          if (value == 'csv') {
-                            _exportToCsv();
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text("Selected: $value")),
-                            );
-                          }
-                        },
                       ),
                     ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 20.h),
+                    Divider(height: 1, color: Colors.grey.shade100),
 
-              // Data Table
-              Expanded(
-                child: Card(
-                  color: Colors.white,
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.r)),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12.r),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.vertical,
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: DataTable(
-                          headingRowColor: MaterialStateColor.resolveWith(
-                              (states) => Colors.grey.shade200),
-                          columnSpacing: 24.w,
-                          dataRowHeight: 60.h,
-                          headingTextStyle: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                            fontSize: 10.sp,
+                    // ── Toolbar ───────────────────────────────────────────────
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                      child: Row(
+                        children: [
+                          // search
+                          Expanded(
+                            child: SizedBox(
+                              height: 40.h,
+                              child: TextField(
+                                controller: _searchCtrl,
+                                onChanged: (v) {
+                                  _searchText = v;
+                                  _applyFilter();
+                                },
+                                style: GoogleFonts.poppins(fontSize: 13),
+                                decoration: InputDecoration(
+                                  prefixIcon: Icon(Icons.search_rounded,
+                                      color: _purple.withOpacity(0.5), size: 20),
+                                  hintText: 'Search staff…',
+                                  hintStyle: GoogleFonts.poppins(
+                                      fontSize: 12.5, color: Colors.grey.shade400),
+                                  filled: true,
+                                  fillColor: const Color(0xFFF5F6FA),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 0),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide(
+                                        color: Colors.grey.shade200, width: 1),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide(
+                                        color: Colors.grey.shade200, width: 1),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide:
+                                        const BorderSide(color: _purple, width: 1.5),
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
-                          dataTextStyle: GoogleFonts.poppins(
-                            fontSize: 10.sp,
-                            color: Colors.black87,
+                          SizedBox(width: 10.w),
+
+                          // Filters (date range)
+                          InkWell(
+                            onTap: _pickDateRange,
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              height: 40.h,
+                              padding: const EdgeInsets.symmetric(horizontal: 14),
+                              decoration: BoxDecoration(
+                                color: _dateRange != null
+                                    ? _purple.withOpacity(0.08)
+                                    : const Color(0xFFF5F6FA),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: _dateRange != null
+                                      ? _purple
+                                      : Colors.grey.shade300,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.filter_list_rounded,
+                                      size: 16,
+                                      color: _dateRange != null
+                                          ? _purple
+                                          : Colors.grey.shade600),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    _dateRange != null
+                                        ? '${DateFormat('dd MMM').format(_dateRange!.start)} – ${DateFormat('dd MMM yy').format(_dateRange!.end)}'
+                                        : 'Filters',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      color: _dateRange != null
+                                          ? _purple
+                                          : Colors.grey.shade600,
+                                      fontWeight: _dateRange != null
+                                          ? FontWeight.w600
+                                          : FontWeight.normal,
+                                    ),
+                                  ),
+                                  if (_dateRange != null) ...[
+                                    const SizedBox(width: 6),
+                                    GestureDetector(
+                                      onTap: _clearDateRange,
+                                      child: const Icon(Icons.close_rounded,
+                                          size: 14, color: _purple),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
                           ),
-                          border: TableBorder.all(
-                              color: Colors.black26, width: 0.5),
-                          columns: [
-                            DataColumn(
-                              label: GestureDetector(
-                                onTap: () => _sort('staffName'),
-                                child: Row(
-                                  children: [
-                                    Text("Staff Name"),
-                                    if (_sortColumn == 'staffName')
-                                      Icon(
-                                        _sortAscending
-                                            ? Icons.arrow_upward
-                                            : Icons.arrow_downward,
-                                        size: 16.sp,
-                                      ),
-                                  ],
-                                ),
+                          SizedBox(width: 10.w),
+
+                          // Export
+                          InkWell(
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Export coming soon…')),
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              height: 40.h,
+                              padding: const EdgeInsets.symmetric(horizontal: 14),
+                              decoration: BoxDecoration(
+                                color: _purple,
+                                borderRadius: BorderRadius.circular(8),
                               ),
-                            ),
-                            DataColumn(
-                              label: GestureDetector(
-                                onTap: () => _sort('totalAppointments'),
-                                child: Row(
-                                  children: [
-                                    Text("Total Appointments"),
-                                    if (_sortColumn == 'totalAppointments')
-                                      Icon(
-                                        _sortAscending
-                                            ? Icons.arrow_upward
-                                            : Icons.arrow_downward,
-                                        size: 16.sp,
-                                      ),
-                                  ],
-                                ),
-                              ),
-                              numeric: true,
-                            ),
-                            DataColumn(
-                              label: GestureDetector(
-                                onTap: () => _sort('totalDuration'),
-                                child: Row(
-                                  children: [
-                                    Text("Total Duration"),
-                                    if (_sortColumn == 'totalDuration')
-                                      Icon(
-                                        _sortAscending
-                                            ? Icons.arrow_upward
-                                            : Icons.arrow_downward,
-                                        size: 16.sp,
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            DataColumn(
-                              label: GestureDetector(
-                                onTap: () => _sort('totalSale'),
-                                child: Row(
-                                  children: [
-                                    Text("Total Sale"),
-                                    if (_sortColumn == 'totalSale')
-                                      Icon(
-                                        _sortAscending
-                                            ? Icons.arrow_upward
-                                            : Icons.arrow_downward,
-                                        size: 16.sp,
-                                      ),
-                                  ],
-                                ),
-                              ),
-                              numeric: true,
-                            ),
-                          ],
-                          rows: [
-                            ...List.generate(filteredStaffSummary.length,
-                                (index) {
-                              final staff = filteredStaffSummary[index];
-                              final isEven = index % 2 == 0;
-                              return DataRow(
-                                color: MaterialStateColor.resolveWith(
-                                  (states) => isEven
-                                      ? Colors.grey.shade50
-                                      : Colors.white,
-                                ),
-                                cells: [
-                                  DataCell(
-                                    Padding(
-                                      padding:
-                                          EdgeInsets.symmetric(vertical: 8.h),
-                                      child: Text(staff['staffName']),
-                                    ),
-                                  ),
-                                  DataCell(
-                                    Padding(
-                                      padding:
-                                          EdgeInsets.symmetric(vertical: 8.h),
-                                      child: Text(staff['totalAppointments']
-                                          .toString()),
-                                    ),
-                                  ),
-                                  DataCell(
-                                    Padding(
-                                      padding:
-                                          EdgeInsets.symmetric(vertical: 8.h),
-                                      child: Text(staff['totalDuration']),
-                                    ),
-                                  ),
-                                  DataCell(
-                                    Padding(
-                                      padding:
-                                          EdgeInsets.symmetric(vertical: 8.h),
-                                      child: Text(
-                                          _currencyFormat(staff['totalSale'])),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.upload_rounded,
+                                      color: Colors.white, size: 16),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Export',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
                                     ),
                                   ),
                                 ],
-                              );
-                            }),
-                            // Total Row
-                            DataRow(
-                              color: MaterialStateColor.resolveWith(
-                                  (states) => Colors.yellow.shade100),
-                              cells: [
-                                DataCell(
-                                  Padding(
-                                    padding:
-                                        EdgeInsets.symmetric(vertical: 8.h),
-                                    child: Text(
-                                      "Total",
-                                      style: GoogleFonts.poppins(
-                                          fontWeight: FontWeight.w600),
-                                    ),
-                                  ),
-                                ),
-                                DataCell(
-                                  Padding(
-                                    padding:
-                                        EdgeInsets.symmetric(vertical: 8.h),
-                                    child: Text(
-                                      totalAppointments.toString(),
-                                      style: GoogleFonts.poppins(
-                                          fontWeight: FontWeight.w600),
-                                    ),
-                                  ),
-                                ),
-                                DataCell(
-                                  Padding(
-                                    padding:
-                                        EdgeInsets.symmetric(vertical: 8.h),
-                                    child: Text(
-                                      totalDuration,
-                                      style: GoogleFonts.poppins(
-                                          fontWeight: FontWeight.w600),
-                                    ),
-                                  ),
-                                ),
-                                DataCell(
-                                  Padding(
-                                    padding:
-                                        EdgeInsets.symmetric(vertical: 8.h),
-                                    child: Text(
-                                      _currencyFormat(totalSales),
-                                      style: GoogleFonts.poppins(
-                                          fontWeight: FontWeight.w600),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
+                    Divider(height: 1, color: Colors.grey.shade100),
+
+                    // ── Table ─────────────────────────────────────────────────
+                    Expanded(child: _buildTable()),
+
+                    // ── Pagination ────────────────────────────────────────────
+                    Divider(height: 1, color: Colors.grey.shade100),
+                    _buildPaginationFooter(),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
+  // ── AppBar ─────────────────────────────────────────────────────────────────
+  PreferredSizeWidget _buildAppBar() {
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.black),
-        onPressed: () => Navigator.pop(context),
+      automaticallyImplyLeading: false,
+      toolbarHeight: 60.h,
+      flexibleSpace: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x1A000000),
+              blurRadius: 6,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
       ),
-      toolbarHeight: 50.h,
-      titleSpacing: 0,
       title: Row(
         children: [
-          SizedBox(width: 20.w),
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                color: Colors.black87, size: 20),
+            onPressed: () => Navigator.pop(context),
+          ),
           Expanded(
             child: Text(
-              'Appointments by Staff Summary',
+              'Appointments by Staff',
               style: GoogleFonts.poppins(
-                fontSize: 10.sp,
+                fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: Colors.black,
+                color: Colors.black87,
               ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.notifications),
-            onPressed: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const NotificationPage())),
+            icon: const Icon(Icons.notifications_none_rounded,
+                color: Colors.black87),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NotificationPage()),
+            ),
           ),
           GestureDetector(
             onTap: () => Navigator.push(
-                context, MaterialPageRoute(builder: (_) => const My_Profile())),
+              context,
+              MaterialPageRoute(builder: (_) => const My_Profile()),
+            ),
             child: Padding(
-              padding: EdgeInsets.only(right: 10.w),
+              padding: EdgeInsets.only(right: 12.w),
               child: Container(
-                padding: EdgeInsets.all(2.w),
+                padding: const EdgeInsets.all(2),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.black, width: 1.w),
+                  border: Border.all(color: _purple, width: 1.5),
                 ),
                 child: const CircleAvatar(
-                  radius: 18,
+                  radius: 17,
                   backgroundImage: AssetImage('assets/images/profile.jpeg'),
                   backgroundColor: Colors.white,
                 ),
@@ -609,6 +489,276 @@ class _AppointmentsbyStaffSummaryState
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ── Table ──────────────────────────────────────────────────────────────────
+  Widget _buildTable() {
+    if (_isLoading) {
+      return const Center(
+          child: CircularProgressIndicator(color: _purple));
+    }
+    if (_errorMsg != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline_rounded,
+                size: 48, color: Colors.redAccent),
+            const SizedBox(height: 12),
+            Text('Failed to load data',
+                style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w600, fontSize: 15)),
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(_errorMsg!,
+                  textAlign: TextAlign.center,
+                  style:
+                      GoogleFonts.poppins(fontSize: 12, color: Colors.grey)),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _fetchData,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Retry'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _purple,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    if (_filtered.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.people_outline_rounded,
+                size: 60, color: Colors.grey.shade300),
+            const SizedBox(height: 12),
+            Text('No records found',
+                style: GoogleFonts.poppins(
+                    fontSize: 15, color: Colors.grey.shade500)),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        // ── column headers ────────────────────────────────────────────────
+        Container(
+          color: const Color(0xFFF9F9FB),
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+          child: Row(
+            children: [
+              _hCell('Staff Name', flex: 4),
+              _hCell('Total Appointments', flex: 3),
+              _hCell('Total Duration', flex: 3),
+              _hCell('Total Sale', flex: 3),
+            ],
+          ),
+        ),
+        Divider(height: 1, color: Colors.grey.shade200),
+
+        // ── data rows ─────────────────────────────────────────────────────
+        Expanded(
+          child: ListView.separated(
+            itemCount: _pageItems.length,
+            separatorBuilder: (_, __) =>
+                Divider(height: 1, color: Colors.grey.shade100),
+            itemBuilder: (_, i) => _buildRow(_pageItems[i], i),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRow(_StaffSummary s, int idx) {
+    return Container(
+      color: idx % 2 == 0 ? Colors.white : const Color(0xFFFAFAFF),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 4,
+            child: Text(
+              s.staffName,
+              style: GoogleFonts.poppins(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              '${s.totalAppointments}',
+              style: GoogleFonts.poppins(
+                  fontSize: 12.5, color: Colors.black87),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              s.durationLabel,
+              style: GoogleFonts.poppins(
+                  fontSize: 12.5, color: Colors.black87),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              _fmtCurrency(s.totalSale),
+              style: GoogleFonts.poppins(
+                  fontSize: 12.5, color: Colors.black87),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Pagination ─────────────────────────────────────────────────────────────
+  Widget _buildPaginationFooter() {
+    final start = _filtered.isEmpty ? 0 : _currentPage * _rowsPerPage + 1;
+    final end = ((_currentPage + 1) * _rowsPerPage).clamp(0, _filtered.length);
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+      child: Row(
+        children: [
+          Text(
+            'Showing $start to $end of ${_filtered.length} results',
+            style: GoogleFonts.poppins(
+                fontSize: 11.5, color: Colors.grey.shade500),
+          ),
+          const Spacer(),
+          Text('Rows per page ',
+              style: GoogleFonts.poppins(
+                  fontSize: 11.5, color: Colors.grey.shade500)),
+          DropdownButtonHideUnderline(
+            child: DropdownButton<int>(
+              value: _rowsPerPage,
+              isDense: true,
+              style: GoogleFonts.poppins(fontSize: 12, color: Colors.black87),
+              items: [5, 10, 20, 50]
+                  .map((v) => DropdownMenuItem(value: v, child: Text('$v')))
+                  .toList(),
+              onChanged: (v) {
+                if (v != null) {
+                  setState(() {
+                    _rowsPerPage = v;
+                    _currentPage = 0;
+                  });
+                }
+              },
+            ),
+          ),
+          SizedBox(width: 16.w),
+          Text(
+            'Page ${_currentPage + 1} of $_totalPages',
+            style: GoogleFonts.poppins(
+                fontSize: 11.5, color: Colors.grey.shade600),
+          ),
+          SizedBox(width: 8.w),
+          _pageBtn(
+            icon: Icons.chevron_left_rounded,
+            enabled: _currentPage > 0,
+            onTap: () => setState(() => _currentPage--),
+          ),
+          SizedBox(width: 4.w),
+          _pageBtn(
+            icon: Icons.chevron_right_rounded,
+            enabled: _currentPage < _totalPages - 1,
+            onTap: () => setState(() => _currentPage++),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _pageBtn(
+      {required IconData icon,
+      required bool enabled,
+      required VoidCallback onTap}) {
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(6),
+          color: enabled ? Colors.white : const Color(0xFFF5F6FA),
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: enabled ? Colors.black54 : Colors.grey.shade300,
+        ),
+      ),
+    );
+  }
+
+  // ── Components ──────────────────────────────────────────────────────────────
+  Widget _statCard(String label, String value, IconData icon, Color color) {
+    return Expanded(
+      child: Container(
+        padding: EdgeInsets.all(12.w),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.15)),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: color.withOpacity(0.1),
+              child: Icon(icon, size: 16, color: color),
+            ),
+            SizedBox(width: 10.w),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: GoogleFonts.poppins(
+                      fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black87),
+                ),
+                Text(
+                  label,
+                  style: GoogleFonts.poppins(fontSize: 10, color: Colors.grey.shade500),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _fmtCompact(num v) => '₹${NumberFormat('#,##0').format(v)}';
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  Widget _hCell(String label, {int flex = 1}) {
+    return Expanded(
+      flex: flex,
+      child: Text(
+        label,
+        style: GoogleFonts.poppins(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: Colors.grey.shade600,
+        ),
       ),
     );
   }
