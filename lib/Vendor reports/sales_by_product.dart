@@ -6,104 +6,24 @@ import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Model
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _CompletedAppointment {
-  final String id;
-  final String clientName;
-  final String serviceName;
-  final String staffName;
-  final String date;
-  final String createdAt;
-  final String startTime;
-  final String endTime;
-  final int duration;
-  final double amount;
-  final double totalAmount;
-  final double platformFee;
-  final double serviceTax;
-  final double finalAmount;
-  final String status;
-  final String mode;
-  final String paymentStatus;
-
-  _CompletedAppointment({
-    required this.id,
-    required this.clientName,
-    required this.serviceName,
-    required this.staffName,
-    required this.date,
-    required this.createdAt,
-    required this.startTime,
-    required this.endTime,
-    required this.duration,
-    required this.amount,
-    required this.totalAmount,
-    required this.platformFee,
-    required this.serviceTax,
-    required this.finalAmount,
-    required this.status,
-    required this.mode,
-    required this.paymentStatus,
-  });
-
-  factory _CompletedAppointment.fromJson(Map<String, dynamic> j) {
-    return _CompletedAppointment(
-      id: j['id']?.toString() ?? '',
-      clientName: j['clientName'] ?? '—',
-      serviceName: j['serviceName'] ?? '—',
-      staffName: j['staffName'] ?? '—',
-      date: j['date'] ?? '',
-      createdAt: j['createdAt'] ?? '',
-      startTime: j['startTime'] ?? '—',
-      endTime: j['endTime'] ?? '—',
-      duration: (j['duration'] as num?)?.toInt() ?? 0,
-      amount: (j['amount'] as num?)?.toDouble() ?? 0.0,
-      totalAmount: (j['totalAmount'] as num?)?.toDouble() ?? 0.0,
-      platformFee: (j['platformFee'] as num?)?.toDouble() ?? 0.0,
-      serviceTax: (j['serviceTax'] as num?)?.toDouble() ?? 0.0,
-      finalAmount: (j['finalAmount'] as num?)?.toDouble() ?? 0.0,
-      status: j['status'] ?? 'completed',
-      mode: j['mode'] ?? 'offline',
-      paymentStatus: j['paymentStatus'] ?? 'pending',
-    );
-  }
-
-  String _fmtDate(String d) {
-    if (d.isEmpty) return '—';
-    try {
-      return DateFormat('dd MMM yy').format(DateTime.parse(d));
-    } catch (_) {
-      return d;
-    }
-  }
-
-  String get formattedDate => _fmtDate(date);
-  String get formattedCreatedAt => _fmtDate(createdAt);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Page
 // ─────────────────────────────────────────────────────────────────────────────
 
-class CompletedAppointmentsSummary extends StatefulWidget {
-  const CompletedAppointmentsSummary({super.key});
+class SalesByProduct extends StatefulWidget {
+  const SalesByProduct({super.key});
 
   @override
-  State<CompletedAppointmentsSummary> createState() =>
-      _CompletedAppointmentsSummaryState();
+  State<SalesByProduct> createState() => _SalesByProductState();
 }
 
-class _CompletedAppointmentsSummaryState
-    extends State<CompletedAppointmentsSummary> {
+class _SalesByProductState extends State<SalesByProduct> {
   static const Color _purple = Color(0xFF6C3EB8);
 
   bool _isLoading = false;
   String? _errorMsg;
 
-  List<_CompletedAppointment> _all = [];
-  List<_CompletedAppointment> _filtered = [];
+  List<Map<String, dynamic>> _all = [];
+  List<Map<String, dynamic>> _filtered = [];
 
   String _searchText = '';
   DateTimeRange? _dateRange;
@@ -131,15 +51,12 @@ class _CompletedAppointmentsSummaryState
       _errorMsg = null;
     });
     try {
-      final response = await ApiService.getCompletedAppointmentsReport(
+      final result = await ApiService.getSalesByProductReport(
         startDate: _dateRange != null ? DateFormat('yyyy-MM-dd').format(_dateRange!.start) : null,
         endDate: _dateRange != null ? DateFormat('yyyy-MM-dd').format(_dateRange!.end) : null,
       );
-
-      final block = response['data']?['complete'];
-      final List<dynamic> raw = (block?['appointments'] as List?) ?? [];
-
-      _all = raw.map((j) => _CompletedAppointment.fromJson(j)).toList();
+      final raw = (result['data']?['salesByProduct'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      _all = raw;
       _applyFilter();
     } catch (e) {
       if (mounted) setState(() => _errorMsg = e.toString());
@@ -152,18 +69,11 @@ class _CompletedAppointmentsSummaryState
     final q = _searchText.toLowerCase();
     setState(() {
       _currentPage = 0;
-      _filtered = _all.where((a) {
-        return a.clientName.toLowerCase().contains(q) ||
-               a.serviceName.toLowerCase().contains(q) ||
-               a.staffName.toLowerCase().contains(q);
+      _filtered = _all.where((row) {
+        return (row['productName'] ?? '').toString().toLowerCase().contains(q);
       }).toList();
     });
   }
-
-  // ── Stats ──────────────────────────────────────────────────────────────────
-  double get _totalRevenue => _filtered.fold(0, (sum, a) => sum + a.finalAmount);
-  int get _onlineCount => _filtered.where((a) => a.mode.toLowerCase() == 'online').length;
-  int get _offlineCount => _filtered.where((a) => a.mode.toLowerCase() == 'offline').length;
 
   Future<void> _pickDateRange() async {
     final picked = await showDateRangePicker(
@@ -183,7 +93,7 @@ class _CompletedAppointmentsSummaryState
     }
   }
 
-  List<_CompletedAppointment> get _pageItems {
+  List<Map<String, dynamic>> get _pageItems {
     final start = _currentPage * _rowsPerPage;
     final end = (start + _rowsPerPage).clamp(0, _filtered.length);
     if (start >= _filtered.length) return [];
@@ -192,7 +102,8 @@ class _CompletedAppointmentsSummaryState
 
   int get _totalPages => (_filtered.length / _rowsPerPage).ceil().clamp(1, 9999);
 
-  String _fmtCurrency(num v) => '₹${NumberFormat('#,##0').format(v)}';
+  double _n(dynamic v) => (v as num?)?.toDouble() ?? 0.0;
+  String _fmt(num v) => '₹${NumberFormat('#,##0').format(v)}';
 
   @override
   Widget build(BuildContext context) {
@@ -203,22 +114,6 @@ class _CompletedAppointmentsSummaryState
         padding: EdgeInsets.all(12.w),
         child: Column(
           children: [
-            Row(
-              children: [
-                _statCard('Total Completed', '${_filtered.length}', Icons.check_circle_outline_rounded, Colors.green),
-                SizedBox(width: 8.w),
-                _statCard('Total Revenue', _fmtCurrency(_totalRevenue), Icons.payments_rounded, Colors.blue),
-              ],
-            ),
-            SizedBox(height: 8.h),
-            Row(
-              children: [
-                _statCard('Online', '$_onlineCount', Icons.language_rounded, _purple),
-                SizedBox(width: 8.w),
-                _statCard('Offline', '$_offlineCount', Icons.storefront_rounded, Colors.blueGrey),
-              ],
-            ),
-            SizedBox(height: 12.h),
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
@@ -242,7 +137,7 @@ class _CompletedAppointmentsSummaryState
                                 style: GoogleFonts.poppins(fontSize: 11.sp),
                                 decoration: InputDecoration(
                                   prefixIcon: Icon(Icons.search_rounded, color: Colors.grey.shade400, size: 16.sp),
-                                  hintText: 'Search completed...',
+                                  hintText: 'Search product...',
                                   hintStyle: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.grey.shade400),
                                   filled: true,
                                   fillColor: const Color(0xFFF5F6FA),
@@ -302,7 +197,7 @@ class _CompletedAppointmentsSummaryState
             onPressed: () => Navigator.pop(context),
           ),
           Expanded(
-            child: Text('Completed Appointments',
+            child: Text('Sales by Product',
                 style: GoogleFonts.poppins(fontSize: 14.sp, fontWeight: FontWeight.w600, color: Colors.black87)),
           ),
         ],
@@ -320,61 +215,68 @@ class _CompletedAppointmentsSummaryState
       child: SingleChildScrollView(
         child: DataTable(
           headingRowColor: MaterialStateProperty.all(const Color(0xFFF9F9FB)),
-          headingTextStyle: GoogleFonts.poppins(fontSize: 10.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
-          dataTextStyle: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.black87),
+          headingTextStyle: GoogleFonts.poppins(fontSize: 9.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
+          dataTextStyle: GoogleFonts.poppins(fontSize: 9.sp, color: Colors.black87),
           horizontalMargin: 12.w,
-          columnSpacing: 20.w,
+          columnSpacing: 15.w,
           columns: const [
-            DataColumn(label: Text('Client')),
-            DataColumn(label: Text('Service')),
-            DataColumn(label: Text('Staff')),
-            DataColumn(label: Text('Date')),
-            DataColumn(label: Text('Time')),
-            DataColumn(label: Text('Final Amt')),
-            DataColumn(label: Text('Payment')),
+            DataColumn(label: Text('Product')),
+            DataColumn(label: Text('Sold')),
+            DataColumn(label: Text('Gross')),
+            DataColumn(label: Text('Net')),
+            DataColumn(label: Text('Tax')),
+            DataColumn(label: Text('Total')),
           ],
-          rows: _pageItems.map((a) => DataRow(cells: [
-            DataCell(Text(a.clientName)),
-            DataCell(Text(a.serviceName)),
-            DataCell(Text(a.staffName)),
-            DataCell(Text(a.formattedDate)),
-            DataCell(Text('${a.startTime}–${a.endTime}')),
-            DataCell(Text(_fmtCurrency(a.finalAmount), style: const TextStyle(fontWeight: FontWeight.bold))),
-            DataCell(_paymentBadge(a.paymentStatus)),
-          ])).toList(),
+          rows: [
+            ..._pageItems.map((r) => DataRow(cells: [
+              DataCell(Text(r['productName']?.toString() ?? '—')),
+              DataCell(Text(r['quantitySold']?.toString() ?? '0')),
+              DataCell(Text(_fmt(_n(r['grossSale'])))),
+              DataCell(Text(_fmt(_n(r['netSale'])))),
+              DataCell(Text(_fmt(_n(r['tax'])))),
+              DataCell(Text(_fmt(_n(r['totalSales'])), style: const TextStyle(fontWeight: FontWeight.bold))),
+            ])),
+            _buildTotalsRow(),
+          ],
         ),
       ),
     );
   }
 
-  Widget _paymentBadge(String status) {
-    Color bg, fg;
-    switch (status.toLowerCase()) {
-      case 'completed':
-        bg = const Color(0xFFDCFCE7);
-        fg = const Color(0xFF16A34A);
-        break;
-      case 'pending':
-        bg = const Color(0xFFFFF7ED);
-        fg = const Color(0xFFEA580C);
-        break;
-      default:
-        bg = Colors.grey.shade100;
-        fg = Colors.grey.shade600;
+  DataRow _buildTotalsRow() {
+    int tSold = 0;
+    double tGross = 0;
+    double tNet = 0;
+    double tTax = 0;
+    double tTotal = 0;
+
+    for (var r in _filtered) {
+      tSold += (r['quantitySold'] as num?)?.toInt() ?? 0;
+      tGross += _n(r['grossSale']);
+      tNet += _n(r['netSale']);
+      tTax += _n(r['tax']);
+      tTotal += _n(r['totalSales']);
     }
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
-      child: Text(status.toUpperCase(), style: GoogleFonts.poppins(fontSize: 8.sp, fontWeight: FontWeight.bold, color: fg)),
+
+    return DataRow(
+      color: MaterialStateProperty.all(const Color(0xFFF9F9FB)),
+      cells: [
+        DataCell(Text('TOTAL', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 9.sp))),
+        DataCell(Text('$tSold', style: const TextStyle(fontWeight: FontWeight.bold))),
+        DataCell(Text(_fmt(tGross), style: const TextStyle(fontWeight: FontWeight.bold))),
+        DataCell(Text(_fmt(tNet), style: const TextStyle(fontWeight: FontWeight.bold))),
+        DataCell(Text(_fmt(tTax), style: const TextStyle(fontWeight: FontWeight.bold))),
+        DataCell(Text(_fmt(tTotal), style: const TextStyle(fontWeight: FontWeight.bold, color: _purple))),
+      ],
     );
   }
 
   Widget _buildEmptyState() {
     return Center(
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.event_available_rounded, size: 40.sp, color: Colors.grey.shade300),
+        Icon(Icons.inventory_2_outlined, size: 40.sp, color: Colors.grey.shade300),
         const SizedBox(height: 12),
-        Text('No completed records found', style: GoogleFonts.poppins(fontSize: 12.sp, color: Colors.grey.shade500)),
+        Text('No sales records found', style: GoogleFonts.poppins(fontSize: 12.sp, color: Colors.grey.shade500)),
       ]),
     );
   }
@@ -425,40 +327,12 @@ class _CompletedAppointmentsSummaryState
     );
   }
 
-  Widget _statCard(String label, String value, IconData icon, Color color) {
-    return Expanded(
-      child: Container(
-        padding: EdgeInsets.all(10.w),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withOpacity(0.1)),
-        ),
-        child: Row(
-          children: [
-            CircleAvatar(radius: 14, backgroundColor: color.withOpacity(0.1), child: Icon(icon, size: 14, color: color)),
-            SizedBox(width: 8.w),
-            Flexible(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(value, style: GoogleFonts.poppins(fontSize: 12.sp, fontWeight: FontWeight.w700, color: Colors.black87), overflow: TextOverflow.ellipsis),
-                  Text(label, style: GoogleFonts.poppins(fontSize: 8.sp, color: Colors.grey.shade500), overflow: TextOverflow.ellipsis),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _toolbarBtn({required IconData icon, required String label, required VoidCallback onTap, bool isActive = false, bool isIconOnly = false}) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(6),
       child: Container(
-        height: 34.h,
+        height: 30.h,
         padding: EdgeInsets.symmetric(horizontal: isIconOnly ? 8 : 10),
         decoration: BoxDecoration(
           color: isActive ? _purple.withOpacity(0.08) : const Color(0xFFF5F6FA),
@@ -468,8 +342,8 @@ class _CompletedAppointmentsSummaryState
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 16, color: isActive ? _purple : Colors.grey.shade600),
-            if (!isIconOnly) ...[const SizedBox(width: 4), Text(label, style: GoogleFonts.poppins(fontSize: 10.sp, color: isActive ? _purple : Colors.grey.shade600, fontWeight: isActive ? FontWeight.w600 : FontWeight.normal))],
+            Icon(icon, size: 14, color: isActive ? _purple : Colors.grey.shade600),
+            if (!isIconOnly) ...[const SizedBox(width: 4), Text(label, style: GoogleFonts.poppins(fontSize: 9.sp, color: isActive ? _purple : Colors.grey.shade600, fontWeight: isActive ? FontWeight.w600 : FontWeight.normal))],
           ],
         ),
       ),

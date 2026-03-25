@@ -2753,10 +2753,56 @@ class ApiService {
         }
       } else {
         throw Exception(
-            'Failed to load appointments report: ${response.statusCode} - ${response.body}');
+            'Failed to load completed appointments report: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
-      print('Error fetching appointments report: $e');
+      print('Error fetching completed appointments report: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetches sales by product report from
+  /// GET /api/crm/vendor/reports/sales-by-product
+  static Future<Map<String, dynamic>> getSalesByProductReport({
+    String? period,
+    String? startDate,
+    String? endDate,
+    String? product,
+    String? category,
+    String? brand,
+    String? status,
+    String? isActive,
+  }) async {
+    try {
+      final queryParams = <String, String>{};
+      if (period != null) queryParams['period'] = period;
+      if (startDate != null) queryParams['startDate'] = startDate;
+      if (endDate != null) queryParams['endDate'] = endDate;
+      if (product != null) queryParams['product'] = product;
+      if (category != null) queryParams['category'] = category;
+      if (brand != null) queryParams['brand'] = brand;
+      if (status != null) queryParams['status'] = status;
+      if (isActive != null) queryParams['isActive'] = isActive;
+
+      final uri = Uri.parse('$baseUrl/crm/vendor/reports/sales-by-product')
+          .replace(queryParameters: queryParams.isEmpty ? null : queryParams);
+
+      final response = await _get(uri.toString());
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return data;
+        } else {
+          throw Exception(
+              'Failed to load sales by product report: ${data['message'] ?? 'Unknown error'}');
+        }
+      } else {
+        throw Exception(
+            'Failed to load sales by product report: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching sales by product report: $e');
       rethrow;
     }
   }

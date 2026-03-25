@@ -1,209 +1,251 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+
 import '../services/api_service.dart';
 
-const Color _primary = Color(0xFF372935);
-const Color _bg = Color(0xFFF8FAFC);
+// ─────────────────────────────────────────────────────────────────────────────
+// Page
+// ─────────────────────────────────────────────────────────────────────────────
 
 class SalesByService extends StatefulWidget {
-  const SalesByService({Key? key}) : super(key: key);
+  const SalesByService({super.key});
 
   @override
   State<SalesByService> createState() => _SalesByServiceState();
 }
 
 class _SalesByServiceState extends State<SalesByService> {
-  // ── API state ────────────────────────────────────────────────────────────────
-  bool _isLoading = true;
-  String? _error;
-  List<Map<String, dynamic>> _salesList = [];
+  static const Color _purple = Color(0xFF6C3EB8);
 
-  // ── Pagination ───────────────────────────────────────────────────────────────
+  bool _isLoading = false;
+  String? _errorMsg;
+
+  List<Map<String, dynamic>> _all = [];
+  List<Map<String, dynamic>> _filtered = [];
+
+  String _searchText = '';
+  DateTimeRange? _dateRange;
+
   int _rowsPerPage = 10;
   int _currentPage = 0;
 
-  // ── Filters & Search ─────────────────────────────────────────────────────────
-  String _searchText = '';
-  DateTime? _filterStartDate;
-  DateTime? _filterEndDate;
+  final _searchCtrl = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _fetchReport();
+    _fetchData();
   }
 
-  // ── Fetch ─────────────────────────────────────────────────────────────────────
-  Future<void> _fetchReport() async {
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchData() async {
     setState(() {
       _isLoading = true;
-      _error = null;
+      _errorMsg = null;
     });
     try {
       final result = await ApiService.getSalesByServiceReport(
-        startDate: _filterStartDate?.toIso8601String(),
-        endDate: _filterEndDate?.toIso8601String(),
+        startDate: _dateRange != null ? DateFormat('yyyy-MM-dd').format(_dateRange!.start) : null,
+        endDate: _dateRange != null ? DateFormat('yyyy-MM-dd').format(_dateRange!.end) : null,
       );
-
-      final raw = (result['data']['salesByService'] as List?)
-              ?.cast<Map<String, dynamic>>() ??
-          [];
-
-      setState(() {
-        _salesList = raw;
-        _isLoading = false;
-        _currentPage = 0;
-      });
+      final raw = (result['data']?['salesByService'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      _all = raw;
+      _applyFilter();
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      if (mounted) setState(() => _errorMsg = e.toString());
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // ── Data Computed ─────────────────────────────────────────────────────────────
-  List<Map<String, dynamic>> get _filtered {
-    if (_searchText.isEmpty) return _salesList;
+  void _applyFilter() {
     final q = _searchText.toLowerCase();
-    return _salesList.where((a) {
-      return (a['service'] ?? '').toString().toLowerCase().contains(q);
-    }).toList();
+    setState(() {
+      _currentPage = 0;
+      _filtered = _all.where((row) {
+        return (row['service'] ?? '').toString().toLowerCase().contains(q);
+      }).toList();
+    });
   }
 
-  List<Map<String, dynamic>> get _paged {
-    final all = _filtered;
+  Future<void> _pickDateRange() async {
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+      initialDateRange: _dateRange ??
+          DateTimeRange(start: DateTime.now().subtract(const Duration(days: 30)), end: DateTime.now()),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(colorScheme: const ColorScheme.light(primary: _purple, onPrimary: Colors.white)),
+        child: child!,
+      ),
+    );
+    if (picked != null) {
+      _dateRange = picked;
+      _fetchData();
+    }
+  }
+
+  List<Map<String, dynamic>> get _pageItems {
     final start = _currentPage * _rowsPerPage;
-    final end = (start + _rowsPerPage).clamp(0, all.length);
-    if (start >= all.length) return [];
-    return all.sublist(start, end);
+    final end = (start + _rowsPerPage).clamp(0, _filtered.length);
+    if (start >= _filtered.length) return [];
+    return _filtered.sublist(start, end);
   }
 
-  int get _totalPages =>
-      (_filtered.length / _rowsPerPage).ceil().clamp(1, 9999);
+  int get _totalPages => (_filtered.length / _rowsPerPage).ceil().clamp(1, 9999);
 
-  // ── Build ─────────────────────────────────────────────────────────────────────
+  double _n(dynamic v) => (v as num?)?.toDouble() ?? 0.0;
+  String _fmt(num v) => '₹${NumberFormat('#,##0').format(v)}';
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bg,
-      appBar: _buildAppBar(context),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? _buildError()
-              : _buildContent(),
+      backgroundColor: const Color(0xFFF5F6FA),
+      appBar: _buildAppBar(),
+      body: Padding(
+        padding: EdgeInsets.all(12.w),
+        child: Column(
+          children: [
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: const [BoxShadow(color: Color(0x12000000), blurRadius: 10, offset: Offset(0, 3))],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              height: 34.h,
+                              child: TextField(
+                                controller: _searchCtrl,
+                                onChanged: (v) { _searchText = v; _applyFilter(); },
+                                style: GoogleFonts.poppins(fontSize: 11.sp),
+                                decoration: InputDecoration(
+                                  prefixIcon: Icon(Icons.search_rounded, color: Colors.grey.shade400, size: 16.sp),
+                                  hintText: 'Search service...',
+                                  hintStyle: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.grey.shade400),
+                                  filled: true,
+                                  fillColor: const Color(0xFFF5F6FA),
+                                  contentPadding: EdgeInsets.zero,
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none),
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 8.w),
+                          _toolbarBtn(
+                            icon: Icons.filter_list_rounded,
+                            label: _dateRange != null ? 'Filtered' : 'Filter',
+                            isActive: _dateRange != null,
+                            onTap: _pickDateRange,
+                          ),
+                          SizedBox(width: 8.w),
+                          _toolbarBtn(
+                            icon: Icons.upload_rounded,
+                            label: 'Export',
+                            onTap: () {},
+                          ),
+                          SizedBox(width: 8.w),
+                          _toolbarBtn(
+                            icon: Icons.refresh_rounded,
+                            label: '',
+                            onTap: _fetchData,
+                            isIconOnly: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                    Divider(height: 1, color: Colors.grey.shade100),
+                    Expanded(child: _buildTable()),
+                    Divider(height: 1, color: Colors.grey.shade100),
+                    _buildPaginationFooter(),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildContent() {
-    return SingleChildScrollView(
-      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      automaticallyImplyLeading: false,
+      toolbarHeight: 50.h,
+      title: Row(
         children: [
-          Text('Sales by Service',
-              style: GoogleFonts.poppins(
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF1E293B))),
-          SizedBox(height: 2.h),
-          Text('Detailed report showing revenue generated by each service type (only completed appointments).',
-              style: GoogleFonts.poppins(
-                  fontSize: 10.sp, color: const Color(0xFF94A3B8))),
-          SizedBox(height: 14.h),
-
-          // Search + Filters + Export
-          Row(
-            children: [
-              Expanded(child: _searchBar()),
-              SizedBox(width: 8.w),
-              _filterBtn(),
-              SizedBox(width: 8.w),
-              _exportBtn(),
-            ],
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black87, size: 18),
+            onPressed: () => Navigator.pop(context),
           ),
-          SizedBox(height: 16.h),
-
-          // Table
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8.r),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.01),
-                  blurRadius: 4,
-                  offset: const Offset(0, 1),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8.r),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: _buildTable(),
-              ),
-            ),
+          Expanded(
+            child: Text('Sales by Service',
+                style: GoogleFonts.poppins(fontSize: 14.sp, fontWeight: FontWeight.w600, color: Colors.black87)),
           ),
-          SizedBox(height: 12.h),
-
-          _buildPagination(),
-          SizedBox(height: 24.h),
-
-          Align(
-            alignment: Alignment.centerRight,
-            child: ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFE2E8F0),
-                foregroundColor: const Color(0xFF1E293B),
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6.r)),
-                padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 8.h),
-              ),
-              child: Text('Close',
-                  style: GoogleFonts.poppins(
-                      fontSize: 11.sp, fontWeight: FontWeight.w600)),
-            ),
-          ),
-          SizedBox(height: 20.h),
         ],
       ),
     );
   }
 
-  // ── Table ─────────────────────────────────────────────────────────────────────
-  double _n(dynamic v) => (v as num?)?.toDouble() ?? 0.0;
-  String _fmt(num v) => '₹${NumberFormat('#,##0.00').format(v)}';
-
   Widget _buildTable() {
-    final rows = _paged;
+    if (_isLoading) return const Center(child: CircularProgressIndicator(color: _purple));
+    if (_errorMsg != null) return _buildErrorState();
+    if (_filtered.isEmpty) return _buildEmptyState();
 
-    if (_filtered.isEmpty) {
-      return SizedBox(
-        width: MediaQuery.of(context).size.width,
-        child: Padding(
-          padding: EdgeInsets.all(32.w),
-          child: Center(
-            child: Text('No matching records found.',
-                style: GoogleFonts.poppins(
-                    fontSize: 12.sp, color: const Color(0xFF94A3B8))),
-          ),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: SingleChildScrollView(
+        child: DataTable(
+          headingRowColor: MaterialStateProperty.all(const Color(0xFFF9F9FB)),
+          headingTextStyle: GoogleFonts.poppins(fontSize: 9.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
+          dataTextStyle: GoogleFonts.poppins(fontSize: 9.sp, color: Colors.black87),
+          horizontalMargin: 12.w,
+          columnSpacing: 20.w,
+          columns: const [
+            DataColumn(label: Text('Service')),
+            DataColumn(label: Text('Sold')),
+            DataColumn(label: Text('Gross')),
+            DataColumn(label: Text('Net')),
+            DataColumn(label: Text('Tax')),
+            DataColumn(label: Text('Total')),
+          ],
+          rows: [
+            ..._pageItems.map((r) => DataRow(cells: [
+              DataCell(Text(r['service']?.toString() ?? '—')),
+              DataCell(Text(r['serviceSold']?.toString() ?? '0')),
+              DataCell(Text(_fmt(_n(r['grossSale'])))),
+              DataCell(Text(_fmt(_n(r['netSale'])))),
+              DataCell(Text(_fmt(_n(r['tax'])))),
+              DataCell(Text(_fmt(_n(r['totalSales'])), style: const TextStyle(fontWeight: FontWeight.bold))),
+            ])),
+            _buildTotalsRow(),
+          ],
         ),
-      );
-    }
+      ),
+    );
+  }
 
-    // Totals logic
+  DataRow _buildTotalsRow() {
     int tSold = 0;
     double tGross = 0;
-    double tDisc = 0;
-    double tOffs = 0;
     double tNet = 0;
     double tTax = 0;
     double tTotal = 0;
@@ -211,444 +253,99 @@ class _SalesByServiceState extends State<SalesByService> {
     for (var r in _filtered) {
       tSold += (r['serviceSold'] as num?)?.toInt() ?? 0;
       tGross += _n(r['grossSale']);
-      tDisc += _n(r['discounts']);
-      tOffs += _n(r['offers']);
       tNet += _n(r['netSale']);
       tTax += _n(r['tax']);
       tTotal += _n(r['totalSales']);
     }
 
-    return DataTable(
-      headingRowColor: MaterialStateProperty.all(const Color(0xFFFAFAFB)),
-      headingRowHeight: 46.h,
-      dataRowMinHeight: 44.h,
-      dataRowMaxHeight: 52.h,
-      columnSpacing: 24.w,
-      horizontalMargin: 16.w,
-      dividerThickness: 1,
-      border: const TableBorder(
-        top: BorderSide.none,
-        bottom: BorderSide.none,
-        left: BorderSide.none,
-        right: BorderSide.none,
-        horizontalInside: BorderSide(color: Color(0xFFF1F5F9)),
-      ),
-      columns: [
-        _col('Service'),
-        _col('Service Sold'),
-        _col('Gross Sale'),
-        _col('Discounts'),
-        _col('Offers'),
-        _col('Net Sale'),
-        _col('Tax'),
-        _col('Total Sales'),
-      ],
-      rows: [
-        ...rows.map((row) {
-          return DataRow(
-            color: MaterialStateProperty.all(Colors.white),
-            cells: [
-              DataCell(Text((row['service'] ?? '—').toString(),
-                  style: GoogleFonts.poppins(
-                      fontSize: 10.sp,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF1E293B)))),
-              DataCell(Text(row['serviceSold'].toString(),
-                  style: _cellStyle())),
-              DataCell(Text(_fmt(_n(row['grossSale'])), style: _cellStyle())),
-              DataCell(Text(_fmt(_n(row['discounts'])), style: _cellStyle())),
-              DataCell(Text(_fmt(_n(row['offers'])), style: _cellStyle())),
-              DataCell(Text(_fmt(_n(row['netSale'])), style: _cellStyle())),
-              DataCell(Text(_fmt(_n(row['tax'])), style: _cellStyle())),
-              DataCell(Text(_fmt(_n(row['totalSales'])), style: _cellStyle())),
-            ],
-          );
-        }),
-        // Totals Row
-        DataRow(
-          color: MaterialStateProperty.all(const Color(0xFFFAFAFB)),
-          cells: [
-            DataCell(Text('Total',
-                style: GoogleFonts.poppins(
-                    fontSize: 10.sp,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1E293B)))),
-            DataCell(Text(tSold.toString(), style: _sumStyle())),
-            DataCell(Text(_fmt(tGross), style: _sumStyle())),
-            DataCell(Text(_fmt(tDisc), style: _sumStyle())),
-            DataCell(Text(_fmt(tOffs), style: _sumStyle())),
-            DataCell(Text(_fmt(tNet), style: _sumStyle())),
-            DataCell(Text(_fmt(tTax), style: _sumStyle())),
-            DataCell(Text(_fmt(tTotal), style: _sumStyle())),
-          ],
-        ),
+    return DataRow(
+      color: MaterialStateProperty.all(const Color(0xFFF9F9FB)),
+      cells: [
+        DataCell(Text('TOTAL', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 9.sp))),
+        DataCell(Text('$tSold', style: const TextStyle(fontWeight: FontWeight.bold))),
+        DataCell(Text(_fmt(tGross), style: const TextStyle(fontWeight: FontWeight.bold))),
+        DataCell(Text(_fmt(tNet), style: const TextStyle(fontWeight: FontWeight.bold))),
+        DataCell(Text(_fmt(tTax), style: const TextStyle(fontWeight: FontWeight.bold))),
+        DataCell(Text(_fmt(tTotal), style: const TextStyle(fontWeight: FontWeight.bold, color: _purple))),
       ],
     );
   }
 
-  DataColumn _col(String label) => DataColumn(
-        label: Text(label,
-            style: GoogleFonts.poppins(
-                fontSize: 10.sp,
-                fontWeight: FontWeight.w500,
-                color: const Color(0xFF64748B))),
-      );
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Icon(Icons.bar_chart_rounded, size: 40.sp, color: Colors.grey.shade300),
+        const SizedBox(height: 12),
+        Text('No sales records found', style: GoogleFonts.poppins(fontSize: 12.sp, color: Colors.grey.shade500)),
+      ]),
+    );
+  }
 
-  TextStyle _cellStyle() =>
-      GoogleFonts.poppins(fontSize: 10.sp, color: const Color(0xFF475569));
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.error_outline_rounded, size: 40.sp, color: Colors.redAccent),
+          const SizedBox(height: 8),
+          Text('Failed to load data', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 12.sp)),
+          Text(_errorMsg!, textAlign: TextAlign.center, style: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.grey)),
+          const SizedBox(height: 12),
+          ElevatedButton(onPressed: _fetchData, style: ElevatedButton.styleFrom(backgroundColor: _purple), child: const Text('Retry', style: TextStyle(color: Colors.white))),
+        ]),
+      ),
+    );
+  }
 
-  TextStyle _sumStyle() => GoogleFonts.poppins(
-      fontSize: 10.sp,
-      fontWeight: FontWeight.w700,
-      color: const Color(0xFF1E293B));
-
-  // ── Pagination ────────────────────────────────────────────────────────────────
-  Widget _buildPagination() {
+  Widget _buildPaginationFooter() {
     final start = _filtered.isEmpty ? 0 : _currentPage * _rowsPerPage + 1;
     final end = ((_currentPage + 1) * _rowsPerPage).clamp(0, _filtered.length);
-    final total = _filtered.length;
-
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(6.r),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+      child: Row(
         children: [
-          Row(
-            children: [
-              Text('Showing $start to $end of $total results',
-                  style: GoogleFonts.poppins(
-                      fontSize: 10.sp, color: const Color(0xFF64748B))),
-              const Spacer(),
-              Text('Rows per page:',
-                  style: GoogleFonts.poppins(
-                      fontSize: 10.sp, color: const Color(0xFF64748B))),
-              SizedBox(width: 6.w),
-              Container(
-                height: 28.h,
-                padding: EdgeInsets.symmetric(horizontal: 8.w),
-                decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                  borderRadius: BorderRadius.circular(4.r),
-                  color: const Color(0xFFF8FAFC),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<int>(
-                    value: _rowsPerPage,
-                    isDense: true,
-                    style: GoogleFonts.poppins(
-                        fontSize: 10.sp, color: const Color(0xFF1E293B)),
-                    items: [5, 10, 20, 50]
-                        .map((e) => DropdownMenuItem(
-                            value: e, child: Text(e.toString())))
-                        .toList(),
-                    onChanged: (v) => setState(() {
-                      _rowsPerPage = v!;
-                      _currentPage = 0;
-                    }),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 8.h),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Text('Page ${_currentPage + 1} of $_totalPages',
-                  style: GoogleFonts.poppins(
-                      fontSize: 10.sp, color: const Color(0xFF1E293B))),
-              SizedBox(width: 10.w),
-              _pageBtn(Icons.chevron_left, _currentPage > 0,
-                  () => setState(() => _currentPage--)),
-              SizedBox(width: 4.w),
-              _pageBtn(Icons.chevron_right, _currentPage < _totalPages - 1,
-                  () => setState(() => _currentPage++)),
-            ],
-          ),
+          Text('Showing $start–$end of ${_filtered.length}',
+              style: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.grey.shade500)),
+          const Spacer(),
+          _pageBtn(Icons.chevron_left_rounded, _currentPage > 0, () => setState(() => _currentPage--)),
+          SizedBox(width: 6.w),
+          _pageBtn(Icons.chevron_right_rounded, _currentPage < _totalPages - 1, () => setState(() => _currentPage++)),
         ],
       ),
     );
   }
 
-  Widget _pageBtn(IconData icon, bool enabled, VoidCallback onTap) => InkWell(
-        onTap: enabled ? onTap : null,
-        borderRadius: BorderRadius.circular(4.r),
-        child: Container(
-          width: 26.w,
-          height: 26.h,
-          decoration: BoxDecoration(
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-            borderRadius: BorderRadius.circular(4.r),
-            color: Colors.white,
-          ),
-          child: Icon(icon,
-              size: 14.sp,
-              color:
-                  enabled ? const Color(0xFF1E293B) : const Color(0xFFCBD5E1)),
-        ),
-      );
-
-  // ── Widgets ───────────────────────────────────────────────────────────────────
-  Widget _buildError() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.error_outline, color: Colors.red.shade300, size: 48.sp),
-          SizedBox(height: 12.h),
-          Text(_error ?? 'Error', style: GoogleFonts.poppins(fontSize: 11.sp)),
-          SizedBox(height: 20.h),
-          ElevatedButton(onPressed: _fetchReport, child: const Text('Retry')),
-        ],
+  Widget _pageBtn(IconData icon, bool enabled, VoidCallback onTap) {
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      borderRadius: BorderRadius.circular(4),
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade200), borderRadius: BorderRadius.circular(4), color: enabled ? Colors.white : const Color(0xFFF5F6FA)),
+        child: Icon(icon, size: 16.sp, color: enabled ? Colors.black54 : Colors.grey.shade200),
       ),
     );
   }
 
-  Widget _searchBar() => Container(
-        height: 38.h,
+  Widget _toolbarBtn({required IconData icon, required String label, required VoidCallback onTap, bool isActive = false, bool isIconOnly = false}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        height: 30.h,
+        padding: EdgeInsets.symmetric(horizontal: isIconOnly ? 8 : 10),
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-          borderRadius: BorderRadius.circular(6.r),
+          color: isActive ? _purple.withOpacity(0.08) : const Color(0xFFF5F6FA),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: isActive ? _purple : Colors.grey.shade200),
         ),
-        padding: EdgeInsets.symmetric(horizontal: 10.w),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.search, size: 14.sp, color: const Color(0xFF94A3B8)),
-            SizedBox(width: 8.w),
-            Expanded(
-              child: TextField(
-                onChanged: (v) => setState(() {
-                  _searchText = v;
-                  _currentPage = 0;
-                }),
-                decoration: InputDecoration(
-                  hintText: 'Search...',
-                  hintStyle: GoogleFonts.poppins(
-                      fontSize: 10.sp, color: const Color(0xFF94A3B8)),
-                  border: InputBorder.none,
-                  isDense: true,
-                ),
-                style: GoogleFonts.poppins(fontSize: 10.sp),
-              ),
-            ),
+            Icon(icon, size: 14, color: isActive ? _purple : Colors.grey.shade600),
+            if (!isIconOnly) ...[const SizedBox(width: 4), Text(label, style: GoogleFonts.poppins(fontSize: 9.sp, color: isActive ? _purple : Colors.grey.shade600, fontWeight: isActive ? FontWeight.w600 : FontWeight.normal))],
           ],
         ),
-      );
-
-  Widget _filterBtn() => InkWell(
-        onTap: _openFilters,
-        borderRadius: BorderRadius.circular(6.r),
-        child: Container(
-          height: 38.h,
-          padding: EdgeInsets.symmetric(horizontal: 16.w),
-          decoration: BoxDecoration(
-            color: _primary,
-            borderRadius: BorderRadius.circular(6.r),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.tune, color: Colors.white, size: 13.sp),
-              SizedBox(width: 6.w),
-              Text('Filters',
-                  style: GoogleFonts.poppins(
-                      fontSize: 10.sp,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white)),
-            ],
-          ),
-        ),
-      );
-
-  Widget _exportBtn() => InkWell(
-        onTap: () {},
-        borderRadius: BorderRadius.circular(6.r),
-        child: Container(
-          height: 38.h,
-          padding: EdgeInsets.symmetric(horizontal: 16.w),
-          decoration: BoxDecoration(
-            color: _primary,
-            borderRadius: BorderRadius.circular(6.r),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.file_download_outlined,
-                  color: Colors.white, size: 13.sp),
-              SizedBox(width: 6.w),
-              Text('Export',
-                  style: GoogleFonts.poppins(
-                      fontSize: 10.sp,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white)),
-            ],
-          ),
-        ),
-      );
-
-  PreferredSizeWidget _buildAppBar(BuildContext context) => AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        surfaceTintColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black, size: 18),
-          onPressed: () => Navigator.pop(context),
-        ),
-        toolbarHeight: 46.h,
-        titleSpacing: 0,
-        title: Row(
-          children: [
-            SizedBox(width: 4.w),
-            Expanded(
-              child: Text('Sales by Service',
-                  style: GoogleFonts.poppins(
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black),
-                  overflow: TextOverflow.ellipsis),
-            ),
-          ],
-        ),
-      );
-
-  // ── Minimal Filter Sheet ──────────────────────────────────────────────────────
-  Future<void> _openFilters() async {
-    DateTime? tempStart = _filterStartDate;
-    DateTime? tempEnd = _filterEndDate;
-
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(14.r))),
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) {
-          return Padding(
-            padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w,
-                MediaQuery.of(context).viewInsets.bottom + 16.h),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 36.w,
-                    height: 4.h,
-                    margin: EdgeInsets.only(bottom: 16.h),
-                    decoration: BoxDecoration(
-                        color: const Color(0xFFE2E8F0),
-                        borderRadius: BorderRadius.circular(2.r)),
-                  ),
-                ),
-                Text('Filters',
-                    style: GoogleFonts.poppins(
-                        fontSize: 14.sp, fontWeight: FontWeight.w700)),
-                SizedBox(height: 14.h),
-                Text('Start Date',
-                    style: GoogleFonts.poppins(
-                        fontSize: 11.sp, fontWeight: FontWeight.w500)),
-                SizedBox(height: 6.h),
-                GestureDetector(
-                  onTap: () async {
-                    final d = await showDatePicker(
-                      context: context,
-                      initialDate: tempStart ?? DateTime.now(),
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime(2100),
-                    );
-                    if (d != null) setModalState(() => tempStart = d);
-                  },
-                  child: Container(
-                    height: 40.h,
-                    padding: EdgeInsets.symmetric(horizontal: 12.w),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                      borderRadius: BorderRadius.circular(6.r),
-                    ),
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                        tempStart != null
-                            ? DateFormat('dd MMM yyyy').format(tempStart!)
-                            : 'Select',
-                        style: GoogleFonts.poppins(fontSize: 11.sp)),
-                  ),
-                ),
-                SizedBox(height: 14.h),
-                Text('End Date',
-                    style: GoogleFonts.poppins(
-                        fontSize: 11.sp, fontWeight: FontWeight.w500)),
-                SizedBox(height: 6.h),
-                GestureDetector(
-                  onTap: () async {
-                    final d = await showDatePicker(
-                      context: context,
-                      initialDate: tempEnd ?? DateTime.now(),
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime(2100),
-                    );
-                    if (d != null) setModalState(() => tempEnd = d);
-                  },
-                  child: Container(
-                    height: 40.h,
-                    padding: EdgeInsets.symmetric(horizontal: 12.w),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                      borderRadius: BorderRadius.circular(6.r),
-                    ),
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                        tempEnd != null
-                            ? DateFormat('dd MMM yyyy').format(tempEnd!)
-                            : 'Select',
-                        style: GoogleFonts.poppins(fontSize: 11.sp)),
-                  ),
-                ),
-                SizedBox(height: 24.h),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () {
-                          setState(() {
-                            _filterStartDate = null;
-                            _filterEndDate = null;
-                            _currentPage = 0;
-                          });
-                          Navigator.pop(context);
-                          _fetchReport();
-                        },
-                        child: const Text('Clear Filters'),
-                      ),
-                    ),
-                    SizedBox(width: 10.w),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          setState(() {
-                            _filterStartDate = tempStart;
-                            _filterEndDate = tempEnd;
-                            _currentPage = 0;
-                          });
-                          Navigator.pop(context);
-                          _fetchReport();
-                        },
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: _primary,
-                            foregroundColor: Colors.white),
-                        child: const Text('Apply'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          );
-        },
       ),
     );
   }

@@ -1,621 +1,264 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+
 import '../services/api_service.dart';
 
-const Color _primary = Color(0xFF372935);
-const Color _bg = Color(0xFFF8FAFC);
+// ─────────────────────────────────────────────────────────────────────────────
+// Page
+// ─────────────────────────────────────────────────────────────────────────────
 
 class SettlementSummary extends StatefulWidget {
-  const SettlementSummary({Key? key}) : super(key: key);
+  const SettlementSummary({super.key});
 
   @override
   State<SettlementSummary> createState() => _SettlementSummaryState();
 }
 
 class _SettlementSummaryState extends State<SettlementSummary> {
-  // ── API state ────────────────────────────────────────────────────────────────
-  bool _isLoading = true;
-  String? _error;
+  static const Color _purple = Color(0xFF6C3EB8);
+
+  bool _isLoading = false;
+  String? _errorMsg;
 
   List<Map<String, dynamic>> _appointments = [];
   List<Map<String, dynamic>> _transfers = [];
   Map<String, dynamic> _totals = {};
 
-  // ── Search & Filter ──────────────────────────────────────────────────────────
-  String _globalSearch = '';
-  String _appointmentsSearch = '';
+  String _searchText = '';
+  final _searchCtrl = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _fetchReport();
+    _fetchData();
   }
 
-  // ── Fetch ─────────────────────────────────────────────────────────────────────
-  Future<void> _fetchReport() async {
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchData() async {
     setState(() {
       _isLoading = true;
-      _error = null;
+      _errorMsg = null;
     });
     try {
-      final result = await ApiService.getSettlementSummaryReport();
+      final response = await ApiService.getSettlementSummaryReport();
+      final block = response['data']?['settlementSummary'] as Map<String, dynamic>?;
 
-      final block =
-          result['data']['settlementSummary'] as Map<String, dynamic>;
-      final rawAppointments = (block['appointments'] as List?)
-              ?.cast<Map<String, dynamic>>() ??
-          [];
-      final rawTransfers = (block['transfers'] as List?)
-              ?.cast<Map<String, dynamic>>() ??
-          [];
-      final rawTotals =
-          (block['totals'] as Map<String, dynamic>?) ?? {};
-
-      setState(() {
-        _appointments = rawAppointments;
-        _transfers = rawTransfers;
-        _totals = rawTotals;
-        _isLoading = false;
-      });
+      if (block != null) {
+        _appointments = (block['appointments'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+        _transfers = (block['transfers'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+        _totals = (block['totals'] as Map<String, dynamic>?) ?? {};
+      }
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      if (mounted) setState(() => _errorMsg = e.toString());
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // ── Computed & Searched Data ─────────────────────────────────────────────────
   List<Map<String, dynamic>> get _filteredTransfers {
-    if (_globalSearch.isEmpty) return _transfers;
-    final q = _globalSearch.toLowerCase();
+    if (_searchText.isEmpty) return _transfers;
+    final q = _searchText.toLowerCase();
     return _transfers.where((t) {
       final type = (t['type'] ?? '').toString().toLowerCase();
       final method = (t['paymentMethod'] ?? '').toString().toLowerCase();
-      final ref = (t['transactionId'] ?? '').toString().toLowerCase();
-      return type.contains(q) || method.contains(q) || ref.contains(q);
+      return type.contains(q) || method.contains(q);
     }).toList();
   }
 
-  List<Map<String, dynamic>> get _filteredAppointments {
-    if (_appointmentsSearch.isEmpty) return _appointments;
-    final q = _appointmentsSearch.toLowerCase();
-    return _appointments.where((a) {
-      final client = (a['clientName'] ?? '').toString().toLowerCase();
-      final service = (a['serviceName'] ?? '').toString().toLowerCase();
-      return client.contains(q) || service.contains(q);
-    }).toList();
-  }
-
-  // ── Formatters ────────────────────────────────────────────────────────────────
-  String _fmt(num v) => '₹${NumberFormat('#,##0.00').format(v)}';
+  String _fmt(num v) => '₹${NumberFormat('#,##0').format(v)}';
   double _n(dynamic v) => (v as num?)?.toDouble() ?? 0.0;
 
-  // ── Build ─────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bg,
-      appBar: _buildAppBar(context),
+      backgroundColor: const Color(0xFFF5F6FA),
+      appBar: _buildAppBar(),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? _buildError()
-              : _buildContent(),
+          ? const Center(child: CircularProgressIndicator(color: _purple))
+          : _errorMsg != null
+              ? _buildErrorState()
+              : SingleChildScrollView(
+                  padding: EdgeInsets.all(12.w),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildStatsRow(),
+                      SizedBox(height: 12.h),
+                      _buildTitledSection('Money Transfers', _buildTransfersTable()),
+                      SizedBox(height: 12.h),
+                      _buildTitledSection('Detailed Settlements', _buildAppointmentsTable()),
+                    ],
+                  ),
+                ),
     );
   }
 
-  Widget _buildContent() {
-    return SingleChildScrollView(
-      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      automaticallyImplyLeading: false,
+      toolbarHeight: 50.h,
+      title: Row(
         children: [
-          // Title
-          Text('Settlement Summary Report',
-              style: GoogleFonts.poppins(
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF1E293B))),
-          SizedBox(height: 2.h),
-          Text(
-            'Detailed report of all settlements, payouts, and financial transactions.',
-            style: GoogleFonts.poppins(
-                fontSize: 10.sp, color: const Color(0xFF94A3B8)),
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black87, size: 18),
+            onPressed: () => Navigator.pop(context),
           ),
-          SizedBox(height: 14.h),
-
-          // Search + Export
-          Row(
-            children: [
-              Expanded(child: _searchBar()),
-              SizedBox(width: 8.w),
-              _exportBtn(),
-            ],
+          Expanded(
+            child: Text('Settlement Summary',
+                style: GoogleFonts.poppins(fontSize: 14.sp, fontWeight: FontWeight.w600, color: Colors.black87)),
           ),
-          SizedBox(height: 16.h),
-
-          // Stats Cards
-          _buildStatsRow(),
-          SizedBox(height: 24.h),
-
-          // Transfers Table
-          Text('Actual Money Transfers',
-              style: GoogleFonts.poppins(
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF1E293B))),
-          SizedBox(height: 10.h),
-          _buildTransfersTable(),
-
-          SizedBox(height: 32.h),
-
-          // Appointments Table
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text('Detailed Appointment Settlements',
-                  style: GoogleFonts.poppins(
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF1E293B))),
-              SizedBox(width: 8.w),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-                decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                    borderRadius: BorderRadius.circular(12.r)),
-                child: Text('${_filteredAppointments.length} records',
-                    style: GoogleFonts.poppins(
-                        fontSize: 8.sp, color: const Color(0xFF64748B))),
-              ),
-            ],
-          ),
-          SizedBox(height: 10.h),
-          _appointmentsSearchBar(),
-          SizedBox(height: 10.h),
-          _buildAppointmentsTable(),
-
-          SizedBox(height: 24.h),
-          Align(
-            alignment: Alignment.centerRight,
-            child: ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFE2E8F0),
-                foregroundColor: const Color(0xFF1E293B),
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6.r)),
-                padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 8.h),
-              ),
-              child: Text('Close',
-                  style: GoogleFonts.poppins(
-                      fontSize: 11.sp, fontWeight: FontWeight.w600)),
-            ),
-          ),
-          SizedBox(height: 20.h),
+          _toolbarBtn(icon: Icons.refresh_rounded, label: '', onTap: _fetchData, isIconOnly: true),
         ],
       ),
     );
   }
 
-  // ── Widgets ───────────────────────────────────────────────────────────────────
   Widget _buildStatsRow() {
-    final owedFromAdmin = _n(_totals['totalAdminOwesVendor']);
-    final payableToAdmin = _n(_totals['totalVendorOwesAdmin']);
-    final totalPlatformFee = _n(_totals['totalPlatformFee']);
-    final totalTaxAmount = _n(_totals['totalTaxAmount']);
-    final netTransfers = _n(_totals['totalTransferredToAdmin']);
-    final finalBal = _n(_totals['finalBalance']);
-
-    final isVendorOwes = finalBal < 0;
-
+    final owed = _n(_totals['totalAdminOwesVendor']);
+    final payable = _n(_totals['totalVendorOwesAdmin']);
+    final balance = _n(_totals['finalBalance']);
     return Row(
       children: [
-        _statCard(
-          title: 'Owed from Admin',
-          amount: _fmt(owedFromAdmin),
-          amountColor: const Color(0xFF1E293B),
-          subtitle: 'From Online Bookings',
-        ),
-        SizedBox(width: 10.w),
-        _statCard(
-          title: 'Payable to Admin',
-          amount: _fmt(payableToAdmin),
-          amountColor: const Color(0xFF1E293B),
-          subtitle: 'Fee: ₹${totalPlatformFee.toStringAsFixed(1)} Tax: ₹${totalTaxAmount.toStringAsFixed(1)}',
-        ),
-        SizedBox(width: 10.w),
-        _statCard(
-          title: 'Total Net Transfers',
-          amount: _fmt(netTransfers),
-          amountColor: const Color(0xFF1E293B),
-          subtitle: 'Actual Money Moved',
-        ),
-        SizedBox(width: 10.w),
-        _statCard(
-          title: 'Net Outstanding Balance',
-          amount: _fmt(finalBal.abs()),
-          amountColor: isVendorOwes ? const Color(0xFFEF4444) : const Color(0xFF10B981),
-          subtitle: isVendorOwes ? 'Vendor owes Admin' : 'Admin owes Vendor',
-          dotColor: isVendorOwes ? const Color(0xFFEF4444) : const Color(0xFF10B981),
-        ),
+        _statCard('Owed to You', _fmt(owed), Icons.arrow_downward_rounded, Colors.green),
+        SizedBox(width: 8.w),
+        _statCard('Payable to Admin', _fmt(payable), Icons.arrow_upward_rounded, Colors.red),
+        SizedBox(width: 8.w),
+        _statCard('Net Balance', _fmt(balance.abs()), Icons.account_balance_wallet_rounded, _purple),
       ],
     );
   }
 
-  Widget _statCard({
-    required String title,
-    required String amount,
-    required Color amountColor,
-    required String subtitle,
-    Color? dotColor,
-  }) {
+  Widget _statCard(String label, String value, IconData icon, Color color) {
     return Expanded(
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF1F5F9),
-          borderRadius: BorderRadius.circular(8.r),
-        ),
+        padding: EdgeInsets.all(10.w),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title,
-                style: GoogleFonts.poppins(
-                    fontSize: 9.sp, color: const Color(0xFF64748B))),
+            CircleAvatar(radius: 12, backgroundColor: color.withOpacity(0.1), child: Icon(icon, size: 12, color: color)),
             SizedBox(height: 6.h),
-            Text(amount,
-                style: GoogleFonts.poppins(
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w700,
-                    color: amountColor)),
-            SizedBox(height: 4.h),
-            Row(
-              children: [
-                if (dotColor != null) ...[
-                  Container(
-                    width: 4.w,
-                    height: 4.h,
-                    decoration:
-                        BoxDecoration(color: dotColor, shape: BoxShape.circle),
-                  ),
-                  SizedBox(width: 4.w),
-                ],
-                Expanded(
-                  child: Text(subtitle,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(
-                          fontSize: 8.sp, color: const Color(0xFF94A3B8))),
-                ),
-              ],
-            ),
+            Text(value, style: GoogleFonts.poppins(fontSize: 11.sp, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+            Text(label, style: GoogleFonts.poppins(fontSize: 8.sp, color: Colors.grey), overflow: TextOverflow.ellipsis),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTransfersTable() {
-    return _wrapperTable(
-      DataTable(
-        headingRowColor: MaterialStateProperty.all(Colors.white),
-        headingTextStyle: GoogleFonts.poppins(
-            fontSize: 9.sp,
-            fontWeight: FontWeight.w600,
-            color: const Color(0xFF64748B)),
-        dataTextStyle: GoogleFonts.poppins(
-            fontSize: 9.sp,
-            fontWeight: FontWeight.w500,
-            color: const Color(0xFF1E293B)),
-        dataRowMinHeight: 44.h,
-        dataRowMaxHeight: 52.h,
-        horizontalMargin: 16.w,
-        dividerThickness: 1,
-        border: const TableBorder(
-          horizontalInside: BorderSide(color: Color(0xFFF1F5F9)),
+  Widget _buildTitledSection(String title, Widget child) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: GoogleFonts.poppins(fontSize: 12.sp, fontWeight: FontWeight.w600, color: Colors.black87)),
+        SizedBox(height: 6.h),
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: const [BoxShadow(color: Color(0x12000000), blurRadius: 10, offset: Offset(0, 3))]),
+          child: child,
         ),
+      ],
+    );
+  }
+
+  Widget _buildTransfersTable() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        headingRowColor: MaterialStateProperty.all(const Color(0xFFF9F9FB)),
+        headingTextStyle: GoogleFonts.poppins(fontSize: 9.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
+        dataTextStyle: GoogleFonts.poppins(fontSize: 9.sp, color: Colors.black87),
+        columnSpacing: 15.w,
         columns: const [
-          DataColumn(label: Text('Execution Date')),
-          DataColumn(label: Text('Transaction Type')),
-          DataColumn(label: Text('Payment Method')),
-          DataColumn(label: Text('Transaction Reference')),
-          DataColumn(label: Text('Transfer Amount'), numeric: true),
+          DataColumn(label: Text('Date')),
+          DataColumn(label: Text('Type')),
+          DataColumn(label: Text('Method')),
+          DataColumn(label: Text('Amount')),
         ],
         rows: _filteredTransfers.map((t) {
-          final isOutToAdmin =
-              (t['type'] as String? ?? '').toLowerCase() ==
-                  'payment to admin';
-          final badgeColor = isOutToAdmin
-              ? const Color(0xFFFEE2E2)
-              : const Color(0xFFDCFCE7);
-          final badgeTextColor = isOutToAdmin
-              ? const Color(0xFFDC2626)
-              : const Color(0xFF16A34A);
-          final actType =
-              isOutToAdmin ? 'OUT: TO ADMIN' : (t['type']?.toUpperCase() ?? 'IN');
-
-          final dateStr = t['paymentDate'] != null
-              ? DateFormat('M/d/yyyy').format(DateTime.parse(t['paymentDate']))
-              : '—';
-          final method = t['paymentMethod'] ?? '—';
-          final ref = (t['transactionId'] == null ||
-                  t['transactionId'].toString().isEmpty)
-              ? '—'
-              : t['transactionId'];
-          final amt = _n(t['amount']);
-
-          return DataRow(
-            color: MaterialStateProperty.all(Colors.white),
-            cells: [
-              DataCell(Text(dateStr)),
-              DataCell(Container(
-                padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-                decoration: BoxDecoration(
-                  color: badgeColor,
-                  borderRadius: BorderRadius.circular(12.r),
-                ),
-                child: Text(actType,
-                    style: GoogleFonts.poppins(
-                        fontSize: 7.sp,
-                        fontWeight: FontWeight.w600,
-                        color: badgeTextColor)),
-              )),
-              DataCell(Text(method)),
-              DataCell(Text(ref.toString(),
-                  style: GoogleFonts.poppins(
-                      fontSize: 8.sp, color: const Color(0xFF94A3B8)))),
-              DataCell(Text(_fmt(amt),
-                  style: GoogleFonts.poppins(
-                      fontSize: 9.sp,
-                      fontWeight: FontWeight.w600,
-                      color: isOutToAdmin
-                          ? const Color(0xFFDC2626)
-                          : const Color(0xFF16A34A)))),
-            ],
-          );
+          final isOut = (t['type'] as String? ?? '').toLowerCase().contains('admin');
+          return DataRow(cells: [
+            DataCell(Text(t['paymentDate'] != null ? DateFormat('dd MMM yy').format(DateTime.parse(t['paymentDate'])) : '—')),
+            DataCell(Text(t['type']?.toString().toUpperCase() ?? '—')),
+            DataCell(Text(t['paymentMethod'] ?? '—')),
+            DataCell(Text(_fmt(_n(t['amount'])), style: TextStyle(fontWeight: FontWeight.bold, color: isOut ? Colors.red : Colors.green))),
+          ]);
         }).toList(),
       ),
     );
   }
 
   Widget _buildAppointmentsTable() {
-    return _wrapperTable(
-      DataTable(
-        headingRowColor: MaterialStateProperty.all(Colors.white),
-        headingTextStyle: GoogleFonts.poppins(
-            fontSize: 9.sp,
-            fontWeight: FontWeight.w600,
-            color: const Color(0xFF64748B)),
-        dataRowMinHeight: 52.h,
-        dataRowMaxHeight: 64.h,
-        horizontalMargin: 16.w,
-        dividerThickness: 1,
-        border: const TableBorder(
-          horizontalInside: BorderSide(color: Color(0xFFF1F5F9)),
-        ),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        headingRowColor: MaterialStateProperty.all(const Color(0xFFF9F9FB)),
+        headingTextStyle: GoogleFonts.poppins(fontSize: 9.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
+        dataTextStyle: GoogleFonts.poppins(fontSize: 9.sp, color: Colors.black87),
+        columnSpacing: 15.w,
         columns: const [
           DataColumn(label: Text('Date')),
-          DataColumn(label: Text('Client & Service')),
-          DataColumn(label: Text('Mode')),
-          DataColumn(label: Text('Owed from Admin'), numeric: true),
-          DataColumn(label: Text('Payable to Admin'), numeric: true),
+          DataColumn(label: Text('Client')),
+          DataColumn(label: Text('Owed')),
+          DataColumn(label: Text('Payable')),
         ],
-        rows: _filteredAppointments.map((a) {
-          final dateStr = a['date'] != null
-              ? DateFormat('M/d/yyyy').format(DateTime.parse(a['date']))
-              : '—';
-
-          final owedAdminAmt = _n(a['adminOwesVendor']);
-          final payableAdminAmt = _n(a['vendorOwesAdmin']);
-          final fee = _n(a['platformFee']);
-          final tax = _n(a['serviceTax']);
-          final payMethod = a['paymentMethod'] ?? '—';
-
-          return DataRow(
-            color: MaterialStateProperty.all(Colors.white),
-            cells: [
-              DataCell(Text(dateStr,
-                  style: GoogleFonts.poppins(
-                      fontSize: 9.sp, color: const Color(0xFF1E293B)))),
-              DataCell(Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(a['clientName'] ?? '—',
-                      style: GoogleFonts.poppins(
-                          fontSize: 9.sp,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF1E293B))),
-                  Text(a['serviceName'] ?? '—',
-                      style: GoogleFonts.poppins(
-                          fontSize: 8.sp, color: const Color(0xFF64748B))),
-                ],
-              )),
-              DataCell(Container(
-                padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.h),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                  borderRadius: BorderRadius.circular(4.r),
-                ),
-                child: Text(payMethod,
-                    style: GoogleFonts.poppins(
-                        fontSize: 8.sp,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF1E293B))),
-              )),
-              DataCell(Text(_fmt(owedAdminAmt),
-                  style: GoogleFonts.poppins(
-                      fontSize: 10.sp,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF10B981)))),
-              DataCell(Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(_fmt(payableAdminAmt),
-                      style: GoogleFonts.poppins(
-                          fontSize: 10.sp,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFFEF4444))),
-                  Text('(Fee: ${fee.toStringAsFixed(1)}, Tax: ${tax.toStringAsFixed(1)})',
-                      style: GoogleFonts.poppins(
-                          fontSize: 7.sp, color: const Color(0xFF94A3B8))),
-                ],
-              )),
-            ],
-          );
+        rows: _appointments.map((a) {
+          return DataRow(cells: [
+            DataCell(Text(a['date'] != null ? DateFormat('dd MMM yy').format(DateTime.parse(a['date'])) : '—')),
+            DataCell(Text(a['clientName'] ?? '—')),
+            DataCell(Text(_fmt(_n(a['adminOwesVendor'])), style: const TextStyle(color: Colors.green))),
+            DataCell(Text(_fmt(_n(a['vendorOwesAdmin'])), style: const TextStyle(color: Colors.red))),
+          ]);
         }).toList(),
       ),
     );
   }
 
-  Widget _wrapperTable(Widget child) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8.r),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8.r),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: child,
-        ),
-      ),
-    );
-  }
-
-  // ── Error / Helpers ───────────────────────────────────────────────────────────
-  Widget _buildError() {
+  Widget _buildErrorState() {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.error_outline, color: Colors.red.shade300, size: 48.sp),
-          SizedBox(height: 12.h),
-          Text(_error ?? 'Error',
-              style: GoogleFonts.poppins(fontSize: 11.sp)),
-          SizedBox(height: 20.h),
-          ElevatedButton(onPressed: _fetchReport, child: const Text('Retry')),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.error_outline_rounded, size: 40.sp, color: Colors.redAccent),
+          const SizedBox(height: 8),
+          Text('Failed to load data', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 12.sp)),
+          Text(_errorMsg!, textAlign: TextAlign.center, style: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.grey)),
+          const SizedBox(height: 12),
+          ElevatedButton(onPressed: _fetchData, style: ElevatedButton.styleFrom(backgroundColor: _purple), child: const Text('Retry', style: TextStyle(color: Colors.white))),
+        ]),
       ),
     );
   }
 
-  Widget _searchBar() => Container(
-        height: 38.h,
+  Widget _toolbarBtn({required IconData icon, required String label, required VoidCallback onTap, bool isActive = false, bool isIconOnly = false}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        height: 30.h,
+        padding: EdgeInsets.symmetric(horizontal: isIconOnly ? 8 : 10),
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-          borderRadius: BorderRadius.circular(6.r),
+          color: isActive ? _purple.withOpacity(0.08) : const Color(0xFFF5F6FA),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: isActive ? _purple : Colors.grey.shade200),
         ),
-        padding: EdgeInsets.symmetric(horizontal: 10.w),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.search, size: 14.sp, color: const Color(0xFF94A3B8)),
-            SizedBox(width: 8.w),
-            Expanded(
-              child: TextField(
-                onChanged: (v) => setState(() => _globalSearch = v),
-                decoration: InputDecoration(
-                  hintText: 'Search...',
-                  hintStyle: GoogleFonts.poppins(
-                      fontSize: 10.sp, color: const Color(0xFF94A3B8)),
-                  border: InputBorder.none,
-                  isDense: true,
-                ),
-                style: GoogleFonts.poppins(fontSize: 10.sp),
-              ),
-            ),
+            Icon(icon, size: 14, color: isActive ? _purple : Colors.grey.shade600),
+            if (!isIconOnly) ...[const SizedBox(width: 4), Text(label, style: GoogleFonts.poppins(fontSize: 9.sp, color: isActive ? _purple : Colors.grey.shade600, fontWeight: isActive ? FontWeight.w600 : FontWeight.normal))],
           ],
         ),
-      );
-
-  Widget _appointmentsSearchBar() => Container(
-        height: 38.h,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-          borderRadius: BorderRadius.circular(6.r),
-        ),
-        padding: EdgeInsets.symmetric(horizontal: 10.w),
-        child: Row(
-          children: [
-            Icon(Icons.search, size: 14.sp, color: const Color(0xFF94A3B8)),
-            SizedBox(width: 8.w),
-            Expanded(
-              child: TextField(
-                onChanged: (v) => setState(() => _appointmentsSearch = v),
-                decoration: InputDecoration(
-                  hintText: 'Filter by Client or Service...',
-                  hintStyle: GoogleFonts.poppins(
-                      fontSize: 10.sp, color: const Color(0xFF94A3B8)),
-                  border: InputBorder.none,
-                  isDense: true,
-                ),
-                style: GoogleFonts.poppins(fontSize: 10.sp),
-              ),
-            ),
-          ],
-        ),
-      );
-
-  Widget _exportBtn() => InkWell(
-        onTap: () {},
-        borderRadius: BorderRadius.circular(6.r),
-        child: Container(
-          height: 38.h,
-          padding: EdgeInsets.symmetric(horizontal: 16.w),
-          decoration: BoxDecoration(
-            color: _primary,
-            borderRadius: BorderRadius.circular(6.r),
-          ),
-          alignment: Alignment.center,
-          child: Row(
-            children: [
-              Icon(Icons.file_download_outlined,
-                  color: Colors.white, size: 13.sp),
-              SizedBox(width: 6.w),
-              Text('Export',
-                  style: GoogleFonts.poppins(
-                      fontSize: 10.sp,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white)),
-            ],
-          ),
-        ),
-      );
-
-  PreferredSizeWidget _buildAppBar(BuildContext context) => AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        surfaceTintColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black, size: 18),
-          onPressed: () => Navigator.pop(context),
-        ),
-        toolbarHeight: 46.h,
-        titleSpacing: 0,
-        title: Row(
-          children: [
-            SizedBox(width: 4.w),
-            Expanded(
-              child: Text('Settlement Summary Report',
-                  style: GoogleFonts.poppins(
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black),
-                  overflow: TextOverflow.ellipsis),
-            ),
-          ],
-        ),
-      );
+      ),
+    );
+  }
 }

@@ -1,12 +1,99 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+
 import '../services/api_service.dart';
 
-const Color _primary = Color(0xFF372935);
+// ─────────────────────────────────────────────────────────────────────────────
+// Model
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _CancelledAppointment {
+  final String id;
+  final String clientName;
+  final String serviceName;
+  final String staffName;
+  final String date;
+  final String createdAt;
+  final String startTime;
+  final String endTime;
+  final int duration;
+  final double amount;
+  final double totalAmount;
+  final double platformFee;
+  final double serviceTax;
+  final double finalAmount;
+  final String status;
+  final String cancelledBy;
+  final String cancelledDate;
+  final String mode;
+
+  _CancelledAppointment({
+    required this.id,
+    required this.clientName,
+    required this.serviceName,
+    required this.staffName,
+    required this.date,
+    required this.createdAt,
+    required this.startTime,
+    required this.endTime,
+    required this.duration,
+    required this.amount,
+    required this.totalAmount,
+    required this.platformFee,
+    required this.serviceTax,
+    required this.finalAmount,
+    required this.status,
+    required this.cancelledBy,
+    required this.cancelledDate,
+    required this.mode,
+  });
+
+  factory _CancelledAppointment.fromJson(Map<String, dynamic> j) {
+    return _CancelledAppointment(
+      id: j['id'] ?? '',
+      clientName: j['clientName'] ?? '—',
+      serviceName: j['serviceName'] ?? '—',
+      staffName: j['staffName'] ?? '—',
+      date: j['scheduledDate'] ?? j['date'] ?? '',
+      createdAt: j['createdAt'] ?? '',
+      startTime: j['startTime'] ?? '—',
+      endTime: j['endTime'] ?? '—',
+      duration: (j['duration'] as num?)?.toInt() ?? 0,
+      amount: (j['amount'] as num?)?.toDouble() ?? 0.0,
+      totalAmount: (j['totalAmount'] as num?)?.toDouble() ?? 0.0,
+      platformFee: (j['platformFee'] as num?)?.toDouble() ?? 0.0,
+      serviceTax: (j['serviceTax'] as num?)?.toDouble() ?? 0.0,
+      finalAmount: (j['finalAmount'] as num?)?.toDouble() ?? 0.0,
+      status: j['status'] ?? 'cancelled',
+      cancelledBy: j['cancelledBy'] ?? '—',
+      cancelledDate: j['cancelledDate'] ?? '',
+      mode: j['mode'] ?? 'offline',
+    );
+  }
+
+  String _fmtDate(String d) {
+    if (d.isEmpty) return '—';
+    try {
+      return DateFormat('dd MMM yy').format(DateTime.parse(d));
+    } catch (_) {
+      return d;
+    }
+  }
+
+  String get formattedDate => _fmtDate(date);
+  String get formattedCreatedAt => _fmtDate(createdAt);
+  String get formattedCancelledDate => _fmtDate(cancelledDate);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Page
+// ─────────────────────────────────────────────────────────────────────────────
 
 class AppointmentsCancellationSummary extends StatefulWidget {
+  const AppointmentsCancellationSummary({super.key});
+
   @override
   State<AppointmentsCancellationSummary> createState() =>
       _AppointmentsCancellationSummaryState();
@@ -14,292 +101,190 @@ class AppointmentsCancellationSummary extends StatefulWidget {
 
 class _AppointmentsCancellationSummaryState
     extends State<AppointmentsCancellationSummary> {
-  // ── API state ────────────────────────────────────────────────────────────────
-  bool _isLoading = true;
-  String? _error;
-  List<Map<String, dynamic>> _appointments = [];
+  static const Color _purple = Color(0xFF6C3EB8);
 
-  // ── Pagination ───────────────────────────────────────────────────────────────
+  bool _isLoading = false;
+  String? _errorMsg;
+
+  List<_CancelledAppointment> _all = [];
+  List<_CancelledAppointment> _filtered = [];
+
+  String _searchText = '';
+  DateTimeRange? _dateRange;
+
   int _rowsPerPage = 10;
   int _currentPage = 0;
 
-  // ── Filters ──────────────────────────────────────────────────────────────────
-  String _searchText = '';
-  DateTime? _filterStartDate;
-  DateTime? _filterEndDate;
-  String? _filterBookingType;
-  String? _filterClient;
-  String? _filterService;
-  String? _filterStaff;
+  final _searchCtrl = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _fetchReport();
+    _fetchData();
   }
 
-  // ── Fetch ─────────────────────────────────────────────────────────────────────
-  Future<void> _fetchReport() async {
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchData() async {
     setState(() {
       _isLoading = true;
-      _error = null;
+      _errorMsg = null;
     });
     try {
-      final result = await ApiService.getCancelledAppointmentsReport(
-        startDate: _filterStartDate?.toIso8601String(),
-        endDate: _filterEndDate?.toIso8601String(),
-        bookingType: _filterBookingType?.toLowerCase(),
-        client: _filterClient,
-        service: _filterService,
-        staff: _filterStaff,
+      final response = await ApiService.getCancelledAppointmentsReport(
+        startDate: _dateRange != null ? DateFormat('yyyy-MM-dd').format(_dateRange!.start) : null,
+        endDate: _dateRange != null ? DateFormat('yyyy-MM-dd').format(_dateRange!.end) : null,
       );
 
-      final block = result['data']['cancellations'] as Map<String, dynamic>;
-      final raw =
-          (block['cancellations'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      final block = response['data']?['cancellations'];
+      final List<dynamic> raw = (block?['cancellations'] as List?) ?? [];
 
-      setState(() {
-        _appointments = raw;
-        _isLoading = false;
-        _currentPage = 0;
-      });
+      _all = raw.map((j) => _CancelledAppointment.fromJson(j)).toList();
+      _applyFilter();
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      if (mounted) setState(() => _errorMsg = e.toString());
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // ── Client-side search ────────────────────────────────────────────────────────
-  List<Map<String, dynamic>> get _filtered {
-    if (_searchText.isEmpty) return _appointments;
+  void _applyFilter() {
     final q = _searchText.toLowerCase();
-    return _appointments.where((a) {
-      return (a['clientName'] ?? '').toString().toLowerCase().contains(q) ||
-          (a['serviceName'] ?? '').toString().toLowerCase().contains(q) ||
-          (a['staffName'] ?? '').toString().toLowerCase().contains(q);
-    }).toList();
+    setState(() {
+      _currentPage = 0;
+      _filtered = _all.where((a) {
+        return a.clientName.toLowerCase().contains(q) ||
+               a.serviceName.toLowerCase().contains(q) ||
+               a.staffName.toLowerCase().contains(q);
+      }).toList();
+    });
   }
 
-  List<Map<String, dynamic>> get _paged {
-    final all = _filtered;
-    final start = _currentPage * _rowsPerPage;
-    final end = (start + _rowsPerPage).clamp(0, all.length);
-    if (start >= all.length) return [];
-    return all.sublist(start, end);
-  }
+  // ── Stats ──────────────────────────────────────────────────────────────────
+  double get _totalRevenueLoss => _filtered.fold(0, (sum, a) => sum + a.finalAmount);
+  int get _onlineCount => _filtered.where((a) => a.mode.toLowerCase() == 'online').length;
+  int get _offlineCount => _filtered.where((a) => a.mode.toLowerCase() == 'offline').length;
 
-  int get _totalPages =>
-      (_filtered.length / _rowsPerPage).ceil().clamp(1, 9999);
-
-  // ── Computed stats ────────────────────────────────────────────────────────────
-  int get _onlineCount => _filtered.where((a) => a['mode'] == 'online').length;
-  int get _offlineCount =>
-      _filtered.where((a) => a['mode'] == 'offline').length;
-  double get _filteredRevenue =>
-      _filtered.fold(0, (s, a) => s + _n(a['finalAmount']));
-  double get _filteredBase => _filtered.fold(0, (s, a) => s + _n(a['amount']));
-  double get _filteredPlatformFee =>
-      _filtered.fold(0, (s, a) => s + _n(a['platformFee']));
-  double get _filteredServiceTax =>
-      _filtered.fold(0, (s, a) => s + _n(a['serviceTax']));
-
-  double _n(dynamic v) => (v as num?)?.toDouble() ?? 0.0;
-  String _fmt(num v) => '₹${NumberFormat('#,##0.00').format(v)}';
-  String _fmtInt(num v) => '₹${NumberFormat('#,##0').format(v)}';
-
-  // ── Filter sheet ──────────────────────────────────────────────────────────────
-  Future<void> _openFilters() async {
-    final clients = _appointments
-        .map((a) => a['clientName'] as String? ?? '')
-        .toSet()
-        .toList()
-      ..sort();
-    final services = _appointments
-        .map((a) => a['serviceName'] as String? ?? '')
-        .toSet()
-        .toList()
-      ..sort();
-    final staff = _appointments
-        .map((a) => a['staffName'] as String? ?? '')
-        .toSet()
-        .toList()
-      ..sort();
-
-    await showModalBottomSheet(
+  Future<void> _pickDateRange() async {
+    final picked = await showDateRangePicker(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(14.r))),
-      builder: (_) => _FilterSheet(
-        initialStartDate: _filterStartDate,
-        initialEndDate: _filterEndDate,
-        initialBookingType: _filterBookingType,
-        initialClient: _filterClient,
-        initialService: _filterService,
-        initialStaff: _filterStaff,
-        clients: clients,
-        services: services,
-        staff: staff,
-        onApply: (sd, ed, bt, cl, sv, st) {
-          setState(() {
-            _filterStartDate = sd;
-            _filterEndDate = ed;
-            _filterBookingType = bt;
-            _filterClient = cl;
-            _filterService = sv;
-            _filterStaff = st;
-            _currentPage = 0;
-          });
-          _fetchReport();
-        },
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+      initialDateRange: _dateRange ??
+          DateTimeRange(start: DateTime.now().subtract(const Duration(days: 30)), end: DateTime.now()),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(colorScheme: const ColorScheme.light(primary: _purple, onPrimary: Colors.white)),
+        child: child!,
       ),
     );
+    if (picked != null) {
+      _dateRange = picked;
+      _fetchData();
+    }
   }
 
-  bool get _hasFilters =>
-      _filterStartDate != null ||
-      _filterEndDate != null ||
-      _filterBookingType != null ||
-      _filterClient != null ||
-      _filterService != null ||
-      _filterStaff != null;
+  List<_CancelledAppointment> get _pageItems {
+    final start = _currentPage * _rowsPerPage;
+    final end = (start + _rowsPerPage).clamp(0, _filtered.length);
+    if (start >= _filtered.length) return [];
+    return _filtered.sublist(start, end);
+  }
 
-  // ── Build ─────────────────────────────────────────────────────────────────────
+  int get _totalPages => (_filtered.length / _rowsPerPage).ceil().clamp(1, 9999);
+
+  String _fmtCurrency(num v) => '₹${NumberFormat('#,##0').format(v)}';
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: _buildAppBar(context),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? _buildError()
-              : SingleChildScrollView(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Title
-                      Text('Cancelled Appointments Report',
-                          style: GoogleFonts.poppins(
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF1E293B))),
-                      SizedBox(height: 2.h),
-                      Text(
-                        'Comprehensive analysis of cancelled appointments with reasons and impact.',
-                        style: GoogleFonts.poppins(
-                            fontSize: 10.sp, color: const Color(0xFF94A3B8)),
-                      ),
-                      SizedBox(height: 14.h),
-
-                      // Search + Filters + Refresh + Export
-                      Row(
-                        children: [
-                          Expanded(child: _searchBar()),
-                          SizedBox(width: 8.w),
-                          _topBtn(
-                              icon: Icons.tune,
-                              label: 'Filters',
-                              onTap: _openFilters,
-                              filled: true),
-                          SizedBox(width: 6.w),
-                          _refreshBtn(),
-                          SizedBox(width: 6.w),
-                          _exportDropdown(),
-                        ],
-                      ),
-                      SizedBox(height: 10.h),
-
-                      // Active filter chips
-                      if (_hasFilters) ...[
-                        _filterChips(),
-                        SizedBox(height: 10.h),
-                      ],
-
-                      // Stats row 1
-                      Row(
-                        children: [
-                          _statCard(
-                              'Total Cancelled', _filtered.length.toString()),
-                          SizedBox(width: 10.w),
-                          _statCard('Online Cancelled', _onlineCount.toString()),
-                          SizedBox(width: 10.w),
-                          _statCard('Offline Cancelled', _offlineCount.toString()),
-                          SizedBox(width: 10.w),
-                          _statCard('Revenue Loss', _fmtInt(_filteredRevenue)),
-                        ],
-                      ),
-                      SizedBox(height: 14.h),
-
-                      // Table
-                      Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8.r),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.03),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8.r),
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: _buildTable(),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 12.h),
-
-                      // Pagination
-                      _buildPagination(),
-                      SizedBox(height: 20.h),
-                    ],
-                  ),
-                ),
-    );
-  }
-
-  // ── Error ─────────────────────────────────────────────────────────────────────
-  Widget _buildError() {
-    return Center(
-      child: Padding(
-        padding: EdgeInsets.all(24.w),
+      backgroundColor: const Color(0xFFF5F6FA),
+      appBar: _buildAppBar(),
+      body: Padding(
+        padding: EdgeInsets.all(12.w),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline, color: Colors.red.shade300, size: 48.sp),
+            Row(
+              children: [
+                _statCard('Total Cancelled', '${_filtered.length}', Icons.cancel_outlined, Colors.red),
+                SizedBox(width: 8.w),
+                _statCard('Revenue Loss', _fmtCurrency(_totalRevenueLoss), Icons.trending_down_rounded, Colors.orange),
+              ],
+            ),
+            SizedBox(height: 8.h),
+            Row(
+              children: [
+                _statCard('Online', '$_onlineCount', Icons.language_rounded, _purple),
+                SizedBox(width: 8.w),
+                _statCard('Offline', '$_offlineCount', Icons.storefront_rounded, Colors.blueGrey),
+              ],
+            ),
             SizedBox(height: 12.h),
-            Text('Failed to load report',
-                style: GoogleFonts.poppins(
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF1E293B))),
-            SizedBox(height: 6.h),
-            Text(_error ?? '',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                    fontSize: 11.sp, color: const Color(0xFF64748B))),
-            SizedBox(height: 20.h),
-            ElevatedButton.icon(
-              onPressed: _fetchReport,
-              icon: const Icon(Icons.refresh, size: 16),
-              label: Text('Retry', style: GoogleFonts.poppins()),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.r)),
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: const [BoxShadow(color: Color(0x12000000), blurRadius: 10, offset: Offset(0, 3))],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              height: 34.h,
+                              child: TextField(
+                                controller: _searchCtrl,
+                                onChanged: (v) { _searchText = v; _applyFilter(); },
+                                style: GoogleFonts.poppins(fontSize: 11.sp),
+                                decoration: InputDecoration(
+                                  prefixIcon: Icon(Icons.search_rounded, color: Colors.grey.shade400, size: 16.sp),
+                                  hintText: 'Search cancelled...',
+                                  hintStyle: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.grey.shade400),
+                                  filled: true,
+                                  fillColor: const Color(0xFFF5F6FA),
+                                  contentPadding: EdgeInsets.zero,
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none),
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 8.w),
+                          _toolbarBtn(
+                            icon: Icons.filter_list_rounded,
+                            label: _dateRange != null ? 'Filtered' : 'Filter',
+                            isActive: _dateRange != null,
+                            onTap: _pickDateRange,
+                          ),
+                          SizedBox(width: 8.w),
+                          _toolbarBtn(
+                            icon: Icons.upload_rounded,
+                            label: 'Export',
+                            onTap: () {},
+                          ),
+                          SizedBox(width: 8.w),
+                          _toolbarBtn(
+                            icon: Icons.refresh_rounded,
+                            label: '',
+                            onTap: _fetchData,
+                            isIconOnly: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                    Divider(height: 1, color: Colors.grey.shade100),
+                    Expanded(child: _buildTable()),
+                    Divider(height: 1, color: Colors.grey.shade100),
+                    _buildPaginationFooter(),
+                  ],
+                ),
               ),
             ),
           ],
@@ -308,727 +293,166 @@ class _AppointmentsCancellationSummaryState
     );
   }
 
-  // ── Filter chips ──────────────────────────────────────────────────────────────
-  Widget _filterChips() {
-    final chips = <Widget>[];
-    void add(String label, VoidCallback onRemove) {
-      chips.add(Padding(
-        padding: EdgeInsets.only(right: 6.w),
-        child: Chip(
-          label: Text(label,
-              style: GoogleFonts.poppins(fontSize: 9.sp, color: Colors.white)),
-          backgroundColor: _primary,
-          deleteIcon: const Icon(Icons.close, size: 12, color: Colors.white),
-          onDeleted: onRemove,
-          padding: EdgeInsets.symmetric(horizontal: 4.w),
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
-      ));
-    }
-
-    if (_filterStartDate != null)
-      add('From: ${DateFormat('dd MMM yy').format(_filterStartDate!)}',
-          () => setState(() => _filterStartDate = null));
-    if (_filterEndDate != null)
-      add('To: ${DateFormat('dd MMM yy').format(_filterEndDate!)}',
-          () => setState(() => _filterEndDate = null));
-    if (_filterBookingType != null)
-      add(_filterBookingType!, () => setState(() => _filterBookingType = null));
-    if (_filterClient != null)
-      add(_filterClient!, () => setState(() => _filterClient = null));
-    if (_filterService != null)
-      add(_filterService!, () => setState(() => _filterService = null));
-    if (_filterStaff != null)
-      add(_filterStaff!, () => setState(() => _filterStaff = null));
-
-    return Wrap(children: chips);
-  }
-
-  // ── Table ─────────────────────────────────────────────────────────────────────
-  Widget _buildTable() {
-    final rows = _paged;
-
-    if (rows.isEmpty) {
-      return SizedBox(
-        width: MediaQuery.of(context).size.width,
-        child: Padding(
-          padding: EdgeInsets.all(32.w),
-          child: Center(
-            child: Text('No cancelled appointments found.',
-                style: GoogleFonts.poppins(
-                    fontSize: 12.sp, color: const Color(0xFF94A3B8))),
-          ),
-        ),
-      );
-    }
-
-    return DataTable(
-      headingRowColor: MaterialStateProperty.all(const Color(0xFFF1F5F9)),
-      headingRowHeight: 40.h,
-      dataRowMinHeight: 48.h,
-      dataRowMaxHeight: 56.h,
-      columnSpacing: 18.w,
-      horizontalMargin: 14.w,
-      dividerThickness: 0,
-      border: TableBorder(
-        top: const BorderSide(color: Color(0xFFE2E8F0)),
-        bottom: const BorderSide(color: Color(0xFFE2E8F0)),
-        left: const BorderSide(color: Color(0xFFE2E8F0)),
-        right: const BorderSide(color: Color(0xFFE2E8F0)),
-        horizontalInside: const BorderSide(color: Color(0xFFF1F5F9)),
-      ),
-      columns: [
-        _col('Client'),
-        _col('Service'),
-        _col('Staff'),
-        _col('Scheduled On'),
-        _col('Created On'),
-        _col('Time'),
-        _col('Cancelled By'),
-        _col('Cancelled On'),
-        _col('Base Amount', numeric: true),
-        _col('Platform Fee', numeric: true),
-        _col('Service Tax', numeric: true),
-        _col('Final Amount', numeric: true),
-      ],
-      rows: [
-        ...List.generate(rows.length, (i) {
-          final a = rows[i];
-          final isEven = i % 2 == 0;
-          final scheduledDate =
-              a['scheduledDate'] != null ? DateTime.tryParse(a['scheduledDate']) : null;
-          final createdAt =
-              a['createdAt'] != null ? DateTime.tryParse(a['createdAt']) : null;
-          final cancelledDate =
-              a['cancelledDate'] != null ? DateTime.tryParse(a['cancelledDate']) : null;
-
-          return DataRow(
-            color: MaterialStateProperty.resolveWith(
-                (_) => isEven ? Colors.white : const Color(0xFFFAFAFB)),
-            cells: [
-              DataCell(Text(a['clientName'] ?? '—',
-                  style: GoogleFonts.poppins(
-                      fontSize: 8.sp,
-                      fontWeight: FontWeight.w500,
-                      color: const Color(0xFF1E293B)))),
-              DataCell(Text(a['serviceName'] ?? '—', style: _cellStyle())),
-              DataCell(Text(a['staffName'] ?? '—', style: _cellStyle())),
-              DataCell(Text(
-                  scheduledDate != null
-                      ? DateFormat('dd MMM yy').format(scheduledDate)
-                      : '—',
-                  style: _cellStyle())),
-              DataCell(Text(
-                  createdAt != null
-                      ? DateFormat('dd MMM yy').format(createdAt)
-                      : '—',
-                  style: _cellStyle())),
-              DataCell(Text(a['startTime'] ?? '—', style: _cellStyle())),
-              DataCell(Text(a['cancelledBy'] ?? '—', style: _cellStyle())),
-              DataCell(Text(
-                  cancelledDate != null
-                      ? DateFormat('dd MMM yy').format(cancelledDate)
-                      : '—',
-                  style: _cellStyle())),
-              DataCell(Text(_fmt(_n(a['amount'])), style: _cellStyle())),
-              DataCell(Text(_fmt(_n(a['platformFee'])), style: _cellStyle())),
-              DataCell(Text(_fmt(_n(a['serviceTax'])), style: _cellStyle())),
-              DataCell(Text(_fmt(_n(a['finalAmount'])),
-                  style: GoogleFonts.poppins(
-                      fontSize: 8.sp,
-                      fontWeight: FontWeight.w600,
-                      color: _primary))),
-            ],
-          );
-        }),
-
-        // Totals row
-        DataRow(
-          color: MaterialStateProperty.all(const Color(0xFFFFF9EC)),
-          cells: [
-            DataCell(Text('Total',
-                style: GoogleFonts.poppins(
-                    fontSize: 10.sp,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1E293B)))),
-            const DataCell(Text('')),
-            const DataCell(Text('')),
-            const DataCell(Text('')),
-            const DataCell(Text('')),
-            const DataCell(Text('')),
-            const DataCell(Text('')),
-            const DataCell(Text('')),
-            DataCell(Text(_fmt(_filteredBase), style: _totalStyle())),
-            DataCell(Text(_fmt(_filteredPlatformFee), style: _totalStyle())),
-            DataCell(Text(_fmt(_filteredServiceTax), style: _totalStyle())),
-            DataCell(Text(_fmt(_filteredRevenue),
-                style: GoogleFonts.poppins(
-                    fontSize: 10.sp,
-                    fontWeight: FontWeight.w700,
-                    color: _primary))),
-          ],
-        ),
-      ],
-    );
-  }
-
-  // ── Pagination ────────────────────────────────────────────────────────────────
-  Widget _buildPagination() {
-    final start = _filtered.isEmpty ? 0 : _currentPage * _rowsPerPage + 1;
-    final end = ((_currentPage + 1) * _rowsPerPage).clamp(0, _filtered.length);
-    final total = _filtered.length;
-
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(6.r),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      automaticallyImplyLeading: false,
+      toolbarHeight: 50.h,
+      title: Row(
         children: [
-          Row(
-            children: [
-              Text('Showing $start–$end of $total results',
-                  style: GoogleFonts.poppins(
-                      fontSize: 10.sp, color: const Color(0xFF64748B))),
-              const Spacer(),
-              Text('Per page:',
-                  style: GoogleFonts.poppins(
-                      fontSize: 10.sp, color: const Color(0xFF64748B))),
-              SizedBox(width: 6.w),
-              Container(
-                height: 28.h,
-                padding: EdgeInsets.symmetric(horizontal: 8.w),
-                decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                  borderRadius: BorderRadius.circular(4.r),
-                  color: const Color(0xFFF8FAFC),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<int>(
-                    value: _rowsPerPage,
-                    isDense: true,
-                    style: GoogleFonts.poppins(
-                        fontSize: 10.sp, color: const Color(0xFF1E293B)),
-                    items: [5, 10, 20, 50]
-                        .map((e) => DropdownMenuItem(
-                            value: e, child: Text(e.toString())))
-                        .toList(),
-                    onChanged: (v) => setState(() {
-                      _rowsPerPage = v!;
-                      _currentPage = 0;
-                    }),
-                  ),
-                ),
-              ),
-            ],
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black87, size: 18),
+            onPressed: () => Navigator.pop(context),
           ),
-          SizedBox(height: 8.h),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Text('Page ${_currentPage + 1} of $_totalPages',
-                  style: GoogleFonts.poppins(
-                      fontSize: 10.sp, color: const Color(0xFF1E293B))),
-              SizedBox(width: 10.w),
-              _pageBtn(Icons.chevron_left, _currentPage > 0,
-                  () => setState(() => _currentPage--)),
-              SizedBox(width: 4.w),
-              _pageBtn(Icons.chevron_right, _currentPage < _totalPages - 1,
-                  () => setState(() => _currentPage++)),
-            ],
+          Expanded(
+            child: Text('Cancelled Appointments',
+                style: GoogleFonts.poppins(fontSize: 14.sp, fontWeight: FontWeight.w600, color: Colors.black87)),
           ),
         ],
       ),
     );
   }
 
-  // ── Helpers ───────────────────────────────────────────────────────────────────
-  DataColumn _col(String label, {bool numeric = false}) => DataColumn(
-        numeric: numeric,
-        label: Text(label,
-            style: GoogleFonts.poppins(
-                fontSize: 10.sp,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF64748B))),
-      );
+  Widget _buildTable() {
+    if (_isLoading) return const Center(child: CircularProgressIndicator(color: _purple));
+    if (_errorMsg != null) return _buildErrorState();
+    if (_filtered.isEmpty) return _buildEmptyState();
 
-  TextStyle _cellStyle() =>
-      GoogleFonts.poppins(fontSize: 8.sp, color: const Color(0xFF475569));
-
-  TextStyle _totalStyle() => GoogleFonts.poppins(
-      fontSize: 8.sp,
-      fontWeight: FontWeight.w700,
-      color: const Color(0xFF1E293B));
-
-  Widget _pageBtn(IconData icon, bool enabled, VoidCallback onTap) => InkWell(
-        onTap: enabled ? onTap : null,
-        borderRadius: BorderRadius.circular(4.r),
-        child: Container(
-          width: 26.w,
-          height: 26.h,
-          decoration: BoxDecoration(
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-            borderRadius: BorderRadius.circular(4.r),
-            color: Colors.white,
-          ),
-          child: Icon(icon,
-              size: 14.sp,
-              color:
-                  enabled ? const Color(0xFF1E293B) : const Color(0xFFCBD5E1)),
-        ),
-      );
-
-  Widget _statCard(String label, String value) => Expanded(
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF1F5F9),
-            borderRadius: BorderRadius.circular(6.r),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label,
-                  style: GoogleFonts.poppins(
-                      fontSize: 9.sp, color: const Color(0xFF64748B))),
-              SizedBox(height: 4.h),
-              Text(value,
-                  style: GoogleFonts.poppins(
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF1E293B))),
-            ],
-          ),
-        ),
-      );
-
-  Widget _searchBar() => Container(
-        height: 36.h,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-          borderRadius: BorderRadius.circular(6.r),
-        ),
-        padding: EdgeInsets.symmetric(horizontal: 10.w),
-        child: Row(
-          children: [
-            Icon(Icons.search, size: 14.sp, color: const Color(0xFF94A3B8)),
-            SizedBox(width: 6.w),
-            Expanded(
-              child: TextField(
-                onChanged: (v) => setState(() {
-                  _searchText = v;
-                  _currentPage = 0;
-                }),
-                decoration: InputDecoration(
-                  hintText: 'Search client, service…',
-                  hintStyle: GoogleFonts.poppins(
-                      fontSize: 10.sp, color: const Color(0xFF94A3B8)),
-                  border: InputBorder.none,
-                  isDense: true,
-                ),
-                style: GoogleFonts.poppins(fontSize: 10.sp),
-              ),
-            ),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: SingleChildScrollView(
+        child: DataTable(
+          headingRowColor: MaterialStateProperty.all(const Color(0xFFF9F9FB)),
+          headingTextStyle: GoogleFonts.poppins(fontSize: 10.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
+          dataTextStyle: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.black87),
+          horizontalMargin: 12.w,
+          columnSpacing: 20.w,
+          columns: const [
+            DataColumn(label: Text('Client')),
+            DataColumn(label: Text('Service')),
+            DataColumn(label: Text('Staff')),
+            DataColumn(label: Text('Scheduled')),
+            DataColumn(label: Text('Cancelled By')),
+            DataColumn(label: Text('Cancelled On')),
+            DataColumn(label: Text('Loss')),
           ],
-        ),
-      );
-
-  Widget _topBtn({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-    bool filled = false,
-  }) =>
-      InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(6.r),
-        child: Container(
-          height: 36.h,
-          padding: EdgeInsets.symmetric(horizontal: 12.w),
-          decoration: BoxDecoration(
-            color: filled ? _primary : Colors.white,
-            borderRadius: BorderRadius.circular(6.r),
-            border: Border.all(
-                color: filled ? Colors.transparent : const Color(0xFFE2E8F0)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon,
-                  size: 12.sp,
-                  color: filled ? Colors.white : const Color(0xFF1E293B)),
-              SizedBox(width: 5.w),
-              Text(label,
-                  style: GoogleFonts.poppins(
-                      fontSize: 10.sp,
-                      fontWeight: FontWeight.w600,
-                      color: filled ? Colors.white : const Color(0xFF1E293B))),
-            ],
-          ),
-        ),
-      );
-
-  Widget _refreshBtn() => InkWell(
-        onTap: _fetchReport,
-        borderRadius: BorderRadius.circular(6.r),
-        child: Container(
-          height: 36.h,
-          width: 36.h,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(6.r),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
-          child:
-              Icon(Icons.refresh, size: 14.sp, color: const Color(0xFF1E293B)),
-        ),
-      );
-
-  Widget _exportDropdown() => Container(
-        height: 36.h,
-        padding: EdgeInsets.symmetric(horizontal: 10.w),
-        decoration: BoxDecoration(
-          color: _primary,
-          borderRadius: BorderRadius.circular(6.r),
-        ),
-        child: DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
-            icon: Icon(Icons.file_download_outlined,
-                color: Colors.white, size: 13.sp),
-            hint: Text('Export',
-                style: GoogleFonts.poppins(
-                    fontSize: 10.sp,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white)),
-            dropdownColor: Colors.white,
-            items: ['CSV', 'PDF', 'Copy', 'Excel', 'Print']
-                .map((e) => DropdownMenuItem(
-                    value: e.toLowerCase(),
-                    child:
-                        Text(e, style: GoogleFonts.poppins(fontSize: 10.sp))))
-                .toList(),
-            onChanged: (v) => ScaffoldMessenger.of(context)
-                .showSnackBar(SnackBar(content: Text('Selected: $v'))),
-          ),
-        ),
-      );
-
-  PreferredSizeWidget _buildAppBar(BuildContext context) => AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        surfaceTintColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black, size: 18),
-          onPressed: () => Navigator.pop(context),
-        ),
-        toolbarHeight: 46.h,
-        titleSpacing: 0,
-        title: Row(
-          children: [
-            SizedBox(width: 4.w),
-            Expanded(
-              child: Text('Cancelled Appointments Report',
-                  style: GoogleFonts.poppins(
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black),
-                  overflow: TextOverflow.ellipsis),
-            ),
-          ],
-        ),
-      );
-}
-
-// ─── Filter Bottom Sheet ──────────────────────────────────────────────────────
-
-class _FilterSheet extends StatefulWidget {
-  final DateTime? initialStartDate;
-  final DateTime? initialEndDate;
-  final String? initialBookingType;
-  final String? initialClient;
-  final String? initialService;
-  final String? initialStaff;
-  final List<String> clients;
-  final List<String> services;
-  final List<String> staff;
-  final void Function(
-    DateTime? startDate,
-    DateTime? endDate,
-    String? bookingType,
-    String? client,
-    String? service,
-    String? staff,
-  ) onApply;
-
-  const _FilterSheet({
-    required this.initialStartDate,
-    required this.initialEndDate,
-    required this.initialBookingType,
-    required this.initialClient,
-    required this.initialService,
-    required this.initialStaff,
-    required this.clients,
-    required this.services,
-    required this.staff,
-    required this.onApply,
-  });
-
-  @override
-  State<_FilterSheet> createState() => _FilterSheetState();
-}
-
-class _FilterSheetState extends State<_FilterSheet> {
-  DateTime? _startDate;
-  DateTime? _endDate;
-  String? _bookingType;
-  String? _client;
-  String? _service;
-  String? _staff;
-
-  @override
-  void initState() {
-    super.initState();
-    _startDate = widget.initialStartDate;
-    _endDate = widget.initialEndDate;
-    _bookingType = widget.initialBookingType;
-    _client = widget.initialClient;
-    _service = widget.initialService;
-    _staff = widget.initialStaff;
-  }
-
-  Future<void> _pickDate(bool isStart) async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: (isStart ? _startDate : _endDate) ?? DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
-    if (picked != null)
-      setState(() => isStart ? _startDate = picked : _endDate = picked);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      initialChildSize: 0.82,
-      minChildSize: 0.5,
-      maxChildSize: 0.95,
-      expand: false,
-      builder: (_, ctrl) => Container(
-        padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 36.w,
-                height: 4.h,
-                margin: EdgeInsets.only(bottom: 16.h),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE2E8F0),
-                  borderRadius: BorderRadius.circular(2.r),
-                ),
-              ),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Filters',
-                    style: GoogleFonts.poppins(
-                        fontSize: 14.sp, fontWeight: FontWeight.w700)),
-                InkWell(
-                  onTap: () => Navigator.pop(context),
-                  borderRadius: BorderRadius.circular(20.r),
-                  child: Container(
-                    padding: EdgeInsets.all(6.w),
-                    decoration: const BoxDecoration(
-                        color: Color(0xFFF1F5F9), shape: BoxShape.circle),
-                    child: Icon(Icons.close,
-                        size: 14.sp, color: const Color(0xFF64748B)),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 14.h),
-            const Divider(color: Color(0xFFF1F5F9), height: 1),
-            SizedBox(height: 14.h),
-            Expanded(
-              child: ListView(
-                controller: ctrl,
-                padding: EdgeInsets.zero,
-                children: [
-                  Row(children: [
-                    Expanded(
-                        child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                          _lbl('Start Date'),
-                          SizedBox(height: 6.h),
-                          _dateField(_startDate, () => _pickDate(true)),
-                        ])),
-                    SizedBox(width: 12.w),
-                    Expanded(
-                        child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                          _lbl('End Date'),
-                          SizedBox(height: 6.h),
-                          _dateField(_endDate, () => _pickDate(false)),
-                        ])),
-                  ]),
-                  SizedBox(height: 14.h),
-                  _lbl('Booking Type'),
-                  SizedBox(height: 6.h),
-                  _drop(_bookingType, ['Online', 'Offline'], 'All types',
-                      (v) => setState(() => _bookingType = v)),
-                  SizedBox(height: 14.h),
-                  _lbl('Client'),
-                  SizedBox(height: 6.h),
-                  _drop(_client, widget.clients, 'All clients',
-                      (v) => setState(() => _client = v)),
-                  SizedBox(height: 14.h),
-                  _lbl('Service'),
-                  SizedBox(height: 6.h),
-                  _drop(_service, widget.services, 'All services',
-                      (v) => setState(() => _service = v)),
-                  SizedBox(height: 14.h),
-                  _lbl('Staff'),
-                  SizedBox(height: 6.h),
-                  _drop(_staff, widget.staff, 'All staff',
-                      (v) => setState(() => _staff = v)),
-                  SizedBox(height: 24.h),
-                ],
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).viewInsets.bottom + 16.h),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {
-                        widget.onApply(null, null, null, null, null, null);
-                        Navigator.pop(context);
-                      },
-                      style: OutlinedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(vertical: 11.h),
-                        side: const BorderSide(color: Color(0xFFE2E8F0)),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6.r)),
-                      ),
-                      child: Text('Clear All',
-                          style: GoogleFonts.poppins(
-                              fontSize: 11.sp,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF1E293B))),
-                    ),
-                  ),
-                  SizedBox(width: 10.w),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        widget.onApply(_startDate, _endDate, _bookingType,
-                            _client, _service, _staff);
-                        Navigator.pop(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _primary,
-                        padding: EdgeInsets.symmetric(vertical: 11.h),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6.r)),
-                      ),
-                      child: Text('Apply Filters',
-                          style: GoogleFonts.poppins(
-                              fontSize: 11.sp,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+          rows: _pageItems.map((a) => DataRow(cells: [
+            DataCell(Text(a.clientName)),
+            DataCell(Text(a.serviceName)),
+            DataCell(Text(a.staffName)),
+            DataCell(Text(a.formattedDate)),
+            DataCell(Text(a.cancelledBy)),
+            DataCell(Text(a.formattedCancelledDate)),
+            DataCell(Text(_fmtCurrency(a.finalAmount), style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold))),
+          ])).toList(),
         ),
       ),
     );
   }
 
-  Widget _lbl(String t) => Text(t,
-      style: GoogleFonts.poppins(
-          fontSize: 11.sp,
-          fontWeight: FontWeight.w500,
-          color: const Color(0xFF1E293B)));
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Icon(Icons.event_busy_rounded, size: 40.sp, color: Colors.grey.shade300),
+        const SizedBox(height: 12),
+        Text('No cancelled records found', style: GoogleFonts.poppins(fontSize: 12.sp, color: Colors.grey.shade500)),
+      ]),
+    );
+  }
 
-  Widget _dateField(DateTime? date, VoidCallback onTap) {
-    final has = date != null;
-    return GestureDetector(
-      onTap: onTap,
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.error_outline_rounded, size: 40.sp, color: Colors.redAccent),
+          const SizedBox(height: 8),
+          Text('Failed to load data', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 12.sp)),
+          Text(_errorMsg!, textAlign: TextAlign.center, style: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.grey)),
+          const SizedBox(height: 12),
+          ElevatedButton(onPressed: _fetchData, style: ElevatedButton.styleFrom(backgroundColor: _purple), child: const Text('Retry', style: TextStyle(color: Colors.white))),
+        ]),
+      ),
+    );
+  }
+
+  Widget _buildPaginationFooter() {
+    final start = _filtered.isEmpty ? 0 : _currentPage * _rowsPerPage + 1;
+    final end = ((_currentPage + 1) * _rowsPerPage).clamp(0, _filtered.length);
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+      child: Row(
+        children: [
+          Text('Showing $start–$end of ${_filtered.length}',
+              style: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.grey.shade500)),
+          const Spacer(),
+          _pageBtn(Icons.chevron_left_rounded, _currentPage > 0, () => setState(() => _currentPage--)),
+          SizedBox(width: 6.w),
+          _pageBtn(Icons.chevron_right_rounded, _currentPage < _totalPages - 1, () => setState(() => _currentPage++)),
+        ],
+      ),
+    );
+  }
+
+  Widget _pageBtn(IconData icon, bool enabled, VoidCallback onTap) {
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      borderRadius: BorderRadius.circular(4),
       child: Container(
-        height: 40.h,
-        padding: EdgeInsets.symmetric(horizontal: 12.w),
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade200), borderRadius: BorderRadius.circular(4), color: enabled ? Colors.white : const Color(0xFFF5F6FA)),
+        child: Icon(icon, size: 16.sp, color: enabled ? Colors.black54 : Colors.grey.shade200),
+      ),
+    );
+  }
+
+  Widget _statCard(String label, String value, IconData icon, Color color) {
+    return Expanded(
+      child: Container(
+        padding: EdgeInsets.all(10.w),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(6.r),
-          border: Border.all(
-              color: has ? _primary : const Color(0xFFE2E8F0),
-              width: has ? 1.5 : 1),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withOpacity(0.1)),
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(has ? DateFormat('dd MMM yyyy').format(date) : 'Select',
-                style: GoogleFonts.poppins(
-                    fontSize: 11.sp,
-                    color: has
-                        ? const Color(0xFF1E293B)
-                        : const Color(0xFF94A3B8))),
-            Icon(Icons.calendar_today_outlined,
-                size: 13.sp, color: const Color(0xFF94A3B8)),
+            CircleAvatar(radius: 14, backgroundColor: color.withOpacity(0.1), child: Icon(icon, size: 14, color: color)),
+            SizedBox(width: 8.w),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(value, style: GoogleFonts.poppins(fontSize: 12.sp, fontWeight: FontWeight.w700, color: Colors.black87), overflow: TextOverflow.ellipsis),
+                  Text(label, style: GoogleFonts.poppins(fontSize: 8.sp, color: Colors.grey.shade500), overflow: TextOverflow.ellipsis),
+                ],
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _drop(String? value, List<String> items, String hint,
-      void Function(String?) onChange) {
-    final safe = items.contains(value) ? value : null;
-    return Container(
-      height: 40.h,
-      padding: EdgeInsets.symmetric(horizontal: 12.w),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(6.r),
-        border: Border.all(
-            color: safe != null ? _primary : const Color(0xFFE2E8F0),
-            width: safe != null ? 1.5 : 1),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: safe,
-          isExpanded: true,
-          hint: Text(hint,
-              style: GoogleFonts.poppins(
-                  fontSize: 11.sp, color: const Color(0xFF94A3B8))),
-          icon: Icon(Icons.keyboard_arrow_down,
-              size: 16.sp, color: const Color(0xFF94A3B8)),
-          style: GoogleFonts.poppins(
-              fontSize: 11.sp, color: const Color(0xFF1E293B)),
-          dropdownColor: Colors.white,
-          items: [
-            DropdownMenuItem<String>(
-                value: null,
-                child:
-                    Text('All', style: GoogleFonts.poppins(fontSize: 11.sp))),
-            ...items.map((e) => DropdownMenuItem(value: e, child: Text(e))),
+  Widget _toolbarBtn({required IconData icon, required String label, required VoidCallback onTap, bool isActive = false, bool isIconOnly = false}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        height: 34.h,
+        padding: EdgeInsets.symmetric(horizontal: isIconOnly ? 8 : 10),
+        decoration: BoxDecoration(
+          color: isActive ? _purple.withOpacity(0.08) : const Color(0xFFF5F6FA),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: isActive ? _purple : Colors.grey.shade200),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: isActive ? _purple : Colors.grey.shade600),
+            if (!isIconOnly) ...[const SizedBox(width: 4), Text(label, style: GoogleFonts.poppins(fontSize: 10.sp, color: isActive ? _purple : Colors.grey.shade600, fontWeight: isActive ? FontWeight.w600 : FontWeight.normal))],
           ],
-          onChanged: onChange,
         ),
       ),
     );

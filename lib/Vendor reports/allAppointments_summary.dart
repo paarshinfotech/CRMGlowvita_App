@@ -3,8 +3,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
-import '../Notification.dart';
-import '../my_Profile.dart';
 import '../services/api_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -17,6 +15,7 @@ class _Appointment {
   final String serviceName;
   final String staffName;
   final String date;
+  final String createdAt;
   final String startTime;
   final String endTime;
   final int duration;
@@ -36,6 +35,7 @@ class _Appointment {
     required this.serviceName,
     required this.staffName,
     required this.date,
+    required this.createdAt,
     required this.startTime,
     required this.endTime,
     required this.duration,
@@ -57,6 +57,7 @@ class _Appointment {
       serviceName: j['serviceName'] ?? '—',
       staffName: j['staffName'] ?? '—',
       date: j['date'] ?? '',
+      createdAt: j['createdAt'] ?? '',
       startTime: j['startTime'] ?? '—',
       endTime: j['endTime'] ?? '—',
       duration: (j['duration'] as num?)?.toInt() ?? 0,
@@ -80,6 +81,15 @@ class _Appointment {
       return DateFormat('dd MMM yyyy').format(DateTime.parse(date));
     } catch (_) {
       return date;
+    }
+  }
+
+  String get formattedCreatedAt {
+    if (createdAt.isEmpty) return '—';
+    try {
+      return DateFormat('dd MMM yyyy').format(DateTime.parse(createdAt));
+    } catch (_) {
+      return createdAt;
     }
   }
 }
@@ -143,16 +153,15 @@ class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
             : null,
       );
 
-      // JSON Structure: { success, data: { allAppointments: { total, appointments: [...] } } }
       final allData = response['data']?['allAppointments'];
       final List<dynamic> rawList = (allData?['appointments'] as List?) ?? [];
 
       _all = rawList.map((j) => _Appointment.fromJson(j)).toList();
       _applyFilter();
     } catch (e) {
-      setState(() => _errorMsg = e.toString());
+      if (mounted) setState(() => _errorMsg = e.toString());
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -170,6 +179,7 @@ class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
 
   // ── Stats ──────────────────────────────────────────────────────────────────
   double get _totalRevenue => _filtered.fold(0, (sum, a) => sum + a.finalAmount);
+  double get _totalBusiness => _filtered.fold(0, (sum, a) => sum + a.totalAmount);
   int get _onlineCount => _filtered.where((a) => a.mode.toLowerCase() == 'online').length;
   int get _offlineCount => _filtered.where((a) => a.mode.toLowerCase() == 'offline').length;
 
@@ -219,33 +229,35 @@ class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
       backgroundColor: const Color(0xFFF5F6FA),
       appBar: _buildAppBar(),
       body: Padding(
-        padding: EdgeInsets.all(16.w),
+        padding: EdgeInsets.all(12.w),
         child: Column(
           children: [
             // Stats Row
             Row(
               children: [
                 _statCard('Total Bookings', '${_filtered.length}', Icons.event_available_rounded, Colors.blue),
-                SizedBox(width: 10.w),
+                SizedBox(width: 8.w),
                 _statCard('Total Revenue', _fmtCompact(_totalRevenue), Icons.payments_rounded, Colors.green),
               ],
             ),
-            SizedBox(height: 10.h),
+            SizedBox(height: 8.h),
             Row(
               children: [
-                _statCard('Online Mode', '$_onlineCount', Icons.language_rounded, _purple),
-                SizedBox(width: 10.w),
-                _statCard('Offline Mode', '$_offlineCount', Icons.storefront_rounded, Colors.orange),
+                _statCard('Total Business', _fmtCompact(_totalBusiness), Icons.business_center_rounded, Colors.indigo),
+                SizedBox(width: 8.w),
+                _statCard('Online', '$_onlineCount', Icons.language_rounded, _purple),
+                SizedBox(width: 8.w),
+                _statCard('Offline', '$_offlineCount', Icons.storefront_rounded, Colors.orange),
               ],
             ),
-            SizedBox(height: 16.h),
+            SizedBox(height: 12.h),
 
             // Report Container
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(12),
                   boxShadow: const [
                     BoxShadow(color: Color(0x12000000), blurRadius: 10, offset: Offset(0, 3)),
                   ],
@@ -253,53 +265,44 @@ class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Title
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 8.h),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('All Appointments Report',
-                              style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.black87)),
-                          Text('List of all appointments with status and payment tracking.',
-                              style: GoogleFonts.poppins(fontSize: 11.5, color: Colors.grey.shade500)),
-                        ],
-                      ),
-                    ),
-                    Divider(height: 1, color: Colors.grey.shade100),
-
                     // Toolbar
                     Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
                       child: Row(
                         children: [
                           Expanded(
                             child: SizedBox(
-                              height: 38.h,
+                              height: 34.h,
                               child: TextField(
                                 controller: _searchCtrl,
                                 onChanged: (v) { _searchText = v; _applyFilter(); },
-                                style: GoogleFonts.poppins(fontSize: 13),
+                                style: GoogleFonts.poppins(fontSize: 11.sp),
                                 decoration: InputDecoration(
-                                  prefixIcon: Icon(Icons.search_rounded, color: Colors.grey.shade400, size: 20),
-                                  hintText: 'Search client, service, staff…',
-                                  hintStyle: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade400),
+                                  prefixIcon: Icon(Icons.search_rounded, color: Colors.grey.shade400, size: 16.sp),
+                                  hintText: 'Search...',
+                                  hintStyle: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.grey.shade400),
                                   filled: true,
                                   fillColor: const Color(0xFFF5F6FA),
                                   contentPadding: EdgeInsets.zero,
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none),
                                 ),
                               ),
                             ),
                           ),
-                          SizedBox(width: 10.w),
+                          SizedBox(width: 8.w),
                           _toolbarBtn(
                             icon: Icons.filter_list_rounded,
-                            label: _dateRange != null ? 'Filtered' : 'Date Range',
+                            label: _dateRange != null ? 'Filtered' : 'Filter',
                             isActive: _dateRange != null,
                             onTap: _pickDateRange,
                           ),
-                          SizedBox(width: 10.w),
+                          SizedBox(width: 8.w),
+                          _toolbarBtn(
+                            icon: Icons.file_download_outlined,
+                            label: 'Export',
+                            onTap: () {},
+                          ),
+                          SizedBox(width: 8.w),
                           _toolbarBtn(
                             icon: Icons.refresh_rounded,
                             label: '',
@@ -332,41 +335,16 @@ class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
       backgroundColor: Colors.white,
       elevation: 0,
       automaticallyImplyLeading: false,
-      toolbarHeight: 60.h,
-      flexibleSpace: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          boxShadow: [BoxShadow(color: Color(0x1A000000), blurRadius: 6, offset: Offset(0, 2))],
-        ),
-      ),
+      toolbarHeight: 50.h,
       title: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black87, size: 20),
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black87, size: 18),
             onPressed: () => Navigator.pop(context),
           ),
           Expanded(
             child: Text('All Appointments',
-                style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.black87)),
-          ),
-          IconButton(
-            icon: const Icon(Icons.notifications_none_rounded, color: Colors.black87),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationPage())),
-          ),
-          GestureDetector(
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const My_Profile())),
-            child: Padding(
-              padding: EdgeInsets.only(right: 12.w),
-              child: Container(
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: _purple, width: 1.5)),
-                child: const CircleAvatar(
-                  radius: 17,
-                  backgroundImage: AssetImage('assets/images/profile.jpeg'),
-                  backgroundColor: Colors.white,
-                ),
-              ),
-            ),
+                style: GoogleFonts.poppins(fontSize: 14.sp, fontWeight: FontWeight.w600, color: Colors.black87)),
           ),
         ],
       ),
@@ -378,104 +356,47 @@ class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
     if (_errorMsg != null) return _buildErrorState();
     if (_filtered.isEmpty) return _buildEmptyState();
 
-    return Column(
-      children: [
-        // Table Header
-        Container(
-          color: const Color(0xFFF9F9FB),
-          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-          child: Row(
-            children: [
-              _hCell('Client / Service', flex: 4),
-              _hCell('Staff / Time', flex: 3),
-              _hCell('Status / Mode', flex: 3),
-              _hCell('Final Amount', flex: 2, right: true),
-            ],
-          ),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: SingleChildScrollView(
+        child: DataTable(
+          headingRowColor: MaterialStateProperty.all(const Color(0xFFF9F9FB)),
+          headingTextStyle: GoogleFonts.poppins(fontSize: 10.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
+          dataTextStyle: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.black87),
+          horizontalMargin: 12.w,
+          columnSpacing: 20.w,
+          columns: const [
+            DataColumn(label: Text('Client')),
+            DataColumn(label: Text('Services')),
+            DataColumn(label: Text('Staff')),
+            DataColumn(label: Text('Scheduled On')),
+            DataColumn(label: Text('Created On')),
+            DataColumn(label: Text('Time')),
+            DataColumn(label: Text('Duration')),
+            DataColumn(label: Text('Base Amt')),
+            DataColumn(label: Text('Platform Fee')),
+            DataColumn(label: Text('Service Tax')),
+            DataColumn(label: Text('Final Amt')),
+            DataColumn(label: Text('Status')),
+          ],
+          rows: _pageItems.map((a) => DataRow(cells: [
+            DataCell(Text(a.clientName)),
+            DataCell(Text(a.serviceName)),
+            DataCell(Text(a.staffName)),
+            DataCell(Text(a.formattedDate)),
+            DataCell(Text(a.formattedCreatedAt)),
+            DataCell(Text(a.startTime)),
+            DataCell(Text('${a.duration} min')),
+            DataCell(Text('₹${a.amount.toStringAsFixed(0)}')),
+            DataCell(Text('₹${a.platformFee.toStringAsFixed(0)}')),
+            DataCell(Text('₹${a.serviceTax.toStringAsFixed(0)}')),
+            DataCell(Text('₹${a.finalAmount.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold))),
+            DataCell(_statusBadge(a.status)),
+          ])).toList(),
         ),
-        Divider(height: 1, color: Colors.grey.shade200),
-
-        // Table Rows
-        Expanded(
-          child: ListView.separated(
-            itemCount: _pageItems.length,
-            separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.shade100),
-            itemBuilder: (_, i) => _buildRow(_pageItems[i], i),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRow(_Appointment a, int idx) {
-    return Container(
-      color: idx % 2 == 0 ? Colors.white : const Color(0xFFFAFAFF),
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
-      child: Row(
-        children: [
-          // Client & Service
-          Expanded(
-            flex: 4,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(a.clientName,
-                    style: GoogleFonts.poppins(fontSize: 12.5, fontWeight: FontWeight.w600, color: Colors.black87),
-                    overflow: TextOverflow.ellipsis),
-                Text(a.serviceName,
-                    style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey.shade500),
-                    overflow: TextOverflow.ellipsis),
-              ],
-            ),
-          ),
-          // Staff & Time
-          Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(a.staffName,
-                    style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.black87)),
-                Text(a.timeLabel,
-                    style: GoogleFonts.poppins(fontSize: 10.5, color: Colors.grey.shade500)),
-              ],
-            ),
-          ),
-          // Status & Mode
-          Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _statusBadge(a.status),
-                const SizedBox(height: 4),
-                _modeBadge(a.mode),
-              ],
-            ),
-          ),
-          // Amount
-          Expanded(
-            flex: 2,
-            child: Text(_fmtCurrency(a.finalAmount),
-                textAlign: TextAlign.right,
-                style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w700, color: _purple)),
-          ),
-        ],
       ),
     );
   }
-
-  // ── Table Helpers ───────────────────────────────────────────────────────────
-  Widget _hCell(String label, {int flex = 1, bool right = false}) {
-    return Expanded(
-      flex: flex,
-      child: Text(label,
-          textAlign: right ? TextAlign.right : TextAlign.left,
-          style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey.shade600)),
-    );
-  }
-
-  String _fmtCurrency(num v) => '₹${NumberFormat('#,##0').format(v)}';
 
   Widget _statusBadge(String status) {
     status = status.toLowerCase();
@@ -483,66 +404,54 @@ class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
     if (status == 'completed') { bg = const Color(0xFFE8F5E9); fg = const Color(0xFF2E7D32); }
     else if (status == 'scheduled') { bg = const Color(0xFFE3F2FD); fg = const Color(0xFF1565C0); }
     else if (status == 'cancelled') { bg = const Color(0xFFFFEBEE); fg = const Color(0xFFC62828); }
-    else if (status == 'temp-locked') { bg = const Color(0xFFFFF3E0); fg = const Color(0xFFEF6C00); }
     else { bg = const Color(0xFFF5F5F5); fg = const Color(0xFF757575); }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
       child: Text(status.toUpperCase(),
-          style: GoogleFonts.poppins(fontSize: 9, fontWeight: FontWeight.w700, color: fg)),
+          style: GoogleFonts.poppins(fontSize: 8.sp, fontWeight: FontWeight.w700, color: fg)),
     );
   }
 
-  Widget _modeBadge(String mode) {
-    final isOnline = mode.toLowerCase() == 'online';
-    return Row(
-      children: [
-        Icon(isOnline ? Icons.language_rounded : Icons.storefront_rounded,
-            size: 11, color: Colors.grey.shade400),
-        const SizedBox(width: 4),
-        Text(mode.toUpperCase(),
-            style: GoogleFonts.poppins(fontSize: 9.5, fontWeight: FontWeight.w500, color: Colors.grey.shade500)),
-      ],
-    );
-  }
-
-  // ── Generic States ─────────────────────────────────────────────────────────
   Widget _buildEmptyState() {
     return Center(
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.calendar_today_rounded, size: 50, color: Colors.grey.shade300),
+        Icon(Icons.calendar_today_rounded, size: 40.sp, color: Colors.grey.shade300),
         const SizedBox(height: 12),
-        Text('No appointments found', style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey.shade500)),
+        Text('No appointments found', style: GoogleFonts.poppins(fontSize: 12.sp, color: Colors.grey.shade500)),
       ]),
     );
   }
 
   Widget _buildErrorState() {
     return Center(
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const Icon(Icons.error_outline_rounded, size: 50, color: Colors.redAccent),
-        const SizedBox(height: 12),
-        Text('Oops! Failed to load data', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-        Padding(padding: const EdgeInsets.all(16), child: Text(_errorMsg!, textAlign: TextAlign.center, style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey))),
-        ElevatedButton(onPressed: _fetchData, style: ElevatedButton.styleFrom(backgroundColor: _purple), child: const Text('Retry', style: TextStyle(color: Colors.white))),
-      ]),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.error_outline_rounded, size: 40.sp, color: Colors.redAccent),
+          const SizedBox(height: 8),
+          Text('Failed to load data', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 12.sp)),
+          Text(_errorMsg!, textAlign: TextAlign.center, style: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.grey)),
+          const SizedBox(height: 12),
+          ElevatedButton(onPressed: _fetchData, style: ElevatedButton.styleFrom(backgroundColor: _purple), child: const Text('Retry', style: TextStyle(color: Colors.white))),
+        ]),
+      ),
     );
   }
 
-  // ── Footer ─────────────────────────────────────────────────────────────────
   Widget _buildPaginationFooter() {
     final start = _filtered.isEmpty ? 0 : _currentPage * _rowsPerPage + 1;
     final end = ((_currentPage + 1) * _rowsPerPage).clamp(0, _filtered.length);
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
       child: Row(
         children: [
           Text('Showing $start–$end of ${_filtered.length}',
-              style: GoogleFonts.poppins(fontSize: 11.5, color: Colors.grey.shade500)),
+              style: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.grey.shade500)),
           const Spacer(),
           _pageBtn(Icons.chevron_left_rounded, _currentPage > 0, () => setState(() => _currentPage--)),
-          SizedBox(width: 8.w),
+          SizedBox(width: 6.w),
           _pageBtn(Icons.chevron_right_rounded, _currentPage < _totalPages - 1, () => setState(() => _currentPage++)),
         ],
       ),
@@ -552,35 +461,36 @@ class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
   Widget _pageBtn(IconData icon, bool enabled, VoidCallback onTap) {
     return InkWell(
       onTap: enabled ? onTap : null,
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: BorderRadius.circular(4),
       child: Container(
         padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade200), borderRadius: BorderRadius.circular(6), color: enabled ? Colors.white : const Color(0xFFF5F6FA)),
-        child: Icon(icon, size: 18, color: enabled ? Colors.black54 : Colors.grey.shade200),
+        decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade200), borderRadius: BorderRadius.circular(4), color: enabled ? Colors.white : const Color(0xFFF5F6FA)),
+        child: Icon(icon, size: 16.sp, color: enabled ? Colors.black54 : Colors.grey.shade200),
       ),
     );
   }
 
-  // ── Components ──────────────────────────────────────────────────────────────
   Widget _statCard(String label, String value, IconData icon, Color color) {
     return Expanded(
       child: Container(
-        padding: EdgeInsets.all(12.w),
+        padding: EdgeInsets.all(10.w),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.15)),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withOpacity(0.1)),
         ),
         child: Row(
           children: [
-            CircleAvatar(radius: 16, backgroundColor: color.withOpacity(0.1), child: Icon(icon, size: 16, color: color)),
-            SizedBox(width: 10.w),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(value, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black87)),
-                Text(label, style: GoogleFonts.poppins(fontSize: 10, color: Colors.grey.shade500)),
-              ],
+            CircleAvatar(radius: 14, backgroundColor: color.withOpacity(0.1), child: Icon(icon, size: 14, color: color)),
+            SizedBox(width: 8.w),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(value, style: GoogleFonts.poppins(fontSize: 12.sp, fontWeight: FontWeight.w700, color: Colors.black87), overflow: TextOverflow.ellipsis),
+                  Text(label, style: GoogleFonts.poppins(fontSize: 8.sp, color: Colors.grey.shade500), overflow: TextOverflow.ellipsis),
+                ],
+              ),
             ),
           ],
         ),
@@ -591,23 +501,24 @@ class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
   Widget _toolbarBtn({required IconData icon, required String label, required VoidCallback onTap, bool isActive = false, bool isIconOnly = false}) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(6),
       child: Container(
-        height: 38.h,
-        padding: EdgeInsets.symmetric(horizontal: isIconOnly ? 8 : 12),
+        height: 34.h,
+        padding: EdgeInsets.symmetric(horizontal: isIconOnly ? 8 : 10),
         decoration: BoxDecoration(
           color: isActive ? _purple.withOpacity(0.08) : const Color(0xFFF5F6FA),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(6),
           border: Border.all(color: isActive ? _purple : Colors.grey.shade200),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 18, color: isActive ? _purple : Colors.grey.shade600),
-            if (!isIconOnly) ...[const SizedBox(width: 6), Text(label, style: GoogleFonts.poppins(fontSize: 12, color: isActive ? _purple : Colors.grey.shade600, fontWeight: isActive ? FontWeight.w600 : FontWeight.normal))],
+            Icon(icon, size: 16, color: isActive ? _purple : Colors.grey.shade600),
+            if (!isIconOnly) ...[const SizedBox(width: 4), Text(label, style: GoogleFonts.poppins(fontSize: 10.sp, color: isActive ? _purple : Colors.grey.shade600, fontWeight: isActive ? FontWeight.w600 : FontWeight.normal))],
           ],
         ),
       ),
     );
   }
 }
+
