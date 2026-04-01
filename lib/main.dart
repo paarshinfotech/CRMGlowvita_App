@@ -7,8 +7,31 @@ import 'utils/navigator_key.dart';
 import 'intro_page.dart';
 import 'Dashboard.dart';
 import 'Suppliers/supp_dashboard.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'services/notification_service.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
-void main() {
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  debugPrint('Handling background message: ${message.messageId}');
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    debugPrint('❌ Firebase Initialization Error: $e');
+    debugPrint('Ensure google-services.json is in android/app/');
+  }
+  
+  // Set background messaging handler early
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  
+  // Initialize notification service
+  await NotificationService().initialize();
+  
   runApp(const MyApp());
 }
 

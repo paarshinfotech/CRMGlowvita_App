@@ -5,6 +5,9 @@ import 'vendor_model.dart';
 import 'services/api_service.dart';
 import 'my_Profile.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'controllers/notification_controller.dart';
+import 'models/notification_model.dart';
+import 'package:intl/intl.dart';
 
 class NotificationPage extends StatefulWidget {
   const NotificationPage({super.key});
@@ -13,40 +16,30 @@ class NotificationPage extends StatefulWidget {
   State<NotificationPage> createState() => _NotificationPageState();
 }
 
-class _NotificationPageState extends State<NotificationPage> {
+class _NotificationPageState extends State<NotificationPage> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  final NotificationController _controller = NotificationController();
   VendorProfile? _profile;
-  // Sample notification data
-  final List<Map<String, dynamic>> notifications = [
-    {
-      'id': '1',
-      'title': 'Appointment Reminder',
-      'channels': ['Push', 'SMS'],
-      'target': 'All Online',
-      'date': '2025-11-20 09:00 AM',
-      'status': 'Sent',
-    },
-    {
-      'id': '2',
-      'title': 'Special Offer',
-      'channels': ['Push'],
-      'target': 'Specific Clients',
-      'date': '2025-11-19 02:30 PM',
-      'status': 'Sent',
-    },
-    {
-      'id': '3',
-      'title': 'Service Update',
-      'channels': ['SMS'],
-      'target': 'All Staffs',
-      'date': '2025-11-18 11:15 AM',
-      'status': 'Scheduled',
-    },
-  ];
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _fetchProfile();
+    _controller.addListener(_onControllerUpdate);
+    _controller.fetchNotifications();
+    _controller.fetchBroadcastLogs(); // Fetch CRM Broadcasts
+  }
+
+  void _onControllerUpdate() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_onControllerUpdate);
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchProfile() async {
@@ -100,79 +93,184 @@ class _NotificationPageState extends State<NotificationPage> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildStatsSection(),
-            const SizedBox(height: 16),
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => _showCreateNotificationDialog(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).primaryColor,
-                  foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  elevation: 0,
-                ),
-                child: Text(
-                  'Create New Notification',
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
+      body: Column(
+        children: [
+          _buildStatsSection(),
+          TabBar(
+            controller: _tabController,
+            tabs: const [
+              Tab(text: 'Inbox'),
+              Tab(text: 'Sent Broadcasts'),
+            ],
+            labelColor: Theme.of(context).primaryColor,
+            unselectedLabelColor: Colors.grey,
+            indicatorColor: Theme.of(context).primaryColor,
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildInboxSection(),
+                _buildSentSection(),
+              ],
             ),
-            const SizedBox(height: 20),
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                'Notification History',
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            _buildNotificationHistory(),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  // ---------- Stats section (SMS + Most Targeted on second line) ----------
+  Widget _buildInboxSection() {
+    if (_controller.isLoading && _controller.notifications.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_controller.notifications.isEmpty) {
+      return Center(
+        child: Text(
+          'No received notifications yet.',
+          style: GoogleFonts.poppins(color: Colors.grey),
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _controller.notifications.length,
+      itemBuilder: (context, index) {
+        final notification = _controller.notifications[index];
+        return _buildInboxCard(notification);
+      },
+    );
+  }
+
+  Widget _buildSentSection() {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 16),
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => _showCreateNotificationDialog(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                elevation: 0,
+              ),
+              child: Text(
+                'Create New Notification',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              'Broadcast History',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          _buildNotificationHistory(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInboxCard(NotificationModel notification) {
+    final Color typeColor = _controller.getColorForType(notification.type);
+    final IconData typeIcon = _controller.getIconForType(notification.type);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: notification.isRead ? Colors.white : typeColor.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: notification.isRead ? Colors.grey.shade200 : typeColor.withOpacity(0.2),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: typeColor.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(typeIcon, color: typeColor, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      notification.title,
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black,
+                      ),
+                    ),
+                    Text(
+                      DateFormat('MMM d, hh:mm a').format(notification.createdAt),
+                      style: GoogleFonts.poppins(
+                        fontSize: 10,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  notification.body,
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (!notification.isRead)
+            Padding(
+              padding: const EdgeInsets.only(left: 8.0, top: 2),
+              child: CircleAvatar(
+                radius: 4,
+                backgroundColor: typeColor,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ---------- Stats section (Using Dynamic Data) ----------
 
   Widget _buildStatsSection() {
-    final totalSent = notifications.where((n) => n['status'] == 'Sent').length;
-    final pushSent = notifications
-        .where((n) => n['channels'].contains('Push') && n['status'] == 'Sent')
-        .length;
-    final smsSent = notifications
-        .where((n) => n['channels'].contains('SMS') && n['status'] == 'Sent')
-        .length;
-
-    String mostTargeted = 'None';
-    if (notifications.isNotEmpty) {
-      final targetCounts = <String, int>{};
-      for (var notification in notifications) {
-        final target = notification['target'] as String;
-        targetCounts[target] = (targetCounts[target] ?? 0) + 1;
-      }
-      if (targetCounts.isNotEmpty) {
-        mostTargeted = targetCounts.entries
-            .reduce((a, b) => a.value > b.value ? a : b)
-            .key;
-      }
-    }
+    final stats = _controller.broadcastStats;
+    final totalSent = stats['total'] ?? 0;
+    final pushSent = stats['pushSent'] ?? 0;
+    final smsSent = stats['smsSent'] ?? 0;
+    final mostTargeted = stats['mostTargeted'] ?? 'None';
 
     return Container(
       margin: const EdgeInsets.all(16),
@@ -271,24 +369,31 @@ class _NotificationPageState extends State<NotificationPage> {
   // ---------- Notification history ----------
 
   Widget _buildNotificationHistory() {
+    if (_controller.isLoading && _controller.broadcastLogs.isEmpty) {
+      return const Center(child: Padding(
+        padding: EdgeInsets.all(20.0),
+        child: CircularProgressIndicator(),
+      ));
+    }
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
-        children: notifications
-            .map((notification) => _buildNotificationCard(notification))
+        children: _controller.broadcastLogs
+            .map((notification) => _buildNotificationCard(notification as Map<String, dynamic>))
             .toList(),
       ),
     );
   }
 
   Widget _buildNotificationCard(Map<String, dynamic> notification) {
-    final status = notification['status'] as String;
-    final channels = notification['channels'] as List<String>;
+    // Determine status color based on presence or fields
+    final status = notification['status'] ?? 'Sent';
+    final channels = List<String>.from(notification['channels'] ?? ['Push']);
 
     Color statusColor;
     switch (status) {
       case 'Sent':
-        statusColor = Theme.of(context).primaryColor; // active brand color
+        statusColor = Theme.of(context).primaryColor;
         break;
       case 'Scheduled':
         statusColor = Colors.orange;
@@ -356,9 +461,11 @@ class _NotificationPageState extends State<NotificationPage> {
               children: [
                 _buildInfoRow('Channel', channels.join(', ')),
                 const SizedBox(height: 6),
-                _buildInfoRow('Target', notification['target'] as String),
+                _buildInfoRow('Target', notification['targetType'] ?? notification['target'] ?? 'All'),
                 const SizedBox(height: 6),
-                _buildInfoRow('Date', notification['date'] as String),
+                _buildInfoRow('Date', notification['createdAt'] != null 
+                  ? DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(notification['createdAt'])) 
+                  : (notification['date'] ?? 'N/A')),
               ],
             ),
           ),
@@ -432,70 +539,49 @@ class _NotificationPageState extends State<NotificationPage> {
     );
   }
 
-  // ---------- Edit & Delete using reusable dialog ----------
+  // ---------- Broadcast CRUD Operations ----------
 
   void _editNotification(Map<String, dynamic> notification) {
-    final index = notifications.indexOf(notification);
-    if (index == -1) return;
-
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return NotificationDialog(
-          mode: NotificationDialogMode.edit,
-          initialNotification: notification,
-          onSubmit: (updated) {
-            setState(() {
-              notifications[index] = updated;
-            });
-          },
-        );
-      },
+    // Optional: Implement broadcast editing if API supports it
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Edit broadcast is coming soon.')),
     );
   }
 
   void _deleteNotification(Map<String, dynamic> notification) {
-    final index = notifications.indexOf(notification);
-    if (index == -1) return;
+    final id = notification['_id'] ?? notification['id'];
+    if (id == null) return;
 
     showDialog(
       context: context,
       builder: (ctx) {
         return AlertDialog(
           title: Text(
-            'Delete Notification',
+            'Delete Broadcast Log',
             style: GoogleFonts.poppins(
               fontSize: 15,
               fontWeight: FontWeight.w600,
             ),
           ),
           content: Text(
-            'Are you sure you want to delete this notification?',
+            'Are you sure you want to delete this broadcast log?',
             style: GoogleFonts.poppins(fontSize: 12),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text(
-                'Cancel',
-                style: GoogleFonts.poppins(fontSize: 11),
-              ),
+              child: Text('Cancel', style: GoogleFonts.poppins(fontSize: 11)),
             ),
             ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  notifications.removeAt(index);
-                });
-                Navigator.pop(ctx);
+              onPressed: () async {
+                await _controller.deleteBroadcast(id);
+                if (mounted) Navigator.pop(ctx);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFDC2626),
                 foregroundColor: Colors.white,
               ),
-              child: Text(
-                'Delete',
-                style: GoogleFonts.poppins(fontSize: 11),
-              ),
+              child: Text('Delete', style: GoogleFonts.poppins(fontSize: 11)),
             ),
           ],
         );
@@ -503,18 +589,19 @@ class _NotificationPageState extends State<NotificationPage> {
     );
   }
 
-  // ---------- Create (reusing same dialog) ----------
-
   void _showCreateNotificationDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (ctx) {
         return NotificationDialog(
           mode: NotificationDialogMode.create,
-          onSubmit: (data) {
-            setState(() {
-              notifications.insert(0, data);
-            });
+          onSubmit: (data) async {
+            final success = await _controller.createBroadcast(data);
+            if (success && mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Broadcast sent successfully!')),
+              );
+            }
           },
         );
       },
@@ -545,6 +632,7 @@ class NotificationDialog extends StatefulWidget {
 class _NotificationDialogState extends State<NotificationDialog> {
   late TextEditingController _titleController;
   late TextEditingController _contentController;
+  late TextEditingController _targetsController;
   late bool _pushSelected;
   late bool _smsSelected;
   late String _target;
@@ -559,16 +647,19 @@ class _NotificationDialogState extends State<NotificationDialog> {
     _titleController =
         TextEditingController(text: n?['title'] as String? ?? '');
     _contentController = TextEditingController();
-    final channels = (n?['channels'] as List<String>? ?? []);
+    _targetsController = TextEditingController(
+        text: (n?['targets'] as List? ?? []).join(', '));
+    final channels = (n?['channels'] as List<dynamic>? ?? []);
     _pushSelected = channels.isEmpty || channels.contains('Push');
     _smsSelected = channels.contains('SMS');
-    _target = n?['target'] as String? ?? 'All Online';
+    _target = n?['targetType'] as String? ?? 'all_online_clients';
   }
 
   @override
   void dispose() {
     _titleController.dispose();
     _contentController.dispose();
+    _targetsController.dispose();
     super.dispose();
   }
 
@@ -598,64 +689,65 @@ class _NotificationDialogState extends State<NotificationDialog> {
             ),
           ],
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    dialogTitle,
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF111827),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      dialogTitle,
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF111827),
+                      ),
                     ),
                   ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close, size: 18),
-                  splashRadius: 18,
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: GoogleFonts.poppins(
-                fontSize: 11,
-                color: const Color(0xFF6B7280),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close, size: 18),
+                    splashRadius: 18,
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 16),
-
-            // Channels
-            Text(
-              'Channels',
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF111827),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  color: const Color(0xFF6B7280),
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                _channelCheckbox(
-                  label: 'Push Notification',
-                  value: _pushSelected,
-                  onChanged: (v) => setState(() => _pushSelected = v ?? false),
+              const SizedBox(height: 16),
+  
+              // Channels
+              Text(
+                'Channels',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF111827),
                 ),
-                const SizedBox(width: 16),
-                _channelCheckbox(
-                  label: 'SMS',
-                  value: _smsSelected,
-                  onChanged: (v) => setState(() => _smsSelected = v ?? false),
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  _channelCheckbox(
+                    label: 'Push Notification',
+                    value: _pushSelected,
+                    onChanged: (v) => setState(() => _pushSelected = v ?? false),
+                  ),
+                  const SizedBox(width: 16),
+                  _channelCheckbox(
+                    label: 'SMS',
+                    value: _smsSelected,
+                    onChanged: (v) => setState(() => _smsSelected = v ?? false),
+                  ),
+                ],
+              ),
             const SizedBox(height: 16),
 
             // Title
@@ -743,30 +835,63 @@ class _NotificationDialogState extends State<NotificationDialog> {
               children: [
                 _audienceRadio(
                   label: 'All Online',
-                  value: 'All Online',
+                  value: 'all_online_clients',
                   groupValue: _target,
-                  onChanged: (v) => setState(() => _target = v ?? 'All Online'),
+                  onChanged: (v) => setState(() => _target = v ?? 'all_online_clients'),
                 ),
                 _audienceRadio(
                   label: 'All Offline',
-                  value: 'All Offline',
+                  value: 'all_offline_clients',
                   groupValue: _target,
-                  onChanged: (v) => setState(() => _target = v ?? 'All Online'),
+                  onChanged: (v) => setState(() => _target = v ?? 'all_online_clients'),
                 ),
                 _audienceRadio(
                   label: 'Specific Clients',
-                  value: 'Specific Clients',
+                  value: 'specific_clients',
                   groupValue: _target,
-                  onChanged: (v) => setState(() => _target = v ?? 'All Online'),
+                  onChanged: (v) => setState(() => _target = v ?? 'all_online_clients'),
                 ),
                 _audienceRadio(
                   label: 'All Staffs',
-                  value: 'All Staffs',
+                  value: 'all_staffs',
                   groupValue: _target,
-                  onChanged: (v) => setState(() => _target = v ?? 'All Online'),
+                  onChanged: (v) => setState(() => _target = v ?? 'all_online_clients'),
                 ),
               ],
             ),
+
+            if (_target == 'specific_clients') ...[
+              const SizedBox(height: 16),
+              Text(
+                'Client Emails (comma separated)',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF111827),
+                ),
+              ),
+              TextField(
+                controller: _targetsController,
+                decoration: InputDecoration(
+                  hintText: 'e.g., client1@email.com, client2@email.com',
+                  hintStyle: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: const Color(0xFF9CA3AF),
+                  ),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                  border: const UnderlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFFE5E7EB)),
+                  ),
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(
+                        color: Theme.of(context).primaryColor, width: 1.4),
+                  ),
+                ),
+                style: GoogleFonts.poppins(fontSize: 11),
+              ),
+            ],
+            
             const SizedBox(height: 18),
 
             Row(
@@ -810,12 +935,16 @@ class _NotificationDialogState extends State<NotificationDialog> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   void _submit() {
-    if (_titleController.text.trim().isEmpty) {
-      Navigator.of(context).pop();
+    final title = _titleController.text.trim();
+    final content = _contentController.text.trim();
+
+    if (title.isEmpty || content.isEmpty) {
+      // Basic validation
       return;
     }
 
@@ -824,14 +953,20 @@ class _NotificationDialogState extends State<NotificationDialog> {
       if (_smsSelected) 'SMS',
     ];
 
-    final base = widget.initialNotification ?? {};
+    final List<String> targetList = _target == 'specific_clients'
+        ? _targetsController.text
+            .split(',')
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList()
+        : [];
+
     final data = {
-      'id': base['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
-      'title': _titleController.text.trim(),
+      'title': title,
+      'content': content,
       'channels': channels,
-      'target': _target,
-      'date': base['date'] ?? 'Just now',
-      'status': base['status'] ?? 'Sent',
+      'targetType': _target,
+      'targets': targetList,
     };
 
     widget.onSubmit(data);
