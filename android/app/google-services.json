@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "944758332419",
+    "project_id": "glowvitasalon-94026",
+    "storage_bucket": "glowvitasalon-94026.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:944758332419:android:91839bac675a944b144236",
+        "android_client_info": {
+          "package_name": "com.paarsh.glow_vita_salon"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCQH-irRoGytDHvvktsFz8CvKssV5lcivc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:944758332419:android:6b9fe7a2e7849ee8144236",
+        "android_client_info": {
+          "package_name": "com.paarsh.glowvitacrm"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCQH-irRoGytDHvvktsFz8CvKssV5lcivc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
