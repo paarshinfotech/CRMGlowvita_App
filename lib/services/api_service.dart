@@ -239,15 +239,18 @@ class B2BOrder {
 
   factory B2BOrder.fromJson(Map<String, dynamic> json) {
     return B2BOrder(
-      id: json['_id'] ?? '',
-      orderId: json['orderId'] ?? '',
-      vendorId: json['vendorId'] ?? '',
-      supplierId: json['supplierId'] ?? '',
-      status: json['status'] ?? '',
+      id: json['_id']?.toString() ?? '',
+      orderId: json['orderId']?.toString() ?? '',
+      vendorId: json['vendorId']?.toString() ?? '',
+      supplierId: json['supplierId']?.toString() ?? '',
+      status: json['status']?.toString() ?? '',
       totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? 0.0,
-      shippingAddress: json['shippingAddress'] ?? '',
+      shippingAddress: json['shippingAddress'] is Map
+          ? (json['shippingAddress']['formattedAddress'] ??
+              json['shippingAddress'].toString())
+          : (json['shippingAddress']?.toString() ?? ''),
       createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
+          ? DateTime.parse(json['createdAt'].toString())
           : DateTime.now(),
       items: (json['items'] as List?)
               ?.map((i) => OrderItem.fromJson(i))
@@ -257,8 +260,8 @@ class B2BOrder {
               ?.map((s) => StatusHistory.fromJson(s))
               .toList() ??
           [],
-      courier: json['courier'],
-      trackingNumber: json['trackingNumber'],
+      courier: json['courier']?.toString(),
+      trackingNumber: json['trackingNumber']?.toString(),
     );
   }
 }
@@ -300,10 +303,10 @@ class ClientOrder {
 
   factory ClientOrder.fromJson(Map<String, dynamic> json) {
     return ClientOrder(
-      id: json['_id'] ?? '',
-      userId: json['userId'] ?? '',
-      vendorId: json['vendorId'] ?? '',
-      regionId: json['regionId'] ?? '',
+      id: json['_id']?.toString() ?? '',
+      userId: json['userId']?.toString() ?? '',
+      vendorId: json['vendorId']?.toString() ?? '',
+      regionId: json['regionId']?.toString() ?? '',
       items: (json['items'] as List?)
               ?.map((i) => ClientOrderItem.fromJson(i))
               .toList() ??
@@ -311,15 +314,18 @@ class ClientOrder {
       totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? 0.0,
       shippingAmount: (json['shippingAmount'] as num?)?.toDouble() ?? 0.0,
       taxAmount: (json['taxAmount'] as num?)?.toDouble() ?? 0.0,
-      shippingAddress: json['shippingAddress'] ?? '',
-      contactNumber: json['contactNumber'] ?? '',
-      paymentMethod: json['paymentMethod'] ?? '',
-      status: json['status'] ?? 'Pending',
+      shippingAddress: json['shippingAddress'] is Map
+          ? (json['shippingAddress']['formattedAddress'] ??
+              json['shippingAddress'].toString())
+          : (json['shippingAddress']?.toString() ?? ''),
+      contactNumber: json['contactNumber']?.toString() ?? '',
+      paymentMethod: json['paymentMethod']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'Pending',
       createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
+          ? DateTime.parse(json['createdAt'].toString())
           : DateTime.now(),
-      courier: json['courier'],
-      trackingNumber: json['trackingNumber'],
+      courier: json['courier']?.toString(),
+      trackingNumber: json['trackingNumber']?.toString(),
     );
   }
 }
@@ -424,8 +430,8 @@ class OrderItem {
 
   factory OrderItem.fromJson(Map<String, dynamic> json) {
     return OrderItem(
-      productId: json['productId'] ?? '',
-      productName: json['productName'] ?? '',
+      productId: json['productId']?.toString() ?? '',
+      productName: json['productName']?.toString() ?? '',
       quantity: json['quantity'] ?? 0,
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
     );
@@ -1289,8 +1295,14 @@ class ApiService {
     try {
       final response = await _get('$baseUrl/crm/orders');
       if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => B2BOrder.fromJson(json)).toList();
+        final decoded = json.decode(response.body);
+        List<dynamic> ordersData = [];
+        if (decoded is List) {
+          ordersData = decoded;
+        } else if (decoded is Map) {
+          ordersData = decoded['data'] ?? decoded['orders'] ?? [];
+        }
+        return ordersData.map((json) => B2BOrder.fromJson(json)).toList();
       } else {
         throw Exception(
             'Failed to load orders: ${response.statusCode} - ${response.body}');
@@ -1306,8 +1318,14 @@ class ApiService {
     try {
       final response = await _get('$baseUrl/crm/client-orders');
       if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => ClientOrder.fromJson(json)).toList();
+        final decoded = json.decode(response.body);
+        List<dynamic> ordersData = [];
+        if (decoded is List) {
+          ordersData = decoded;
+        } else if (decoded is Map) {
+          ordersData = decoded['data'] ?? decoded['orders'] ?? [];
+        }
+        return ordersData.map((json) => ClientOrder.fromJson(json)).toList();
       } else {
         throw Exception(
             'Failed to load client orders: ${response.statusCode} - ${response.body}');
