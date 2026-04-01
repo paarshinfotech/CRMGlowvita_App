@@ -12,6 +12,7 @@ import '../addon_model.dart';
 import '../vendor_model.dart';
 import '../billing_invoice_model.dart';
 import 'marketplace_models.dart';
+import '../supplier_model.dart';
 
 class StaffMember {
   final String? id;
@@ -463,6 +464,10 @@ class ApiService {
   static final ValueNotifier<VendorProfile?> vendorProfileNotifier =
       ValueNotifier<VendorProfile?>(null);
 
+  // Static notifier for supplier profile
+  static final ValueNotifier<SupplierProfile?> supplierProfileNotifier =
+      ValueNotifier<SupplierProfile?>(null);
+
   // Get auth token from shared preferences
   static Future<String?> _getAuthToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -799,7 +804,58 @@ class ApiService {
     }
   }
 
-  // Get online clients
+  // ==================== SUPPLIER PROFILE ==================== //
+
+  static Future<SupplierProfile> getSupplierProfile() async {
+    try {
+      final response = await _get('$baseUrl/crm/supplier-profile');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          final profile = SupplierProfile.fromJson(data['data']);
+          supplierProfileNotifier.value = profile;
+          return profile;
+        } else {
+          throw Exception(
+              'Failed to load supplier profile: ${data['message'] ?? 'Unknown error'}');
+        }
+      } else {
+        throw Exception(
+            'Failed to load supplier profile: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching supplier profile: $e');
+      rethrow;
+    }
+  }
+
+  static Future<SupplierProfile> updateSupplierProfile(
+      Map<String, dynamic> profileData) async {
+    try {
+      final response = await _put('$baseUrl/crm/supplier-profile', profileData);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          final profile = SupplierProfile.fromJson(data['data']);
+          supplierProfileNotifier.value = profile;
+          return profile;
+        } else {
+          throw Exception(
+              'Failed to update supplier profile: ${data['message'] ?? 'Unknown error'}');
+        }
+      } else {
+        throw Exception(
+            'Failed to update supplier profile: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error updating supplier profile: $e');
+      rethrow;
+    }
+  }
+
+  // ==================== CLIENTS ==================== //
   static Future<List<Customer>> getOnlineClients() async {
     try {
       final response = await _get('$baseUrl$clientsEndpoint?source=online');
