@@ -665,6 +665,7 @@ class _ProductDetailsDialog extends StatelessWidget {
                         const SizedBox(height: 10),
 
                         // Status & Visibility
+                        const SizedBox(height: 10),
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.all(10),

@@ -757,6 +757,24 @@ class ApiService {
     );
   }
 
+  // Send OTP for email verification
+  static Future<http.Response> sendOtp(String email) async {
+    return await _post(
+      '$baseUrl/crm/auth/send-otp',
+      {'email': email},
+      useAuth: false,
+    );
+  }
+
+  // Verify OTP for email verification
+  static Future<http.Response> verifyOtp(String email, String otp) async {
+    return await _post(
+      '$baseUrl/crm/auth/verify-otp',
+      {'email': email, 'otp': otp},
+      useAuth: false,
+    );
+  }
+
   // Get all clients
   static Future<List<Customer>> getClients() async {
     try {

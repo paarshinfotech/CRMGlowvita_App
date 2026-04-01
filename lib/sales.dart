@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -1196,53 +1196,54 @@ class _SalesPageState extends State<SalesPage>
           ),
           const SizedBox(height: 12),
           // Staff Selection Dropdown
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.badge_outlined,
-                      size: 16, color: Color(0xFF6366F1)),
-                  const SizedBox(width: 6),
-                  Text('Assign Staff Member',
-                      style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: _text)),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: _border, width: 0.8),
+          if (_tabController.index == 0)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.badge_outlined,
+                        size: 16, color: Color(0xFF6366F1)),
+                    const SizedBox(width: 6),
+                    Text('Assign Staff Member',
+                        style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: _text)),
+                  ],
                 ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<StaffMember?>(
-                    value: selectedStaff,
-                    isExpanded: true,
-                    icon: const Icon(Icons.arrow_drop_down, color: _muted),
-                    hint: Text('Select Staff',
-                        style:
-                            GoogleFonts.poppins(fontSize: 12, color: _muted)),
-                    items: staffList.map((staff) {
-                      return DropdownMenuItem<StaffMember?>(
-                        value: staff,
-                        child: Text(staff.fullName ?? '',
-                            style: GoogleFonts.poppins(
-                                fontSize: 12, color: _text)),
-                      );
-                    }).toList(),
-                    onChanged: (StaffMember? value) {
-                      setState(() => selectedStaff = value);
-                    },
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: _border, width: 0.8),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<StaffMember?>(
+                      value: selectedStaff,
+                      isExpanded: true,
+                      icon: const Icon(Icons.arrow_drop_down, color: _muted),
+                      hint: Text('Select Staff',
+                          style:
+                              GoogleFonts.poppins(fontSize: 12, color: _muted)),
+                      items: staffList.map((staff) {
+                        return DropdownMenuItem<StaffMember?>(
+                          value: staff,
+                          child: Text(staff.fullName ?? '',
+                              style: GoogleFonts.poppins(
+                                  fontSize: 12, color: _text)),
+                        );
+                      }).toList(),
+                      onChanged: (StaffMember? value) {
+                        setState(() => selectedStaff = value);
+                      },
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
           const SizedBox(height: 10),
         ],
 
@@ -1409,53 +1410,54 @@ class _SalesPageState extends State<SalesPage>
           child: Column(
             children: [
               _billingLine('Subtotal', '₹${subtotal.toStringAsFixed(2)}'),
-              // Tax Toggle Row
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        SizedBox(
-                          height: 24,
-                          width: 24,
-                          child: Checkbox(
-                            value: applyTax,
-                            activeColor: _primary,
-                            onChanged: (val) {
-                              setState(() => applyTax = val ?? false);
-                            },
+              // Tax Toggle Row (Only for services)
+              if (_tabController.index == 0)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          SizedBox(
+                            height: 24,
+                            width: 24,
+                            child: Checkbox(
+                              value: applyTax,
+                              activeColor: _primary,
+                              onChanged: (val) {
+                                setState(() => applyTax = val ?? false);
+                              },
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                                'Apply Taxes (${profileTaxRate.toStringAsFixed(1)}%)',
-                                style: GoogleFonts.poppins(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: _text)),
-                            Text('Configured in Profile',
-                                style: GoogleFonts.poppins(
-                                    fontSize: 11,
-                                    color: _muted,
-                                    fontWeight: FontWeight.w400)),
-                          ],
-                        ),
-                      ],
-                    ),
-                    Text('₹${tax.toStringAsFixed(2)}',
-                        style: GoogleFonts.poppins(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: _text)),
-                  ],
+                          const SizedBox(width: 8),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                  'Apply Taxes (${profileTaxRate.toStringAsFixed(1)}%)',
+                                  style: GoogleFonts.poppins(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                      color: _text)),
+                              Text('Configured in Profile',
+                                  style: GoogleFonts.poppins(
+                                      fontSize: 11,
+                                      color: _muted,
+                                      fontWeight: FontWeight.w400)),
+                            ],
+                          ),
+                        ],
+                      ),
+                      Text('₹${tax.toStringAsFixed(2)}',
+                          style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: _text)),
+                    ],
+                  ),
                 ),
-              ),
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 8),
                 child: Divider(height: 1, color: Color(0xFFF1F5F9)),
@@ -2170,23 +2172,27 @@ class _SalesPageState extends State<SalesPage>
                                 children: [
                                   _priceLine('Subtotal',
                                       '₹${(data['subtotal'] ?? 0).toStringAsFixed(2)}'),
-                                  _priceLine('Discount',
-                                      '-₹${(data['discountAmount'] ?? 0).toStringAsFixed(2)}',
-                                      color: const Color(0xFF22C55E)),
-                                  _priceLine('Tax (${data['taxRate'] ?? 0}%)',
-                                      '₹${(data['taxAmount'] ?? 0).toStringAsFixed(2)}'),
-                                  _priceLine('Platform Fee',
-                                      '₹${(data['platformFee'] ?? 0).toStringAsFixed(2)}'),
+                                  if ((data['discountAmount'] ?? 0) > 0)
+                                    _priceLine('Discount',
+                                        '-₹${(data['discountAmount'] ?? 0).toStringAsFixed(2)}',
+                                        color: const Color(0xFF22C55E)),
+                                  if ((data['taxAmount'] ?? 0) > 0)
+                                    _priceLine('Tax (${data['taxRate'] ?? 0}%)',
+                                        '₹${(data['taxAmount'] ?? 0).toStringAsFixed(2)}'),
+                                  if ((data['platformFee'] ?? 0) > 0)
+                                    _priceLine('Platform Fee',
+                                        '₹${(data['platformFee'] ?? 0).toStringAsFixed(2)}'),
                                   Divider(
                                       height: 12.h,
                                       color: Colors.grey.withOpacity(0.2)),
                                   _priceLine('Total',
                                       '₹${(data['totalAmount'] ?? 0).toStringAsFixed(2)}',
                                       isBold: true),
-                                  _priceLine('Balance',
-                                      '₹${(data['totalAmount'] ?? 0).toStringAsFixed(2)}',
-                                      isBold: true,
-                                      color: const Color(0xFFEF4444)),
+                                  if ((data['balance'] ?? 0) > 0)
+                                    _priceLine('Balance',
+                                        '₹${(data['balance'] ?? 0).toStringAsFixed(2)}',
+                                        isBold: true,
+                                        color: const Color(0xFFEF4444)),
                                 ],
                               ),
                             ),

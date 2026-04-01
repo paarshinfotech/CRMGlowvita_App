@@ -406,8 +406,8 @@ class _DashboardPageState extends State<DashboardPage>
                       valueListenable: ApiService.vendorProfileNotifier,
                       builder: (context, vendorProfile, _) {
                         final sub = vendorProfile?.subscription;
-                        final bool isActive = sub != null &&
-                            sub.status.toLowerCase() == 'active';
+                        final bool isActive =
+                            sub != null && sub.status.toLowerCase() == 'active';
                         final bool isExpired = sub != null &&
                             sub.endDate != null &&
                             sub.endDate!.isBefore(DateTime.now());
@@ -444,7 +444,8 @@ class _DashboardPageState extends State<DashboardPage>
                                           const NotificationPage())),
                             ),
                             GestureDetector(
-                              onTap: () => Navigator.push(context,
+                              onTap: () => Navigator.push(
+                                  context,
                                   MaterialPageRoute(
                                       builder: (_) => My_Profile())),
                               child: Padding(
