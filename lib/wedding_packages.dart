@@ -4,6 +4,7 @@ import 'widgets/custom_drawer.dart';
 import 'add_wedding_package.dart';
 import 'services/api_service.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import 'widgets/subscription_wrapper.dart';
 
 class WeddingPackagePage extends StatefulWidget {
   const WeddingPackagePage({super.key});
@@ -141,206 +142,207 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
           const SizedBox(width: 12),
         ],
       ),
-      body: Column(
-        children: [
-          // ── Search + Filter + Add ──────────────────────────
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-            child: Column(
-              children: [
-                // Search bar
-                SizedBox(
-                  height: 38,
-                  child: TextField(
-                    controller: _searchController,
-                    style: GoogleFonts.poppins(fontSize: 12),
-                    onChanged: (v) {
-                      searchQuery = v;
-                      _applyFilters();
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'Search by name or description....',
-                      hintStyle: GoogleFonts.poppins(
-                          fontSize: 12, color: Colors.grey.shade400),
-                      prefixIcon: Icon(Icons.search,
-                          size: 17, color: Colors.grey.shade400),
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 0),
-                      isDense: true,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
+      body: SubscriptionWrapper(
+        child: Column(
+          children: [
+            // ── Search + Filter + Add ──────────────────────────
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+              child: Column(
+                children: [
+                  // Search bar
+                  SizedBox(
+                    height: 38,
+                    child: TextField(
+                      controller: _searchController,
+                      style: GoogleFonts.poppins(fontSize: 12),
+                      onChanged: (v) {
+                        searchQuery = v;
+                        _applyFilters();
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Search by name or description....',
+                        hintStyle: GoogleFonts.poppins(
+                            fontSize: 12, color: Colors.grey.shade400),
+                        prefixIcon: Icon(Icons.search,
+                            size: 17, color: Colors.grey.shade400),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 0),
+                        isDense: true,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(
+                              color: Theme.of(context).primaryColor, width: 1.2),
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
                       ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(
-                            color: Theme.of(context).primaryColor, width: 1.2),
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
                     ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                // Filter + Add New
-                Row(
-                  children: [
-                    Expanded(
-                      child: SizedBox(
-                        height: 38,
-                        child: DropdownButtonFormField<String>(
-                          value: _statusFilter,
-                          style: GoogleFonts.poppins(
-                              fontSize: 12, color: Colors.grey.shade800),
-                          decoration: InputDecoration(
-                            isDense: true,
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 9),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide:
-                                  BorderSide(color: Colors.grey.shade300),
+                  const SizedBox(height: 8),
+                  // Filter + Add New
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 38,
+                          child: DropdownButtonFormField<String>(
+                            value: _statusFilter,
+                            style: GoogleFonts.poppins(
+                                fontSize: 12, color: Colors.grey.shade800),
+                            decoration: InputDecoration(
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 9),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide:
+                                    BorderSide(color: Colors.grey.shade300),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide:
+                                    BorderSide(color: Colors.grey.shade300),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(
+                                    color: Theme.of(context).primaryColor,
+                                    width: 1.2),
+                              ),
+                              filled: true,
+                              fillColor: Colors.white,
                             ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide:
-                                  BorderSide(color: Colors.grey.shade300),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(
-                                  color: Theme.of(context).primaryColor,
-                                  width: 1.2),
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                          ),
-                          icon: Icon(Icons.keyboard_arrow_down_rounded,
-                              size: 18, color: Colors.grey.shade500),
-                          dropdownColor: Colors.white,
-                          items: _statusOptions
-                              .map((s) => DropdownMenuItem(
-                                    value: s,
-                                    child: Text(s,
-                                        style:
-                                            GoogleFonts.poppins(fontSize: 12)),
-                                  ))
-                              .toList(),
-                          onChanged: (v) {
-                            if (v != null) {
-                              setState(() => _statusFilter = v);
-                              _applyFilters();
-                            }
-                          },
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    SizedBox(
-                      height: 38,
-                      child: ElevatedButton.icon(
-                        onPressed: _showCreatePackageForm,
-                        icon: const Icon(Icons.add_rounded,
-                            size: 16, color: Colors.white),
-                        label: Text(
-                          'Add New',
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).primaryColor,
-                          elevation: 0,
-                          shadowColor: Colors.transparent,
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // ── Body ───────────────────────────────────────────
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-                    child: Column(
-                      children: [
-                        // Stat Cards 2×2
-                        GridView.count(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 10,
-                          mainAxisSpacing: 10,
-                          childAspectRatio: 2.6,
-                          children: [
-                            _buildStatCard(
-                              emoji: '🏷️',
-                              label: 'Total Packages',
-                              value: '$_totalPackages',
-                            ),
-                            _buildStatCard(
-                              emoji: '💰',
-                              label: 'Average\nPackage Price',
-                              value: '₹ ${_avgPrice.toStringAsFixed(0)}',
-                            ),
-                            _buildStatCard(
-                              emoji: '👑',
-                              label: 'Services in Top\nPackage',
-                              value: _popularPackage,
-                              valueSize: 11,
-                            ),
-                            _buildStatCard(
-                              emoji: '⏱️',
-                              label: 'Average Package\nDuration',
-                              value:
-                                  '${_avgDurationHours.toStringAsFixed(1)} Hours',
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 14),
-
-                        // Package list
-                        if (_filteredPackages.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 40),
-                            child: Center(
-                              child: Text('No packages found',
-                                  style: GoogleFonts.poppins(
-                                      color: Colors.grey, fontSize: 12)),
-                            ),
-                          )
-                        else
-                          ListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: _filteredPackages.length,
-                            itemBuilder: (context, index) {
-                              final pkg = _filteredPackages[index];
-                              return _buildPackageCard(pkg);
+                            icon: Icon(Icons.keyboard_arrow_down_rounded,
+                                size: 18, color: Colors.grey.shade500),
+                            dropdownColor: Colors.white,
+                            items: _statusOptions
+                                .map((s) => DropdownMenuItem(
+                                      value: s,
+                                      child: Text(s,
+                                          style: GoogleFonts.poppins(fontSize: 12)),
+                                    ))
+                                .toList(),
+                            onChanged: (v) {
+                              if (v != null) {
+                                setState(() => _statusFilter = v);
+                                _applyFilters();
+                              }
                             },
                           ),
-                      ],
-                    ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      SizedBox(
+                        height: 38,
+                        child: ElevatedButton.icon(
+                          onPressed: _showCreatePackageForm,
+                          icon: const Icon(Icons.add_rounded,
+                              size: 16, color: Colors.white),
+                          label: Text(
+                            'Add New',
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(context).primaryColor,
+                            elevation: 0,
+                            shadowColor: Colors.transparent,
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-          ),
-        ],
+                ],
+              ),
+            ),
+
+            // ── Body ───────────────────────────────────────────
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                      child: Column(
+                        children: [
+                          // Stat Cards 2×2
+                          GridView.count(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
+                            childAspectRatio: 2.6,
+                            children: [
+                              _buildStatCard(
+                                emoji: '🏷️',
+                                label: 'Total Packages',
+                                value: '$_totalPackages',
+                              ),
+                              _buildStatCard(
+                                emoji: '💰',
+                                label: 'Average\nPackage Price',
+                                value: '₹ ${_avgPrice.toStringAsFixed(0)}',
+                              ),
+                              _buildStatCard(
+                                emoji: '👑',
+                                label: 'Services in Top\nPackage',
+                                value: _popularPackage,
+                                valueSize: 11,
+                              ),
+                              _buildStatCard(
+                                emoji: '⏱️',
+                                label: 'Average Package\nDuration',
+                                value:
+                                    '${_avgDurationHours.toStringAsFixed(1)} Hours',
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 14),
+
+                          // Package list
+                          if (_filteredPackages.isEmpty)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 40),
+                              child: Center(
+                                child: Text('No packages found',
+                                    style: GoogleFonts.poppins(
+                                        color: Colors.grey, fontSize: 12)),
+                              ),
+                            )
+                          else
+                            ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: _filteredPackages.length,
+                              itemBuilder: (context, index) {
+                                final pkg = _filteredPackages[index];
+                                return _buildPackageCard(pkg);
+                              },
+                            ),
+                        ],
+                      ),
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }

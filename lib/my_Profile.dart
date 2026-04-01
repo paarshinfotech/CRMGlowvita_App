@@ -378,7 +378,13 @@ class _My_ProfileState extends State<My_Profile>
     _salonNameController.text = profile.businessName;
     _descriptionController.text = profile.description;
     _profileImageController.text = profile.profileImage;
-    _selectedCategory = profile.category;
+    _selectedCategory = profile.category.toLowerCase();
+    // Normalize category to match dropdown items if necessary
+    if (_selectedCategory == "men") _selectedCategory = "male";
+    if (_selectedCategory == "women") _selectedCategory = "female";
+    if (!["unisex", "male", "female"].contains(_selectedCategory)) {
+      _selectedCategory = "unisex"; // Fallback
+    }
     _taxRateController.text = profile.taxes?.taxValue.toString() ?? "0.0";
 
     if (profile.bankDetails != null) {
@@ -573,6 +579,9 @@ class _My_ProfileState extends State<My_Profile>
 
   @override
   Widget build(BuildContext context) {
+    final bool isExpired =
+        _profile?.subscription?.status.toLowerCase() == 'expired';
+
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAFA),
       appBar: AppBar(
@@ -589,51 +598,55 @@ class _My_ProfileState extends State<My_Profile>
               GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w600),
         ),
       ),
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          SliverToBoxAdapter(child: _buildHeader()),
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _SliverTabBarDelegate(
-              tabBar: TabBar(
-                controller: _tabController,
-                isScrollable: true,
-                labelColor: Colors.black87,
-                unselectedLabelColor: Colors.grey.shade600,
-                indicatorColor: Colors.black87,
-                indicatorWeight: 2.4,
-                labelStyle: GoogleFonts.inter(
-                    fontSize: 11.sp, fontWeight: FontWeight.w600),
-                unselectedLabelStyle: GoogleFonts.inter(fontSize: 11.sp),
-                tabs: const [
-                  Tab(text: "Profile"),
-                  Tab(text: "Subscription"),
-                  Tab(text: "Travel Settings"),
-                  Tab(text: "Gallery"),
-                  Tab(text: "Bank Details"),
-                  Tab(text: "Documents"),
-                  Tab(text: "Opening Hours"),
-                  Tab(text: "SMS Packages"),
-                  Tab(text: "Categories"),
-                ],
+      body: Stack(
+        children: [
+          NestedScrollView(
+            headerSliverBuilder: (context, innerBoxIsScrolled) => [
+              SliverToBoxAdapter(child: _buildHeader()),
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _SliverTabBarDelegate(
+                  tabBar: TabBar(
+                    controller: _tabController,
+                    isScrollable: true,
+                    labelColor: Colors.black87,
+                    unselectedLabelColor: Colors.grey.shade600,
+                    indicatorColor: Colors.black87,
+                    indicatorWeight: 2.4,
+                    labelStyle: GoogleFonts.inter(
+                        fontSize: 11.sp, fontWeight: FontWeight.w600),
+                    unselectedLabelStyle: GoogleFonts.inter(fontSize: 11.sp),
+                    tabs: const [
+                      Tab(text: "Profile"),
+                      Tab(text: "Subscription"),
+                      Tab(text: "Travel Settings"),
+                      Tab(text: "Gallery"),
+                      Tab(text: "Bank Details"),
+                      Tab(text: "Documents"),
+                      Tab(text: "Opening Hours"),
+                      Tab(text: "SMS Packages"),
+                      Tab(text: "Categories"),
+                    ],
+                  ),
+                ),
               ),
+            ],
+            body: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildProfileTab(),
+                _buildSubscriptionTab(),
+                _buildTravelSettingsTab(),
+                _buildGalleryTab(),
+                _buildBankDetailsTab(),
+                _buildDocumentsTab(),
+                _buildOpeningHoursTab(),
+                _buildSMSPackagesTab(),
+                _buildCategoriesTab(),
+              ],
             ),
           ),
         ],
-        body: TabBarView(
-          controller: _tabController,
-          children: [
-            _buildProfileTab(),
-            _buildSubscriptionTab(),
-            _buildTravelSettingsTab(),
-            _buildGalleryTab(),
-            _buildBankDetailsTab(),
-            _buildDocumentsTab(),
-            _buildOpeningHoursTab(),
-            _buildSMSPackagesTab(),
-            _buildCategoriesTab(),
-          ],
-        ),
       ),
     );
   }
@@ -813,7 +826,10 @@ class _My_ProfileState extends State<My_Profile>
           SizedBox(height: 6.h),
           _dropdown(
               ["unisex", "male", "female"],
-              _selectedCategory.toLowerCase(),
+              ["unisex", "male", "female"]
+                      .contains(_selectedCategory.toLowerCase())
+                  ? _selectedCategory.toLowerCase()
+                  : "unisex",
               (v) => setState(() => _selectedCategory = v!)),
           SizedBox(height: 20.h),
           _label("Sub Categories"),
@@ -914,79 +930,174 @@ class _My_ProfileState extends State<My_Profile>
     final endDateStr = sub.endDate != null
         ? DateFormat('dd MMM yyyy').format(sub.endDate!)
         : "N/A";
-    final daysRemaining = sub.endDate != null
-        ? sub.endDate!.difference(DateTime.now()).inDays
-        : 0;
+
+    final totalDays =
+        (sub.endDate?.difference(sub.startDate ?? DateTime.now()).inDays ??
+                29) +
+            1;
+    final daysRemaining =
+        (sub.endDate?.difference(DateTime.now()).inDays ?? 0) + 1;
+    final progress =
+        totalDays > 1 ? (1 - (daysRemaining / totalDays)).clamp(0.0, 1.0) : 1.0;
 
     return SingleChildScrollView(
-      padding: EdgeInsets.all(20.w),
+      padding: EdgeInsets.all(16.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("My Subscription",
-              style: GoogleFonts.inter(
-                  fontSize: 13.sp, fontWeight: FontWeight.w700)),
-          SizedBox(height: 20.h),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text("My Subscription",
+                  style: GoogleFonts.inter(
+                      fontSize: 12.sp, fontWeight: FontWeight.w700)),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                decoration: BoxDecoration(
+                  color: sub.status.toLowerCase() == 'active'
+                      ? Colors.green.shade50
+                      : Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(6.r),
+                ),
+                child: Text(
+                  sub.status.toUpperCase(),
+                  style: GoogleFonts.inter(
+                    fontSize: 8.sp,
+                    fontWeight: FontWeight.w800,
+                    color: sub.status.toLowerCase() == 'active'
+                        ? Colors.green.shade700
+                        : Colors.red.shade700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12.h),
           Container(
             padding: EdgeInsets.all(16.w),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8.r),
-              border: Border.all(color: Colors.grey.shade200),
+              color: const Color(0xFFF8F8F8),
+              borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(color: Colors.grey.shade100),
             ),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSubItem("Status", sub.status,
-                    color: sub.status.toLowerCase() == 'active'
-                        ? Colors.green
-                        : Colors.red),
-                _buildSubItem("Plan", sub.plan?.name ?? "N/A"),
-                _buildSubItem("Days Remaining", "$daysRemaining Days"),
-                _buildSubItem("Start Date", startDateStr),
-                _buildSubItem("End Date", endDateStr),
-                SizedBox(height: 16.h),
-                LinearProgressIndicator(
-                  value:
-                      daysRemaining > 0 ? (daysRemaining / 365).clamp(0, 1) : 0,
-                  backgroundColor: Colors.grey.shade200,
-                  color: Colors.green.shade400,
-                  minHeight: 6.h,
-                  borderRadius: BorderRadius.circular(4.r),
+                // Row 1: Status (Plan Name) and Days Remaining
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _buildSubDetailItem("Plan Name", sub.plan?.name ?? "N/A",
+                        isBold: true),
+                    _buildSubDetailItem(
+                        "Days Remaining", "$daysRemaining days left",
+                        isBold: true, statusColor: Colors.purple.shade700),
+                  ],
                 ),
                 SizedBox(height: 16.h),
+                // Row 2: Start Day and End Day
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _buildSubDetailItem("Start Date", startDateStr),
+                    _buildSubDetailItem("End Date", endDateStr),
+                  ],
+                ),
+                SizedBox(height: 20.h),
+                // Progress
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text("Subscription Progress",
+                            style: GoogleFonts.inter(
+                                fontSize: 9.sp,
+                                color: Colors.grey.shade600,
+                                fontWeight: FontWeight.w600)),
+                        Text("$daysRemaining days left",
+                            style: GoogleFonts.inter(
+                                fontSize: 9.sp,
+                                color: Colors.grey.shade600,
+                                fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                    SizedBox(height: 6.h),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4.r),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 6.h,
+                        backgroundColor: Colors.grey.shade200,
+                        valueColor: AlwaysStoppedAnimation<Color>(progress > 0.8
+                            ? Colors.orange
+                            : const Color(0xFF432C39)),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 24.h),
+                // Buttons
                 Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton(
-                          onPressed: () {
-                            if (_profile?.subscription != null) {
-                              showDialog(
-                                context: context,
-                                builder: (context) => _ChangePlanDialog(
-                                  currentPlan: _profile!.subscription!.plan,
-                                ),
-                              );
-                            }
-                          },
-                          child: Text("Change Plan",
-                              style: GoogleFonts.inter(fontSize: 10.sp))),
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (context) => ChangePlanDialog(
+                              currentPlan: sub.plan,
+                              onPlanChanged: () {
+                                _fetchProfileData();
+                              },
+                            ),
+                          );
+                        },
+                        icon: Icon(Icons.sync_rounded,
+                            size: 14.sp, color: Colors.white),
+                        label: Text("Change Plan",
+                            style: GoogleFonts.inter(
+                                fontSize: 10.sp,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF432C39),
+                          elevation: 0,
+                          padding: EdgeInsets.symmetric(vertical: 12.h),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.r)),
+                        ),
+                      ),
                     ),
                     SizedBox(width: 12.w),
                     Expanded(
-                      child: OutlinedButton(
-                          onPressed: () {
-                            if (_profile?.subscription != null) {
-                              showDialog(
-                                context: context,
-                                builder: (context) =>
-                                    _SubscriptionHistoryDialog(
-                                  history: _profile!.subscription!.history,
-                                ),
-                              );
-                            }
-                          },
-                          child: Text("View History",
-                              style: GoogleFonts.inter(fontSize: 10.sp))),
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          await _fetchProfileData();
+                          if (mounted && _profile?.subscription != null) {
+                            showDialog(
+                              context: context,
+                              builder: (context) => _SubscriptionHistoryDialog(
+                                history: _profile?.subscription?.history ?? [],
+                              ),
+                            );
+                          }
+                        },
+                        icon: Icon(Icons.history_rounded,
+                            size: 14.sp, color: Colors.black87),
+                        label: Text("View History",
+                            style: GoogleFonts.inter(
+                                fontSize: 10.sp,
+                                color: Colors.black87,
+                                fontWeight: FontWeight.w600)),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: Colors.grey.shade300),
+                          padding: EdgeInsets.symmetric(vertical: 12.h),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.r)),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -995,6 +1106,41 @@ class _My_ProfileState extends State<My_Profile>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSubDetailItem(String title, String value,
+      {bool isStatus = false, Color? statusColor, bool isBold = false}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title,
+            style:
+                GoogleFonts.inter(fontSize: 9.sp, color: Colors.grey.shade600)),
+        SizedBox(height: 4.h),
+        if (isStatus)
+          Row(
+            children: [
+              Container(
+                width: 8.w,
+                height: 8.w,
+                decoration: BoxDecoration(
+                  color: statusColor ?? Colors.green,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              SizedBox(width: 6.w),
+              Text(value,
+                  style: GoogleFonts.inter(
+                      fontSize: 10.sp, fontWeight: FontWeight.w700)),
+            ],
+          )
+        else
+          Text(value,
+              style: GoogleFonts.inter(
+                  fontSize: 10.sp,
+                  fontWeight: isBold ? FontWeight.w800 : FontWeight.w700)),
+      ],
     );
   }
 
@@ -1568,25 +1714,6 @@ class _My_ProfileState extends State<My_Profile>
     );
   }
 
-  Widget _buildSubItem(String label, String value, {Color? color}) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: 12.h),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label,
-              style: GoogleFonts.inter(
-                  fontSize: 11.sp, color: Colors.grey.shade600)),
-          Text(value,
-              style: GoogleFonts.inter(
-                  fontSize: 11.sp,
-                  fontWeight: FontWeight.w600,
-                  color: color ?? Colors.black87)),
-        ],
-      ),
-    );
-  }
-
   Widget _labelWithInfo(String text, String info) {
     return Row(
       children: [
@@ -1723,7 +1850,9 @@ class _My_ProfileState extends State<My_Profile>
           borderRadius: BorderRadius.circular(6.r)),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
-          value: value,
+          value: (items.isNotEmpty && items.contains(value))
+              ? value
+              : (items.isNotEmpty ? items.first : null),
           isExpanded: true,
           padding: EdgeInsets.symmetric(horizontal: 12.w),
           items: items
@@ -1899,228 +2028,250 @@ class _SubscriptionHistoryDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Sort history to show latest first if not already sorted
+    final sortedHistory = List<History>.from(history)
+      ..sort((a, b) =>
+          (b.startDate ?? DateTime(0)).compareTo(a.startDate ?? DateTime(0)));
+
     return Dialog(
       backgroundColor: Colors.white,
       insetPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 24.h),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12.r),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Header
-          Padding(
-            padding: EdgeInsets.fromLTRB(20.w, 20.h, 12.w, 12.h),
-            child: Row(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+      child: Container(
+        padding: EdgeInsets.all(20.w),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header
+            Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Subscription History',
-                        style: GoogleFonts.inter(
-                          fontSize: 15.sp,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.black,
-                        ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Subscription History',
+                      style: GoogleFonts.inter(
+                        fontSize: 15.sp,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF2D2D2D),
                       ),
-                      SizedBox(height: 4.h),
-                      Text(
-                        'Your complete subscription payment history',
-                        style: GoogleFonts.inter(
-                          fontSize: 10.sp,
-                          color: Colors.grey.shade600,
-                        ),
+                    ),
+                    SizedBox(height: 4.h),
+                    Text(
+                      'Your complete subscription payment history',
+                      style: GoogleFonts.inter(
+                        fontSize: 9.sp,
+                        color: Colors.grey.shade500,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: Icon(Icons.close, size: 18.sp, color: Colors.black87),
+                  icon: Icon(Icons.close, size: 18.sp, color: Colors.grey),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   visualDensity: VisualDensity.compact,
                 ),
               ],
             ),
-          ),
+            SizedBox(height: 16.h),
+            const Divider(height: 1, color: Color(0xFFF2F2F2)),
+            SizedBox(height: 16.h),
 
-          const Divider(height: 1),
-
-          // Table Header
-          Container(
-            color: Colors.grey.shade50,
-            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
-            child: Row(
-              children: [
-                Expanded(flex: 3, child: _headerCell("Date")),
-                Expanded(flex: 2, child: _headerCell("Plan")),
-                Expanded(flex: 2, child: _headerCell("Payment Mode")),
-                Expanded(flex: 2, child: _headerCell("Duration")),
-                Expanded(
-                    flex: 2,
-                    child: _headerCell("Status", align: TextAlign.right)),
-              ],
-            ),
-          ),
-
-          const Divider(height: 1),
-
-          // Data List
-          Flexible(
-            child: history.isEmpty
-                ? Padding(
-                    padding: EdgeInsets.all(40.w),
-                    child: Center(
-                      child: Text(
-                        "No history found",
-                        style: GoogleFonts.inter(
-                            fontSize: 11.sp, color: Colors.grey),
-                      ),
-                    ),
-                  )
-                : SingleChildScrollView(
-                    child: Column(
-                      children: history.map((item) {
-                        return Column(
-                          children: [
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 20.w, vertical: 14.h),
-                              child: Row(
-                                children: [
-                                  // Date
-                                  Expanded(
-                                    flex: 3,
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          item.startDate != null
-                                              ? DateFormat('MMM dd, yyyy')
-                                                  .format(item.startDate!)
-                                              : "N/A",
-                                          style: GoogleFonts.inter(
-                                            fontSize: 10.5.sp,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.black87,
-                                          ),
-                                        ),
-                                        if (item.startDate != null)
-                                          Text(
-                                            DateFormat('hh:mm a')
-                                                .format(item.startDate!),
-                                            style: GoogleFonts.inter(
-                                              fontSize: 8.5.sp,
-                                              color: Colors.grey.shade500,
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-
-                                  // Plan
-                                  Expanded(
-                                    flex: 2,
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          item.plan,
-                                          style: GoogleFonts.inter(
-                                            fontSize: 10.5.sp,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.black87,
-                                          ),
-                                        ),
-                                        Text(
-                                          "Paid Plan",
-                                          style: GoogleFonts.inter(
-                                            fontSize: 8.5.sp,
-                                            color: Colors.grey.shade500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                  // Payment Mode
-                                  Expanded(
-                                    flex: 2,
-                                    child: Text(
-                                      item.paymentMode ?? "Online",
-                                      style: GoogleFonts.inter(
-                                        fontSize: 10.5.sp,
-                                        color: Colors.grey.shade700,
-                                      ),
-                                    ),
-                                  ),
-
-                                  // Duration
-                                  Expanded(
-                                    flex: 2,
-                                    child: Text(
-                                      _calculateDuration(
-                                          item.startDate, item.endDate),
-                                      style: GoogleFonts.inter(
-                                        fontSize: 10.5.sp,
-                                        color: Colors.grey.shade700,
-                                      ),
-                                    ),
-                                  ),
-
-                                  // Status
-                                  Expanded(
-                                    flex: 2,
-                                    child: Align(
-                                      alignment: Alignment.centerRight,
-                                      child: _statusBadge(item.status),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const Divider(height: 1, indent: 20, endIndent: 20),
-                          ],
-                        );
-                      }).toList(),
+            // History Container (Table)
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9FAFB),
+                borderRadius: BorderRadius.circular(10.r),
+                border: Border.all(color: const Color(0xFFEEEEEE)),
+              ),
+              child: Column(
+                children: [
+                  // Table Header
+                  Padding(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
+                    child: Row(
+                      children: [
+                        Expanded(flex: 3, child: _headerCell("Date")),
+                        Expanded(flex: 2, child: _headerCell("Plan")),
+                        Expanded(flex: 2, child: _headerCell("Payment Mode")),
+                        Expanded(flex: 2, child: _headerCell("Duration")),
+                        Expanded(
+                            flex: 2,
+                            child:
+                                _headerCell("Status", align: TextAlign.right)),
+                      ],
                     ),
                   ),
-          ),
+                  const Divider(height: 1, color: Color(0xFFEEEEEE)),
 
-          // Footer
-          Padding(
-            padding: EdgeInsets.all(16.w),
-            child: Align(
+                  // Data List
+                  Container(
+                    color: Colors.white,
+                    child: sortedHistory.isEmpty
+                        ? Padding(
+                            padding: EdgeInsets.all(40.w),
+                            child: Center(
+                              child: Text(
+                                "No history records found",
+                                style: GoogleFonts.inter(
+                                    fontSize: 10.sp, color: Colors.grey),
+                              ),
+                            ),
+                          )
+                        : Column(
+                            children:
+                                sortedHistory.asMap().entries.map((entry) {
+                              final index = entry.key;
+                              final item = entry.value;
+                              final isLast = index == sortedHistory.length - 1;
+                              final isCurrent = index == 0; // Latest one
+
+                              return Column(
+                                children: [
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 12.w, vertical: 14.h),
+                                    child: Row(
+                                      children: [
+                                        // Date Column
+                                        Expanded(
+                                          flex: 3,
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                item.startDate != null
+                                                    ? DateFormat('MMM d, yyyy')
+                                                        .format(item.startDate!)
+                                                    : "N/A",
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 8.sp,
+                                                  fontWeight: FontWeight.w700,
+                                                  color:
+                                                      const Color(0xFF2D2D2D),
+                                                ),
+                                              ),
+                                              if (item.startDate != null)
+                                                Text(
+                                                  DateFormat('hh:mm a')
+                                                      .format(item.startDate!),
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 8.sp,
+                                                    color: Colors.grey.shade400,
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+
+                                        // Plan Column
+                                        Expanded(
+                                          flex: 2,
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                "N/A", // Matches screenshot "N/A"
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 8.sp,
+                                                  fontWeight: FontWeight.w700,
+                                                  color:
+                                                      const Color(0xFF2D2D2D),
+                                                ),
+                                              ),
+                                              Text(
+                                                "Paid Plan",
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 7.sp,
+                                                  color: Colors.grey.shade400,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+
+                                        // Payment Mode
+                                        Expanded(
+                                          flex: 2,
+                                          child: Text(
+                                            item.paymentMode ?? "Online",
+                                            style: GoogleFonts.inter(
+                                              fontSize: 8.sp,
+                                              color: const Color(0xFF4B4B4B),
+                                            ),
+                                          ),
+                                        ),
+
+                                        // Duration
+                                        Expanded(
+                                          flex: 2,
+                                          child: Text(
+                                            _calculateDuration(
+                                                item.startDate, item.endDate),
+                                            style: GoogleFonts.inter(
+                                              fontSize: 8.sp,
+                                              color: const Color(0xFF4B4B4B),
+                                            ),
+                                          ),
+                                        ),
+
+                                        // Status
+                                        Expanded(
+                                          flex: 2,
+                                          child: Align(
+                                            alignment: Alignment.centerRight,
+                                            child: _statusBadge(
+                                                item.status, isCurrent),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (!isLast)
+                                    const Divider(
+                                        height: 1, color: Color(0xFFF2F2F2)),
+                                ],
+                              );
+                            }).toList(),
+                          ),
+                  ),
+                ],
+              ),
+            ),
+
+            SizedBox(height: 24.h),
+
+            // Footer Button
+            Align(
               alignment: Alignment.centerRight,
               child: OutlinedButton(
                 onPressed: () => Navigator.pop(context),
                 style: OutlinedButton.styleFrom(
                   padding:
-                      EdgeInsets.symmetric(horizontal: 24.w, vertical: 10.h),
-                  side: BorderSide(color: Colors.grey.shade300),
+                      EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+                  side: BorderSide(color: Colors.grey.shade200),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8.r)),
                 ),
                 child: Text(
                   "Close",
                   style: GoogleFonts.inter(
-                    fontSize: 11.sp,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black,
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87,
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -2130,42 +2281,30 @@ class _SubscriptionHistoryDialog extends StatelessWidget {
       text,
       textAlign: align,
       style: GoogleFonts.inter(
-        fontSize: 10.sp,
+        fontSize: 7.sp,
         fontWeight: FontWeight.w700,
-        color: Colors.grey.shade700,
-        letterSpacing: 0.2,
+        color: const Color(0xFF4B4B4B),
       ),
     );
   }
 
-  Widget _statusBadge(String status) {
-    Color color = Colors.grey;
-    Color bgColor = Colors.grey.shade100;
-
-    if (status.toLowerCase().contains('active')) {
-      color = Colors.green.shade700;
-      bgColor = Colors.green.shade50;
-    } else if (status.toLowerCase().contains('expired')) {
-      color = Colors.red.shade700;
-      bgColor = Colors.red.shade50;
-    } else if (status.toLowerCase().contains('pending')) {
-      color = Colors.orange.shade700;
-      bgColor = Colors.orange.shade50;
-    }
+  Widget _statusBadge(String status, bool isLatest) {
+    final String label = (isLatest && status.toLowerCase() == 'active')
+        ? "Active • Current"
+        : status;
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(10.r),
-        border: Border.all(color: color.withOpacity(0.1)),
+        color: const Color(0xFFECFDF5),
+        borderRadius: BorderRadius.circular(20.r),
       ),
       child: Text(
-        status,
+        label,
         style: GoogleFonts.inter(
-          fontSize: 9.sp,
-          fontWeight: FontWeight.w600,
-          color: color,
+          fontSize: 6.sp,
+          fontWeight: FontWeight.w700,
+          color: const Color(0xFF10B981),
         ),
       ),
     );
@@ -2181,22 +2320,78 @@ class _SubscriptionHistoryDialog extends StatelessWidget {
 // ──────────────────────────────────────────────
 //  Change Plan Dialog (Internal)
 // ──────────────────────────────────────────────
-class _ChangePlanDialog extends StatefulWidget {
+class ChangePlanDialog extends StatefulWidget {
   final Plan? currentPlan;
+  final VoidCallback onPlanChanged;
 
-  const _ChangePlanDialog({this.currentPlan});
+  const ChangePlanDialog({this.currentPlan, required this.onPlanChanged});
 
   @override
-  State<_ChangePlanDialog> createState() => _ChangePlanDialogState();
+  State<ChangePlanDialog> createState() => _ChangePlanDialogState();
 }
 
-class _ChangePlanDialogState extends State<_ChangePlanDialog> {
+class _ChangePlanDialogState extends State<ChangePlanDialog> {
+  List<Plan> _plans = [];
+  bool _isLoading = true;
   String? _selectedPlanId;
+  bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
     _selectedPlanId = widget.currentPlan?.id;
+    _fetchPlans();
+  }
+
+  Future<void> _fetchPlans() async {
+    try {
+      final plans = await ApiService.getSubscriptionPlans();
+      setState(() {
+        _plans = plans;
+        _isLoading = false;
+        // If current plan is not in the list, don't auto-select it unless it matches ID
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error fetching plans: $e")),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleRenew() async {
+    if (_selectedPlanId == null) return;
+
+    final selectedPlan = _plans.firstWhere((p) => p.id == _selectedPlanId);
+
+    setState(() => _isSaving = true);
+    try {
+      final success = await ApiService.renewSubscription(
+        planId: selectedPlan.id,
+        userType: 'vendor',
+        amount: (selectedPlan.discountedPrice > 0 &&
+                selectedPlan.discountedPrice < selectedPlan.price)
+            ? selectedPlan.discountedPrice
+            : selectedPlan.price,
+      );
+
+      if (success && mounted) {
+        widget.onPlanChanged();
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Subscription updated successfully")),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to update subscription: $e")),
+        );
+      }
+    }
   }
 
   @override
@@ -2257,91 +2452,99 @@ class _ChangePlanDialogState extends State<_ChangePlanDialog> {
           // Plan Selection Area
           Container(
             color: Colors.grey.shade50,
-            padding: EdgeInsets.all(24.w),
-            child: Column(
-              children: [
-                // Plan Card
-                GestureDetector(
-                  onTap: () => setState(() => _selectedPlanId = '6-month-mock'),
-                  child: Container(
-                    width: 160.w,
-                    padding:
-                        EdgeInsets.symmetric(vertical: 24.h, horizontal: 16.w),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12.r),
-                      border: Border.all(
-                        color: _selectedPlanId == '6-month-mock'
-                            ? const Color(0xFF9E8DA5)
-                            : Colors.grey.shade200,
-                        width: 1.5,
+            constraints: BoxConstraints(maxHeight: 380.h),
+            padding: EdgeInsets.symmetric(vertical: 20.h, horizontal: 12.w),
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(color: Colors.black87))
+                : _plans.isEmpty
+                    ? Center(
+                        child: Text("No plans available",
+                            style: GoogleFonts.inter(fontSize: 10.sp)))
+                    : GridView.builder(
+                        shrinkWrap: true,
+                        itemCount: _plans.length,
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 8.w,
+                          mainAxisSpacing: 8.h,
+                          childAspectRatio: 0.7,
+                        ),
+                        itemBuilder: (context, index) {
+                          final plan = _plans[index];
+                          final isSelected = _selectedPlanId == plan.id;
+                          final hasDiscount = plan.discountedPrice > 0 &&
+                              plan.discountedPrice < plan.price;
+
+                          return GestureDetector(
+                            onTap: () =>
+                                setState(() => _selectedPlanId = plan.id),
+                            child: Container(
+                              padding: EdgeInsets.all(8.w),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? const Color(0xFFFDF7FF)
+                                    : Colors.white,
+                                borderRadius: BorderRadius.circular(10.r),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? const Color(0xFF9E8DA5)
+                                      : Colors.grey.shade200,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    plan.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.inter(
+                                        fontSize: 10.sp,
+                                        fontWeight: FontWeight.w800),
+                                  ),
+                                  SizedBox(height: 2.h),
+                                  Text(
+                                    "${plan.duration} ${plan.durationType}",
+                                    style: GoogleFonts.inter(
+                                        fontSize: 8.sp,
+                                        color: Colors.grey.shade600),
+                                  ),
+                                  const Spacer(),
+                                  if (hasDiscount)
+                                    Text(
+                                      "₹${plan.price}",
+                                      style: GoogleFonts.inter(
+                                          fontSize: 8.sp,
+                                          color: Colors.grey.shade400,
+                                          decoration:
+                                              TextDecoration.lineThrough),
+                                    ),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text("₹",
+                                          style: GoogleFonts.inter(
+                                              fontSize: 8.sp,
+                                              fontWeight: FontWeight.w700)),
+                                      Text(
+                                        (hasDiscount
+                                                ? plan.discountedPrice
+                                                : plan.price)
+                                            .toString(),
+                                        style: GoogleFonts.inter(
+                                            fontSize: 13.sp,
+                                            fontWeight: FontWeight.w800),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.03),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          "6month",
-                          style: GoogleFonts.inter(
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        SizedBox(height: 12.h),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Text(
-                              "₹",
-                              style: GoogleFonts.inter(
-                                fontSize: 18.sp,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.black,
-                              ),
-                            ),
-                            Text(
-                              "450",
-                              style: GoogleFonts.inter(
-                                fontSize: 28.sp,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.black,
-                                letterSpacing: -1,
-                              ),
-                            ),
-                            SizedBox(width: 8.w),
-                            Text(
-                              "₹500",
-                              style: GoogleFonts.inter(
-                                fontSize: 14.sp,
-                                color: Colors.grey.shade400,
-                                decoration: TextDecoration.lineThrough,
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 4.h),
-                        Text(
-                          "per 6 months",
-                          style: GoogleFonts.inter(
-                            fontSize: 10.sp,
-                            color: Colors.grey.shade500,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ),
 
           const Divider(height: 1),
@@ -2356,7 +2559,7 @@ class _ChangePlanDialogState extends State<_ChangePlanDialog> {
                   onPressed: () => Navigator.pop(context),
                   style: OutlinedButton.styleFrom(
                     padding:
-                        EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+                        EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
                     side: BorderSide(color: Colors.grey.shade200),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8.r)),
@@ -2364,41 +2567,37 @@ class _ChangePlanDialogState extends State<_ChangePlanDialog> {
                   child: Text(
                     "Cancel",
                     style: GoogleFonts.inter(
-                      fontSize: 11.sp,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black87,
-                    ),
+                        fontSize: 10.sp,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black87),
                   ),
                 ),
                 SizedBox(width: 12.w),
-                ElevatedButton.icon(
-                  onPressed: _selectedPlanId == null
+                ElevatedButton(
+                  onPressed: (_selectedPlanId == null || _isSaving)
                       ? null
-                      : () {
-                          // Navigate to payment or confirm change
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text("Plan selection confirmed")),
-                          );
-                        },
-                  icon: Icon(Icons.sync, size: 16.sp),
-                  label: Text(
-                    "Confirm Change",
-                    style: GoogleFonts.inter(
-                      fontSize: 11.sp,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+                      : _handleRenew,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF9E8DA5),
                     foregroundColor: Colors.white,
                     elevation: 0,
                     padding:
-                        EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+                        EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8.r)),
                   ),
+                  child: _isSaving
+                      ? SizedBox(
+                          width: 14.w,
+                          height: 14.w,
+                          child: const CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2),
+                        )
+                      : Text(
+                          "Confirm & Pay",
+                          style: GoogleFonts.inter(
+                              fontSize: 10.sp, fontWeight: FontWeight.w700),
+                        ),
                 ),
               ],
             ),

@@ -1,32 +1,54 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
 
 import '../services/api_service.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Model
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _InventoryProduct {
+  final String productName;
+  final int stockAvailable;
+  final String stockStatus;
+
+  _InventoryProduct({
+    required this.productName,
+    required this.stockAvailable,
+    required this.stockStatus,
+  });
+
+  factory _InventoryProduct.fromJson(Map<String, dynamic> j) {
+    return _InventoryProduct(
+      productName: j['productName'] ?? '—',
+      stockAvailable: (j['stockAvailable'] as num?)?.toInt() ?? 0,
+      stockStatus: j['stockStatus'] ?? '—',
+    );
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Page
 // ─────────────────────────────────────────────────────────────────────────────
 
-class SalesByCustomer extends StatefulWidget {
-  const SalesByCustomer({super.key});
+class InventoryStockReport extends StatefulWidget {
+  const InventoryStockReport({super.key});
 
   @override
-  State<SalesByCustomer> createState() => _SalesByCustomerState();
+  State<InventoryStockReport> createState() => _InventoryStockReportState();
 }
 
-class _SalesByCustomerState extends State<SalesByCustomer> {
+class _InventoryStockReportState extends State<InventoryStockReport> {
   static const Color _purple = Color(0xFF6C3EB8);
 
   bool _isLoading = false;
   String? _errorMsg;
 
-  List<Map<String, dynamic>> _all = [];
-  List<Map<String, dynamic>> _filtered = [];
+  List<_InventoryProduct> _all = [];
+  List<_InventoryProduct> _filtered = [];
 
   String _searchText = '';
-  DateTimeRange? _dateRange;
 
   int _rowsPerPage = 10;
   int _currentPage = 0;
@@ -51,12 +73,10 @@ class _SalesByCustomerState extends State<SalesByCustomer> {
       _errorMsg = null;
     });
     try {
-      final result = await ApiService.getSalesByCustomerReport(
-        startDate: _dateRange != null ? DateFormat('yyyy-MM-dd').format(_dateRange!.start) : null,
-        endDate: _dateRange != null ? DateFormat('yyyy-MM-dd').format(_dateRange!.end) : null,
-      );
-      final raw = (result['data']?['salesByCustomer'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-      _all = raw;
+      final response = await ApiService.getInventoryStockReport();
+      final List<dynamic> raw = (response['data']?['products'] as List?) ?? [];
+
+      _all = raw.map((j) => _InventoryProduct.fromJson(j)).toList();
       _applyFilter();
     } catch (e) {
       if (mounted) setState(() => _errorMsg = e.toString());
@@ -69,31 +89,14 @@ class _SalesByCustomerState extends State<SalesByCustomer> {
     final q = _searchText.toLowerCase();
     setState(() {
       _currentPage = 0;
-      _filtered = _all.where((row) {
-        return (row['customer'] ?? '').toString().toLowerCase().contains(q);
+      _filtered = _all.where((p) {
+        return p.productName.toLowerCase().contains(q) ||
+               p.stockStatus.toLowerCase().contains(q);
       }).toList();
     });
   }
 
-  Future<void> _pickDateRange() async {
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      initialDateRange: _dateRange ??
-          DateTimeRange(start: DateTime.now().subtract(const Duration(days: 30)), end: DateTime.now()),
-      builder: (ctx, child) => Theme(
-        data: Theme.of(ctx).copyWith(colorScheme: const ColorScheme.light(primary: _purple, onPrimary: Colors.white)),
-        child: child!,
-      ),
-    );
-    if (picked != null) {
-      _dateRange = picked;
-      _fetchData();
-    }
-  }
-
-  List<Map<String, dynamic>> get _pageItems {
+  List<_InventoryProduct> get _pageItems {
     final start = _currentPage * _rowsPerPage;
     final end = (start + _rowsPerPage).clamp(0, _filtered.length);
     if (start >= _filtered.length) return [];
@@ -101,9 +104,6 @@ class _SalesByCustomerState extends State<SalesByCustomer> {
   }
 
   int get _totalPages => (_filtered.length / _rowsPerPage).ceil().clamp(1, 9999);
-
-  double _n(dynamic v) => (v as num?)?.toDouble() ?? 0.0;
-  String _fmt(num v) => '₹${NumberFormat('#,##0').format(v)}';
 
   @override
   Widget build(BuildContext context) {
@@ -137,7 +137,7 @@ class _SalesByCustomerState extends State<SalesByCustomer> {
                                 style: GoogleFonts.poppins(fontSize: 11.sp),
                                 decoration: InputDecoration(
                                   prefixIcon: Icon(Icons.search_rounded, color: Colors.grey.shade400, size: 16.sp),
-                                  hintText: 'Search customer...',
+                                  hintText: 'Search products...',
                                   hintStyle: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.grey.shade400),
                                   filled: true,
                                   fillColor: const Color(0xFFF5F6FA),
@@ -146,13 +146,6 @@ class _SalesByCustomerState extends State<SalesByCustomer> {
                                 ),
                               ),
                             ),
-                          ),
-                          SizedBox(width: 8.w),
-                          _toolbarBtn(
-                            icon: Icons.filter_list_rounded,
-                            label: _dateRange != null ? 'Filtered' : 'Filter',
-                            isActive: _dateRange != null,
-                            onTap: _pickDateRange,
                           ),
                           SizedBox(width: 8.w),
                           _toolbarBtn(
@@ -197,7 +190,7 @@ class _SalesByCustomerState extends State<SalesByCustomer> {
             onPressed: () => Navigator.pop(context),
           ),
           Expanded(
-            child: Text('Sales by Customer',
+            child: Text('Inventory / Stock Report',
                 style: GoogleFonts.poppins(fontSize: 14.sp, fontWeight: FontWeight.w600, color: Colors.black87)),
           ),
         ],
@@ -215,68 +208,41 @@ class _SalesByCustomerState extends State<SalesByCustomer> {
       child: SingleChildScrollView(
         child: DataTable(
           headingRowColor: MaterialStateProperty.all(const Color(0xFFF9F9FB)),
-          headingTextStyle: GoogleFonts.poppins(fontSize: 9.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
-          dataTextStyle: GoogleFonts.poppins(fontSize: 9.sp, color: Colors.black87),
+          headingTextStyle: GoogleFonts.poppins(fontSize: 10.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
+          dataTextStyle: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.black87),
           horizontalMargin: 12.w,
           columnSpacing: 20.w,
           columns: const [
-            DataColumn(label: Text('Customer')),
-            DataColumn(label: Text('Sold')),
-            DataColumn(label: Text('Gross')),
-            DataColumn(label: Text('Net')),
-            DataColumn(label: Text('Tax')),
-            DataColumn(label: Text('Total')),
+            DataColumn(label: Text('Product Name')),
+            DataColumn(label: Text('Available')),
+            DataColumn(label: Text('Status')),
           ],
-          rows: [
-            ..._pageItems.map((r) => DataRow(cells: [
-              DataCell(Text(r['customer']?.toString() ?? '—')),
-              DataCell(Text(r['serviceSold']?.toString() ?? '0')),
-              DataCell(Text(_fmt(_n(r['grossSale'])))),
-              DataCell(Text(_fmt(_n(r['netSale'])))),
-              DataCell(Text(_fmt(_n(r['tax'])))),
-              DataCell(Text(_fmt(_n(r['totalSales'])), style: const TextStyle(fontWeight: FontWeight.bold))),
-            ])),
-            _buildTotalsRow(),
-          ],
+          rows: _pageItems.map((p) => DataRow(cells: [
+            DataCell(Text(p.productName)),
+            DataCell(Text('${p.stockAvailable}')),
+            DataCell(_statusBadge(p.stockStatus)),
+          ])).toList(),
         ),
       ),
     );
   }
 
-  DataRow _buildTotalsRow() {
-    int tSold = 0;
-    double tGross = 0;
-    double tNet = 0;
-    double tTax = 0;
-    double tTotal = 0;
-
-    for (var r in _filtered) {
-      tSold += (r['serviceSold'] as num?)?.toInt() ?? 0;
-      tGross += _n(r['grossSale']);
-      tNet += _n(r['netSale']);
-      tTax += _n(r['tax']);
-      tTotal += _n(r['totalSales']);
-    }
-
-    return DataRow(
-      color: MaterialStateProperty.all(const Color(0xFFF9F9FB)),
-      cells: [
-        DataCell(Text('TOTAL', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 9.sp))),
-        DataCell(Text('$tSold', style: const TextStyle(fontWeight: FontWeight.bold))),
-        DataCell(Text(_fmt(tGross), style: const TextStyle(fontWeight: FontWeight.bold))),
-        DataCell(Text(_fmt(tNet), style: const TextStyle(fontWeight: FontWeight.bold))),
-        DataCell(Text(_fmt(tTax), style: const TextStyle(fontWeight: FontWeight.bold))),
-        DataCell(Text(_fmt(tTotal), style: const TextStyle(fontWeight: FontWeight.bold, color: _purple))),
-      ],
+  Widget _statusBadge(String status) {
+    final inStock = status.toLowerCase() == 'in stock';
+    final color = inStock ? Colors.green : Colors.red;
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+      child: Text(status.toUpperCase(), style: GoogleFonts.poppins(fontSize: 8.sp, fontWeight: FontWeight.bold, color: color)),
     );
   }
 
   Widget _buildEmptyState() {
     return Center(
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.person_search_rounded, size: 40.sp, color: Colors.grey.shade300),
+        Icon(Icons.inventory_2_outlined, size: 40.sp, color: Colors.grey.shade300),
         const SizedBox(height: 12),
-        Text('No customer records found', style: GoogleFonts.poppins(fontSize: 12.sp, color: Colors.grey.shade500)),
+        Text('No inventory found', style: GoogleFonts.poppins(fontSize: 12.sp, color: Colors.grey.shade500)),
       ]),
     );
   }
@@ -332,7 +298,7 @@ class _SalesByCustomerState extends State<SalesByCustomer> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(6),
       child: Container(
-        height: 30.h,
+        height: 34.h,
         padding: EdgeInsets.symmetric(horizontal: isIconOnly ? 8 : 10),
         decoration: BoxDecoration(
           color: isActive ? _purple.withOpacity(0.08) : const Color(0xFFF5F6FA),
@@ -342,8 +308,8 @@ class _SalesByCustomerState extends State<SalesByCustomer> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: isActive ? _purple : Colors.grey.shade600),
-            if (!isIconOnly) ...[const SizedBox(width: 4), Text(label, style: GoogleFonts.poppins(fontSize: 9.sp, color: isActive ? _purple : Colors.grey.shade600, fontWeight: isActive ? FontWeight.w600 : FontWeight.normal))],
+            Icon(icon, size: 16, color: isActive ? _purple : Colors.grey.shade600),
+            if (!isIconOnly) ...[const SizedBox(width: 4), Text(label, style: GoogleFonts.poppins(fontSize: 10.sp, color: isActive ? _purple : Colors.grey.shade600, fontWeight: isActive ? FontWeight.w600 : FontWeight.normal))],
           ],
         ),
       ),

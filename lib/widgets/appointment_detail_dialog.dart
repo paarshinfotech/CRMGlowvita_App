@@ -11,6 +11,7 @@ import '../services/api_service.dart';
 import '../utils/string_extensions.dart';
 import '../invoice_management.dart';
 import 'customer_detail_popup.dart';
+import 'invoice_view.dart';
 
 class AppointmentDetailDialog extends StatefulWidget {
   final String appointmentId;
@@ -412,9 +413,7 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                               Expanded(
                                 child: _outlinedActionButton(
                                     Icons.receipt_long_outlined, 'View Invoice',
-                                    onTap: () {
-                                  // _showInvoice();
-                                }),
+                                    onTap: _showInvoice),
                               ),
                             ],
                           ),
@@ -932,237 +931,93 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
       );
     }
 
-    if (_isLoadingInvoices) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(40),
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
-      );
-    }
-
-    if (!_invoicesLoaded) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(40),
-          child: Text(
-            'Switch to this tab to load invoice',
-            style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey),
-          ),
-        ),
-      );
-    }
-
-    if (_invoices.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(40),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.receipt_long_outlined,
-                  size: 40, color: Colors.grey.shade300),
-              const SizedBox(height: 12),
-              Text(
-                'No invoice found for this appointment.',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                    fontSize: 11, color: Colors.grey.shade500),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    final inv = _invoices.first;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Invoice',
-                      style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.black)),
-                  Text('#${inv.invoiceNumber}',
-                      style: GoogleFonts.poppins(
-                          fontSize: 10.5, color: Colors.grey.shade600)),
-                ],
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: inv.paymentStatus.toLowerCase() == 'paid'
-                      ? const Color(0xFF3D1F3D)
-                      : Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  inv.paymentStatus.isEmpty ? 'Paid' : inv.paymentStatus,
-                  style: GoogleFonts.poppins(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: inv.paymentStatus.toLowerCase() == 'paid'
-                        ? Colors.white
-                        : Colors.orange.shade800,
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 10),
-          const Divider(height: 1, color: Colors.black12),
-          const SizedBox(height: 10),
-
-          // Client info
-          Row(
-            children: [
-              const Icon(Icons.person_outline_rounded,
-                  size: 13, color: Colors.grey),
-              const SizedBox(width: 5),
-              Expanded(
-                child: Text(
-                  inv.clientInfo.fullName.isNotEmpty
-                      ? inv.clientInfo.fullName
-                      : (_appointment?.clientName ?? '—'),
-                  style: GoogleFonts.poppins(
-                      fontSize: 8, fontWeight: FontWeight.w600),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Text(
-                DateFormat('MMM d, yyyy').format(inv.createdAt),
-                style: GoogleFonts.poppins(
-                    fontSize: 10, color: Colors.grey.shade600),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-
-          // Items
-          Text('Services',
-              style: GoogleFonts.poppins(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.grey.shade700,
-                  letterSpacing: 0.5)),
-          const SizedBox(height: 6),
-          ...inv.items.map((item) => Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
-                    border: Border.all(color: Colors.grey.shade200),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(item.name,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.poppins(
-                                    fontSize: 11, fontWeight: FontWeight.w600)),
-                          ),
-                          const SizedBox(width: 8),
-                          Text('₹${item.totalPrice.toStringAsFixed(2)}',
-                              style: GoogleFonts.poppins(
-                                  fontSize: 11, fontWeight: FontWeight.w700)),
-                        ],
-                      ),
-                      if (item.addOns.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        ...item.addOns.map((a) => Padding(
-                              padding: const EdgeInsets.only(bottom: 2),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Text('+ ${a.name}',
-                                        overflow: TextOverflow.ellipsis,
-                                        style: GoogleFonts.poppins(
-                                            fontSize: 9.5,
-                                            color: Colors.grey.shade600)),
-                                  ),
-                                  Text('₹${a.price.toStringAsFixed(2)}',
-                                      style: GoogleFonts.poppins(
-                                          fontSize: 9.5,
-                                          color: Colors.grey.shade700,
-                                          fontWeight: FontWeight.w500)),
-                                ],
-                              ),
-                            )),
-                      ],
-                    ],
-                  ),
-                ),
-              )),
-
-          const Divider(height: 18, color: Colors.black12),
-
-          // Totals
-          _invRow('Subtotal', inv.subtotal),
-          if (inv.taxAmount > 0)
-            _invRow('Tax (${inv.taxRate.toStringAsFixed(0)}%)', inv.taxAmount),
-          if (inv.platformFee > 0) _invRow('Platform Fee', inv.platformFee),
-          const Divider(height: 12, color: Colors.black12),
-          _invRow('Total', inv.totalAmount, bold: true),
-          if (inv.balance > 0)
-            _invRow('Balance Due', inv.balance,
-                bold: true, color: Colors.red.shade700),
-
-          const SizedBox(height: 10),
-
-          // Payment info
-          if (inv.paymentMethod.isNotEmpty)
-            Row(
-              children: [
-                const Icon(Icons.payments_outlined,
-                    size: 13, color: Colors.grey),
-                const SizedBox(width: 5),
-                Text('Paid via ${inv.paymentMethod}',
-                    style: GoogleFonts.poppins(
-                        fontSize: 10, color: Colors.grey.shade600)),
-              ],
-            ),
-        ],
+    // Safely Build invoice from appointment for display
+    final inv = BillingInvoice(
+      id: _appointment!.id ?? '',
+      invoiceNumber: _appointment!.invoiceNumber ?? _appointment!.id ?? 'N/A',
+      vendorId: _appointment!.vendorId ?? '',
+      clientId: _appointment!.client?.id ?? '',
+      clientInfo: ClientInfo(
+        fullName: _appointment!.clientName ?? 'Customer',
+        email: _appointment!.client?.email ?? 'N/A',
+        phone: _appointment!.client?.phone ?? 'N/A',
+        profilePicture: '',
+        address: '',
       ),
+      items: _appointment!.serviceItems
+              ?.map((s) => BillingItem(
+                    itemId: '',
+                    itemType: 'Service',
+                    name: s.serviceName ?? 'Unknown',
+                    description: '',
+                    price: (s.amount ?? 0.0).toDouble(),
+                    quantity: 1,
+                    totalPrice: (s.amount ?? 0.0).toDouble(),
+                    duration: s.duration ?? 0,
+                    addOns: s.addOns
+                            ?.map((a) => AddOnItem(
+                                  id: a.id ?? '',
+                                  name: a.name ?? 'Add-on',
+                                  price: (a.price ?? 0.0).toDouble(),
+                                  duration: a.duration ?? 0,
+                                ))
+                            .toList() ??
+                        [],
+                    discount: 0.0,
+                    discountType: 'flat',
+                  ))
+              .toList() ??
+          [
+            BillingItem(
+              itemId: '',
+              itemType: 'Service',
+              name: _appointment!.serviceName ?? 'Unknown',
+              description: '',
+              price: _appointment!.amount ?? 0.0,
+              quantity: 1,
+              totalPrice: _appointment!.amount ?? 0.0,
+              duration: _appointment!.duration ?? 0,
+              addOns: [],
+              discount: 0.0,
+              discountType: 'flat',
+            )
+          ],
+      subtotal: _appointment!.amount ?? _appointment!.totalAmount ?? 0.0,
+      taxRate: 0.0,
+      taxAmount: _appointment!.serviceTax ?? 0.0,
+      platformFee: _appointment!.platformFee ?? 0.0,
+      totalAmount: _appointment!.totalAmount ?? _appointment!.amount ?? 0.0,
+      balance: _appointment!.amountRemaining ?? 0.0,
+      paymentMethod: _appointment!.paymentMethod ?? 'Cash',
+      paymentStatus: _getPaymentStatusText(_appointment!),
+      billingType: 'Appointment',
+      createdAt: _appointment!.date ?? DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+
+    return InvoiceView(
+      invoice: inv,
+      showCloseButton: false,
     );
   }
 
-  Widget _invRow(String label, double value,
+  Widget _invRowSummary(String label, double val,
       {bool bold = false, Color? color}) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label,
               style: GoogleFonts.poppins(
                   fontSize: 11,
-                  color: color ?? Colors.black87,
-                  fontWeight: bold ? FontWeight.w700 : FontWeight.w400)),
-          Text('₹${value.toStringAsFixed(2)}',
+                  color: color ?? (bold ? Colors.black : Colors.grey.shade600),
+                  fontWeight: bold ? FontWeight.bold : FontWeight.w500)),
+          Text('₹${val.toStringAsFixed(2)}',
               style: GoogleFonts.poppins(
                   fontSize: 11,
                   color: color ?? Colors.black,
-                  fontWeight: bold ? FontWeight.w700 : FontWeight.w500)),
+                  fontWeight: bold ? FontWeight.w700 : FontWeight.w600)),
         ],
       ),
     );
@@ -1682,7 +1537,19 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
     showDialog(
       context: context,
       builder: (context) => CollectPaymentDialog(appointment: _appointment!),
-    ).then((_) => _fetchAppointmentDetails());
+    ).then((_) async {
+      await _fetchAppointmentDetails();
+      if (_appointment != null) {
+        final double totalAmount =
+            _appointment?.totalAmount ?? _appointment?.amount ?? 0;
+        final double amountPaid = _appointment?.amountPaid ?? 0;
+        final bool isPaidFull = totalAmount > 0 && amountPaid >= totalAmount;
+
+        if (isPaidFull) {
+          _showInvoice();
+        }
+      }
+    });
   }
 
   void _showInvoice() {
@@ -1690,7 +1557,7 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
 
     final billingInvoice = BillingInvoice(
       id: _appointment!.id ?? '',
-      invoiceNumber: _appointment!.id ?? 'N/A',
+      invoiceNumber: _appointment!.invoiceNumber ?? _appointment!.id ?? 'N/A',
       vendorId: _appointment!.vendorId ?? '',
       clientId: _appointment!.client?.id ?? '',
       clientInfo: ClientInfo(
@@ -1738,14 +1605,14 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
               discountType: 'flat',
             )
           ],
-      subtotal: _appointment!.totalAmount ?? _appointment!.amount ?? 0.0,
-      taxRate: 0.0,
-      taxAmount: 0.0,
-      platformFee: 0.0,
+      subtotal: _appointment!.amount ?? _appointment!.totalAmount ?? 0.0,
+      taxRate: 0.0, // We could calculate this if needed
+      taxAmount: _appointment!.serviceTax ?? 0.0,
+      platformFee: _appointment!.platformFee ?? 0.0,
       totalAmount: _appointment!.totalAmount ?? _appointment!.amount ?? 0.0,
-      balance: 0.0,
+      balance: _appointment!.amountRemaining ?? 0.0,
       paymentMethod: _appointment!.paymentMethod ?? 'Cash',
-      paymentStatus: 'Paid',
+      paymentStatus: _getPaymentStatusText(_appointment!),
       billingType: 'Appointment',
       createdAt: _appointment!.date ?? DateTime.now(),
       updatedAt: DateTime.now(),

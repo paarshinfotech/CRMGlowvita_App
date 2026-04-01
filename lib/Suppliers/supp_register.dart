@@ -10,6 +10,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'dart:developer' as developer;
+import '../services/api_service.dart';
 
 class SupplierRegisterPage extends StatefulWidget {
   const SupplierRegisterPage({super.key});
@@ -39,6 +40,17 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
   final TextEditingController stateCtrl = TextEditingController();
   final TextEditingController cityCtrl = TextEditingController();
   final TextEditingController pincodeCtrl = TextEditingController();
+  final TextEditingController emailOtpCtrl = TextEditingController();
+  final TextEditingController phoneOtpCtrl = TextEditingController();
+
+  bool isEmailOtpSent = false;
+  bool isEmailVerified = false;
+  bool isPhoneOtpSent = false;
+  bool isPhoneVerified = false;
+  bool isSendingEmailOtp = false;
+  bool isSendingPhoneOtp = false;
+  bool isVerifyingEmailOtp = false;
+  bool isVerifyingPhoneOtp = false;
 
   double? selectedLat;
   double? selectedLng;
@@ -61,6 +73,8 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
     stateCtrl.dispose();
     cityCtrl.dispose();
     pincodeCtrl.dispose();
+    emailOtpCtrl.dispose();
+    phoneOtpCtrl.dispose();
     super.dispose();
   }
 
@@ -70,6 +84,20 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
 
     if (!_formKey.currentState!.validate()) {
       developer.log("FORM VALIDATION FAILED");
+      return;
+    }
+
+    if (!isEmailVerified) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please verify your email first")),
+      );
+      return;
+    }
+
+    if (!isPhoneVerified) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please verify your mobile number first")),
+      );
       return;
     }
 
@@ -300,27 +328,45 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
                         v?.trim().isEmpty ?? true ? 'Required' : null)),
           ]),
           SizedBox(height: 16.h),
-          _buildOutlinedField(
-              label: "Email *",
-              controller: emailCtrl,
-              keyboardType: TextInputType.emailAddress,
-              validator: (v) {
-                if (v?.trim().isEmpty ?? true) return 'Required';
-                if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                    .hasMatch(v!.trim())) return 'Invalid email';
-                return null;
-              }),
+          // Email with Verification
+          _buildVerificationField(
+            label: "Email",
+            controller: emailCtrl,
+            otpController: emailOtpCtrl,
+            isOtpSent: isEmailOtpSent,
+            isVerified: isEmailVerified,
+            isSending: isSendingEmailOtp,
+            isVerifying: isVerifyingEmailOtp,
+            keyboardType: TextInputType.emailAddress,
+            onSendOtp: () => _handleEmailOtp(),
+            onVerify: () => _handleEmailVerify(),
+            validator: (v) {
+              if (v?.trim().isEmpty ?? true) return 'Required';
+              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                  .hasMatch(v!.trim())) return 'Invalid email';
+              return null;
+            },
+          ),
           SizedBox(height: 16.h),
-          _buildOutlinedField(
-              label: "Mobile Number *",
-              controller: phoneCtrl,
-              keyboardType: TextInputType.phone,
-              validator: (v) {
-                if (v?.trim().isEmpty ?? true) return 'Required';
-                if (!RegExp(r'^[6-9][0-9]{9}$').hasMatch(v!.trim()))
-                  return 'Invalid phone';
-                return null;
-              }),
+          // Mobile Number with Verification
+          _buildVerificationField(
+            label: "Mobile Number",
+            controller: phoneCtrl,
+            otpController: phoneOtpCtrl,
+            isOtpSent: isPhoneOtpSent,
+            isVerified: isPhoneVerified,
+            isSending: isSendingPhoneOtp,
+            isVerifying: isVerifyingPhoneOtp,
+            keyboardType: TextInputType.phone,
+            onSendOtp: () => _handlePhoneOtp(),
+            onVerify: () => _handlePhoneVerify(),
+            validator: (v) {
+              if (v?.trim().isEmpty ?? true) return 'Required';
+              if (!RegExp(r'^[6-9][0-9]{9}$').hasMatch(v!.trim()))
+                return 'Invalid phone';
+              return null;
+            },
+          ),
           SizedBox(height: 16.h),
           _buildOutlinedField(
               label: "Password *",
@@ -625,6 +671,320 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
         ),
       ),
     );
+  }
+
+  // --- OTP HELPERS ---
+
+  Widget _buildVerificationField({
+    required String label,
+    required TextEditingController controller,
+    required TextEditingController otpController,
+    required bool isOtpSent,
+    required bool isVerified,
+    required bool isSending,
+    required bool isVerifying,
+    required VoidCallback onSendOtp,
+    required VoidCallback onVerify,
+    TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          margin: EdgeInsets.only(bottom: 8.h),
+          decoration: BoxDecoration(
+            color: isVerified ? Colors.grey.shade50 : Colors.white,
+            borderRadius: BorderRadius.circular(10.r),
+            border: isVerified ? Border.all(color: Colors.green.shade200) : null,
+            boxShadow: [
+              if (!isVerified)
+                BoxShadow(
+                  color: Theme.of(context).primaryColor.withOpacity(0.1),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
+                ),
+            ],
+          ),
+          padding: EdgeInsets.all(12.w),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              label,
+                              style: GoogleFonts.poppins(
+                                color: Theme.of(context).primaryColor,
+                                fontSize: 8.sp,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(" *",
+                                style: GoogleFonts.poppins(
+                                    color: Colors.red, fontSize: 8.sp)),
+                            const Spacer(),
+                            if (isVerified)
+                              Row(
+                                children: [
+                                  Icon(Icons.check_circle_outline,
+                                      color: Colors.green, size: 12.sp),
+                                  SizedBox(width: 4.w),
+                                  Text("Verified",
+                                      style: GoogleFonts.poppins(
+                                          color: Colors.green,
+                                          fontSize: 8.sp,
+                                          fontWeight: FontWeight.w600)),
+                                ],
+                              ),
+                          ],
+                        ),
+                        SizedBox(height: 4.h),
+                        TextFormField(
+                          controller: controller,
+                          enabled: !isVerified,
+                          keyboardType: keyboardType,
+                          style: GoogleFonts.poppins(
+                            fontSize: 10.sp,
+                            color: isVerified ? Colors.grey : Colors.black,
+                          ),
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8.r),
+                              borderSide: BorderSide(
+                                  color: Theme.of(context)
+                                      .primaryColor
+                                      .withOpacity(0.2)),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8.r),
+                              borderSide: BorderSide(
+                                  color: Theme.of(context)
+                                      .primaryColor
+                                      .withOpacity(0.2)),
+                            ),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12.w, vertical: 8.h),
+                            filled: isVerified,
+                            fillColor: isVerified
+                                ? Colors.blue.withOpacity(0.05)
+                                : Colors.white,
+                          ),
+                          validator: validator,
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (!isVerified) ...[
+                    SizedBox(width: 12.w),
+                    SizedBox(
+                      height: 40.h,
+                      child: ElevatedButton(
+                        onPressed: isSending ? null : onSendOtp,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              Theme.of(context).primaryColor.withOpacity(0.1),
+                          foregroundColor: Theme.of(context).primaryColor,
+                          elevation: 0,
+                          padding: EdgeInsets.symmetric(horizontal: 16.w),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
+                        ),
+                        child: isSending
+                            ? SizedBox(
+                                height: 12.h,
+                                width: 12.w,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 1.5,
+                                  color: Theme.of(context).primaryColor,
+                                ),
+                              )
+                            : Text(
+                                isOtpSent ? "Resend" : "Send OTP",
+                                style: GoogleFonts.poppins(
+                                    fontSize: 9.sp, fontWeight: FontWeight.w600),
+                              ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              if (isOtpSent && !isVerified) ...[
+                SizedBox(height: 12.h),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: otpController,
+                        keyboardType: TextInputType.number,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.poppins(
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 4),
+                        decoration: InputDecoration(
+                          hintText: "OTP",
+                          hintStyle: GoogleFonts.poppins(
+                              fontSize: 10.sp,
+                              letterSpacing: 0,
+                              color: Colors.grey.shade400),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.r),
+                            borderSide: BorderSide(
+                                color: Theme.of(context)
+                                    .primaryColor
+                                    .withOpacity(0.2)),
+                          ),
+                          contentPadding: EdgeInsets.symmetric(vertical: 8.h),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 12.w),
+                    SizedBox(
+                      height: 40.h,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Theme.of(context).primaryColor.withOpacity(0.6),
+                              Theme.of(context).primaryColor,
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(8.r),
+                        ),
+                        child: ElevatedButton(
+                          onPressed: isVerifying ? null : onVerify,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            foregroundColor: Colors.white,
+                            shadowColor: Colors.transparent,
+                            padding: EdgeInsets.symmetric(horizontal: 24.w),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.r),
+                            ),
+                          ),
+                          child: isVerifying
+                              ? SizedBox(
+                                  height: 12.h,
+                                  width: 12.w,
+                                  child: const CircularProgressIndicator(
+                                      strokeWidth: 1.5, color: Colors.white))
+                              : Text(
+                                  "Verify",
+                                  style: GoogleFonts.poppins(
+                                      fontSize: 10.sp,
+                                      fontWeight: FontWeight.w600),
+                                ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _handleEmailOtp() async {
+    if (emailCtrl.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter email first")),
+      );
+      return;
+    }
+    setState(() => isSendingEmailOtp = true);
+    try {
+      final response = await ApiService.sendOtp(emailCtrl.text.trim());
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          setState(() => isEmailOtpSent = true);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(data['message'] ?? "OTP sent successfully")),
+          );
+        } else {
+          throw data['message'] ?? "Failed to send OTP";
+        }
+      } else {
+        throw "Server error: ${response.statusCode}";
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    } finally {
+      setState(() => isSendingEmailOtp = false);
+    }
+  }
+
+  Future<void> _handleEmailVerify() async {
+    if (emailOtpCtrl.text.isEmpty) return;
+    setState(() => isVerifyingEmailOtp = true);
+    try {
+      final response = await ApiService.verifyOtp(
+          emailCtrl.text.trim(), emailOtpCtrl.text.trim());
+      if (response.statusCode == 200) {
+        setState(() => isEmailVerified = true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text("Email verified successfully"),
+              backgroundColor: Colors.green),
+        );
+      } else {
+        final data = jsonDecode(response.body);
+        throw data['message'] ?? "Invalid OTP";
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    } finally {
+      setState(() => isVerifyingEmailOtp = false);
+    }
+  }
+
+  Future<void> _handlePhoneOtp() async {
+    if (phoneCtrl.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter mobile number first")),
+      );
+      return;
+    }
+    setState(() => isSendingPhoneOtp = true);
+    // Static mobile OTP as requested
+    await Future.delayed(const Duration(seconds: 1));
+    setState(() {
+      isPhoneOtpSent = true;
+      isSendingPhoneOtp = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+          content: Text("OTP sent to your mobile number (Use 123456)")),
+    );
+  }
+
+  Future<void> _handlePhoneVerify() async {
+    if (phoneOtpCtrl.text == "123456") {
+      setState(() => isPhoneVerified = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text("Mobile number verified successfully"),
+            backgroundColor: Colors.green),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Invalid mobile OTP")),
+      );
+    }
   }
 }
 

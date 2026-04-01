@@ -9,14 +9,14 @@ import '../services/api_service.dart';
 // Page
 // ─────────────────────────────────────────────────────────────────────────────
 
-class SalesByCustomer extends StatefulWidget {
-  const SalesByCustomer({super.key});
+class CategoryWiseProductReport extends StatefulWidget {
+  const CategoryWiseProductReport({super.key});
 
   @override
-  State<SalesByCustomer> createState() => _SalesByCustomerState();
+  State<CategoryWiseProductReport> createState() => _CategoryWiseProductReportState();
 }
 
-class _SalesByCustomerState extends State<SalesByCustomer> {
+class _CategoryWiseProductReportState extends State<CategoryWiseProductReport> {
   static const Color _purple = Color(0xFF6C3EB8);
 
   bool _isLoading = false;
@@ -26,7 +26,6 @@ class _SalesByCustomerState extends State<SalesByCustomer> {
   List<Map<String, dynamic>> _filtered = [];
 
   String _searchText = '';
-  DateTimeRange? _dateRange;
 
   int _rowsPerPage = 10;
   int _currentPage = 0;
@@ -51,12 +50,10 @@ class _SalesByCustomerState extends State<SalesByCustomer> {
       _errorMsg = null;
     });
     try {
-      final result = await ApiService.getSalesByCustomerReport(
-        startDate: _dateRange != null ? DateFormat('yyyy-MM-dd').format(_dateRange!.start) : null,
-        endDate: _dateRange != null ? DateFormat('yyyy-MM-dd').format(_dateRange!.end) : null,
-      );
-      final raw = (result['data']?['salesByCustomer'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-      _all = raw;
+      final response = await ApiService.getCategoryWiseProductReport();
+      final List<dynamic> raw = (response['data']?['categories'] as List?) ?? [];
+
+      _all = raw.cast<Map<String, dynamic>>();
       _applyFilter();
     } catch (e) {
       if (mounted) setState(() => _errorMsg = e.toString());
@@ -69,28 +66,11 @@ class _SalesByCustomerState extends State<SalesByCustomer> {
     final q = _searchText.toLowerCase();
     setState(() {
       _currentPage = 0;
-      _filtered = _all.where((row) {
-        return (row['customer'] ?? '').toString().toLowerCase().contains(q);
+      _filtered = _all.where((c) {
+        final name = (c['categoryName'] ?? '').toString().toLowerCase();
+        return name.contains(q);
       }).toList();
     });
-  }
-
-  Future<void> _pickDateRange() async {
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      initialDateRange: _dateRange ??
-          DateTimeRange(start: DateTime.now().subtract(const Duration(days: 30)), end: DateTime.now()),
-      builder: (ctx, child) => Theme(
-        data: Theme.of(ctx).copyWith(colorScheme: const ColorScheme.light(primary: _purple, onPrimary: Colors.white)),
-        child: child!,
-      ),
-    );
-    if (picked != null) {
-      _dateRange = picked;
-      _fetchData();
-    }
   }
 
   List<Map<String, dynamic>> get _pageItems {
@@ -102,7 +82,6 @@ class _SalesByCustomerState extends State<SalesByCustomer> {
 
   int get _totalPages => (_filtered.length / _rowsPerPage).ceil().clamp(1, 9999);
 
-  double _n(dynamic v) => (v as num?)?.toDouble() ?? 0.0;
   String _fmt(num v) => '₹${NumberFormat('#,##0').format(v)}';
 
   @override
@@ -137,7 +116,7 @@ class _SalesByCustomerState extends State<SalesByCustomer> {
                                 style: GoogleFonts.poppins(fontSize: 11.sp),
                                 decoration: InputDecoration(
                                   prefixIcon: Icon(Icons.search_rounded, color: Colors.grey.shade400, size: 16.sp),
-                                  hintText: 'Search customer...',
+                                  hintText: 'Search category...',
                                   hintStyle: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.grey.shade400),
                                   filled: true,
                                   fillColor: const Color(0xFFF5F6FA),
@@ -146,13 +125,6 @@ class _SalesByCustomerState extends State<SalesByCustomer> {
                                 ),
                               ),
                             ),
-                          ),
-                          SizedBox(width: 8.w),
-                          _toolbarBtn(
-                            icon: Icons.filter_list_rounded,
-                            label: _dateRange != null ? 'Filtered' : 'Filter',
-                            isActive: _dateRange != null,
-                            onTap: _pickDateRange,
                           ),
                           SizedBox(width: 8.w),
                           _toolbarBtn(
@@ -197,7 +169,7 @@ class _SalesByCustomerState extends State<SalesByCustomer> {
             onPressed: () => Navigator.pop(context),
           ),
           Expanded(
-            child: Text('Sales by Customer',
+            child: Text('Category Wise Products',
                 style: GoogleFonts.poppins(fontSize: 14.sp, fontWeight: FontWeight.w600, color: Colors.black87)),
           ),
         ],
@@ -218,65 +190,32 @@ class _SalesByCustomerState extends State<SalesByCustomer> {
           headingTextStyle: GoogleFonts.poppins(fontSize: 9.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
           dataTextStyle: GoogleFonts.poppins(fontSize: 9.sp, color: Colors.black87),
           horizontalMargin: 12.w,
-          columnSpacing: 20.w,
+          columnSpacing: 15.w,
           columns: const [
-            DataColumn(label: Text('Customer')),
-            DataColumn(label: Text('Sold')),
-            DataColumn(label: Text('Gross')),
-            DataColumn(label: Text('Net')),
-            DataColumn(label: Text('Tax')),
-            DataColumn(label: Text('Total')),
+            DataColumn(label: Text('Category Name')),
+            DataColumn(label: Text('Total Products')),
+            DataColumn(label: Text('Active Products')),
+            DataColumn(label: Text('Avg Price')),
+            DataColumn(label: Text('Avg Sale Price')),
           ],
-          rows: [
-            ..._pageItems.map((r) => DataRow(cells: [
-              DataCell(Text(r['customer']?.toString() ?? '—')),
-              DataCell(Text(r['serviceSold']?.toString() ?? '0')),
-              DataCell(Text(_fmt(_n(r['grossSale'])))),
-              DataCell(Text(_fmt(_n(r['netSale'])))),
-              DataCell(Text(_fmt(_n(r['tax'])))),
-              DataCell(Text(_fmt(_n(r['totalSales'])), style: const TextStyle(fontWeight: FontWeight.bold))),
-            ])),
-            _buildTotalsRow(),
-          ],
+          rows: _pageItems.map((c) => DataRow(cells: [
+            DataCell(Text(c['categoryName'] ?? '—')),
+            DataCell(Text('${c['numberOfProducts'] ?? 0}')),
+            DataCell(Text('${c['activeProducts'] ?? 0}')),
+            DataCell(Text(_fmt((c['averagePrice'] as num?) ?? 0))),
+            DataCell(Text(_fmt((c['averageSalePrice'] as num?) ?? 0))),
+          ])).toList(),
         ),
       ),
-    );
-  }
-
-  DataRow _buildTotalsRow() {
-    int tSold = 0;
-    double tGross = 0;
-    double tNet = 0;
-    double tTax = 0;
-    double tTotal = 0;
-
-    for (var r in _filtered) {
-      tSold += (r['serviceSold'] as num?)?.toInt() ?? 0;
-      tGross += _n(r['grossSale']);
-      tNet += _n(r['netSale']);
-      tTax += _n(r['tax']);
-      tTotal += _n(r['totalSales']);
-    }
-
-    return DataRow(
-      color: MaterialStateProperty.all(const Color(0xFFF9F9FB)),
-      cells: [
-        DataCell(Text('TOTAL', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 9.sp))),
-        DataCell(Text('$tSold', style: const TextStyle(fontWeight: FontWeight.bold))),
-        DataCell(Text(_fmt(tGross), style: const TextStyle(fontWeight: FontWeight.bold))),
-        DataCell(Text(_fmt(tNet), style: const TextStyle(fontWeight: FontWeight.bold))),
-        DataCell(Text(_fmt(tTax), style: const TextStyle(fontWeight: FontWeight.bold))),
-        DataCell(Text(_fmt(tTotal), style: const TextStyle(fontWeight: FontWeight.bold, color: _purple))),
-      ],
     );
   }
 
   Widget _buildEmptyState() {
     return Center(
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.person_search_rounded, size: 40.sp, color: Colors.grey.shade300),
+        Icon(Icons.category_outlined, size: 40.sp, color: Colors.grey.shade300),
         const SizedBox(height: 12),
-        Text('No customer records found', style: GoogleFonts.poppins(fontSize: 12.sp, color: Colors.grey.shade500)),
+        Text('No categories found', style: GoogleFonts.poppins(fontSize: 12.sp, color: Colors.grey.shade500)),
       ]),
     );
   }

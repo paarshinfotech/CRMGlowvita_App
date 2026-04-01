@@ -1416,9 +1416,7 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                               side: BorderSide(color: Colors.grey[300]!),
                               elevation: 0,
                             ),
-                            child: const Icon(
-                                Icons.center_focus_strong_outlined,
-                                size: 20),
+                            child: const Icon(Icons.add, size: 20),
                           ),
                         ),
                       ],

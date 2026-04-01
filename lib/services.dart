@@ -7,6 +7,7 @@ import 'add_ons.dart';
 import 'vendor_model.dart';
 import 'my_Profile.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'widgets/subscription_wrapper.dart';
 
 class Services extends StatefulWidget {
   const Services({super.key});
@@ -633,171 +634,180 @@ class _ServicesState extends State<Services> {
           ),
         ],
       ),
-      body: isLoading
-          ? Center(
-              child: CircularProgressIndicator(
-                  color: Theme.of(context).primaryColor))
-          : errorMessage != null
+        body: SubscriptionWrapper(
+          child: isLoading
               ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.error_outline,
-                            size: 60, color: Colors.grey.shade400),
-                        const SizedBox(height: 16),
-                        Text('Failed to load services',
-                            style: GoogleFonts.poppins(
-                                fontSize: 14.sp, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 8),
-                        Text(errorMessage!,
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.poppins(
-                                fontSize: 7.5.sp, color: Colors.grey.shade600)),
-                        const SizedBox(height: 16),
-                        OutlinedButton(
-                          onPressed: _fetchServices,
-                          child: Text('Retry',
-                              style: GoogleFonts.poppins(fontSize: 7.5.sp)),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              : SafeArea(
-                  child: SingleChildScrollView(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // ── Search bar ───────────────────────
-                        Container(
-                          height: 38.h,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(8.r),
-                            border: Border.all(color: Colors.grey.shade300),
-                          ),
-                          child: TextField(
-                            controller: _searchController,
-                            onChanged: (v) => setState(() => searchQuery = v),
-                            style: GoogleFonts.poppins(fontSize: 8.5.sp),
-                            decoration: InputDecoration(
-                              hintText: 'Search services......',
-                              hintStyle: GoogleFonts.poppins(
-                                  fontSize: 8.5.sp,
-                                  color: Colors.grey.shade400),
-                              prefixIcon: Icon(Icons.search,
-                                  size: 15.sp, color: Colors.grey.shade400),
-                              suffixIcon: searchQuery.isNotEmpty
-                                  ? IconButton(
-                                      icon: Icon(Icons.clear,
-                                          size: 14.sp,
-                                          color: Colors.grey.shade400),
-                                      onPressed: () {
-                                        _searchController.clear();
-                                        setState(() => searchQuery = '');
-                                      },
-                                    )
-                                  : null,
-                              border: InputBorder.none,
-                              contentPadding:
-                                  EdgeInsets.symmetric(vertical: 10.h),
+                  child: CircularProgressIndicator(
+                      color: Theme.of(context).primaryColor))
+              : errorMessage != null
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.error_outline,
+                                size: 60, color: Colors.grey.shade400),
+                            const SizedBox(height: 16),
+                            Text('Failed to load services',
+                                style: GoogleFonts.poppins(
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 8),
+                            Text(errorMessage!,
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.poppins(
+                                    fontSize: 7.5.sp,
+                                    color: Colors.grey.shade600)),
+                            const SizedBox(height: 16),
+                            OutlinedButton(
+                              onPressed: _fetchServices,
+                              child: Text('Retry',
+                                  style: GoogleFonts.poppins(fontSize: 7.5.sp)),
                             ),
-                          ),
+                          ],
                         ),
-                        SizedBox(height: 10.h),
-
-                        // ── Category filter + Export ─────────
-                        Row(children: [
-                          Expanded(
-                            child: Container(
-                              height: 34.h,
-                              padding: EdgeInsets.symmetric(horizontal: 10.w),
+                      ),
+                    )
+                  : SafeArea(
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 12.w, vertical: 10.h),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // ── Search bar ───────────────────────
+                            Container(
+                              height: 38.h,
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(8.r),
                                 border: Border.all(color: Colors.grey.shade300),
                               ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  value: selectedCategory,
-                                  isDense: true,
-                                  icon: Icon(Icons.keyboard_arrow_down,
-                                      size: 14.sp, color: Colors.grey),
-                                  style: GoogleFonts.poppins(
-                                      fontSize: 8.5.sp, color: Colors.black87),
-                                  items: dynamicCategories
-                                      .map((cat) => DropdownMenuItem(
-                                            value: cat,
-                                            child: Text(cat,
-                                                style: GoogleFonts.poppins(
-                                                    fontSize: 8.5.sp)),
-                                          ))
-                                      .toList(),
-                                  onChanged: (v) =>
-                                      setState(() => selectedCategory = v),
+                              child: TextField(
+                                controller: _searchController,
+                                onChanged: (v) =>
+                                    setState(() => searchQuery = v),
+                                style: GoogleFonts.poppins(fontSize: 8.5.sp),
+                                decoration: InputDecoration(
+                                  hintText: 'Search services......',
+                                  hintStyle: GoogleFonts.poppins(
+                                      fontSize: 8.5.sp,
+                                      color: Colors.grey.shade400),
+                                  prefixIcon: Icon(Icons.search,
+                                      size: 15.sp, color: Colors.grey.shade400),
+                                  suffixIcon: searchQuery.isNotEmpty
+                                      ? IconButton(
+                                          icon: Icon(Icons.clear,
+                                              size: 14.sp,
+                                              color: Colors.grey.shade400),
+                                          onPressed: () {
+                                            _searchController.clear();
+                                            setState(() => searchQuery = '');
+                                          },
+                                        )
+                                      : null,
+                                  border: InputBorder.none,
+                                  contentPadding:
+                                      EdgeInsets.symmetric(vertical: 10.h),
                                 ),
                               ),
                             ),
-                          ),
-                          SizedBox(width: 8.w),
-                          GestureDetector(
-                            onTap: _navigateToAddService,
-                            child: Container(
-                              height: 34.h,
-                              padding: EdgeInsets.symmetric(horizontal: 14.w),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(8.r),
-                                border: Border.all(color: Colors.grey.shade300),
+                            SizedBox(height: 10.h),
+
+                            // ── Category filter + Export ─────────
+                            Row(children: [
+                              Expanded(
+                                child: Container(
+                                  height: 34.h,
+                                  padding:
+                                      EdgeInsets.symmetric(horizontal: 10.w),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8.r),
+                                    border:
+                                        Border.all(color: Colors.grey.shade300),
+                                  ),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      value: selectedCategory,
+                                      isDense: true,
+                                      icon: Icon(Icons.keyboard_arrow_down,
+                                          size: 14.sp, color: Colors.grey),
+                                      style: GoogleFonts.poppins(
+                                          fontSize: 8.5.sp,
+                                          color: Colors.black87),
+                                      items: dynamicCategories
+                                          .map((cat) => DropdownMenuItem(
+                                                value: cat,
+                                                child: Text(cat,
+                                                    style: GoogleFonts.poppins(
+                                                        fontSize: 8.5.sp)),
+                                              ))
+                                          .toList(),
+                                      onChanged: (v) =>
+                                          setState(() => selectedCategory = v),
+                                    ),
+                                  ),
+                                ),
                               ),
-                              child: Center(
-                                child: Text('Export',
+                              SizedBox(width: 8.w),
+                              GestureDetector(
+                                onTap: _navigateToAddService,
+                                child: Container(
+                                  height: 34.h,
+                                  padding:
+                                      EdgeInsets.symmetric(horizontal: 14.w),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8.r),
+                                    border:
+                                        Border.all(color: Colors.grey.shade300),
+                                  ),
+                                  child: Center(
+                                    child: Text('Export',
+                                        style: GoogleFonts.poppins(
+                                            fontSize: 8.5.sp,
+                                            color: Colors.black87,
+                                            fontWeight: FontWeight.w500)),
+                                  ),
+                                ),
+                              ),
+                            ]),
+                            SizedBox(height: 10.h),
+
+                            // ── 2×2 Stat cards ───────────────────
+                            Row(children: [
+                              Expanded(
+                                  child: _statCard('Total Services\nOffered',
+                                      '$totalServices', '🎨')),
+                              SizedBox(width: 8.w),
+                              Expanded(
+                                  child: _statCard('Approved Services',
+                                      '$approvedCount', '✅')),
+                            ]),
+                            SizedBox(height: 8.h),
+                            Row(children: [
+                              Expanded(
+                                  child: _statCard('Pending Approval',
+                                      '$pendingCount', '🕐')),
+                              SizedBox(width: 8.w),
+                              Expanded(
+                                  child: _statCard('Disapproved',
+                                      '$disapprovedCount', '❌')),
+                            ]),
+                            SizedBox(height: 12.h),
+
+                            // ── Add Service header row ────────────
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('All Services',
                                     style: GoogleFonts.poppins(
-                                        fontSize: 8.5.sp,
-                                        color: Colors.black87,
-                                        fontWeight: FontWeight.w500)),
-                              ),
-                            ),
-                          ),
-                        ]),
-                        SizedBox(height: 10.h),
-
-                        // ── 2×2 Stat cards ───────────────────
-                        Row(children: [
-                          Expanded(
-                              child: _statCard('Total Services\nOffered',
-                                  '$totalServices', '🎨')),
-                          SizedBox(width: 8.w),
-                          Expanded(
-                              child: _statCard(
-                                  'Approved Services', '$approvedCount', '✅')),
-                        ]),
-                        SizedBox(height: 8.h),
-                        Row(children: [
-                          Expanded(
-                              child: _statCard(
-                                  'Pending Approval', '$pendingCount', '🕐')),
-                          SizedBox(width: 8.w),
-                          Expanded(
-                              child: _statCard(
-                                  'Disapproved', '$disapprovedCount', '❌')),
-                        ]),
-                        SizedBox(height: 12.h),
-
-                        // ── Add Service header row ────────────
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('All Services',
-                                style: GoogleFonts.poppins(
-                                    fontSize: 7.5.sp,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.black87)),
-                            GestureDetector(
+                                        fontSize: 7.5.sp,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.black87)),
+                                GestureDetector(
                               onTap: _navigateToAddService,
                               child: Container(
                                 padding: EdgeInsets.symmetric(
@@ -852,6 +862,7 @@ class _ServicesState extends State<Services> {
                     ),
                   ),
                 ),
-    );
+        ),
+      );
   }
 }

@@ -20,6 +20,7 @@ import 'widgets/custom_drawer.dart';
 import 'vendor_model.dart';
 import 'my_Profile.dart';
 import 'widgets/staff_earnings_dialog.dart';
+import 'widgets/subscription_wrapper.dart';
 
 class Staff extends StatefulWidget {
   const Staff({Key? key}) : super(key: key);
@@ -552,8 +553,9 @@ class _StaffState extends State<Staff> {
             ),
           ],
         ),
-        body: Padding(
-          padding: const EdgeInsets.all(12),
+        body: SubscriptionWrapper(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
           child: Column(
             children: [
               // Search bar and filters
@@ -851,6 +853,7 @@ class _StaffState extends State<Staff> {
               ),
             ],
           ),
+        ),
         ),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: () => _openAddStaff(),

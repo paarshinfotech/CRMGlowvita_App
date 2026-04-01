@@ -1,14 +1,99 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:intl/intl.dart';
-import '../Notification.dart';
-import '../my_Profile.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:csv/csv.dart';
-import 'package:path_provider/path_provider.dart';
-import 'dart:io';
+import 'package:intl/intl.dart';
+
+import '../services/api_service.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Model
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _CancelledAppointment {
+  final String id;
+  final String clientName;
+  final String serviceName;
+  final String staffName;
+  final String date;
+  final String createdAt;
+  final String startTime;
+  final String endTime;
+  final int duration;
+  final double amount;
+  final double totalAmount;
+  final double platformFee;
+  final double serviceTax;
+  final double finalAmount;
+  final String status;
+  final String cancelledBy;
+  final String cancelledDate;
+  final String mode;
+
+  _CancelledAppointment({
+    required this.id,
+    required this.clientName,
+    required this.serviceName,
+    required this.staffName,
+    required this.date,
+    required this.createdAt,
+    required this.startTime,
+    required this.endTime,
+    required this.duration,
+    required this.amount,
+    required this.totalAmount,
+    required this.platformFee,
+    required this.serviceTax,
+    required this.finalAmount,
+    required this.status,
+    required this.cancelledBy,
+    required this.cancelledDate,
+    required this.mode,
+  });
+
+  factory _CancelledAppointment.fromJson(Map<String, dynamic> j) {
+    return _CancelledAppointment(
+      id: j['id'] ?? '',
+      clientName: j['clientName'] ?? '—',
+      serviceName: j['serviceName'] ?? '—',
+      staffName: j['staffName'] ?? '—',
+      date: j['scheduledDate'] ?? j['date'] ?? '',
+      createdAt: j['createdAt'] ?? '',
+      startTime: j['startTime'] ?? '—',
+      endTime: j['endTime'] ?? '—',
+      duration: (j['duration'] as num?)?.toInt() ?? 0,
+      amount: (j['amount'] as num?)?.toDouble() ?? 0.0,
+      totalAmount: (j['totalAmount'] as num?)?.toDouble() ?? 0.0,
+      platformFee: (j['platformFee'] as num?)?.toDouble() ?? 0.0,
+      serviceTax: (j['serviceTax'] as num?)?.toDouble() ?? 0.0,
+      finalAmount: (j['finalAmount'] as num?)?.toDouble() ?? 0.0,
+      status: j['status'] ?? 'cancelled',
+      cancelledBy: j['cancelledBy'] ?? '—',
+      cancelledDate: j['cancelledDate'] ?? '',
+      mode: j['mode'] ?? 'offline',
+    );
+  }
+
+  String _fmtDate(String d) {
+    if (d.isEmpty) return '—';
+    try {
+      return DateFormat('dd MMM yy').format(DateTime.parse(d));
+    } catch (_) {
+      return d;
+    }
+  }
+
+  String get formattedDate => _fmtDate(date);
+  String get formattedCreatedAt => _fmtDate(createdAt);
+  String get formattedCancelledDate => _fmtDate(cancelledDate);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Page
+// ─────────────────────────────────────────────────────────────────────────────
 
 class AppointmentsCancellationSummary extends StatefulWidget {
+  const AppointmentsCancellationSummary({super.key});
+
   @override
   State<AppointmentsCancellationSummary> createState() =>
       _AppointmentsCancellationSummaryState();
@@ -16,683 +101,359 @@ class AppointmentsCancellationSummary extends StatefulWidget {
 
 class _AppointmentsCancellationSummaryState
     extends State<AppointmentsCancellationSummary> {
-  DateTimeRange? _selectedDateRange;
-  String _sortColumn = 'ref';
-  bool _sortAscending = true;
+  static const Color _purple = Color(0xFF6C3EB8);
 
-  final List<Map<String, dynamic>> appointments = [
-    {
-      'ref': '#00001265',
-      'client': 'Siddhi Shinde',
-      'services': 'Haircut, Styling',
-      'staffName': 'Priya Sharma',
-      'createdOn': DateTime(2025, 7, 26, 12, 52),
-      'scheduledOn': DateTime(2025, 7, 27, 14, 00),
-      'duration': '1h 30m',
-      'price': 410,
-      'status': 'PENDING',
-      'cancelledOn': null,
-      'cancelledBy': null,
-      'reason': null,
-    },
-    {
-      'ref': '#00001264',
-      'client': 'Anita Desai',
-      'services': 'Manicure',
-      'staffName': 'Riya Patel',
-      'createdOn': DateTime(2025, 7, 26, 12, 48),
-      'scheduledOn': DateTime(2025, 7, 27, 10, 30),
-      'duration': '45m',
-      'price': 310,
-      'status': 'PENDING',
-      'cancelledOn': null,
-      'cancelledBy': null,
-      'reason': null,
-    },
-    {
-      'ref': '#00001263',
-      'client': 'Neha Gupta',
-      'services': 'Massage',
-      'staffName': 'Sonia Verma',
-      'createdOn': DateTime(2025, 7, 26, 12, 48),
-      'scheduledOn': DateTime(2025, 7, 26, 15, 00),
-      'duration': '1h',
-      'price': 310,
-      'status': 'PAID',
-      'cancelledOn': null,
-      'cancelledBy': null,
-      'reason': null,
-    },
-    {
-      'ref': '#00001262',
-      'client': 'Pooja Mehta',
-      'services': 'Facial',
-      'staffName': 'Kavita Singh',
-      'createdOn': DateTime(2025, 7, 26, 12, 25),
-      'scheduledOn': DateTime(2025, 7, 26, 11, 00),
-      'duration': '1h',
-      'price': 310,
-      'status': 'CANCELLED',
-      'cancelledOn': DateTime(2025, 7, 26, 10, 30),
-      'cancelledBy': 'User',
-      'reason': 'Schedule conflict',
-    },
-  ];
+  bool _isLoading = false;
+  String? _errorMsg;
 
-  List<Map<String, dynamic>> filteredServiceDetails = [];
-  String searchText = '';
+  List<_CancelledAppointment> _all = [];
+  List<_CancelledAppointment> _filtered = [];
+
+  String _searchText = '';
+  DateTimeRange? _dateRange;
+
+  int _rowsPerPage = 10;
+  int _currentPage = 0;
+
+  final _searchCtrl = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _calculateServiceDetails();
+    _fetchData();
   }
 
-  void _calculateServiceDetails() {
-    List<Map<String, dynamic>> filteredAppointments =
-        appointments.where((appointment) {
-      final matchesDate = _selectedDateRange == null ||
-          (appointment['scheduledOn'].isAfter(_selectedDateRange!.start
-                  .subtract(const Duration(days: 1))) &&
-              appointment['scheduledOn'].isBefore(
-                  _selectedDateRange!.end.add(const Duration(days: 1))));
-      return matchesDate;
-    }).toList();
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
 
-    List<Map<String, dynamic>> detailedAppointments = [];
-    for (var appointment in filteredAppointments) {
-      List<String> serviceList;
-      if (appointment['services'] is String) {
-        serviceList = (appointment['services'] as String)
-            .split(',')
-            .map((s) => s.trim())
-            .toList();
-      } else if (appointment['services'] is List) {
-        serviceList = (appointment['services'] as List)
-            .map((s) => s.toString().trim())
-            .toList();
-      } else {
-        serviceList = []; // Fallback for unexpected types
-      }
+  Future<void> _fetchData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMsg = null;
+    });
+    try {
+      final response = await ApiService.getCancelledAppointmentsReport(
+        startDate: _dateRange != null ? DateFormat('yyyy-MM-dd').format(_dateRange!.start) : null,
+        endDate: _dateRange != null ? DateFormat('yyyy-MM-dd').format(_dateRange!.end) : null,
+      );
 
-      for (var service in serviceList) {
-        double price = (double.tryParse(appointment['price'].toString()) ?? 0) /
-            (serviceList.isEmpty ? 1 : serviceList.length);
-        detailedAppointments.add({
-          'ref': appointment['ref'],
-          'client': appointment['client'],
-          'service': service,
-          'staffName': appointment['staffName'],
-          'scheduledOn': appointment['scheduledOn'],
-          'cancelledOn': appointment['cancelledOn'],
-          'cancelledBy': appointment['cancelledBy'],
-          'reason': appointment['reason'],
-          'price': price,
-        });
-      }
+      final block = response['data']?['cancellations'];
+      final List<dynamic> raw = (block?['cancellations'] as List?) ?? [];
+
+      _all = raw.map((j) => _CancelledAppointment.fromJson(j)).toList();
+      _applyFilter();
+    } catch (e) {
+      if (mounted) setState(() => _errorMsg = e.toString());
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
 
-    filteredServiceDetails = detailedAppointments.where((appointment) {
-      return appointment['ref']
-              .toString()
-              .toLowerCase()
-              .contains(searchText.toLowerCase()) ||
-          appointment['client']
-              .toString()
-              .toLowerCase()
-              .contains(searchText.toLowerCase()) ||
-          appointment['service']
-              .toString()
-              .toLowerCase()
-              .contains(searchText.toLowerCase()) ||
-          appointment['staffName']
-              .toString()
-              .toLowerCase()
-              .contains(searchText.toLowerCase());
-    }).toList();
-
-    // Sort the details
-    filteredServiceDetails.sort((a, b) {
-      var aValue = a[_sortColumn];
-      var bValue = b[_sortColumn];
-      if (_sortColumn == 'scheduledOn' || _sortColumn == 'cancelledOn') {
-        aValue = aValue ?? DateTime(1970);
-        bValue = bValue ?? DateTime(1970);
-        return _sortAscending
-            ? aValue.compareTo(bValue)
-            : bValue.compareTo(aValue);
-      } else if (_sortColumn == 'price') {
-        return _sortAscending
-            ? aValue.compareTo(bValue)
-            : bValue.compareTo(aValue);
-      } else {
-        return _sortAscending
-            ? aValue.toString().compareTo(bValue.toString())
-            : bValue.toString().compareTo(aValue.toString());
-      }
+  void _applyFilter() {
+    final q = _searchText.toLowerCase();
+    setState(() {
+      _currentPage = 0;
+      _filtered = _all.where((a) {
+        return a.clientName.toLowerCase().contains(q) ||
+               a.serviceName.toLowerCase().contains(q) ||
+               a.staffName.toLowerCase().contains(q);
+      }).toList();
     });
   }
 
-  Future<void> _selectDateRange() async {
+  // ── Stats ──────────────────────────────────────────────────────────────────
+  double get _totalRevenueLoss => _filtered.fold(0, (sum, a) => sum + a.finalAmount);
+  int get _onlineCount => _filtered.where((a) => a.mode.toLowerCase() == 'online').length;
+  int get _offlineCount => _filtered.where((a) => a.mode.toLowerCase() == 'offline').length;
+
+  Future<void> _pickDateRange() async {
     final picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
-      initialDateRange: _selectedDateRange ??
-          DateTimeRange(
-            start: DateTime.now().subtract(Duration(days: 7)),
-            end: DateTime.now(),
-          ),
+      initialDateRange: _dateRange ??
+          DateTimeRange(start: DateTime.now().subtract(const Duration(days: 30)), end: DateTime.now()),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(colorScheme: const ColorScheme.light(primary: _purple, onPrimary: Colors.white)),
+        child: child!,
+      ),
     );
     if (picked != null) {
-      setState(() {
-        _selectedDateRange = picked;
-        _calculateServiceDetails();
-      });
+      _dateRange = picked;
+      _fetchData();
     }
   }
 
-  String _currencyFormat(num amount) {
-    return '₹${NumberFormat('#,##0').format(amount)}';
+  List<_CancelledAppointment> get _pageItems {
+    final start = _currentPage * _rowsPerPage;
+    final end = (start + _rowsPerPage).clamp(0, _filtered.length);
+    if (start >= _filtered.length) return [];
+    return _filtered.sublist(start, end);
   }
 
-  String _formatDateTime(DateTime? dateTime) {
-    if (dateTime == null) return 'N/A';
-    return DateFormat('dd MMM yyyy, HH:mm').format(dateTime);
-  }
+  int get _totalPages => (_filtered.length / _rowsPerPage).ceil().clamp(1, 9999);
 
-  Future<void> _exportToCsv() async {
-    List<List<dynamic>> rows = [
-      [
-        'Ref.',
-        'Client',
-        'Service',
-        'Staff Name',
-        'Schedule On',
-        'Cancelled On',
-        'Cancelled By',
-        'Reason',
-        'Price'
-      ],
-      ...filteredServiceDetails.map((appointment) => [
-            appointment['ref'],
-            appointment['client'],
-            appointment['service'],
-            appointment['staffName'],
-            _formatDateTime(appointment['scheduledOn']),
-            _formatDateTime(appointment['cancelledOn']),
-            appointment['cancelledBy'] ?? 'N/A',
-            appointment['reason'] ?? 'N/A',
-            _currencyFormat(appointment['price']),
-          ]),
-    ];
-
-    String csv = const ListToCsvConverter().convert(rows);
-    final directory = await getTemporaryDirectory();
-    final path = '${directory.path}/service_details.csv';
-    final file = File(path);
-    await file.writeAsString(csv);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('CSV exported to $path')),
-    );
-  }
-
-  void _sort(String column) {
-    setState(() {
-      if (_sortColumn == column) {
-        _sortAscending = !_sortAscending;
-      } else {
-        _sortColumn = column;
-        _sortAscending = true;
-      }
-      _calculateServiceDetails();
-    });
-  }
+  String _fmtCurrency(num v) => '₹${NumberFormat('#,##0').format(v)}';
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: true,
-      onPopInvoked: (didPop) {
-        if (!didPop) {
-          Navigator.pop(context);
-        }
-      },
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        appBar: _buildAppBar(context),
-        body: Padding(
-          padding: EdgeInsets.all(20.w),
-          child: Column(
-            children: [
-              Text(
-                "Appointments by Service Details",
-                style:
-                    GoogleFonts.poppins(fontSize: 12.sp, color: Colors.black),
-              ),
-              SizedBox(height: 4.h),
-              Container(height: 2.h, width: 200.w, color: Colors.black),
-              SizedBox(height: 24.h),
-
-              // Search
-              TextField(
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.search),
-                  hintText: "Search Ref., Client, Service, or Staff...",
-                  hintStyle: GoogleFonts.poppins(),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10.r),
-                  ),
-                ),
-                style: GoogleFonts.poppins(),
-                onChanged: (value) {
-                  searchText = value;
-                  _calculateServiceDetails();
-                },
-              ),
-              SizedBox(height: 16.h),
-
-              // Date picker + Export
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: _selectDateRange,
-                    icon: Icon(Icons.date_range, size: 20.sp),
-                    label: Text(
-                      _selectedDateRange != null
-                          ? "${DateFormat('dd MMM').format(_selectedDateRange!.start)} - ${DateFormat('dd MMM').format(_selectedDateRange!.end)}"
-                          : "Pick Range",
-                      style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.w600, fontSize: 10.sp),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.black87,
-                      side: BorderSide(color: Colors.black54),
-                      padding: EdgeInsets.symmetric(
-                          horizontal: 16.w, vertical: 12.h),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.r)),
-                      elevation: 0,
-                    ),
-                  ),
-                  Container(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.black),
-                      borderRadius: BorderRadius.circular(5.r),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        icon: Icon(Icons.file_download_outlined,
-                            color: Colors.black, size: 20.sp),
-                        items: const [
-                          DropdownMenuItem(value: 'csv', child: Text('CSV')),
-                          DropdownMenuItem(value: 'pdf', child: Text('PDF')),
-                          DropdownMenuItem(value: 'copy', child: Text('Copy')),
-                          DropdownMenuItem(
-                              value: 'excel', child: Text('Excel')),
-                          DropdownMenuItem(
-                              value: 'print', child: Text('Print')),
-                        ],
-                        hint: Text("Export", style: GoogleFonts.poppins()),
-                        onChanged: (value) {
-                          if (value == 'csv') {
-                            _exportToCsv();
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text("Selected: $value")),
-                            );
-                          }
-                        },
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 20.h),
-
-              // Data Table
-              Expanded(
-                child: Card(
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F6FA),
+      appBar: _buildAppBar(),
+      body: Padding(
+        padding: EdgeInsets.all(12.w),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                _statCard('Total Cancelled', '${_filtered.length}', Icons.cancel_outlined, Colors.red),
+                SizedBox(width: 8.w),
+                _statCard('Revenue Loss', _fmtCurrency(_totalRevenueLoss), Icons.trending_down_rounded, Colors.orange),
+              ],
+            ),
+            SizedBox(height: 8.h),
+            Row(
+              children: [
+                _statCard('Online', '$_onlineCount', Icons.language_rounded, _purple),
+                SizedBox(width: 8.w),
+                _statCard('Offline', '$_offlineCount', Icons.storefront_rounded, Colors.blueGrey),
+              ],
+            ),
+            SizedBox(height: 12.h),
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
                   color: Colors.white,
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.r)),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12.r),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.vertical,
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: DataTable(
-                          headingRowColor: MaterialStateColor.resolveWith(
-                              (states) => Colors.grey.shade200),
-                          columnSpacing: 16.w,
-                          dataRowHeight: 60.h,
-                          headingTextStyle: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                            fontSize: 10.sp,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: const [BoxShadow(color: Color(0x12000000), blurRadius: 10, offset: Offset(0, 3))],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              height: 34.h,
+                              child: TextField(
+                                controller: _searchCtrl,
+                                onChanged: (v) { _searchText = v; _applyFilter(); },
+                                style: GoogleFonts.poppins(fontSize: 11.sp),
+                                decoration: InputDecoration(
+                                  prefixIcon: Icon(Icons.search_rounded, color: Colors.grey.shade400, size: 16.sp),
+                                  hintText: 'Search cancelled...',
+                                  hintStyle: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.grey.shade400),
+                                  filled: true,
+                                  fillColor: const Color(0xFFF5F6FA),
+                                  contentPadding: EdgeInsets.zero,
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none),
+                                ),
+                              ),
+                            ),
                           ),
-                          dataTextStyle: GoogleFonts.poppins(
-                            fontSize: 10.sp,
-                            color: Colors.black87,
+                          SizedBox(width: 8.w),
+                          _toolbarBtn(
+                            icon: Icons.filter_list_rounded,
+                            label: _dateRange != null ? 'Filtered' : 'Filter',
+                            isActive: _dateRange != null,
+                            onTap: _pickDateRange,
                           ),
-                          border: TableBorder.all(
-                              color: Colors.black26, width: 0.5),
-                          columns: [
-                            DataColumn(
-                              label: GestureDetector(
-                                onTap: () => _sort('ref'),
-                                child: Row(
-                                  children: [
-                                    Text("Ref."),
-                                    if (_sortColumn == 'ref')
-                                      Icon(
-                                        _sortAscending
-                                            ? Icons.arrow_upward
-                                            : Icons.arrow_downward,
-                                        size: 16.sp,
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            DataColumn(
-                              label: GestureDetector(
-                                onTap: () => _sort('client'),
-                                child: Row(
-                                  children: [
-                                    Text("Client"),
-                                    if (_sortColumn == 'client')
-                                      Icon(
-                                        _sortAscending
-                                            ? Icons.arrow_upward
-                                            : Icons.arrow_downward,
-                                        size: 16.sp,
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            DataColumn(
-                              label: GestureDetector(
-                                onTap: () => _sort('service'),
-                                child: Row(
-                                  children: [
-                                    Text("Service"),
-                                    if (_sortColumn == 'service')
-                                      Icon(
-                                        _sortAscending
-                                            ? Icons.arrow_upward
-                                            : Icons.arrow_downward,
-                                        size: 16.sp,
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            DataColumn(
-                              label: GestureDetector(
-                                onTap: () => _sort('staffName'),
-                                child: Row(
-                                  children: [
-                                    Text("Staff Name"),
-                                    if (_sortColumn == 'staffName')
-                                      Icon(
-                                        _sortAscending
-                                            ? Icons.arrow_upward
-                                            : Icons.arrow_downward,
-                                        size: 16.sp,
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            DataColumn(
-                              label: GestureDetector(
-                                onTap: () => _sort('scheduledOn'),
-                                child: Row(
-                                  children: [
-                                    Text("Schedule On"),
-                                    if (_sortColumn == 'scheduledOn')
-                                      Icon(
-                                        _sortAscending
-                                            ? Icons.arrow_upward
-                                            : Icons.arrow_downward,
-                                        size: 16.sp,
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            DataColumn(
-                              label: GestureDetector(
-                                onTap: () => _sort('cancelledOn'),
-                                child: Row(
-                                  children: [
-                                    Text("Cancelled On"),
-                                    if (_sortColumn == 'cancelledOn')
-                                      Icon(
-                                        _sortAscending
-                                            ? Icons.arrow_upward
-                                            : Icons.arrow_downward,
-                                        size: 16.sp,
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            DataColumn(
-                              label: GestureDetector(
-                                onTap: () => _sort('cancelledBy'),
-                                child: Row(
-                                  children: [
-                                    Text("Cancelled By"),
-                                    if (_sortColumn == 'cancelledBy')
-                                      Icon(
-                                        _sortAscending
-                                            ? Icons.arrow_upward
-                                            : Icons.arrow_downward,
-                                        size: 16.sp,
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            DataColumn(
-                              label: GestureDetector(
-                                onTap: () => _sort('reason'),
-                                child: Row(
-                                  children: [
-                                    Text("Reason"),
-                                    if (_sortColumn == 'reason')
-                                      Icon(
-                                        _sortAscending
-                                            ? Icons.arrow_upward
-                                            : Icons.arrow_downward,
-                                        size: 16.sp,
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            DataColumn(
-                              label: GestureDetector(
-                                onTap: () => _sort('price'),
-                                child: Row(
-                                  children: [
-                                    Text("Price"),
-                                    if (_sortColumn == 'price')
-                                      Icon(
-                                        _sortAscending
-                                            ? Icons.arrow_upward
-                                            : Icons.arrow_downward,
-                                        size: 16.sp,
-                                      ),
-                                  ],
-                                ),
-                              ),
-                              numeric: true,
-                            ),
-                          ],
-                          rows: List.generate(filteredServiceDetails.length,
-                              (index) {
-                            final appointment = filteredServiceDetails[index];
-                            final isEven = index % 2 == 0;
-                            return DataRow(
-                              color: MaterialStateColor.resolveWith(
-                                (states) =>
-                                    isEven ? Colors.grey.shade50 : Colors.white,
-                              ),
-                              cells: [
-                                DataCell(
-                                  Padding(
-                                    padding:
-                                        EdgeInsets.symmetric(vertical: 8.h),
-                                    child: Text(
-                                        appointment['ref']?.toString() ??
-                                            'N/A'),
-                                  ),
-                                ),
-                                DataCell(
-                                  Padding(
-                                    padding:
-                                        EdgeInsets.symmetric(vertical: 8.h),
-                                    child: Text(
-                                        appointment['client']?.toString() ??
-                                            'N/A'),
-                                  ),
-                                ),
-                                DataCell(
-                                  Padding(
-                                    padding:
-                                        EdgeInsets.symmetric(vertical: 8.h),
-                                    child: Text(
-                                        appointment['service']?.toString() ??
-                                            'N/A'),
-                                  ),
-                                ),
-                                DataCell(
-                                  Padding(
-                                    padding:
-                                        EdgeInsets.symmetric(vertical: 8.h),
-                                    child: Text(
-                                        appointment['staffName']?.toString() ??
-                                            'N/A'),
-                                  ),
-                                ),
-                                DataCell(
-                                  Padding(
-                                    padding:
-                                        EdgeInsets.symmetric(vertical: 8.h),
-                                    child: Text(_formatDateTime(
-                                        appointment['scheduledOn'])),
-                                  ),
-                                ),
-                                DataCell(
-                                  Padding(
-                                    padding:
-                                        EdgeInsets.symmetric(vertical: 8.h),
-                                    child: Text(_formatDateTime(
-                                        appointment['cancelledOn'])),
-                                  ),
-                                ),
-                                DataCell(
-                                  Padding(
-                                    padding:
-                                        EdgeInsets.symmetric(vertical: 8.h),
-                                    child: Text(appointment['cancelledBy']
-                                            ?.toString() ??
-                                        'N/A'),
-                                  ),
-                                ),
-                                DataCell(
-                                  Padding(
-                                    padding:
-                                        EdgeInsets.symmetric(vertical: 8.h),
-                                    child: Text(
-                                        appointment['reason']?.toString() ??
-                                            'N/A'),
-                                  ),
-                                ),
-                                DataCell(
-                                  Padding(
-                                    padding:
-                                        EdgeInsets.symmetric(vertical: 8.h),
-                                    child: Text(
-                                        _currencyFormat(appointment['price'])),
-                                  ),
-                                ),
-                              ],
-                            );
-                          }),
-                        ),
+                          SizedBox(width: 8.w),
+                          _toolbarBtn(
+                            icon: Icons.upload_rounded,
+                            label: 'Export',
+                            onTap: () {},
+                          ),
+                          SizedBox(width: 8.w),
+                          _toolbarBtn(
+                            icon: Icons.refresh_rounded,
+                            label: '',
+                            onTap: _fetchData,
+                            isIconOnly: true,
+                          ),
+                        ],
                       ),
                     ),
-                  ),
+                    Divider(height: 1, color: Colors.grey.shade100),
+                    Expanded(child: _buildTable()),
+                    Divider(height: 1, color: Colors.grey.shade100),
+                    _buildPaginationFooter(),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
+  PreferredSizeWidget _buildAppBar() {
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.black),
-        onPressed: () => Navigator.pop(context),
-      ),
+      automaticallyImplyLeading: false,
       toolbarHeight: 50.h,
-      titleSpacing: 0,
       title: Row(
         children: [
-          SizedBox(width: 20.w),
-          Expanded(
-            child: Text(
-              'Appointments by Service Details',
-              style: GoogleFonts.poppins(
-                fontSize: 10.sp,
-                fontWeight: FontWeight.w600,
-                color: Colors.black,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
           IconButton(
-            icon: const Icon(Icons.notifications),
-            onPressed: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const NotificationPage())),
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black87, size: 18),
+            onPressed: () => Navigator.pop(context),
           ),
-          GestureDetector(
-            onTap: () => Navigator.push(
-                context, MaterialPageRoute(builder: (_) => const My_Profile())),
-            child: Padding(
-              padding: EdgeInsets.only(right: 10.w),
-              child: Container(
-                padding: EdgeInsets.all(2.w),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.black, width: 1.w),
-                ),
-                child: const CircleAvatar(
-                  radius: 18,
-                  backgroundImage: AssetImage('assets/images/profile.jpeg'),
-                  backgroundColor: Colors.white,
-                ),
-              ),
-            ),
+          Expanded(
+            child: Text('Cancelled Appointments',
+                style: GoogleFonts.poppins(fontSize: 14.sp, fontWeight: FontWeight.w600, color: Colors.black87)),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTable() {
+    if (_isLoading) return const Center(child: CircularProgressIndicator(color: _purple));
+    if (_errorMsg != null) return _buildErrorState();
+    if (_filtered.isEmpty) return _buildEmptyState();
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: SingleChildScrollView(
+        child: DataTable(
+          headingRowColor: MaterialStateProperty.all(const Color(0xFFF9F9FB)),
+          headingTextStyle: GoogleFonts.poppins(fontSize: 10.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
+          dataTextStyle: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.black87),
+          horizontalMargin: 12.w,
+          columnSpacing: 20.w,
+          columns: const [
+            DataColumn(label: Text('Client')),
+            DataColumn(label: Text('Service')),
+            DataColumn(label: Text('Staff')),
+            DataColumn(label: Text('Scheduled')),
+            DataColumn(label: Text('Cancelled By')),
+            DataColumn(label: Text('Cancelled On')),
+            DataColumn(label: Text('Loss')),
+          ],
+          rows: _pageItems.map((a) => DataRow(cells: [
+            DataCell(Text(a.clientName)),
+            DataCell(Text(a.serviceName)),
+            DataCell(Text(a.staffName)),
+            DataCell(Text(a.formattedDate)),
+            DataCell(Text(a.cancelledBy)),
+            DataCell(Text(a.formattedCancelledDate)),
+            DataCell(Text(_fmtCurrency(a.finalAmount), style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold))),
+          ])).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Icon(Icons.event_busy_rounded, size: 40.sp, color: Colors.grey.shade300),
+        const SizedBox(height: 12),
+        Text('No cancelled records found', style: GoogleFonts.poppins(fontSize: 12.sp, color: Colors.grey.shade500)),
+      ]),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.error_outline_rounded, size: 40.sp, color: Colors.redAccent),
+          const SizedBox(height: 8),
+          Text('Failed to load data', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 12.sp)),
+          Text(_errorMsg!, textAlign: TextAlign.center, style: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.grey)),
+          const SizedBox(height: 12),
+          ElevatedButton(onPressed: _fetchData, style: ElevatedButton.styleFrom(backgroundColor: _purple), child: const Text('Retry', style: TextStyle(color: Colors.white))),
+        ]),
+      ),
+    );
+  }
+
+  Widget _buildPaginationFooter() {
+    final start = _filtered.isEmpty ? 0 : _currentPage * _rowsPerPage + 1;
+    final end = ((_currentPage + 1) * _rowsPerPage).clamp(0, _filtered.length);
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+      child: Row(
+        children: [
+          Text('Showing $start–$end of ${_filtered.length}',
+              style: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.grey.shade500)),
+          const Spacer(),
+          _pageBtn(Icons.chevron_left_rounded, _currentPage > 0, () => setState(() => _currentPage--)),
+          SizedBox(width: 6.w),
+          _pageBtn(Icons.chevron_right_rounded, _currentPage < _totalPages - 1, () => setState(() => _currentPage++)),
+        ],
+      ),
+    );
+  }
+
+  Widget _pageBtn(IconData icon, bool enabled, VoidCallback onTap) {
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      borderRadius: BorderRadius.circular(4),
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade200), borderRadius: BorderRadius.circular(4), color: enabled ? Colors.white : const Color(0xFFF5F6FA)),
+        child: Icon(icon, size: 16.sp, color: enabled ? Colors.black54 : Colors.grey.shade200),
+      ),
+    );
+  }
+
+  Widget _statCard(String label, String value, IconData icon, Color color) {
+    return Expanded(
+      child: Container(
+        padding: EdgeInsets.all(10.w),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withOpacity(0.1)),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(radius: 14, backgroundColor: color.withOpacity(0.1), child: Icon(icon, size: 14, color: color)),
+            SizedBox(width: 8.w),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(value, style: GoogleFonts.poppins(fontSize: 12.sp, fontWeight: FontWeight.w700, color: Colors.black87), overflow: TextOverflow.ellipsis),
+                  Text(label, style: GoogleFonts.poppins(fontSize: 8.sp, color: Colors.grey.shade500), overflow: TextOverflow.ellipsis),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _toolbarBtn({required IconData icon, required String label, required VoidCallback onTap, bool isActive = false, bool isIconOnly = false}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        height: 34.h,
+        padding: EdgeInsets.symmetric(horizontal: isIconOnly ? 8 : 10),
+        decoration: BoxDecoration(
+          color: isActive ? _purple.withOpacity(0.08) : const Color(0xFFF5F6FA),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: isActive ? _purple : Colors.grey.shade200),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: isActive ? _purple : Colors.grey.shade600),
+            if (!isIconOnly) ...[const SizedBox(width: 4), Text(label, style: GoogleFonts.poppins(fontSize: 10.sp, color: isActive ? _purple : Colors.grey.shade600, fontWeight: isActive ? FontWeight.w600 : FontWeight.normal))],
+          ],
+        ),
       ),
     );
   }

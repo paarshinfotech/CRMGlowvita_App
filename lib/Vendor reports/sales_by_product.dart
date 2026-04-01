@@ -9,14 +9,14 @@ import '../services/api_service.dart';
 // Page
 // ─────────────────────────────────────────────────────────────────────────────
 
-class SalesByCustomer extends StatefulWidget {
-  const SalesByCustomer({super.key});
+class SalesByProduct extends StatefulWidget {
+  const SalesByProduct({super.key});
 
   @override
-  State<SalesByCustomer> createState() => _SalesByCustomerState();
+  State<SalesByProduct> createState() => _SalesByProductState();
 }
 
-class _SalesByCustomerState extends State<SalesByCustomer> {
+class _SalesByProductState extends State<SalesByProduct> {
   static const Color _purple = Color(0xFF6C3EB8);
 
   bool _isLoading = false;
@@ -51,11 +51,11 @@ class _SalesByCustomerState extends State<SalesByCustomer> {
       _errorMsg = null;
     });
     try {
-      final result = await ApiService.getSalesByCustomerReport(
+      final result = await ApiService.getSalesByProductReport(
         startDate: _dateRange != null ? DateFormat('yyyy-MM-dd').format(_dateRange!.start) : null,
         endDate: _dateRange != null ? DateFormat('yyyy-MM-dd').format(_dateRange!.end) : null,
       );
-      final raw = (result['data']?['salesByCustomer'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      final raw = (result['data']?['salesByProduct'] as List?)?.cast<Map<String, dynamic>>() ?? [];
       _all = raw;
       _applyFilter();
     } catch (e) {
@@ -70,7 +70,7 @@ class _SalesByCustomerState extends State<SalesByCustomer> {
     setState(() {
       _currentPage = 0;
       _filtered = _all.where((row) {
-        return (row['customer'] ?? '').toString().toLowerCase().contains(q);
+        return (row['productName'] ?? '').toString().toLowerCase().contains(q);
       }).toList();
     });
   }
@@ -137,7 +137,7 @@ class _SalesByCustomerState extends State<SalesByCustomer> {
                                 style: GoogleFonts.poppins(fontSize: 11.sp),
                                 decoration: InputDecoration(
                                   prefixIcon: Icon(Icons.search_rounded, color: Colors.grey.shade400, size: 16.sp),
-                                  hintText: 'Search customer...',
+                                  hintText: 'Search product...',
                                   hintStyle: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.grey.shade400),
                                   filled: true,
                                   fillColor: const Color(0xFFF5F6FA),
@@ -197,7 +197,7 @@ class _SalesByCustomerState extends State<SalesByCustomer> {
             onPressed: () => Navigator.pop(context),
           ),
           Expanded(
-            child: Text('Sales by Customer',
+            child: Text('Sales by Product',
                 style: GoogleFonts.poppins(fontSize: 14.sp, fontWeight: FontWeight.w600, color: Colors.black87)),
           ),
         ],
@@ -218,9 +218,9 @@ class _SalesByCustomerState extends State<SalesByCustomer> {
           headingTextStyle: GoogleFonts.poppins(fontSize: 9.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
           dataTextStyle: GoogleFonts.poppins(fontSize: 9.sp, color: Colors.black87),
           horizontalMargin: 12.w,
-          columnSpacing: 20.w,
+          columnSpacing: 15.w,
           columns: const [
-            DataColumn(label: Text('Customer')),
+            DataColumn(label: Text('Product')),
             DataColumn(label: Text('Sold')),
             DataColumn(label: Text('Gross')),
             DataColumn(label: Text('Net')),
@@ -229,8 +229,8 @@ class _SalesByCustomerState extends State<SalesByCustomer> {
           ],
           rows: [
             ..._pageItems.map((r) => DataRow(cells: [
-              DataCell(Text(r['customer']?.toString() ?? '—')),
-              DataCell(Text(r['serviceSold']?.toString() ?? '0')),
+              DataCell(Text(r['productName']?.toString() ?? '—')),
+              DataCell(Text(r['quantitySold']?.toString() ?? '0')),
               DataCell(Text(_fmt(_n(r['grossSale'])))),
               DataCell(Text(_fmt(_n(r['netSale'])))),
               DataCell(Text(_fmt(_n(r['tax'])))),
@@ -251,7 +251,7 @@ class _SalesByCustomerState extends State<SalesByCustomer> {
     double tTotal = 0;
 
     for (var r in _filtered) {
-      tSold += (r['serviceSold'] as num?)?.toInt() ?? 0;
+      tSold += (r['quantitySold'] as num?)?.toInt() ?? 0;
       tGross += _n(r['grossSale']);
       tNet += _n(r['netSale']);
       tTax += _n(r['tax']);
@@ -274,9 +274,9 @@ class _SalesByCustomerState extends State<SalesByCustomer> {
   Widget _buildEmptyState() {
     return Center(
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.person_search_rounded, size: 40.sp, color: Colors.grey.shade300),
+        Icon(Icons.inventory_2_outlined, size: 40.sp, color: Colors.grey.shade300),
         const SizedBox(height: 12),
-        Text('No customer records found', style: GoogleFonts.poppins(fontSize: 12.sp, color: Colors.grey.shade500)),
+        Text('No sales records found', style: GoogleFonts.poppins(fontSize: 12.sp, color: Colors.grey.shade500)),
       ]),
     );
   }

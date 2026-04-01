@@ -39,6 +39,7 @@ class AppointmentModel {
   final double? serviceTax;
   final double? platformFee;
   final String? venueAddress;
+  final String? invoiceNumber;
 
   AppointmentModel({
     this.id,
@@ -76,6 +77,7 @@ class AppointmentModel {
     this.platformFee,
     this.venueAddress,
     this.paymentStatus,
+    this.invoiceNumber,
   });
 
   factory AppointmentModel.fromJson(Map<String, dynamic> json) {
@@ -126,13 +128,14 @@ class AppointmentModel {
       addOnsAmount: (json['addOnsAmount'] as num?)?.toDouble(),
       addOns: (json['addOns'] ?? json['addons']) != null
           ? ((json['addOns'] ?? json['addons']) as List)
-              .map((e) => AddOn.fromJson(Map<String, dynamic>.from(e)))
-              .toList()
+          .map((e) => AddOn.fromJson(Map<String, dynamic>.from(e)))
+          .toList()
           : null,
       serviceTax: (json['serviceTax'] as num?)?.toDouble(),
       platformFee: (json['platformFee'] as num?)?.toDouble(),
       venueAddress: json['venueAddress'],
       paymentStatus: json['paymentStatus'],
+      invoiceNumber: json['invoiceNumber'] ?? json['invoiceNo'],
     );
   }
 }
