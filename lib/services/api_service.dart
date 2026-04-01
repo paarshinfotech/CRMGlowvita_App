@@ -12,6 +12,7 @@ import '../addon_model.dart';
 import '../vendor_model.dart';
 import '../billing_invoice_model.dart';
 import 'marketplace_models.dart';
+import '../models/notification_model.dart';
 
 class StaffMember {
   final String? id;
@@ -458,6 +459,9 @@ class ApiService {
   static const String servicesEndpoint = '/crm/services';
   static const String adminBaseUrl = 'https://admin.glowvitasalon.com/api';
   static const String productCategoriesEndpoint = '/admin/product-categories';
+  static const String notificationTokenEndpoint = '/crm/notifications/register-token';
+  static const String notificationsEndpoint = '/notifications';
+  static const String crmNotificationsEndpoint = '/crm/notifications';
 
   // Static notifier for vendor profile
   static final ValueNotifier<VendorProfile?> vendorProfileNotifier =
@@ -725,6 +729,110 @@ class ApiService {
       '$baseUrl/crm/auth/login',
       {'email': email, 'password': password},
       useAuth: false,
+    );
+  }
+
+  // A. Token Registration (POST)
+  static Future<http.Response> registerFCMToken(String token) async {
+    return await _post(
+      '$baseUrl$notificationTokenEndpoint',
+      {'token': token},
+      useAuth: true,
+    );
+  }
+
+  // B. Fetch Notification History (GET)
+  static Future<Map<String, dynamic>> getNotificationHistory() async {
+    try {
+      final response = await _get('$baseUrl$notificationsEndpoint');
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          final List notificationsData = data['data'] ?? [];
+          final int unreadCount = data['unreadCount'] ?? 0;
+          return {
+            'notifications':
+                notificationsData.map((j) => NotificationModel.fromJson(j)).toList(),
+            'unreadCount': unreadCount,
+          };
+        }
+      }
+      throw Exception('Failed to fetch notification history');
+    } catch (e) {
+      debugPrint('Error fetching notification history: $e');
+      rethrow;
+    }
+  }
+
+  // C. Mark as Read (PATCH)
+  static Future<http.Response> markNotificationAsRead(
+      {String? notificationId, bool markAll = false}) async {
+    final Map<String, dynamic> body = {};
+    if (markAll) {
+      body['markAll'] = true;
+    } else if (notificationId != null) {
+      body['notificationId'] = notificationId;
+    }
+
+    return await _patch(
+      '$baseUrl$notificationsEndpoint',
+      body,
+      useAuth: true,
+    );
+  }
+
+  // --- CRM Broadcast Management (Vendors Only) ---
+
+  // POST /api/crm/notifications (Create/Send Broadcast)
+  static Future<http.Response> createBroadcast(Map<String, dynamic> payload) async {
+    return await _post(
+      '$baseUrl$crmNotificationsEndpoint',
+      payload,
+      useAuth: true,
+    );
+  }
+
+  // GET /api/crm/notifications (List Sent Broadcasts + Stats)
+  static Future<Map<String, dynamic>> getBroadcastLogs() async {
+    try {
+      final response = await _get('$baseUrl$crmNotificationsEndpoint');
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final notifications = data['notifications'] as List? ?? [];
+        
+        // Use server provided stats or compute from list
+        final stats = data['stats'] ??
+            {
+              'total': notifications.length,
+              'pushSent': notifications.where((n) {
+                final channels = n['channels'] as List?;
+                return channels != null && channels.contains('Push');
+              }).length,
+              'smsSent': notifications.where((n) {
+                final channels = n['channels'] as List?;
+                return channels != null && channels.contains('SMS');
+              }).length,
+              'mostTargeted': 'None',
+            };
+
+        return {
+          'notifications': notifications,
+          'stats': stats,
+        };
+      }
+      throw Exception('Failed to fetch broadcast logs');
+    } catch (e) {
+      debugPrint('Error fetching broadcast logs: $e');
+      rethrow;
+    }
+  }
+
+  // DELETE /api/crm/notifications (Delete Broadcast Log)
+  static Future<http.Response> deleteBroadcastLog(String notificationId) async {
+    return await _delete(
+      '$baseUrl$crmNotificationsEndpoint',
+      body: {'notificationId': notificationId},
+      useAuth: true,
     );
   }
 

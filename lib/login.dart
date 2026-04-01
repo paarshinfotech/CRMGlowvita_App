@@ -12,6 +12,7 @@ import 'Suppliers/supp_register.dart';
 import 'services/api_service.dart';
 import 'intro_page.dart';
 import 'forgot_password.dart';
+import 'services/notification_service.dart';
 
 
 class Login extends StatefulWidget {
@@ -60,6 +61,16 @@ class _LoginPageState extends State<Login> {
         await prefs.setString('user_role', data['role'] ?? 'vendor');
         await prefs.setString('user_id', data['user']['_id'] ?? '');
         await prefs.setString('user_data', jsonEncode(data['user']));
+
+        // Login Hook: Sync FCM Token with server
+        try {
+          String? fcmToken = await NotificationService.getSavedToken();
+          if (fcmToken != null) {
+            await NotificationService().syncTokenWithServer(fcmToken);
+          }
+        } catch (e) {
+          debugPrint('Notification sync error: $e');
+        }
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
