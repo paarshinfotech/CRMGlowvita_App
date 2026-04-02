@@ -95,6 +95,7 @@ class _SuppProfilePageState extends State<SuppProfilePage>
     _cityController.text = profile.city ?? "";
     _stateController.text = profile.state ?? "";
     _pincodeController.text = profile.pincode ?? "";
+    _taxValueController.text = profile.taxes?.taxValue.toString() ?? "0";
 
     if (profile.bankDetails != null) {
       _accountHolderController.text = profile.bankDetails!.accountHolder ?? "";
@@ -138,8 +139,9 @@ class _SuppProfilePageState extends State<SuppProfilePage>
       _newProfileImageBase64 = null;
       _fetchProfileData();
     } catch (e) {
+      debugPrint("Error updating profile: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Update failed: $e')),
+        const SnackBar(content: Text('Update failed. Check console for details.')),
       );
     } finally {
       setState(() => _isSaving = false);
@@ -167,8 +169,9 @@ class _SuppProfilePageState extends State<SuppProfilePage>
       );
       _fetchProfileData();
     } catch (e) {
+      debugPrint("Error updating profile: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Update failed: $e')),
+        const SnackBar(content: Text('Update failed. Check console for details.')),
       );
     } finally {
       setState(() => _isSaving = false);
@@ -194,8 +197,9 @@ class _SuppProfilePageState extends State<SuppProfilePage>
       _newDocumentsBase64.clear();
       _fetchProfileData();
     } catch (e) {
+      debugPrint("Error updating profile: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Update failed: $e')),
+        const SnackBar(content: Text('Update failed. Check console for details.')),
       );
     } finally {
       setState(() => _isSaving = false);
@@ -260,11 +264,50 @@ class _SuppProfilePageState extends State<SuppProfilePage>
     _bankNameController.dispose();
     _ifscCodeController.dispose();
     _upiIdController.dispose();
+    _taxValueController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFFAFAFA),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const CircularProgressIndicator(color: Colors.black87),
+              SizedBox(height: 16.h),
+              Text("Loading profile...",
+                  style: GoogleFonts.inter(
+                      fontSize: 12.sp, color: Colors.grey.shade600)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFFAFAFA),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 48.sp, color: Colors.red.shade300),
+              SizedBox(height: 16.h),
+              Text("Error: $_errorMessage",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.red)),
+              SizedBox(height: 24.h),
+              _buildButton("Try Again", _fetchProfileData, width: 140.w),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAFA),
       appBar: AppBar(
@@ -276,67 +319,62 @@ class _SuppProfilePageState extends State<SuppProfilePage>
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Profile',
-          style:
-              GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w600),
+          'Supplier Profile',
+          style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w600),
         ),
       ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: Colors.black87))
-          : Stack(
-              children: [
-                NestedScrollView(
-                  headerSliverBuilder: (context, innerBoxIsScrolled) => [
-                    SliverToBoxAdapter(child: _buildHeader()),
-                    SliverPersistentHeader(
-                      pinned: true,
-                      delegate: _SliverTabBarDelegate(
-                        tabBar: TabBar(
-                          controller: _tabController,
-                          isScrollable: true,
-                          labelColor: Colors.black87,
-                          unselectedLabelColor: Colors.grey.shade600,
-                          indicatorColor: Colors.black87,
-                          indicatorWeight: 2.4,
-                          labelStyle: GoogleFonts.inter(
-                              fontSize: 11.sp, fontWeight: FontWeight.w600),
-                          unselectedLabelStyle:
-                              GoogleFonts.inter(fontSize: 11.sp),
-                          tabs: const [
-                            Tab(text: "Profile"),
-                            Tab(text: "Subscription"),
-                            Tab(text: "Gallery"),
-                            Tab(text: "Bank Details"),
-                            Tab(text: "Documents"),
-                            Tab(text: "SMS Package"),
-                            Tab(text: "Taxes"),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                  body: TabBarView(
+      body: Stack(
+        children: [
+          NestedScrollView(
+            headerSliverBuilder: (context, innerBoxIsScrolled) => [
+              SliverToBoxAdapter(child: _buildHeader()),
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _SliverTabBarDelegate(
+                  tabBar: TabBar(
                     controller: _tabController,
-                    children: [
-                      _buildProfileTab(),
-                      _buildSubscriptionTab(),
-                      _buildGalleryTab(),
-                      _buildBankDetailsTab(),
-                      _buildDocumentsTab(),
-                      _buildSmsPackageTab(),
-                      _buildTaxesTab(),
+                    isScrollable: true,
+                    labelColor: Colors.black87,
+                    unselectedLabelColor: Colors.grey.shade600,
+                    indicatorColor: Colors.black87,
+                    indicatorWeight: 2.4,
+                    labelStyle: GoogleFonts.inter(
+                        fontSize: 11.sp, fontWeight: FontWeight.w600),
+                    unselectedLabelStyle: GoogleFonts.inter(fontSize: 11.sp),
+                    tabs: const [
+                      Tab(text: "Profile"),
+                      Tab(text: "Subscription"),
+                      Tab(text: "Gallery"),
+                      Tab(text: "Bank Details"),
+                      Tab(text: "Documents"),
+                      Tab(text: "SMS Package"),
+                      Tab(text: "Taxes"),
                     ],
                   ),
                 ),
-                if (_isSaving)
-                  Container(
-                    color: Colors.black.withOpacity(0.1),
-                    child: const Center(
-                        child: CircularProgressIndicator(color: Colors.black)),
-                  ),
+              ),
+            ],
+            body: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildProfileTab(),
+                _buildSubscriptionTab(),
+                _buildGalleryTab(),
+                _buildBankDetailsTab(),
+                _buildDocumentsTab(),
+                _buildSmsPackageTab(),
+                _buildTaxesTab(),
               ],
             ),
+          ),
+          if (_isSaving)
+            Container(
+              color: Colors.black.withOpacity(0.1),
+              child: const Center(
+                  child: CircularProgressIndicator(color: Colors.black)),
+            ),
+        ],
+      ),
     );
   }
 
@@ -349,20 +387,65 @@ class _SuppProfilePageState extends State<SuppProfilePage>
           Row(
             children: [
               GestureDetector(
-                onTap: () => _pickImage(true),
-                child: CircleAvatar(
-                  radius: 40.r,
-                  backgroundColor: Colors.grey.shade200,
-                  backgroundImage: _newProfileImageBase64 != null
-                      ? MemoryImage(
-                          base64Decode(_newProfileImageBase64!.split(',').last))
-                      : (_profile?.profileImage.isNotEmpty == true
-                          ? NetworkImage(_profile!.profileImage)
-                          : null),
-                  child: (_newProfileImageBase64 == null &&
-                          (_profile?.profileImage.isEmpty == true))
-                      ? Icon(Icons.person, size: 40.sp, color: Colors.grey)
-                      : null,
+                onTap: () {
+                  showModalBottomSheet(
+                    context: context,
+                    builder: (context) => SafeArea(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ListTile(
+                            leading: const Icon(Icons.photo_library),
+                            title: const Text('Choose from Gallery'),
+                            onTap: () {
+                              Navigator.pop(context);
+                              _pickImage(true);
+                            },
+                          ),
+                          if (_profile?.profileImage.isNotEmpty == true ||
+                              _newProfileImageBase64 != null)
+                            ListTile(
+                              leading: const Icon(Icons.visibility),
+                              title: const Text('View Profile Image'),
+                              onTap: () {
+                                Navigator.pop(context);
+                                _viewMedia(
+                                    _newProfileImageBase64 ??
+                                        _profile?.profileImage,
+                                    "Profile Image");
+                              },
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+                child: Hero(
+                  tag: 'profile_image',
+                  child: Container(
+                    width: 70.w,
+                    height: 70.w,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 3),
+                      boxShadow: [
+                        BoxShadow(
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4))
+                      ],
+                      image: DecorationImage(
+                        image: _newProfileImageBase64 != null
+                            ? MemoryImage(base64Decode(
+                                _newProfileImageBase64!.split(',').last))
+                            : (_profile?.profileImage.isNotEmpty == true
+                                ? NetworkImage(_profile!.profileImage)
+                                : const AssetImage('assets/images/user.png'))
+                                    as ImageProvider,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
                 ),
               ),
               SizedBox(width: 16.w),
@@ -370,9 +453,9 @@ class _SuppProfilePageState extends State<SuppProfilePage>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(_profile?.shopName ?? "N/A",
+                    Text(_profile?.shopName ?? "GlowVita Supplier",
                         style: GoogleFonts.inter(
-                            fontSize: 14.sp, fontWeight: FontWeight.bold)),
+                            fontSize: 14.sp, fontWeight: FontWeight.w700)),
                     SizedBox(height: 4.h),
                     Row(
                       children: [
@@ -380,7 +463,7 @@ class _SuppProfilePageState extends State<SuppProfilePage>
                             size: 14.sp, color: Colors.grey.shade600),
                         SizedBox(width: 4.w),
                         Expanded(
-                          child: Text(_profile?.address ?? "N/A",
+                          child: Text(_profile?.address ?? "Location not set",
                               style: GoogleFonts.inter(
                                   fontSize: 10.5.sp,
                                   color: Colors.grey.shade600)),
@@ -389,19 +472,13 @@ class _SuppProfilePageState extends State<SuppProfilePage>
                     ),
                     SizedBox(height: 6.h),
                     Text(
-                        "Supplier ID • ${_profile?.id.substring(0, 8) ?? "N/A"}",
+                        "Supplier ID • ${_profile?.id.substring(0, 8).toUpperCase() ?? "N/A"}",
                         style: GoogleFonts.inter(
                             fontSize: 9.5.sp, color: Colors.grey.shade500)),
                   ],
                 ),
               ),
             ],
-          ),
-          SizedBox(height: 16.h),
-          Text(
-            "Manage your supplier profile and settings",
-            style:
-                GoogleFonts.inter(fontSize: 10.sp, color: Colors.grey.shade500),
           ),
         ],
       ),
@@ -414,10 +491,8 @@ class _SuppProfilePageState extends State<SuppProfilePage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Basic Information",
-              style: GoogleFonts.inter(
-                  fontSize: 12.sp, fontWeight: FontWeight.w700)),
-          SizedBox(height: 20.h),
+          _sectionTitle("Personal Information"),
+          SizedBox(height: 16.h),
           Row(
             children: [
               Expanded(child: _buildField("First Name", _firstNameController)),
@@ -425,18 +500,27 @@ class _SuppProfilePageState extends State<SuppProfilePage>
               Expanded(child: _buildField("Last Name", _lastNameController)),
             ],
           ),
+          _buildField("Email", _emailController,
+              keyboardType: TextInputType.emailAddress, enabled: false),
+          _buildField("Mobile", _mobileController,
+              keyboardType: TextInputType.phone),
+          SizedBox(height: 24.h),
+          _sectionTitle("Business Information"),
+          SizedBox(height: 16.h),
           _buildField("Shop Name", _shopNameController),
           _buildField("Description", _descriptionController, maxLines: 3),
           _buildField("Minimum Order Value", _minOrderValueController,
               keyboardType: TextInputType.number),
-          _buildField("Email", _emailController,
-              keyboardType: TextInputType.emailAddress),
-          _buildField("Mobile", _mobileController,
-              keyboardType: TextInputType.phone),
-          _buildField("Supplier Type", _supplierTypeController),
-          _buildField("Business Registration Number", _businessRegNoController),
+          _buildDropdownField(
+              "Supplier Type",
+              ["Manufacturer", "Distributor", "Wholesaler"],
+              _supplierTypeController),
+          _buildField("Business Registration No", _businessRegNoController),
           _buildField("GST Number", _gstNoController),
-          _buildField("Full Address", _addressController, maxLines: 2),
+          SizedBox(height: 24.h),
+          _sectionTitle("Address Details"),
+          SizedBox(height: 16.h),
+          _buildField("Street Address", _addressController, maxLines: 2),
           Row(
             children: [
               Expanded(child: _buildField("City", _cityController)),
@@ -446,8 +530,9 @@ class _SuppProfilePageState extends State<SuppProfilePage>
           ),
           _buildField("Pincode", _pincodeController,
               keyboardType: TextInputType.number),
-          SizedBox(height: 24.h),
-          _buildButton("Save Changes", _saveProfile),
+          SizedBox(height: 32.h),
+          _buildButton("Save Profile Information", _saveProfile),
+          SizedBox(height: 32.h),
         ],
       ),
     );
@@ -455,14 +540,7 @@ class _SuppProfilePageState extends State<SuppProfilePage>
 
   Widget _buildSubscriptionTab() {
     final sub = _profile?.subscription;
-    if (sub == null) return _buildNoData("No subscription information");
-
-    final startDateStr = sub.startDate != null
-        ? DateFormat('dd MMM yyyy').format(sub.startDate!)
-        : "N/A";
-    final endDateStr = sub.endDate != null
-        ? DateFormat('dd MMM yyyy').format(sub.endDate!)
-        : "N/A";
+    if (sub == null) return _buildNoData("No active subscription");
 
     return SingleChildScrollView(
       padding: EdgeInsets.all(20.w),
@@ -472,101 +550,39 @@ class _SuppProfilePageState extends State<SuppProfilePage>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text("My Subscription",
-                  style: GoogleFonts.inter(
-                      fontSize: 12.sp, fontWeight: FontWeight.w700)),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                decoration: BoxDecoration(
-                  color: sub.status.toLowerCase() == 'active'
-                      ? Colors.green.shade50
-                      : Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(6.r),
-                ),
-                child: Text(
-                  sub.status.toUpperCase(),
-                  style: GoogleFonts.inter(
-                    fontSize: 8.sp,
-                    fontWeight: FontWeight.w800,
-                    color: sub.status.toLowerCase() == 'active'
-                        ? Colors.green.shade700
-                        : Colors.red.shade700,
-                  ),
-                ),
-              ),
+              _sectionTitle("My Subscription"),
+              _statusBadge(sub.status),
             ],
           ),
           SizedBox(height: 16.h),
-          Container(
-            padding: EdgeInsets.all(16.w),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8F8F8),
-              borderRadius: BorderRadius.circular(12.r),
-              border: Border.all(color: Colors.grey.shade100),
-            ),
-            child: Column(
-              children: [
-                _buildInfoRow("Plan ID", sub.plan ?? "N/A"),
-                _buildInfoRow("Start Date", startDateStr),
-                _buildInfoRow("End Date", endDateStr),
-              ],
-            ),
-          ),
-          SizedBox(height: 24.h),
-          Text("Subscription History",
-              style: GoogleFonts.inter(
-                  fontSize: 11.sp, fontWeight: FontWeight.bold)),
-          SizedBox(height: 12.h),
+          _infoCard([
+            _infoRow("Current Plan", sub.plan ?? "Standard Plan"),
+            _infoRow("Started On",
+                _formatDate(sub.startDate) ?? "Not started"),
+            _infoRow("Expires On",
+                _formatDate(sub.endDate) ?? "No expiry"),
+          ]),
+          SizedBox(height: 32.h),
+          _sectionTitle("Subscription History"),
+          SizedBox(height: 16.h),
           if (sub.history.isEmpty)
-            _buildNoData("No history records found")
+            _buildNoData("No subscription history available")
           else
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: sub.history.length,
-              separatorBuilder: (context, index) => const Divider(),
+              separatorBuilder: (context, index) => SizedBox(height: 12.h),
               itemBuilder: (context, index) {
                 final h = sub.history[index];
-                return Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8.h),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(h.plan,
-                                style: GoogleFonts.inter(
-                                    fontSize: 10.sp,
-                                    fontWeight: FontWeight.w700)),
-                            Text(
-                              "${h.startDate != null ? DateFormat('dd MMM yyyy').format(h.startDate!) : ''} - ${h.endDate != null ? DateFormat('dd MMM yyyy').format(h.endDate!) : ''}",
-                              style: GoogleFonts.inter(
-                                  fontSize: 8.sp, color: Colors.grey.shade500),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 6.w, vertical: 2.h),
-                        decoration: BoxDecoration(
-                            color: h.status.toLowerCase() == 'active'
-                                ? Colors.green.shade50
-                                : Colors.red.shade50,
-                            borderRadius: BorderRadius.circular(4.r)),
-                        child: Text(h.status,
-                            style: GoogleFonts.inter(
-                                fontSize: 8.sp,
-                                color: h.status.toLowerCase() == 'active'
-                                    ? Colors.green
-                                    : Colors.red)),
-                      )
-                    ],
-                  ),
+                return _historyItem(
+                  h.plan,
+                  "${_formatDate(h.startDate)} - ${_formatDate(h.endDate)}",
+                  h.status,
                 );
               },
             ),
+          SizedBox(height: 32.h),
         ],
       ),
     );
@@ -581,43 +597,40 @@ class _SuppProfilePageState extends State<SuppProfilePage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Photo Gallery",
-              style: GoogleFonts.inter(
-                  fontSize: 12.sp, fontWeight: FontWeight.w700)),
+          _sectionTitle("Photo Gallery"),
           SizedBox(height: 4.h),
-          Text("Showcase your products and shop to vendors.",
+          Text("Manage your business and product showcase photos.",
               style: GoogleFonts.inter(
-                  fontSize: 10.sp, color: Colors.grey.shade500)),
+                  fontSize: 10.5.sp, color: Colors.grey.shade500)),
           SizedBox(height: 20.h),
           GestureDetector(
             onTap: () => _pickImage(false),
             child: Container(
-              height: 140.h,
+              height: 120.h,
               width: double.infinity,
               decoration: BoxDecoration(
-                border: Border.all(
-                    color: Colors.grey.shade300,
-                    width: 2,
-                    style: BorderStyle.solid),
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(12.r),
-                color: Colors.grey.shade50,
+                border: Border.all(color: Colors.grey.shade200, width: 1.5),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.cloud_upload_outlined,
-                      size: 36.sp, color: Colors.grey),
+                  Icon(Icons.add_photo_alternate_outlined,
+                      size: 32.sp, color: Colors.grey.shade400),
                   SizedBox(height: 8.h),
-                  Text("Upload images here",
+                  Text("Add New Photo",
                       style: GoogleFonts.inter(
-                          fontSize: 10.sp, color: Colors.grey.shade600))
+                          fontSize: 11.sp,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w500)),
                 ],
               ),
             ),
           ),
           SizedBox(height: 24.h),
           if (allGallery.isEmpty)
-            _buildNoData("No gallery images yet")
+            _buildNoData("Your gallery is empty")
           else
             GridView.builder(
               shrinkWrap: true,
@@ -631,56 +644,76 @@ class _SuppProfilePageState extends State<SuppProfilePage>
               itemCount: allGallery.length,
               itemBuilder: (context, index) {
                 final img = allGallery[index];
-                final isNew = index >= gallery.length;
-                return Stack(
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8.r),
-                        image: DecorationImage(
-                          image: isNew
-                              ? MemoryImage(base64Decode(img.split(',').last))
-                              : NetworkImage(img) as ImageProvider,
-                          fit: BoxFit.cover,
+                final bool isNew = index >= gallery.length;
+
+                return GestureDetector(
+                  onTap: () => _viewMedia(img, "Gallery Image"),
+                  child: Stack(
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10.r),
+                          image: DecorationImage(
+                            image: isNew
+                                ? MemoryImage(base64Decode(img.split(',').last))
+                                : NetworkImage(img) as ImageProvider,
+                            fit: BoxFit.cover,
+                          ),
                         ),
                       ),
-                    ),
-                    Positioned(
-                      top: 4,
-                      right: 4,
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            if (isNew) {
-                              _newGalleryBase64
-                                  .removeAt(index - gallery.length);
-                            } else {
-                              gallery.removeAt(index);
-                            }
-                          });
-                        },
-                        child: Container(
-                          padding: EdgeInsets.all(4.w),
-                          decoration: const BoxDecoration(
-                              color: Colors.white, shape: BoxShape.circle),
-                          child: Icon(Icons.delete_outline,
-                              size: 14.sp, color: Colors.red),
+                      Positioned(
+                        top: 6,
+                        right: 6,
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              if (isNew) {
+                                _newGalleryBase64
+                                    .removeAt(index - gallery.length);
+                              } else {
+                                gallery.removeAt(index);
+                              }
+                            });
+                          },
+                          child: Container(
+                            padding: EdgeInsets.all(4.w),
+                            decoration: const BoxDecoration(
+                                color: Colors.white, shape: BoxShape.circle),
+                            child: Icon(Icons.close,
+                                size: 14.sp, color: Colors.red),
+                          ),
                         ),
                       ),
-                    )
-                  ],
+                      if (isNew)
+                        Positioned(
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          child: Container(
+                            padding: EdgeInsets.symmetric(vertical: 2.h),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.5),
+                              borderRadius: BorderRadius.vertical(
+                                  bottom: Radius.circular(10.r)),
+                            ),
+                            child: Text(
+                              "New",
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.inter(
+                                  fontSize: 8.sp, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 );
               },
             ),
-          if (_newGalleryBase64.isNotEmpty) ...[
-            SizedBox(height: 24.h),
-            _buildButton("Save Gallery Changes", () async {
-              // Implement gallery save if needed, for now just local update
-              ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Gallery saved successfully")));
-              setState(() => _newGalleryBase64.clear());
-            })
-          ]
+          if (_newGalleryBase64.isNotEmpty || gallery.length != (_profile?.gallery.length ?? 0)) ...[
+            SizedBox(height: 32.h),
+            _buildButton("Update Gallery", _saveGallery),
+          ],
+          SizedBox(height: 32.h),
         ],
       ),
     );
@@ -692,18 +725,17 @@ class _SuppProfilePageState extends State<SuppProfilePage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Banking Information",
-              style: GoogleFonts.inter(
-                  fontSize: 12.sp, fontWeight: FontWeight.w700)),
-          SizedBox(height: 20.h),
+          _sectionTitle("Banking Information"),
+          SizedBox(height: 16.h),
           _buildField("Account Holder Name", _accountHolderController),
           _buildField("Account Number", _accountNumberController,
               keyboardType: TextInputType.number),
           _buildField("Bank Name", _bankNameController),
           _buildField("IFSC Code", _ifscCodeController),
-          _buildField("UPI ID (Optional)", _upiIdController),
-          SizedBox(height: 24.h),
+          _buildField("UPI ID", _upiIdController),
+          SizedBox(height: 32.h),
           _buildButton("Update Bank Details", _saveBankDetails),
+          SizedBox(height: 32.h),
         ],
       ),
     );
@@ -716,20 +748,20 @@ class _SuppProfilePageState extends State<SuppProfilePage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Verification Documents",
-              style: GoogleFonts.inter(
-                  fontSize: 12.sp, fontWeight: FontWeight.w700)),
+          _sectionTitle("Verification Documents"),
           SizedBox(height: 4.h),
-          Text("Upload documents for account verification.",
+          Text("Manage your uploaded business documents.",
               style: GoogleFonts.inter(
-                  fontSize: 10.sp, color: Colors.grey.shade500)),
-          SizedBox(height: 24.h),
-          _buildDocCard("Aadhar Card", "aadharCard", docs?.aadharCard),
-          _buildDocCard("PAN Card", "panCard", docs?.panCard),
-          _buildDocCard("Udyam Certificate", "udhayamCert", docs?.udhayamCert),
-          _buildDocCard("Shop Act", "shopAct", docs?.shopAct),
-          SizedBox(height: 24.h),
+                  fontSize: 10.5.sp, color: Colors.grey.shade500)),
+          SizedBox(height: 20.h),
+          _buildDocRow("Aadhar Card", "aadharCard", docs?.aadharCard),
+          _buildDocRow("PAN Card", "panCard", docs?.panCard),
+          _buildDocRow("Shop Act", "shopAct", docs?.shopAct),
+          _buildDocRow("Udyam Certificate", "udhayamCert", docs?.udhayamCert),
+          _buildDocRow("Shop License", "shopLicense", docs?.shopLicense),
+          SizedBox(height: 32.h),
           _buildButton("Save Documents", _saveDocuments),
+          SizedBox(height: 32.h),
         ],
       ),
     );
@@ -741,22 +773,23 @@ class _SuppProfilePageState extends State<SuppProfilePage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("SMS Package Management",
-              style: GoogleFonts.inter(
-                  fontSize: 12.sp, fontWeight: FontWeight.w700)),
-          SizedBox(height: 20.h),
+          _sectionTitle("SMS Management"),
+          SizedBox(height: 16.h),
           Container(
             padding: EdgeInsets.all(20.w),
             decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                    colors: [Color(0xFF6B4EE6), Color(0xFF9E8DA5)]),
-                borderRadius: BorderRadius.circular(16.r),
-                boxShadow: [
-                  BoxShadow(
-                      color: Colors.purple.withOpacity(0.2),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4))
-                ]),
+              gradient: const LinearGradient(
+                  colors: [Color(0xFF2D2D2D), Color(0xFF4D4D4D)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight),
+              borderRadius: BorderRadius.circular(16.r),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withOpacity(0.12),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4))
+              ],
+            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -766,69 +799,125 @@ class _SuppProfilePageState extends State<SuppProfilePage>
                     Text("Current Balance",
                         style: GoogleFonts.inter(
                             fontSize: 11.sp, color: Colors.white70)),
+                    SizedBox(height: 4.h),
                     Text("${_profile?.currentSmsBalance ?? 0} SMS",
                         style: GoogleFonts.inter(
-                            fontSize: 22.sp,
+                            fontSize: 24.sp,
                             fontWeight: FontWeight.bold,
                             color: Colors.white)),
                   ],
                 ),
-                const Icon(Icons.message_outlined,
-                    color: Colors.white54, size: 40),
+                Container(
+                  padding: EdgeInsets.all(12.w),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.message_rounded,
+                      color: Colors.white, size: 28.sp),
+                ),
               ],
             ),
           ),
-          SizedBox(height: 24.h),
-          Text("Recharge History",
-              style: GoogleFonts.inter(
-                  fontSize: 11.sp, fontWeight: FontWeight.bold)),
-          SizedBox(height: 12.h),
-          _buildNoData("No recharge history found"),
+          SizedBox(height: 32.h),
+          _sectionTitle("Transaction History"),
+          SizedBox(height: 16.h),
+          _buildNoData("No SMS recharge history found"),
+          SizedBox(height: 32.h),
         ],
       ),
     );
   }
 
   Widget _buildTaxesTab() {
-    final taxes = _profile?.taxes;
     return SingleChildScrollView(
       padding: EdgeInsets.all(20.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Tax & Billing",
-              style: GoogleFonts.inter(
-                  fontSize: 12.sp, fontWeight: FontWeight.w700)),
-          SizedBox(height: 20.h),
-          Container(
-            padding: EdgeInsets.all(16.w),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12.r),
-              boxShadow: [
-                BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2))
-              ],
-              border: Border.all(color: Colors.grey.shade100),
-            ),
-            child: Column(
-              children: [
-                _buildInfoRow(
-                    "Current Tax Type", taxes?.taxType ?? "Percentage"),
-                const Divider(),
-                _buildInfoRow("Current Tax Rate", "${taxes?.taxValue ?? 0}%"),
-              ],
-            ),
-          ),
+          _sectionTitle("Tax & Billing"),
+          SizedBox(height: 16.h),
+          _buildDropdownField("Tax Type", ["percentage", "fixed value"],
+              null, // Using custom logic for this field
+              initialValue: _profile?.taxes?.taxType ?? "percentage",
+              onChanged: (val) {
+            final double value =
+                double.tryParse(_taxValueController.text) ?? 0.0;
+            _updateTax(val!, value);
+          }),
+          _buildField("Tax Value", _taxValueController,
+              keyboardType: TextInputType.number),
+          SizedBox(height: 32.h),
+          _buildButton("Update Tax Settings", () {
+            final double value =
+                double.tryParse(_taxValueController.text) ?? 0.0;
+            final type = _profile?.taxes?.taxType ?? "percentage";
+            _updateTax(type, value);
+          }),
+          SizedBox(height: 32.h),
         ],
       ),
     );
   }
 
+  final _taxValueController = TextEditingController();
+
+  Future<void> _updateTax(String type, double value) async {
+    setState(() => _isSaving = true);
+    try {
+      final payload = {
+        'taxes': {'taxType': type, 'taxValue': value}
+      };
+      await ApiService.updateSupplierProfile(payload);
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Tax settings updated successfully")));
+      _fetchProfileData();
+    } catch (e) {
+      debugPrint("Error updating profile: $e");
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("Error: Update failed. Check console for details.")));
+    } finally {
+      setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _saveGallery() async {
+    if (_profile == null) return;
+    setState(() => _isSaving = true);
+    try {
+      final payload = {
+        'gallery': [...(_profile!.gallery), ..._newGalleryBase64]
+      };
+      await ApiService.updateSupplierProfile(payload);
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Gallery updated successfully")));
+      _newGalleryBase64.clear();
+      _fetchProfileData();
+    } catch (e) {
+      debugPrint("Error updating profile: $e");
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("Error: Update failed. Check console for details.")));
+    } finally {
+      setState(() => _isSaving = false);
+    }
+  }
+
+  // ──────────────────────────────────────────────
+  //  Helper Widgets
+  // ──────────────────────────────────────────────
+
+  Widget _sectionTitle(String title) {
+    return Text(title,
+        style: GoogleFonts.inter(
+            fontSize: 12.sp,
+            fontWeight: FontWeight.w700,
+            color: Colors.black87));
+  }
+
   Widget _buildField(String label, TextEditingController controller,
-      {int maxLines = 1, TextInputType keyboardType = TextInputType.text}) {
+      {int maxLines = 1,
+      TextInputType keyboardType = TextInputType.text,
+      bool enabled = true}) {
     return Padding(
       padding: EdgeInsets.only(bottom: 16.h),
       child: Column(
@@ -839,28 +928,35 @@ class _SuppProfilePageState extends State<SuppProfilePage>
                   fontSize: 10.sp,
                   fontWeight: FontWeight.w600,
                   color: Colors.grey.shade700)),
-          SizedBox(height: 6.h),
+          SizedBox(height: 8.h),
           TextField(
             controller: controller,
             maxLines: maxLines,
             keyboardType: keyboardType,
-            style: GoogleFonts.inter(fontSize: 11.sp, color: Colors.black87),
+            enabled: enabled,
+            style: GoogleFonts.inter(fontSize: 11.5.sp),
             decoration: InputDecoration(
               isDense: true,
               contentPadding:
-                  EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
-              fillColor: Colors.white,
+                  EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
               filled: true,
+              fillColor: enabled ? Colors.white : Colors.grey.shade100,
               border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10.r),
-                  borderSide: BorderSide(color: Colors.grey.shade200)),
+                borderRadius: BorderRadius.circular(8.r),
+                borderSide: BorderSide(color: Colors.grey.shade200),
+              ),
               enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10.r),
-                  borderSide: BorderSide(color: Colors.grey.shade200)),
+                borderRadius: BorderRadius.circular(8.r),
+                borderSide: BorderSide(color: Colors.grey.shade200),
+              ),
+              disabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8.r),
+                borderSide: BorderSide(color: Colors.grey.shade100),
+              ),
               focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10.r),
-                  borderSide:
-                      const BorderSide(color: Colors.black, width: 1.2)),
+                borderRadius: BorderRadius.circular(8.r),
+                borderSide: const BorderSide(color: Colors.black87),
+              ),
             ),
           ),
         ],
@@ -868,88 +964,306 @@ class _SuppProfilePageState extends State<SuppProfilePage>
     );
   }
 
-  Widget _buildButton(String text, VoidCallback onPressed) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.black,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          padding: EdgeInsets.symmetric(vertical: 14.h),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
-        ),
-        child: Text(text,
-            style: GoogleFonts.inter(
-                fontSize: 11.sp, fontWeight: FontWeight.bold)),
+  Widget _buildDropdownField(
+      String label, List<String> items, TextEditingController? controller,
+      {String? initialValue, Function(String?)? onChanged}) {
+    String? currentVal = initialValue ?? controller?.text;
+    if (currentVal != null && !items.contains(currentVal)) {
+      currentVal = items.first;
+      if (controller != null) controller.text = items.first;
+    }
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: 16.h),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: GoogleFonts.inter(
+                  fontSize: 10.sp,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade700)),
+          SizedBox(height: 8.h),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 16.w),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8.r),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: currentVal,
+                isExpanded: true,
+                style: GoogleFonts.inter(
+                    fontSize: 11.5.sp, color: Colors.black87),
+                icon: Icon(Icons.keyboard_arrow_down_rounded,
+                    color: Colors.grey.shade600),
+                onChanged: (val) {
+                  if (controller != null) controller.text = val!;
+                  if (onChanged != null) onChanged(val);
+                },
+                items: items
+                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                    .toList(),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildButton(String label, VoidCallback onPressed, {double? width}) {
+    return SizedBox(
+      width: width ?? double.infinity,
+      height: 48.h,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.black87,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+        ),
+        child: Text(label,
+            style: GoogleFonts.inter(
+                fontSize: 12.sp, fontWeight: FontWeight.w600)),
+      ),
+    );
+  }
+
+  Widget _infoCard(List<Widget> children) {
+    return Container(
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: Column(children: children),
+    );
+  }
+
+  Widget _infoRow(String label, String value) {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 10.h),
+      padding: EdgeInsets.symmetric(vertical: 8.h),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label,
               style: GoogleFonts.inter(
-                  fontSize: 10.sp, color: Colors.grey.shade600)),
+                  fontSize: 11.sp, color: Colors.grey.shade600)),
           Text(value,
               style: GoogleFonts.inter(
-                  fontSize: 10.sp,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 11.sp,
+                  fontWeight: FontWeight.w600,
                   color: Colors.black87)),
         ],
       ),
     );
   }
 
-  Widget _buildDocCard(String label, String key, String? url) {
-    final isNew = _newDocumentsBase64.containsKey(key);
-    final hasDoc = isNew || (url != null && url.isNotEmpty);
-
+  Widget _statusBadge(String status) {
+    final bool isActive = status.toLowerCase() == 'active' || status.toLowerCase() == 'approved';
     return Container(
-      margin: EdgeInsets.only(bottom: 12.h),
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        color: isActive ? Colors.green.shade50 : Colors.red.shade50,
+        borderRadius: BorderRadius.circular(20.r),
+      ),
+      child: Text(
+        status.toUpperCase(),
+        style: GoogleFonts.inter(
+            fontSize: 9.sp,
+            fontWeight: FontWeight.w800,
+            color: isActive ? Colors.green.shade700 : Colors.red.shade700),
+      ),
+    );
+  }
+
+  Widget _historyItem(String title, String date, String status) {
+    return Container(
+      padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10.r),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: Colors.grey.shade100),
       ),
       child: Row(
         children: [
-          Icon(Icons.file_present_outlined,
-              color: Colors.grey.shade600, size: 20.sp),
-          SizedBox(width: 12.w),
           Expanded(
-              child: Text(label,
-                  style: GoogleFonts.inter(
-                      fontSize: 10.5.sp, fontWeight: FontWeight.w500))),
-          if (hasDoc) ...[
-            const Icon(Icons.check_circle, color: Colors.green, size: 18),
-            SizedBox(width: 8.w),
-            TextButton(
-              onPressed: () => _pickDocument(key),
-              child: Text("Replace",
-                  style: GoogleFonts.inter(
-                      fontSize: 10.sp,
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: GoogleFonts.inter(
+                        fontSize: 11.sp, fontWeight: FontWeight.w700)),
+                SizedBox(height: 2.h),
+                Text(date,
+                    style: GoogleFonts.inter(
+                        fontSize: 9.sp, color: Colors.grey.shade500)),
+              ],
             ),
-          ] else
-            TextButton(
-              onPressed: () => _pickDocument(key),
-              style: TextButton.styleFrom(padding: EdgeInsets.zero),
-              child: Text("Upload",
-                  style: GoogleFonts.inter(
-                      fontSize: 10.sp,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blue)),
-            ),
+          ),
+          _statusBadge(status),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDocRow(String label, String key, String? path) {
+    final bool isUploaded = path != null && path.isNotEmpty;
+    final bool isNew = _newDocumentsBase64.containsKey(key);
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: 12.h),
+      child: Container(
+        padding: EdgeInsets.all(12.w),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10.r),
+          border: Border.all(color: Colors.grey.shade100),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8.w),
+              decoration: BoxDecoration(
+                color: (isUploaded || isNew)
+                    ? Colors.blue.shade50
+                    : Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(8.r),
+              ),
+              child: Icon(
+                isUploaded || isNew ? Icons.description : Icons.upload_file,
+                size: 20.sp,
+                color: (isUploaded || isNew) ? Colors.blue : Colors.grey,
+              ),
+            ),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label,
+                      style: GoogleFonts.inter(
+                          fontSize: 11.sp, fontWeight: FontWeight.w600)),
+                  Text(
+                    isNew
+                        ? "New file selected"
+                        : (isUploaded ? "Uploaded" : "No document uploaded"),
+                    style: GoogleFonts.inter(
+                        fontSize: 9.sp,
+                        color: (isUploaded || isNew)
+                            ? Colors.green
+                            : Colors.grey.shade500),
+                  ),
+                ],
+              ),
+            ),
+            if (isUploaded || isNew)
+              Padding(
+                padding: EdgeInsets.only(right: 8.w),
+                child: IconButton(
+                  icon: Icon(Icons.visibility_outlined,
+                      size: 18.sp, color: Colors.blue),
+                  onPressed: () => _viewMedia(
+                      isNew ? _newDocumentsBase64[key] : path, label),
+                ),
+              ),
+            _circleButton(Icons.cloud_upload_outlined, () => _pickDocument(key),
+                size: 32.w, iconSize: 16.sp, color: Colors.black87),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _circleButton(IconData icon, VoidCallback onTap,
+      {double? size, double? iconSize, Color? color}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: size ?? 28.w,
+        height: size ?? 28.w,
+        decoration: BoxDecoration(
+          color: color ?? Colors.white,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 4,
+                offset: const Offset(0, 2))
+          ],
+        ),
+        child: Icon(icon,
+            size: iconSize ?? 14.sp,
+            color: color == Colors.black87 ? Colors.white : Colors.black87),
+      ),
+    );
+  }
+
+  String? _formatDate(DateTime? date) {
+    if (date == null) return null;
+    return DateFormat('dd MMM yyyy').format(date);
+  }
+
+  Future<void> _viewMedia(String? path, String title) async {
+    if (path == null || path.isEmpty) return;
+
+    if (path.startsWith('data:image')) {
+      _showImageViewer(path, title);
+    } else if (path.startsWith('http')) {
+      _showImageViewer(path, title);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Cannot preview this file type directly")),
+      );
+    }
+  }
+
+  void _showImageViewer(String path, String title) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.all(16.w),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12.r),
+                color: Colors.white,
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: path.startsWith('data:image')
+                  ? Image.memory(base64Decode(path.split(',').last),
+                      fit: BoxFit.contain)
+                  : Image.network(path,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Center(child: Icon(Icons.broken_image))),
+            ),
+            SizedBox(height: 12.h),
+            Text(title,
+                style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w600)),
+          ],
+        ),
       ),
     );
   }
@@ -960,11 +1274,11 @@ class _SuppProfilePageState extends State<SuppProfilePage>
         padding: EdgeInsets.all(40.w),
         child: Column(
           children: [
-            Icon(Icons.info_outline, color: Colors.grey.shade300, size: 40.sp),
+            Icon(Icons.info_outline, size: 32.sp, color: Colors.grey.shade300),
             SizedBox(height: 12.h),
             Text(message,
                 style: GoogleFonts.inter(
-                    fontSize: 10.sp, color: Colors.grey.shade500)),
+                    fontSize: 11.sp, color: Colors.grey.shade400)),
           ],
         ),
       ),
@@ -974,7 +1288,6 @@ class _SuppProfilePageState extends State<SuppProfilePage>
 
 class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
   _SliverTabBarDelegate({required this.tabBar});
-
   final TabBar tabBar;
 
   @override
@@ -985,7 +1298,7 @@ class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
   @override
   Widget build(
       BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Material(
+    return Container(
       color: Colors.white,
       child: tabBar,
     );

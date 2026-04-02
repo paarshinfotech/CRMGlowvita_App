@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'widgets/custom_drawer.dart';
 import 'services/api_service.dart';
 import 'widgets/subscription_wrapper.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class ProductQuestionsPage extends StatefulWidget {
   const ProductQuestionsPage({super.key});
@@ -150,9 +151,11 @@ class _ProductQuestionsPageState extends State<ProductQuestionsPage> {
         elevation: 0,
         backgroundColor: Colors.white,
         title: Text(
-          'Products',
+          'Product Questions',
           style: GoogleFonts.poppins(
-              color: Colors.black, fontWeight: FontWeight.w700, fontSize: 16),
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+              fontSize: 12.sp),
         ),
         iconTheme: const IconThemeData(color: Colors.black),
         actions: [

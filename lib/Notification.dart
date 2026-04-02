@@ -16,7 +16,8 @@ class NotificationPage extends StatefulWidget {
   State<NotificationPage> createState() => _NotificationPageState();
 }
 
-class _NotificationPageState extends State<NotificationPage> with SingleTickerProviderStateMixin {
+class _NotificationPageState extends State<NotificationPage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final NotificationController _controller = NotificationController();
   VendorProfile? _profile;
@@ -56,14 +57,11 @@ class _NotificationPageState extends State<NotificationPage> with SingleTickerPr
     return Scaffold(
       drawer: const CustomDrawer(currentPage: 'Notifications'),
       appBar: AppBar(
-        title: Text(
-          'Notifications',
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.bold,
-            fontSize: 18.sp,
-            color: Colors.black,
-          ),
-        ),
+        title: Text('Notifications',
+            style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+                fontSize: 12.sp)),
         backgroundColor: Colors.white,
         iconTheme: const IconThemeData(color: Colors.black),
         elevation: 0.4,
@@ -76,12 +74,15 @@ class _NotificationPageState extends State<NotificationPage> with SingleTickerPr
               child: CircleAvatar(
                 radius: 16.r,
                 backgroundColor: Theme.of(context).primaryColor,
-                backgroundImage: (_profile != null && _profile!.profileImage.isNotEmpty)
-                    ? NetworkImage(_profile!.profileImage)
-                    : null,
+                backgroundImage:
+                    (_profile != null && _profile!.profileImage.isNotEmpty)
+                        ? NetworkImage(_profile!.profileImage)
+                        : null,
                 child: (_profile == null || _profile!.profileImage.isEmpty)
                     ? Text(
-                        (_profile?.businessName ?? 'H').substring(0, 1).toUpperCase(),
+                        (_profile?.businessName ?? 'H')
+                            .substring(0, 1)
+                            .toUpperCase(),
                         style: TextStyle(
                             color: Colors.white,
                             fontSize: 12.sp,
@@ -156,7 +157,8 @@ class _NotificationPageState extends State<NotificationPage> with SingleTickerPr
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).primaryColor,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(6),
                 ),
@@ -200,7 +202,9 @@ class _NotificationPageState extends State<NotificationPage> with SingleTickerPr
         color: notification.isRead ? Colors.white : typeColor.withOpacity(0.05),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: notification.isRead ? Colors.grey.shade200 : typeColor.withOpacity(0.2),
+          color: notification.isRead
+              ? Colors.grey.shade200
+              : typeColor.withOpacity(0.2),
         ),
       ),
       child: Row(
@@ -231,7 +235,8 @@ class _NotificationPageState extends State<NotificationPage> with SingleTickerPr
                       ),
                     ),
                     Text(
-                      DateFormat('MMM d, hh:mm a').format(notification.createdAt),
+                      DateFormat('MMM d, hh:mm a')
+                          .format(notification.createdAt),
                       style: GoogleFonts.poppins(
                         fontSize: 10,
                         color: Colors.grey,
@@ -370,7 +375,8 @@ class _NotificationPageState extends State<NotificationPage> with SingleTickerPr
 
   Widget _buildNotificationHistory() {
     if (_controller.isLoading && _controller.broadcastLogs.isEmpty) {
-      return const Center(child: Padding(
+      return const Center(
+          child: Padding(
         padding: EdgeInsets.all(20.0),
         child: CircularProgressIndicator(),
       ));
@@ -379,7 +385,8 @@ class _NotificationPageState extends State<NotificationPage> with SingleTickerPr
       margin: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         children: _controller.broadcastLogs
-            .map((notification) => _buildNotificationCard(notification as Map<String, dynamic>))
+            .map((notification) =>
+                _buildNotificationCard(notification as Map<String, dynamic>))
             .toList(),
       ),
     );
@@ -461,11 +468,18 @@ class _NotificationPageState extends State<NotificationPage> with SingleTickerPr
               children: [
                 _buildInfoRow('Channel', channels.join(', ')),
                 const SizedBox(height: 6),
-                _buildInfoRow('Target', notification['targetType'] ?? notification['target'] ?? 'All'),
+                _buildInfoRow(
+                    'Target',
+                    notification['targetType'] ??
+                        notification['target'] ??
+                        'All'),
                 const SizedBox(height: 6),
-                _buildInfoRow('Date', notification['createdAt'] != null 
-                  ? DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(notification['createdAt'])) 
-                  : (notification['date'] ?? 'N/A')),
+                _buildInfoRow(
+                    'Date',
+                    notification['createdAt'] != null
+                        ? DateFormat('yyyy-MM-dd HH:mm')
+                            .format(DateTime.parse(notification['createdAt']))
+                        : (notification['date'] ?? 'N/A')),
               ],
             ),
           ),
@@ -647,8 +661,8 @@ class _NotificationDialogState extends State<NotificationDialog> {
     _titleController =
         TextEditingController(text: n?['title'] as String? ?? '');
     _contentController = TextEditingController();
-    _targetsController = TextEditingController(
-        text: (n?['targets'] as List? ?? []).join(', '));
+    _targetsController =
+        TextEditingController(text: (n?['targets'] as List? ?? []).join(', '));
     final channels = (n?['channels'] as List<dynamic>? ?? []);
     _pushSelected = channels.isEmpty || channels.contains('Push');
     _smsSelected = channels.contains('SMS');
@@ -722,7 +736,7 @@ class _NotificationDialogState extends State<NotificationDialog> {
                 ),
               ),
               const SizedBox(height: 16),
-  
+
               // Channels
               Text(
                 'Channels',
@@ -738,7 +752,8 @@ class _NotificationDialogState extends State<NotificationDialog> {
                   _channelCheckbox(
                     label: 'Push Notification',
                     value: _pushSelected,
-                    onChanged: (v) => setState(() => _pushSelected = v ?? false),
+                    onChanged: (v) =>
+                        setState(() => _pushSelected = v ?? false),
                   ),
                   const SizedBox(width: 16),
                   _channelCheckbox(
@@ -748,122 +763,11 @@ class _NotificationDialogState extends State<NotificationDialog> {
                   ),
                 ],
               ),
-            const SizedBox(height: 16),
-
-            // Title
-            Text(
-              'Title',
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF111827),
-              ),
-            ),
-            TextField(
-              controller: _titleController,
-              decoration: InputDecoration(
-                hintText: 'e.g., Special Weekend Offer',
-                hintStyle: GoogleFonts.poppins(
-                  fontSize: 12,
-                  color: const Color(0xFF9CA3AF),
-                ),
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                border: const UnderlineInputBorder(
-                  borderSide: BorderSide(color: Color(0xFFE5E7EB)),
-                ),
-                enabledBorder: const UnderlineInputBorder(
-                  borderSide: BorderSide(color: Color(0xFFE5E7EB)),
-                ),
-                focusedBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(
-                      color: Theme.of(context).primaryColor, width: 1.4),
-                ),
-              ),
-              style: GoogleFonts.poppins(fontSize: 12),
-            ),
-            const SizedBox(height: 16),
-
-            // Content
-            Text(
-              'Content',
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF111827),
-              ),
-            ),
-            TextField(
-              controller: _contentController,
-              maxLines: 3,
-              decoration: InputDecoration(
-                hintText: 'Enter notification content here...',
-                hintStyle: GoogleFonts.poppins(
-                  fontSize: 12,
-                  color: const Color(0xFF9CA3AF),
-                ),
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                border: const UnderlineInputBorder(
-                  borderSide: BorderSide(color: Color(0xFFE5E7EB)),
-                ),
-                enabledBorder: const UnderlineInputBorder(
-                  borderSide: BorderSide(color: Color(0xFFE5E7EB)),
-                ),
-                focusedBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(
-                      color: Theme.of(context).primaryColor, width: 1.4),
-                ),
-              ),
-              style: GoogleFonts.poppins(fontSize: 12),
-            ),
-            const SizedBox(height: 16),
-
-            // Target audience
-            Text(
-              'Target Audience',
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF111827),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 18,
-              runSpacing: 8,
-              children: [
-                _audienceRadio(
-                  label: 'All Online',
-                  value: 'all_online_clients',
-                  groupValue: _target,
-                  onChanged: (v) => setState(() => _target = v ?? 'all_online_clients'),
-                ),
-                _audienceRadio(
-                  label: 'All Offline',
-                  value: 'all_offline_clients',
-                  groupValue: _target,
-                  onChanged: (v) => setState(() => _target = v ?? 'all_online_clients'),
-                ),
-                _audienceRadio(
-                  label: 'Specific Clients',
-                  value: 'specific_clients',
-                  groupValue: _target,
-                  onChanged: (v) => setState(() => _target = v ?? 'all_online_clients'),
-                ),
-                _audienceRadio(
-                  label: 'All Staffs',
-                  value: 'all_staffs',
-                  groupValue: _target,
-                  onChanged: (v) => setState(() => _target = v ?? 'all_online_clients'),
-                ),
-              ],
-            ),
-
-            if (_target == 'specific_clients') ...[
               const SizedBox(height: 16),
+
+              // Title
               Text(
-                'Client Emails (comma separated)',
+                'Title',
                 style: GoogleFonts.poppins(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -871,9 +775,9 @@ class _NotificationDialogState extends State<NotificationDialog> {
                 ),
               ),
               TextField(
-                controller: _targetsController,
+                controller: _titleController,
                 decoration: InputDecoration(
-                  hintText: 'e.g., client1@email.com, client2@email.com',
+                  hintText: 'e.g., Special Weekend Offer',
                   hintStyle: GoogleFonts.poppins(
                     fontSize: 12,
                     color: const Color(0xFF9CA3AF),
@@ -883,61 +787,176 @@ class _NotificationDialogState extends State<NotificationDialog> {
                   border: const UnderlineInputBorder(
                     borderSide: BorderSide(color: Color(0xFFE5E7EB)),
                   ),
+                  enabledBorder: const UnderlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFFE5E7EB)),
+                  ),
                   focusedBorder: UnderlineInputBorder(
                     borderSide: BorderSide(
                         color: Theme.of(context).primaryColor, width: 1.4),
                   ),
                 ),
-                style: GoogleFonts.poppins(fontSize: 11),
+                style: GoogleFonts.poppins(fontSize: 12),
               ),
-            ],
-            
-            const SizedBox(height: 18),
+              const SizedBox(height: 16),
 
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text(
-                    'Cancel',
-                    style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      color: const Color(0xFF6B7280),
-                    ),
+              // Content
+              Text(
+                'Content',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF111827),
+                ),
+              ),
+              TextField(
+                controller: _contentController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: 'Enter notification content here...',
+                  hintStyle: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: const Color(0xFF9CA3AF),
+                  ),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                  border: const UnderlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFFE5E7EB)),
+                  ),
+                  enabledBorder: const UnderlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFFE5E7EB)),
+                  ),
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(
+                        color: Theme.of(context).primaryColor, width: 1.4),
                   ),
                 ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).primaryColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 8,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    elevation: 0,
+                style: GoogleFonts.poppins(fontSize: 12),
+              ),
+              const SizedBox(height: 16),
+
+              // Target audience
+              Text(
+                'Target Audience',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF111827),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 18,
+                runSpacing: 8,
+                children: [
+                  _audienceRadio(
+                    label: 'All Online',
+                    value: 'all_online_clients',
+                    groupValue: _target,
+                    onChanged: (v) =>
+                        setState(() => _target = v ?? 'all_online_clients'),
                   ),
-                  child: Text(
-                    primaryLabel,
-                    style: GoogleFonts.poppins(
+                  _audienceRadio(
+                    label: 'All Offline',
+                    value: 'all_offline_clients',
+                    groupValue: _target,
+                    onChanged: (v) =>
+                        setState(() => _target = v ?? 'all_online_clients'),
+                  ),
+                  _audienceRadio(
+                    label: 'Specific Clients',
+                    value: 'specific_clients',
+                    groupValue: _target,
+                    onChanged: (v) =>
+                        setState(() => _target = v ?? 'all_online_clients'),
+                  ),
+                  _audienceRadio(
+                    label: 'All Staffs',
+                    value: 'all_staffs',
+                    groupValue: _target,
+                    onChanged: (v) =>
+                        setState(() => _target = v ?? 'all_online_clients'),
+                  ),
+                ],
+              ),
+
+              if (_target == 'specific_clients') ...[
+                const SizedBox(height: 16),
+                Text(
+                  'Client Emails (comma separated)',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF111827),
+                  ),
+                ),
+                TextField(
+                  controller: _targetsController,
+                  decoration: InputDecoration(
+                    hintText: 'e.g., client1@email.com, client2@email.com',
+                    hintStyle: GoogleFonts.poppins(
                       fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF9CA3AF),
+                    ),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                    border: const UnderlineInputBorder(
+                      borderSide: BorderSide(color: Color(0xFFE5E7EB)),
+                    ),
+                    focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(
+                          color: Theme.of(context).primaryColor, width: 1.4),
                     ),
                   ),
+                  style: GoogleFonts.poppins(fontSize: 11),
                 ),
               ],
-            ),
-          ],
+
+              const SizedBox(height: 18),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      'Cancel',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        color: const Color(0xFF6B7280),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: _submit,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: Text(
+                      primaryLabel,
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   void _submit() {
     final title = _titleController.text.trim();

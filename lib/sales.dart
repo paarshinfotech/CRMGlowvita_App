@@ -1533,7 +1533,9 @@ class _SalesPageState extends State<SalesPage>
       appBar: AppBar(
         title: Text('Sales',
             style: GoogleFonts.poppins(
-                fontSize: 16, fontWeight: FontWeight.w600, color: _text)),
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+                fontSize: 12.sp)),
         backgroundColor: _surface,
         surfaceTintColor: _surface,
         elevation: 0.4,

@@ -510,7 +510,7 @@ class _StaffState extends State<Staff> {
             style: GoogleFonts.poppins(
                 color: Colors.black,
                 fontWeight: FontWeight.w600,
-                fontSize: 14.sp),
+                fontSize: 12.sp),
           ),
           backgroundColor: Colors.white,
           elevation: 0.5,
@@ -556,304 +556,306 @@ class _StaffState extends State<Staff> {
         body: SubscriptionWrapper(
           child: Padding(
             padding: const EdgeInsets.all(12),
-          child: Column(
-            children: [
-              // Search bar and filters
-              Column(
-                children: [
-                  // Search bar - Full width
-                  Container(
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey[300]!),
-                    ),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        isDense: true,
-                        prefixIcon: Icon(Icons.search,
-                            size: 18, color: Colors.grey[400]),
-                        hintText: 'Search by name or email....',
-                        hintStyle: GoogleFonts.poppins(
-                            fontSize: 11, color: Colors.grey[400]),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(
-                            vertical: 12, horizontal: 12),
+            child: Column(
+              children: [
+                // Search bar and filters
+                Column(
+                  children: [
+                    // Search bar - Full width
+                    Container(
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey[300]!),
                       ),
-                      style: GoogleFonts.poppins(fontSize: 11),
-                      onChanged: (v) => setState(() => _searchQuery = v),
+                      child: TextField(
+                        decoration: InputDecoration(
+                          isDense: true,
+                          prefixIcon: Icon(Icons.search,
+                              size: 18, color: Colors.grey[400]),
+                          hintText: 'Search by name or email....',
+                          hintStyle: GoogleFonts.poppins(
+                              fontSize: 11, color: Colors.grey[400]),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                              vertical: 12, horizontal: 12),
+                        ),
+                        style: GoogleFonts.poppins(fontSize: 11),
+                        onChanged: (v) => setState(() => _searchQuery = v),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
+                    const SizedBox(height: 10),
 
-                  // Filters row
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          height: 38,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: Colors.grey[300]!),
-                          ),
-                          child: DropdownButton<String>(
-                            value: _selectedPosition,
-                            icon: Icon(Icons.keyboard_arrow_down,
-                                size: 18, color: Colors.grey[600]),
-                            underline: const SizedBox(),
-                            isExpanded: true,
-                            style: GoogleFonts.poppins(
-                                fontSize: 11, color: Colors.black87),
-                            items: [
-                              'All Positions',
-                              'Senior Stylist',
-                              'Junior Barber',
-                              'Manager'
-                            ].map((String value) {
-                              return DropdownMenuItem<String>(
-                                value: value,
-                                child: Text(value),
-                              );
-                            }).toList(),
-                            onChanged: (String? newValue) {
-                              setState(() {
-                                _selectedPosition = newValue ?? 'All Positions';
-                              });
-                            },
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Container(
-                          height: 38,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: Colors.grey[300]!),
-                          ),
-                          child: DropdownButton<String>(
-                            value: _selectedCommission,
-                            icon: Icon(Icons.keyboard_arrow_down,
-                                size: 18, color: Colors.grey[600]),
-                            underline: const SizedBox(),
-                            isExpanded: true,
-                            style: GoogleFonts.poppins(
-                                fontSize: 11, color: Colors.black87),
-                            items: [
-                              'All Commission',
-                              'Commission Enabled',
-                              'Commission Disabled'
-                            ].map((String value) {
-                              return DropdownMenuItem<String>(
-                                value: value,
-                                child: Text(value),
-                              );
-                            }).toList(),
-                            onChanged: (String? newValue) {
-                              setState(() {
-                                _selectedCommission =
-                                    newValue ?? 'All Commission';
-                              });
-                            },
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      PopupMenuButton<String>(
-                        onSelected: (value) => _handleExport(value),
-                        itemBuilder: (context) => [
-                          PopupMenuItem(
-                            value: 'copy',
-                            child: Row(
-                              children: [
-                                Icon(Icons.copy,
-                                    size: 16, color: Colors.grey[700]),
-                                const SizedBox(width: 8),
-                                Text('Copy',
-                                    style: GoogleFonts.poppins(fontSize: 11)),
-                              ],
+                    // Filters row
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            height: 38,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: Colors.grey[300]!),
                             ),
-                          ),
-                          PopupMenuItem(
-                            value: 'csv',
-                            child: Row(
-                              children: [
-                                Icon(Icons.table_chart,
-                                    size: 16, color: Colors.grey[700]),
-                                const SizedBox(width: 8),
-                                Text('CSV',
-                                    style: GoogleFonts.poppins(fontSize: 11)),
-                              ],
-                            ),
-                          ),
-                          PopupMenuItem(
-                            value: 'excel',
-                            child: Row(
-                              children: [
-                                Icon(Icons.grid_on,
-                                    size: 16, color: Colors.green[700]),
-                                const SizedBox(width: 8),
-                                Text('Excel',
-                                    style: GoogleFonts.poppins(fontSize: 11)),
-                              ],
-                            ),
-                          ),
-                          PopupMenuItem(
-                            value: 'pdf',
-                            child: Row(
-                              children: [
-                                Icon(Icons.picture_as_pdf,
-                                    size: 16, color: Colors.red[700]),
-                                const SizedBox(width: 8),
-                                Text('PDF',
-                                    style: GoogleFonts.poppins(fontSize: 11)),
-                              ],
-                            ),
-                          ),
-                          PopupMenuItem(
-                            value: 'print',
-                            child: Row(
-                              children: [
-                                Icon(Icons.print,
-                                    size: 16, color: Colors.grey[700]),
-                                const SizedBox(width: 8),
-                                Text('Print',
-                                    style: GoogleFonts.poppins(fontSize: 11)),
-                              ],
-                            ),
-                          ),
-                        ],
-                        child: Container(
-                          height: 38,
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: Colors.grey[300]!),
-                          ),
-                          child: Center(
-                            child: Text(
-                              'Export',
+                            child: DropdownButton<String>(
+                              value: _selectedPosition,
+                              icon: Icon(Icons.keyboard_arrow_down,
+                                  size: 18, color: Colors.grey[600]),
+                              underline: const SizedBox(),
+                              isExpanded: true,
                               style: GoogleFonts.poppins(
-                                  fontSize: 11,
-                                  color: Colors.black87,
-                                  fontWeight: FontWeight.w500),
+                                  fontSize: 11, color: Colors.black87),
+                              items: [
+                                'All Positions',
+                                'Senior Stylist',
+                                'Junior Barber',
+                                'Manager'
+                              ].map((String value) {
+                                return DropdownMenuItem<String>(
+                                  value: value,
+                                  child: Text(value),
+                                );
+                              }).toList(),
+                              onChanged: (String? newValue) {
+                                setState(() {
+                                  _selectedPosition =
+                                      newValue ?? 'All Positions';
+                                });
+                              },
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              // Stats Cards - 2x2 Grid
-              Row(
-                children: [
-                  Expanded(
-                    child: _StatCard(
-                      icon: Icons.group_outlined,
-                      iconColor: Colors.blue,
-                      iconBg: Colors.blue[50]!,
-                      title: 'Total Team Members',
-                      value: '$total',
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _StatCard(
-                      icon: Icons.person_outline,
-                      iconColor: Colors.purple,
-                      iconBg: Colors.purple[50]!,
-                      title: 'Currently Active Members',
-                      value: '$activeCount',
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: _StatCard(
-                      icon: Icons.trending_up,
-                      iconColor: Colors.green,
-                      iconBg: Colors.green[50]!,
-                      title: 'Staff Earning Commission',
-                      value: '$commissionActiveCount',
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _StatCard(
-                      icon: Icons.account_balance_wallet_outlined,
-                      iconColor: Colors.orange,
-                      iconBg: Colors.orange[50]!,
-                      title: 'Total Balance Due',
-                      value: '₹ ${pendingPayoutsSum.toStringAsFixed(2)}',
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              // Staff List
-              Expanded(
-                child: isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : (errorMessage != null)
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(errorMessage!,
-                                    style: GoogleFonts.poppins(
-                                        color: Colors.red, fontSize: 9)),
-                                const SizedBox(height: 10),
-                                ElevatedButton(
-                                    onPressed: fetchStaff,
-                                    child: Text('Retry',
-                                        style:
-                                            GoogleFonts.poppins(fontSize: 9))),
-                              ],
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Container(
+                            height: 38,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: Colors.grey[300]!),
                             ),
-                          )
-                        : rows.isEmpty
-                            ? Center(
-                                child: Text('No staff found.',
-                                    style: GoogleFonts.poppins(
-                                        color: Colors.grey[600], fontSize: 9)))
-                            : ListView.separated(
-                                itemCount: rows.length,
-                                separatorBuilder: (_, __) =>
-                                    const SizedBox(height: 8),
-                                itemBuilder: (context, idx) {
-                                  final s = rows[idx];
-                                  final actualIndex = staffList.indexOf(s);
-
-                                  return _StaffCard(
-                                    staff: s,
-                                    onEdit: () => _openAddStaff(
-                                        existing: s, editIndex: actualIndex),
-                                    onDelete: () =>
-                                        _deleteStaff(s['id'], s['fullName']),
-                                    onViewEarnings: () =>
-                                        _showEarningsDialog(s),
-                                    onSendCredentials: () =>
-                                        _sendCredentials(s),
-                                  );
-                                },
+                            child: DropdownButton<String>(
+                              value: _selectedCommission,
+                              icon: Icon(Icons.keyboard_arrow_down,
+                                  size: 18, color: Colors.grey[600]),
+                              underline: const SizedBox(),
+                              isExpanded: true,
+                              style: GoogleFonts.poppins(
+                                  fontSize: 11, color: Colors.black87),
+                              items: [
+                                'All Commission',
+                                'Commission Enabled',
+                                'Commission Disabled'
+                              ].map((String value) {
+                                return DropdownMenuItem<String>(
+                                  value: value,
+                                  child: Text(value),
+                                );
+                              }).toList(),
+                              onChanged: (String? newValue) {
+                                setState(() {
+                                  _selectedCommission =
+                                      newValue ?? 'All Commission';
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        PopupMenuButton<String>(
+                          onSelected: (value) => _handleExport(value),
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: 'copy',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.copy,
+                                      size: 16, color: Colors.grey[700]),
+                                  const SizedBox(width: 8),
+                                  Text('Copy',
+                                      style: GoogleFonts.poppins(fontSize: 11)),
+                                ],
                               ),
-              ),
-            ],
+                            ),
+                            PopupMenuItem(
+                              value: 'csv',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.table_chart,
+                                      size: 16, color: Colors.grey[700]),
+                                  const SizedBox(width: 8),
+                                  Text('CSV',
+                                      style: GoogleFonts.poppins(fontSize: 11)),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'excel',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.grid_on,
+                                      size: 16, color: Colors.green[700]),
+                                  const SizedBox(width: 8),
+                                  Text('Excel',
+                                      style: GoogleFonts.poppins(fontSize: 11)),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'pdf',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.picture_as_pdf,
+                                      size: 16, color: Colors.red[700]),
+                                  const SizedBox(width: 8),
+                                  Text('PDF',
+                                      style: GoogleFonts.poppins(fontSize: 11)),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'print',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.print,
+                                      size: 16, color: Colors.grey[700]),
+                                  const SizedBox(width: 8),
+                                  Text('Print',
+                                      style: GoogleFonts.poppins(fontSize: 11)),
+                                ],
+                              ),
+                            ),
+                          ],
+                          child: Container(
+                            height: 38,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: Colors.grey[300]!),
+                            ),
+                            child: Center(
+                              child: Text(
+                                'Export',
+                                style: GoogleFonts.poppins(
+                                    fontSize: 11,
+                                    color: Colors.black87,
+                                    fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Stats Cards - 2x2 Grid
+                Row(
+                  children: [
+                    Expanded(
+                      child: _StatCard(
+                        icon: Icons.group_outlined,
+                        iconColor: Colors.blue,
+                        iconBg: Colors.blue[50]!,
+                        title: 'Total Team Members',
+                        value: '$total',
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _StatCard(
+                        icon: Icons.person_outline,
+                        iconColor: Colors.purple,
+                        iconBg: Colors.purple[50]!,
+                        title: 'Currently Active Members',
+                        value: '$activeCount',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _StatCard(
+                        icon: Icons.trending_up,
+                        iconColor: Colors.green,
+                        iconBg: Colors.green[50]!,
+                        title: 'Staff Earning Commission',
+                        value: '$commissionActiveCount',
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _StatCard(
+                        icon: Icons.account_balance_wallet_outlined,
+                        iconColor: Colors.orange,
+                        iconBg: Colors.orange[50]!,
+                        title: 'Total Balance Due',
+                        value: '₹ ${pendingPayoutsSum.toStringAsFixed(2)}',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Staff List
+                Expanded(
+                  child: isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : (errorMessage != null)
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(errorMessage!,
+                                      style: GoogleFonts.poppins(
+                                          color: Colors.red, fontSize: 9)),
+                                  const SizedBox(height: 10),
+                                  ElevatedButton(
+                                      onPressed: fetchStaff,
+                                      child: Text('Retry',
+                                          style: GoogleFonts.poppins(
+                                              fontSize: 9))),
+                                ],
+                              ),
+                            )
+                          : rows.isEmpty
+                              ? Center(
+                                  child: Text('No staff found.',
+                                      style: GoogleFonts.poppins(
+                                          color: Colors.grey[600],
+                                          fontSize: 9)))
+                              : ListView.separated(
+                                  itemCount: rows.length,
+                                  separatorBuilder: (_, __) =>
+                                      const SizedBox(height: 8),
+                                  itemBuilder: (context, idx) {
+                                    final s = rows[idx];
+                                    final actualIndex = staffList.indexOf(s);
+
+                                    return _StaffCard(
+                                      staff: s,
+                                      onEdit: () => _openAddStaff(
+                                          existing: s, editIndex: actualIndex),
+                                      onDelete: () =>
+                                          _deleteStaff(s['id'], s['fullName']),
+                                      onViewEarnings: () =>
+                                          _showEarningsDialog(s),
+                                      onSendCredentials: () =>
+                                          _sendCredentials(s),
+                                    );
+                                  },
+                                ),
+                ),
+              ],
+            ),
           ),
-        ),
         ),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: () => _openAddStaff(),

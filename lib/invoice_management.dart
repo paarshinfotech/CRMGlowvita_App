@@ -11,6 +11,7 @@ import 'package:printing/printing.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class InvoiceManagementPage extends StatefulWidget {
   const InvoiceManagementPage({super.key});
@@ -160,10 +161,9 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage> {
         title: Text(
           "Invoice Management",
           style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w600,
-            color: Colors.black,
-            fontSize: 18,
-          ),
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+              fontSize: 12.sp),
         ),
         backgroundColor: Colors.white,
         iconTheme: const IconThemeData(color: Colors.black),
@@ -703,7 +703,7 @@ class InvoiceCard extends StatelessWidget {
             const SizedBox(height: 5),
             // items
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Text(
                   "Items:",
@@ -712,23 +712,35 @@ class InvoiceCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 4),
                 Icon(itemIcon, size: 13, color: itemColor),
-                const SizedBox(width: 2),
-                Text(
-                  itemType,
-                  style: GoogleFonts.poppins(
-                      fontSize: 10,
-                      color: itemColor,
-                      fontWeight: FontWeight.w600),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: RichText(
+                    overflow: TextOverflow.ellipsis,
+                    text: TextSpan(
+                      style: GoogleFonts.poppins(
+                        fontSize: 10,
+                        color: Colors.black,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: itemType,
+                          style: GoogleFonts.poppins(
+                            color: itemColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        TextSpan(
+                          text: " : ${firstItem?.name ?? '-'} ",
+                        ),
+                        TextSpan(
+                          text: "(x${firstItem?.quantity ?? '1'})",
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                Text(
-                  " : ${firstItem?.name ?? '-'} ",
-                  style: GoogleFonts.poppins(fontSize: 10, color: Colors.black),
-                ),
-                Text(
-                  "(x${firstItem?.quantity ?? '1'})",
-                  style: GoogleFonts.poppins(fontSize: 10, color: Colors.black),
-                ),
-                const Spacer(),
+                const SizedBox(width: 8),
                 Text(
                   invoice.items.length.toString(),
                   style: GoogleFonts.poppins(

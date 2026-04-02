@@ -58,29 +58,43 @@ class SupplierProfile {
   });
 
   factory SupplierProfile.fromJson(Map<String, dynamic> json) {
+    String? s(dynamic v) {
+      if (v == null) return null;
+      if (v is String) return v;
+      if (v is Map) {
+        if (v.containsKey('url')) return v['url']?.toString();
+        if (v.containsKey('path')) return v['path']?.toString();
+        if (v.containsKey('formattedAddress')) return v['formattedAddress']?.toString();
+        return v.toString();
+      }
+      return v.toString();
+    }
+
     return SupplierProfile(
-      id: json['_id'] ?? '',
-      firstName: json['firstName'] ?? '',
-      lastName: json['lastName'] ?? '',
-      email: json['email'] ?? '',
-      mobile: json['mobile'] ?? '',
-      shopName: json['shopName'] ?? '',
-      country: json['country'],
-      state: json['state'],
-      city: json['city'],
-      pincode: json['pincode'],
-      address: json['address'],
-      businessRegistrationNo: json['businessRegistrationNo'],
-      supplierType: json['supplierType'],
-      licenseFiles: json['licenseFiles'] ?? [],
+      id: s(json['_id']) ?? '',
+      firstName: s(json['firstName']) ?? '',
+      lastName: s(json['lastName']) ?? '',
+      email: s(json['email']) ?? '',
+      mobile: s(json['mobile']) ?? '',
+      shopName: s(json['shopName']) ?? '',
+      country: s(json['country']),
+      state: s(json['state']),
+      city: s(json['city']),
+      pincode: s(json['pincode']),
+      address: s(json['address']),
+      businessRegistrationNo: s(json['businessRegistrationNo']),
+      supplierType: s(json['supplierType']),
+      licenseFiles: json['licenseFiles'] is List ? (json['licenseFiles'] as List) : [],
       smsBalance: (json['smsBalance'] as num?)?.toInt() ?? 0,
-      status: json['status'] ?? '',
-      referralCode: json['referralCode'] ?? '',
-      description: json['description'] ?? '',
-      gallery: List<String>.from(json['gallery'] ?? []),
-      gstNo: json['gstNo'],
+      status: s(json['status']) ?? '',
+      referralCode: s(json['referralCode']) ?? '',
+      description: s(json['description']) ?? '',
+      gallery: json['gallery'] is List
+          ? (json['gallery'] as List).map((e) => s(e) ?? '').toList()
+          : (json['gallery'] != null ? [s(json['gallery']) ?? ''] : []),
+      gstNo: s(json['gstNo']),
       minOrderValue: (json['minOrderValue'] as num?)?.toDouble() ?? 0.0,
-      profileImage: json['profileImage'] ?? '',
+      profileImage: s(json['profileImage']) ?? '',
       currentSmsBalance: (json['currentSmsBalance'] as num?)?.toInt() ?? 0,
       bankDetails: json['bankDetails'] != null
           ? SupplierBankDetails.fromJson(json['bankDetails'])
@@ -144,12 +158,13 @@ class SupplierBankDetails {
   });
 
   factory SupplierBankDetails.fromJson(Map<String, dynamic> json) {
+    String? s(dynamic v) => v?.toString();
     return SupplierBankDetails(
-      bankName: json['bankName'],
-      accountNumber: json['accountNumber'],
-      ifscCode: json['ifscCode'],
-      accountHolder: json['accountHolder'],
-      upiId: json['upiId'],
+      bankName: s(json['bankName']),
+      accountNumber: s(json['accountNumber']),
+      ifscCode: s(json['ifscCode']),
+      accountHolder: s(json['accountHolder']),
+      upiId: s(json['upiId']),
     );
   }
 
@@ -220,32 +235,45 @@ class SupplierDocuments {
   });
 
   factory SupplierDocuments.fromJson(Map<String, dynamic> json) {
+    String? s(dynamic v) {
+      if (v == null) return null;
+      if (v is String) return v;
+      if (v is Map) {
+        if (v.containsKey('url')) return v['url']?.toString();
+        if (v.containsKey('path')) return v['path']?.toString();
+        return v.toString();
+      }
+      return v.toString();
+    }
+
     return SupplierDocuments(
-      shopAct: json['shopAct'],
-      shopActRejectionReason: json['shopActRejectionReason'],
-      shopActAdminRejectionReason: json['shopActAdminRejectionReason'],
-      aadharCard: json['aadharCard'],
-      udyogAadhar: json['udyogAadhar'],
-      udhayamCert: json['udhayamCert'],
-      shopLicense: json['shopLicense'],
-      panCard: json['panCard'],
-      aadharCardRejectionReason: json['aadharCardRejectionReason'],
-      udyogAadharRejectionReason: json['udyogAadharRejectionReason'],
-      udhayamCertRejectionReason: json['udhayamCertRejectionReason'],
-      shopLicenseRejectionReason: json['shopLicenseRejectionReason'],
-      panCardRejectionReason: json['panCardRejectionReason'],
-      aadharCardAdminRejectionReason: json['aadharCardAdminRejectionReason'],
-      udyogAadharAdminRejectionReason: json['udyogAadharAdminRejectionReason'],
-      udhayamCertAdminRejectionReason: json['udhayamCertAdminRejectionReason'],
-      shopLicenseAdminRejectionReason: json['shopLicenseAdminRejectionReason'],
-      panCardAdminRejectionReason: json['panCardAdminRejectionReason'],
-      aadharCardStatus: json['aadharCardStatus'],
-      otherDocs: List<String>.from(json['otherDocs'] ?? []),
-      panCardStatus: json['panCardStatus'],
-      shopLicenseStatus: json['shopLicenseStatus'],
-      udhayamCertStatus: json['udhayamCertStatus'],
-      udyogAadharStatus: json['udyogAadharStatus'],
-      shopActStatus: json['shopActStatus'],
+      shopAct: s(json['shopAct']),
+      shopActRejectionReason: s(json['shopActRejectionReason']),
+      shopActAdminRejectionReason: s(json['shopActAdminRejectionReason']),
+      aadharCard: s(json['aadharCard']),
+      udyogAadhar: s(json['udyogAadhar']),
+      udhayamCert: s(json['udhayamCert']),
+      shopLicense: s(json['shopLicense']),
+      panCard: s(json['panCard']),
+      aadharCardRejectionReason: s(json['aadharCardRejectionReason']),
+      udyogAadharRejectionReason: s(json['udyogAadharRejectionReason']),
+      udhayamCertRejectionReason: s(json['udhayamCertRejectionReason']),
+      shopLicenseRejectionReason: s(json['shopLicenseRejectionReason']),
+      panCardRejectionReason: s(json['panCardRejectionReason']),
+      aadharCardAdminRejectionReason: s(json['aadharCardAdminRejectionReason']),
+      udyogAadharAdminRejectionReason: s(json['udyogAadharAdminRejectionReason']),
+      udhayamCertAdminRejectionReason: s(json['udhayamCertAdminRejectionReason']),
+      shopLicenseAdminRejectionReason: s(json['shopLicenseAdminRejectionReason']),
+      panCardAdminRejectionReason: s(json['panCardAdminRejectionReason']),
+      aadharCardStatus: s(json['aadharCardStatus']),
+      otherDocs: json['otherDocs'] is List
+          ? (json['otherDocs'] as List).map((e) => s(e) ?? '').toList()
+          : (json['otherDocs'] != null ? [s(json['otherDocs']) ?? ''] : []),
+      panCardStatus: s(json['panCardStatus']),
+      shopLicenseStatus: s(json['shopLicenseStatus']),
+      udhayamCertStatus: s(json['udhayamCertStatus']),
+      udyogAadharStatus: s(json['udyogAadharStatus']),
+      shopActStatus: s(json['shopActStatus']),
     );
   }
 
@@ -284,9 +312,15 @@ class SupplierSubscription {
   });
 
   factory SupplierSubscription.fromJson(Map<String, dynamic> json) {
+    String? s(dynamic v) {
+      if (v == null) return null;
+      if (v is String) return v;
+      if (v is Map) return v['name']?.toString() ?? v['title']?.toString() ?? v.toString();
+      return v.toString();
+    }
     return SupplierSubscription(
-      plan: json['plan'],
-      status: json['status'] ?? '',
+      plan: s(json['plan']),
+      status: s(json['status']) ?? '',
       startDate: json['startDate'] != null ? DateTime.parse(json['startDate']) : null,
       endDate: json['endDate'] != null ? DateTime.parse(json['endDate']) : null,
       history: (json['history'] as List? ?? [])
@@ -322,12 +356,18 @@ class SupplierSubscriptionHistory {
   });
 
   factory SupplierSubscriptionHistory.fromJson(Map<String, dynamic> json) {
+    String s(dynamic v) {
+      if (v == null) return '';
+      if (v is String) return v;
+      if (v is Map) return v['name']?.toString() ?? v['title']?.toString() ?? v.toString();
+      return v.toString();
+    }
     return SupplierSubscriptionHistory(
-      plan: json['plan'] ?? '',
+      plan: s(json['plan']),
       startDate: json['startDate'] != null ? DateTime.parse(json['startDate']) : null,
       endDate: json['endDate'] != null ? DateTime.parse(json['endDate']) : null,
-      status: json['status'] ?? '',
-      id: json['_id'] ?? '',
+      status: s(json['status']),
+      id: s(json['_id']),
     );
   }
 
@@ -351,7 +391,7 @@ class SupplierTaxes {
   factory SupplierTaxes.fromJson(Map<String, dynamic> json) {
     return SupplierTaxes(
       taxValue: (json['taxValue'] as num?)?.toDouble() ?? 0.0,
-      taxType: json['taxType'] ?? 'percentage',
+      taxType: json['taxType']?.toString() ?? 'percentage',
     );
   }
 

@@ -291,7 +291,7 @@ class _ProductsPageState extends State<Products> {
             style: GoogleFonts.poppins(
                 fontWeight: FontWeight.w600,
                 color: Colors.black87,
-                fontSize: 15.sp)),
+                fontSize: 12.sp)),
         backgroundColor: Colors.white,
         iconTheme: const IconThemeData(color: Colors.black87),
         elevation: 0,

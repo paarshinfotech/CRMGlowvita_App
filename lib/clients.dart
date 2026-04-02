@@ -634,7 +634,7 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
           title: Text(
             'Client Management',
             style: GoogleFonts.poppins(
-              fontSize: 14.sp,
+              fontSize: 12.sp,
               fontWeight: FontWeight.w600,
               color: Colors.black,
             ),
@@ -696,8 +696,8 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                       hintStyle: GoogleFonts.poppins(
                           fontSize: 10.sp, color: Colors.grey[400]),
                       border: InputBorder.none,
-                      contentPadding:
-                          EdgeInsets.symmetric(vertical: 10.h, horizontal: 12.w),
+                      contentPadding: EdgeInsets.symmetric(
+                          vertical: 10.h, horizontal: 12.w),
                     ),
                     style: GoogleFonts.poppins(fontSize: 10.sp),
                     onChanged: (v) => setState(() => _searchQuery = v),

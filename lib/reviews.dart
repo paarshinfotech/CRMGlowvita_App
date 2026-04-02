@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'widgets/custom_drawer.dart';
 import 'services/api_service.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class ReviewsPage extends StatefulWidget {
   const ReviewsPage({super.key});
@@ -153,9 +154,12 @@ class _ReviewsPageState extends State<ReviewsPage> {
       appBar: AppBar(
         elevation: 0.5,
         backgroundColor: Colors.white,
-        title: const Text(
+        title: Text(
           'Reviews',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700),
+          style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+              fontSize: 12.sp),
         ),
         iconTheme: const IconThemeData(color: Colors.black),
       ),

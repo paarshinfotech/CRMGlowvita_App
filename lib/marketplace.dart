@@ -4,6 +4,7 @@ import 'widgets/custom_drawer.dart';
 import 'services/api_service.dart';
 import 'services/marketplace_models.dart';
 import 'cart_manager.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COLOR CONSTANTS  (matches the purple-based design)
@@ -130,7 +131,9 @@ class _MarketplacePageState extends State<MarketplacePage> {
         title: Text(
           'Marketplace',
           style: GoogleFonts.poppins(
-              color: Colors.black, fontWeight: FontWeight.w700, fontSize: 17),
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+              fontSize: 12.sp),
         ),
         iconTheme: const IconThemeData(color: Colors.black),
         actions: [
