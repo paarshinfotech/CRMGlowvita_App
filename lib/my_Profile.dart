@@ -61,6 +61,7 @@ class _My_ProfileState extends State<My_Profile>
   String? _newProfileImageBase64;
   List<String> _newGalleryBase64 = [];
   Map<String, String?> _newDocumentsBase64 = {};
+  final int maxFileSize = 5 * 1024 * 1024; // 5MB
 
   final ImagePicker _picker = ImagePicker();
 
@@ -236,7 +237,11 @@ class _My_ProfileState extends State<My_Profile>
         'password': _passwordController.text.isNotEmpty
             ? _passwordController.text
             : null,
-        'category': _selectedCategory.toLowerCase(),
+        'category': _selectedCategory.toLowerCase() == "male"
+            ? "men"
+            : (_selectedCategory.toLowerCase() == "female"
+                ? "women"
+                : "unisex"),
         'subCategories': subCategories,
         'vendorType': vendorTypeApi,
         'travelRadius': int.tryParse(_radiusController.text) ?? 0,
@@ -368,8 +373,29 @@ class _My_ProfileState extends State<My_Profile>
       setState(() {
         _isSaving = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error updating profile: $e')),
+
+      String errorMessage = e.toString();
+      if (errorMessage.contains('413')) {
+        errorMessage =
+            "The total size of uploaded files is too large for the server. Please upload smaller files (max 5MB each) or fewer files at once.";
+      } else if (errorMessage.contains('SocketException') ||
+          errorMessage.contains('Connection reset by peer')) {
+        errorMessage =
+            "Connection timed out or reset. This usually happens when uploading very large files. Please try with smaller images or documents.";
+      }
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text("Update Failed"),
+          content: Text(errorMessage),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("OK"),
+            ),
+          ],
+        ),
       );
     }
   }
@@ -493,6 +519,24 @@ class _My_ProfileState extends State<My_Profile>
       imageQuality: 70,
     );
     if (image != null) {
+      final size = await image.length();
+      if (size > maxFileSize) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text("File Too Large"),
+            content: Text(
+                "The selected image is ${(size / (1024 * 1024)).toStringAsFixed(2)}MB, which exceeds the 5MB limit."),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("OK"),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
       final bytes = await image.readAsBytes();
       final base64 =
           "data:image/${image.path.split('.').last};base64,${base64Encode(bytes)}";
@@ -514,6 +558,23 @@ class _My_ProfileState extends State<My_Profile>
 
     if (result != null) {
       final file = result.files.first;
+      if (file.size > maxFileSize) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text("File Too Large"),
+            content: Text(
+                "The selected document is ${(file.size / (1024 * 1024)).toStringAsFixed(2)}MB, which exceeds the 5MB limit."),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("OK"),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
       if (file.bytes != null || file.path != null) {
         final bytes = file.bytes ?? await File(file.path!).readAsBytes();
         final base64 =
@@ -734,23 +795,30 @@ class _My_ProfileState extends State<My_Profile>
                   children: [
                     Text(_profile?.businessName ?? "GlowVita Salon & Spa",
                         style: GoogleFonts.inter(
-                            fontSize: 13.sp, fontWeight: FontWeight.w700)),
+                            fontSize: 13.sp, fontWeight: FontWeight.w700),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1),
                     SizedBox(height: 4.h),
                     Row(
                       children: [
                         Icon(Icons.location_on_outlined,
                             size: 14.sp, color: Colors.grey.shade600),
                         SizedBox(width: 4.w),
-                        Text(_profile?.address ?? "Baner Road, Pune",
-                            style: GoogleFonts.inter(
-                                fontSize: 10.5.sp,
-                                color: Colors.grey.shade600)),
+                        Expanded(
+                          child: Text(_profile?.address ?? "Baner Road, Pune",
+                              style: GoogleFonts.inter(
+                                  fontSize: 9.sp, color: Colors.grey.shade600),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1),
+                        ),
                       ],
                     ),
                     SizedBox(height: 6.h),
                     Text("Vendor ID • ${_profile?.id.substring(0, 8) ?? "N/A"}",
                         style: GoogleFonts.inter(
-                            fontSize: 9.5.sp, color: Colors.grey.shade500)),
+                            fontSize: 9.sp, color: Colors.grey.shade500),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1),
                   ],
                 ),
               ),
@@ -1238,6 +1306,8 @@ class _My_ProfileState extends State<My_Profile>
           Text("Salon Gallery",
               style: GoogleFonts.inter(
                   fontSize: 15.sp, fontWeight: FontWeight.w700)),
+          SizedBox(height: 12.h),
+          _buildUploadRequirements(),
           SizedBox(height: 20.h),
           GestureDetector(
             onTap: () => _pickImage(false),
@@ -1412,10 +1482,8 @@ class _My_ProfileState extends State<My_Profile>
           Text("Business Documents",
               style: GoogleFonts.inter(
                   fontSize: 17.sp, fontWeight: FontWeight.w700)),
-          SizedBox(height: 4.h),
-          Text("Upload verification documents (JPG, PDF • max 5MB)",
-              style: GoogleFonts.inter(
-                  fontSize: 10.5.sp, color: Colors.grey.shade600)),
+          SizedBox(height: 12.h),
+          _buildUploadRequirements(),
           SizedBox(height: 24.h),
           ...[
             {
@@ -1784,6 +1852,66 @@ class _My_ProfileState extends State<My_Profile>
   // ──────────────────────────────────────────────
   //  9. Categories
   // ──────────────────────────────────────────────
+  Widget _buildUploadRequirements() {
+    return Container(
+      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F4FF),
+        borderRadius: BorderRadius.circular(8.r),
+        border: Border(
+          left: BorderSide(color: Theme.of(context).primaryColor, width: 4.w),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "UPLOAD REQUIREMENTS:",
+            style: GoogleFonts.inter(
+              fontSize: 10.sp,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF6B4B9C),
+            ),
+          ),
+          SizedBox(height: 8.h),
+          _requirementRow("File formats: JPG, JPEG, PDF"),
+          SizedBox(height: 4.h),
+          _requirementRow("Maximum file size: 5MB"),
+        ],
+      ),
+    );
+  }
+
+  Widget _requirementRow(String text) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(top: 4.h),
+          child: Container(
+            width: 4.w,
+            height: 4.w,
+            decoration: const BoxDecoration(
+              color: Colors.black54,
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
+        SizedBox(width: 8.w),
+        Expanded(
+          child: Text(
+            text,
+            style: GoogleFonts.inter(
+              fontSize: 10.sp,
+              color: Colors.black87,
+              height: 1.4,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildCategoriesTab() {
     return Center(
       child: Padding(

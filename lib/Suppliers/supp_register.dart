@@ -55,6 +55,8 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
   double? selectedLat;
   double? selectedLng;
   bool isLoading = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   @override
   void dispose() {
@@ -371,14 +373,35 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
           _buildOutlinedField(
               label: "Password *",
               controller: passwordCtrl,
-              obscureText: true,
+              obscureText: _obscurePassword,
+              suffixIcon: IconButton(
+                onPressed: () =>
+                    setState(() => _obscurePassword = !_obscurePassword),
+                icon: Icon(
+                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                  size: 16.sp,
+                  color: Theme.of(context).primaryColor,
+                ),
+              ),
               validator: (v) =>
                   (v?.length ?? 0) < 6 ? 'Minimum 6 characters' : null),
           SizedBox(height: 16.h),
           _buildOutlinedField(
-              label: "Confirm Password *",
-              controller: confirmPasswordCtrl,
-              obscureText: true),
+            label: "Confirm Password *",
+            controller: confirmPasswordCtrl,
+            obscureText: _obscureConfirmPassword,
+            suffixIcon: IconButton(
+              onPressed: () => setState(
+                  () => _obscureConfirmPassword = !_obscureConfirmPassword),
+              icon: Icon(
+                _obscureConfirmPassword
+                    ? Icons.visibility_off
+                    : Icons.visibility,
+                size: 16.sp,
+                color: Theme.of(context).primaryColor,
+              ),
+            ),
+          ),
           SizedBox(height: 16.h),
           _buildOutlinedField(
               label: "Referral Code (optional)", controller: referralCtrl),
@@ -515,6 +538,27 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
                   selectedLng = result['lng'] as double?;
                   addressCtrl.text = (result['address'] ?? '').toString();
                 });
+
+                // Auto-fill state, city, pincode
+                if (selectedLat != null && selectedLng != null) {
+                  try {
+                    List<Placemark> placemarks = await placemarkFromCoordinates(
+                        selectedLat!, selectedLng!);
+                    if (placemarks.isNotEmpty) {
+                      Placemark place = placemarks[0];
+                      setState(() {
+                        stateCtrl.text = place.administrativeArea ?? '';
+                        cityCtrl.text = place.locality ??
+                            place.subLocality ??
+                            place.subAdministrativeArea ??
+                            '';
+                        pincodeCtrl.text = place.postalCode ?? '';
+                      });
+                    }
+                  } catch (e) {
+                    developer.log("Error fetching placemarks: $e");
+                  }
+                }
               }
             },
             child: Container(
@@ -540,9 +584,13 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text("Tap to select location",
+                        Text(
+                            addressCtrl.text.isEmpty
+                                ? "Tap to select location"
+                                : addressCtrl.text,
                             style: GoogleFonts.poppins(
-                                fontSize: 9.sp, color: Colors.grey.shade600)),
+                                fontSize: 9.sp, color: Colors.grey.shade600),
+                            softWrap: true),
                         if (selectedLat != null)
                           Text(
                               "Lat: ${selectedLat!.toStringAsFixed(6)}, Lng: ${selectedLng!.toStringAsFixed(6)}",
@@ -625,6 +673,7 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
     bool obscureText = false,
     int maxLines = 1,
     String? hint,
+    Widget? suffixIcon,
     String? Function(String?)? validator,
   }) {
     return Container(
@@ -668,6 +717,7 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
           fillColor: Colors.white,
           contentPadding:
               EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+          suffixIcon: suffixIcon,
         ),
       ),
     );
@@ -901,10 +951,21 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
       );
       return;
     }
+    if (firstNameCtrl.text.isEmpty || lastNameCtrl.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter your name first")),
+      );
+      return;
+    }
     setState(() => isSendingEmailOtp = true);
     try {
-      final response = await ApiService.sendOtp(emailCtrl.text.trim());
-      if (response.statusCode == 200) {
+      final response = await ApiService.sendOtp(
+        emailCtrl.text.trim(),
+        firstName: firstNameCtrl.text.trim(),
+        lastName: lastNameCtrl.text.trim(),
+        role: 'supplier',
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
         if (data['success'] == true) {
           setState(() => isEmailOtpSent = true);
@@ -915,7 +976,12 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
           throw data['message'] ?? "Failed to send OTP";
         }
       } else {
-        throw "Server error: ${response.statusCode}";
+        String msg = "Server error: ${response.statusCode}";
+        try {
+          final data = jsonDecode(response.body);
+          if (data['message'] != null) msg = data['message'];
+        } catch (_) {}
+        throw msg;
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -931,8 +997,9 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
     setState(() => isVerifyingEmailOtp = true);
     try {
       final response = await ApiService.verifyOtp(
-          emailCtrl.text.trim(), emailOtpCtrl.text.trim());
-      if (response.statusCode == 200) {
+          emailCtrl.text.trim(), emailOtpCtrl.text.trim(),
+          role: 'supplier');
+      if (response.statusCode == 200 || response.statusCode == 201) {
         setState(() => isEmailVerified = true);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -940,8 +1007,12 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
               backgroundColor: Colors.green),
         );
       } else {
-        final data = jsonDecode(response.body);
-        throw data['message'] ?? "Invalid OTP";
+        String msg = "Verification failed";
+        try {
+          final data = jsonDecode(response.body);
+          msg = data['message'] ?? msg;
+        } catch (_) {}
+        throw msg;
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(

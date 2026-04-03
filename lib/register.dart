@@ -55,6 +55,7 @@ class _RegisterPageState extends State<RegisterPage> {
   double? selectedLng;
 
   bool isLoading = false;
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -95,12 +96,14 @@ class _RegisterPageState extends State<RegisterPage> {
         "businessName": businessNameCtrl.text.trim(),
         "email": emailCtrl.text.trim(),
         "phone": phoneCtrl.text.trim(),
-        "password": passwordCtrl.text,
+        "password": passwordCtrl.text, 
         "state": stateCtrl.text.trim(),
         "city": cityCtrl.text.trim(),
         "pincode": pincodeCtrl.text.trim(),
         "address": addressCtrl.text.trim(),
-        "category": selectedCategory,
+        "category": selectedCategory == 'male'
+            ? 'men'
+            : (selectedCategory == 'female' ? 'women' : 'unisex'),
 
         // IMPORTANT: Ensure double
         "location": {
@@ -126,20 +129,28 @@ class _RegisterPageState extends State<RegisterPage> {
 
       /// ✅ Correct subCategories as per API response example
       /// API expects: ["at-salon"] not "shop", "onsite", etc.
-      if (subCategories.isNotEmpty) {
-        payload["subCategories"] = subCategories.map((cat) {
-          switch (cat) {
-            case "home":
-              return "at-home";
-            case "onsite":
-              return "onsite";
-            default:
+      final List<String> mappedSubs = subCategories.isNotEmpty
+          ? subCategories.map((cat) {
+              if (cat == "home") return "at-home";
+              if (cat == "onsite") return "at-home"; // treat onsite as at-home
               return "at-salon";
-          }
-        }).toList();
-      } else {
-        payload["subCategories"] = ["at-salon"];
+            }).toList()
+          : ["at-salon"];
+
+      payload["subCategories"] = mappedSubs;
+
+      // Calculate vendorType
+      String vType = "shop-only";
+      bool hasSalon = mappedSubs.contains("at-salon");
+      bool hasHome = mappedSubs.contains("at-home");
+      if (hasSalon && hasHome) {
+        vType = "hybrid";
+      } else if (hasHome) {
+        vType = "home-only";
       }
+      payload["vendorType"] = vType;
+      payload["travelRadius"] = 15;
+      payload["travelSpeed"] = 30;
 
       debugPrint("REGISTER PAYLOAD: ${jsonEncode(payload)}");
 
@@ -442,7 +453,19 @@ class _RegisterPageState extends State<RegisterPage> {
           _buildOutlinedField(
             label: "Password",
             controller: passwordCtrl,
-            obscureText: true,
+            obscureText: _obscurePassword,
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                size: 16.sp,
+                color: Theme.of(context).primaryColor,
+              ),
+              onPressed: () {
+                setState(() {
+                  _obscurePassword = !_obscurePassword;
+                });
+              },
+            ),
             validator: (value) {
               if (value == null || value.isEmpty) {
                 return 'Password is required';
@@ -574,6 +597,25 @@ class _RegisterPageState extends State<RegisterPage> {
                     selectedLng = result['lng'];
                     addressCtrl.text = result['address'];
                   });
+
+                  // Auto-fill state, city, pincode
+                  try {
+                    List<Placemark> placemarks = await placemarkFromCoordinates(
+                        selectedLat!, selectedLng!);
+                    if (placemarks.isNotEmpty) {
+                      Placemark place = placemarks[0];
+                      setState(() {
+                        stateCtrl.text = place.administrativeArea ?? '';
+                        cityCtrl.text = place.locality ??
+                            place.subLocality ??
+                            place.subAdministrativeArea ??
+                            '';
+                        pincodeCtrl.text = place.postalCode ?? '';
+                      });
+                    }
+                  } catch (e) {
+                    debugPrint("Error fetching placemarks: $e");
+                  }
                 }
               },
               child: Container(
@@ -587,14 +629,17 @@ class _RegisterPageState extends State<RegisterPage> {
                   children: [
                     const Icon(Icons.location_on, color: Colors.purple),
                     const SizedBox(width: 12),
-                    Text(
-                      addressCtrl.text.isEmpty
-                          ? "Choose from Map"
-                          : addressCtrl.text,
-                      style: TextStyle(
-                          color: addressCtrl.text.isEmpty
-                              ? Colors.grey.shade600
-                              : Colors.black),
+                    Expanded(
+                      child: Text(
+                        addressCtrl.text.isEmpty
+                            ? "Choose from Map"
+                            : addressCtrl.text,
+                        style: TextStyle(
+                            color: addressCtrl.text.isEmpty
+                                ? Colors.grey.shade600
+                                : Colors.black),
+                        softWrap: true,
+                      ),
                     ),
                   ],
                 ),
@@ -1022,10 +1067,21 @@ class _RegisterPageState extends State<RegisterPage> {
       );
       return;
     }
+    if (firstNameCtrl.text.isEmpty || lastNameCtrl.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter your name first")),
+      );
+      return;
+    }
     setState(() => isSendingEmailOtp = true);
     try {
-      final response = await ApiService.sendOtp(emailCtrl.text.trim());
-      if (response.statusCode == 200) {
+      final response = await ApiService.sendOtp(
+        emailCtrl.text.trim(),
+        firstName: firstNameCtrl.text.trim(),
+        lastName: lastNameCtrl.text.trim(),
+        role: widget.initialRole ?? 'vendor',
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
         if (data['success'] == true) {
           setState(() => isEmailOtpSent = true);
@@ -1036,7 +1092,12 @@ class _RegisterPageState extends State<RegisterPage> {
           throw data['message'] ?? "Failed to send OTP";
         }
       } else {
-        throw "Server error: ${response.statusCode}";
+        String msg = "Server error: ${response.statusCode}";
+        try {
+          final data = jsonDecode(response.body);
+          if (data['message'] != null) msg = data['message'];
+        } catch (_) {}
+        throw msg;
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1052,7 +1113,8 @@ class _RegisterPageState extends State<RegisterPage> {
     setState(() => isVerifyingEmailOtp = true);
     try {
       final response = await ApiService.verifyOtp(
-          emailCtrl.text.trim(), emailOtpCtrl.text.trim());
+          emailCtrl.text.trim(), emailOtpCtrl.text.trim(),
+          role: widget.initialRole ?? 'vendor');
       if (response.statusCode == 200) {
         setState(() => isEmailVerified = true);
         ScaffoldMessenger.of(context).showSnackBar(

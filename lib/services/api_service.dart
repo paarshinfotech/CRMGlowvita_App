@@ -919,22 +919,43 @@ class ApiService {
   }
 
   // Send OTP for email verification
-  static Future<http.Response> sendOtp(String email) async {
+  static Future<http.Response> sendOtp(String email,
+      {String? firstName, String? lastName, String role = 'vendor'}) async {
+    final Map<String, dynamic> body = {
+      'email': email,
+      'role': role.toLowerCase(),
+    };
+    
+    if (firstName != null && firstName.isNotEmpty) {
+      body['firstName'] = firstName;
+    }
+    if (lastName != null && lastName.isNotEmpty) {
+      body['lastName'] = lastName;
+    }
+    
+    // Add fullName as a fallback for some backend versions
+    if ((firstName != null && firstName.isNotEmpty) || (lastName != null && lastName.isNotEmpty)) {
+      body['fullName'] = '${firstName ?? ""} ${lastName ?? ""}'.trim();
+      body['name'] = body['fullName']; // Some backends expect 'name'
+    }
+
     return await _post(
       '$baseUrl/crm/auth/send-otp',
-      {'email': email},
+      body,
       useAuth: false,
     );
   }
 
   // Verify OTP for email verification
-  static Future<http.Response> verifyOtp(String email, String otp) async {
+  static Future<http.Response> verifyOtp(String email, String otp,
+      {String role = 'vendor'}) async {
     return await _post(
       '$baseUrl/crm/auth/verify-otp',
-      {'email': email, 'otp': otp},
+      {'email': email, 'otp': otp, 'role': role.toLowerCase()},
       useAuth: false,
     );
   }
+
 
   // Get all clients
   static Future<List<Customer>> getClients() async {
@@ -1242,7 +1263,8 @@ class ApiService {
               'Failed to load crm categories: ${data['message'] ?? 'Unknown error'}');
         }
       } else {
-        throw Exception('Failed to load crm categories: ${response.statusCode}');
+        throw Exception(
+            'Failed to load crm categories: ${response.statusCode}');
       }
     } catch (e) {
       print('Error fetching crm categories: $e');
@@ -1582,7 +1604,8 @@ class ApiService {
 
   // ==================== INVENTORY ==================== //
 
-  static Future<List<InventoryTransaction>> getSupplierInventoryTransactions() async {
+  static Future<List<InventoryTransaction>>
+      getSupplierInventoryTransactions() async {
     try {
       final response = await _get('$baseUrl/crm/inventory/transactions');
       if (response.statusCode == 200) {
@@ -1592,7 +1615,8 @@ class ApiService {
               .map((json) => InventoryTransaction.fromJson(json))
               .toList();
         } else {
-          throw Exception(data['message'] ?? 'Failed to load inventory transactions');
+          throw Exception(
+              data['message'] ?? 'Failed to load inventory transactions');
         }
       } else {
         throw Exception(
@@ -4026,8 +4050,8 @@ class InventoryTransaction {
       id: json['_id'] ?? '',
       productId: TransactionProduct.fromJson(json['productId'] ?? {}),
       vendorId: json['vendorId'],
-      category: json['productCategory'] != null 
-          ? TransactionCategory.fromJson(json['productCategory']) 
+      category: json['productCategory'] != null
+          ? TransactionCategory.fromJson(json['productCategory'])
           : null,
       type: json['type'] ?? '',
       quantity: (json['quantity'] as num?)?.toInt() ?? 0,
@@ -4036,7 +4060,8 @@ class InventoryTransaction {
       reason: json['reason'] ?? '',
       reference: json['reference'],
       performedBy: json['performedBy'],
-      date: json['date'] != null ? DateTime.parse(json['date']) : DateTime.now(),
+      date:
+          json['date'] != null ? DateTime.parse(json['date']) : DateTime.now(),
     );
   }
 }
@@ -4056,7 +4081,9 @@ class TransactionProduct {
     return TransactionProduct(
       id: json['_id'] ?? '',
       productName: json['productName'] ?? '',
-      productImages: (json['productImages'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      productImages:
+          (json['productImages'] as List?)?.map((e) => e.toString()).toList() ??
+              [],
     );
   }
 }
