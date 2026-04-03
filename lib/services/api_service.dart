@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io' show HttpClient, X509Certificate;
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart' as http_io;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -466,6 +466,7 @@ class ApiService {
   static const String servicesEndpoint = '/crm/services';
   static const String adminBaseUrl = 'https://admin.glowvitasalon.com/api';
   static const String productCategoriesEndpoint = '/admin/product-categories';
+  static const String crmProductCategoriesEndpoint = '/crm/product-categories';
   static const String notificationTokenEndpoint =
       '/crm/notifications/register-token';
   static const String notificationsEndpoint = '/notifications';
@@ -580,6 +581,44 @@ class ApiService {
       }
 
       return response;
+    } finally {
+      client.close();
+    }
+  }
+
+  // Generic Multipart request helper
+  static Future<http.StreamedResponse> _multipartRequest(
+      String method, String url, Map<String, dynamic> body,
+      {List<http.MultipartFile>? files, bool useAuth = true}) async {
+    final client = _getHttpClient();
+    try {
+      final request = http.MultipartRequest(method, Uri.parse(url));
+
+      if (useAuth) {
+        final token = await _getAuthToken();
+        if (token != null) {
+          request.headers['Cookie'] = 'crm_access_token=$token';
+          request.headers['Authorization'] = 'Bearer $token';
+        }
+      }
+
+      // Add fields
+      body.forEach((key, value) {
+        if (value != null) {
+          if (value is List) {
+            request.fields[key] = json.encode(value);
+          } else {
+            request.fields[key] = value.toString();
+          }
+        }
+      });
+
+      // Add files
+      if (files != null) {
+        request.files.addAll(files);
+      }
+
+      return await client.send(request).timeout(const Duration(seconds: 60));
     } finally {
       client.close();
     }
@@ -1046,24 +1085,41 @@ class ApiService {
   }
 
   // Create a new product
-  static Future<bool> createProduct(Map<String, dynamic> productData) async {
+  static Future<bool> createProduct(Map<String, dynamic> productData,
+      {List<String>? imagePaths}) async {
     try {
-      final response = await _post('$baseUrl/crm/products', productData);
+      if (imagePaths != null && imagePaths.isNotEmpty) {
+        final List<http.MultipartFile> files = [];
+        for (var path in imagePaths) {
+          if (File(path).existsSync()) {
+            files.add(await http.MultipartFile.fromPath('productImages', path));
+          }
+        }
 
-      print(
-          'Create Product Response [${response.statusCode}]: ${response.body}');
+        final streamedResponse = await _multipartRequest(
+          'POST',
+          '$baseUrl/crm/products',
+          productData,
+          files: files,
+        );
+        final response = await http.Response.fromStream(streamedResponse);
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
-          return true;
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          final data = json.decode(response.body);
+          return data['success'] == true;
         } else {
           throw Exception(
-              'Failed to create product: ${data['message'] ?? 'Unknown error'}');
+              'Failed to create product: ${response.statusCode} - ${response.body}');
         }
       } else {
-        throw Exception(
-            'Failed to create product: ${response.statusCode} - ${response.body}');
+        final response = await _post('$baseUrl/crm/products', productData);
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          final data = json.decode(response.body);
+          return data['success'] == true;
+        } else {
+          throw Exception(
+              'Failed to create product: ${response.statusCode} - ${response.body}');
+        }
       }
     } catch (e) {
       print('Error creating product: $e');
@@ -1073,28 +1129,44 @@ class ApiService {
 
   // Update an existing product
   static Future<bool> updateProduct(
-      String productId, Map<String, dynamic> productData) async {
+      String productId, Map<String, dynamic> productData,
+      {List<String>? imagePaths}) async {
     try {
-      final response = await _put('$baseUrl/crm/products?id=$productId', {
-        ...productData,
-        'id': productId,
-        '_id': productId, // Include both just in case
-      });
+      if (imagePaths != null && imagePaths.isNotEmpty) {
+        final List<http.MultipartFile> files = [];
+        for (var path in imagePaths) {
+          if (!path.startsWith('http') && File(path).existsSync()) {
+            files.add(await http.MultipartFile.fromPath('productImages', path));
+          }
+        }
 
-      print(
-          'Update Product Response [${response.statusCode}]: ${response.body}');
+        final streamedResponse = await _multipartRequest(
+          'PUT',
+          '$baseUrl/crm/products?id=$productId',
+          {...productData, 'id': productId},
+          files: files,
+        );
+        final response = await http.Response.fromStream(streamedResponse);
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
-          return true;
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          return data['success'] == true;
         } else {
           throw Exception(
-              'Failed to update product: ${data['message'] ?? 'Unknown error'}');
+              'Failed to update product: ${response.statusCode} - ${response.body}');
         }
       } else {
-        throw Exception(
-            'Failed to update product: ${response.statusCode} - ${response.body}');
+        final response = await _put('$baseUrl/crm/products?id=$productId', {
+          ...productData,
+          'id': productId,
+        });
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          return data['success'] == true;
+        } else {
+          throw Exception(
+              'Failed to update product: ${response.statusCode} - ${response.body}');
+        }
       }
     } catch (e) {
       print('Error updating product: $e');
@@ -1151,6 +1223,57 @@ class ApiService {
       }
     } catch (e) {
       print('Error adding category: $e');
+      rethrow;
+    }
+  }
+
+  // ==================== CRM PRODUCT CATEGORIES ==================== //
+
+  static Future<List<Map<String, dynamic>>> getCRMProductCategories() async {
+    try {
+      final response = await _get('$baseUrl$crmProductCategoriesEndpoint');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return List<Map<String, dynamic>>.from(data['data']);
+        } else {
+          throw Exception(
+              'Failed to load crm categories: ${data['message'] ?? 'Unknown error'}');
+        }
+      } else {
+        throw Exception('Failed to load crm categories: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching crm categories: $e');
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> addCRMProductCategory(
+      String name, String description) async {
+    try {
+      final response = await _post(
+        '$baseUrl$crmProductCategoriesEndpoint',
+        {
+          'name': name,
+          'description': description,
+        },
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return Map<String, dynamic>.from(data['data']);
+        } else {
+          throw Exception(
+              'Failed to add crm category: ${data['message'] ?? 'Unknown error'}');
+        }
+      } else {
+        throw Exception('Failed to add crm category: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error adding crm category: $e');
       rethrow;
     }
   }
@@ -1453,6 +1576,30 @@ class ApiService {
       }
     } catch (e) {
       print('Error fetching cart: $e');
+      rethrow;
+    }
+  }
+
+  // ==================== INVENTORY ==================== //
+
+  static Future<List<InventoryTransaction>> getSupplierInventoryTransactions() async {
+    try {
+      final response = await _get('$baseUrl/crm/inventory/transactions');
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return (data['data'] as List)
+              .map((json) => InventoryTransaction.fromJson(json))
+              .toList();
+        } else {
+          throw Exception(data['message'] ?? 'Failed to load inventory transactions');
+        }
+      } else {
+        throw Exception(
+            'Failed to load inventory transactions: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching inventory transactions: $e');
       rethrow;
     }
   }
@@ -3842,5 +3989,88 @@ class OfferModel {
       'businessId': businessId,
       'regionId': regionId,
     };
+  }
+}
+
+class InventoryTransaction {
+  final String id;
+  final TransactionProduct productId;
+  final String? vendorId;
+  final TransactionCategory? category;
+  final String type; // IN or OUT
+  final int quantity;
+  final int previousStock;
+  final int newStock;
+  final String reason;
+  final String? reference;
+  final String? performedBy;
+  final DateTime date;
+
+  InventoryTransaction({
+    required this.id,
+    required this.productId,
+    this.vendorId,
+    this.category,
+    required this.type,
+    required this.quantity,
+    required this.previousStock,
+    required this.newStock,
+    required this.reason,
+    this.reference,
+    this.performedBy,
+    required this.date,
+  });
+
+  factory InventoryTransaction.fromJson(Map<String, dynamic> json) {
+    return InventoryTransaction(
+      id: json['_id'] ?? '',
+      productId: TransactionProduct.fromJson(json['productId'] ?? {}),
+      vendorId: json['vendorId'],
+      category: json['productCategory'] != null 
+          ? TransactionCategory.fromJson(json['productCategory']) 
+          : null,
+      type: json['type'] ?? '',
+      quantity: (json['quantity'] as num?)?.toInt() ?? 0,
+      previousStock: (json['previousStock'] as num?)?.toInt() ?? 0,
+      newStock: (json['newStock'] as num?)?.toInt() ?? 0,
+      reason: json['reason'] ?? '',
+      reference: json['reference'],
+      performedBy: json['performedBy'],
+      date: json['date'] != null ? DateTime.parse(json['date']) : DateTime.now(),
+    );
+  }
+}
+
+class TransactionProduct {
+  final String id;
+  final String productName;
+  final List<String> productImages;
+
+  TransactionProduct({
+    required this.id,
+    required this.productName,
+    required this.productImages,
+  });
+
+  factory TransactionProduct.fromJson(Map<String, dynamic> json) {
+    return TransactionProduct(
+      id: json['_id'] ?? '',
+      productName: json['productName'] ?? '',
+      productImages: (json['productImages'] as List?)?.map((e) => e.toString()).toList() ?? [],
+    );
+  }
+}
+
+class TransactionCategory {
+  final String id;
+  final String name;
+
+  TransactionCategory({required this.id, required this.name});
+
+  factory TransactionCategory.fromJson(Map<String, dynamic> json) {
+    return TransactionCategory(
+      id: json['_id'] ?? '',
+      name: json['name'] ?? '',
+    );
   }
 }

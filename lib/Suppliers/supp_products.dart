@@ -4,11 +4,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'add_supp_product.dart';
 import './supp_drawer.dart';
+import '../services/api_service.dart';
+
 
 class SuppProducts extends StatefulWidget {
-  final List<Map<String, dynamic>> products;
-
-  const SuppProducts({super.key, required this.products});
+  const SuppProducts({super.key});
 
   @override
   State<SuppProducts> createState() => _SuppProductsPageState();
@@ -19,9 +19,60 @@ class _SuppProductsPageState extends State<SuppProducts> {
   static const double _gap = 12;
 
   final TextEditingController _searchController = TextEditingController();
+  List<Map<String, dynamic>> _products = [];
+  List<Map<String, dynamic>> _categories = [];
+  bool _isLoading = true;
+  bool _isLoadingCategories = false;
+  String? _errorMessage;
   String selectedStatus = 'All Status';
-  bool isGridView = true;
+  String? selectedCategoryId;
   String searchQuery = '';
+  bool isGridView = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchProducts();
+    _fetchCategories();
+  }
+
+  Future<void> _fetchCategories() async {
+    setState(() => _isLoadingCategories = true);
+    try {
+      final cats = await ApiService.getCRMProductCategories();
+      if (!mounted) return;
+      setState(() {
+        _categories = cats;
+        _isLoadingCategories = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoadingCategories = false);
+    }
+  }
+
+  Future<void> _fetchProducts() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final products = await ApiService.getProducts();
+      if (!mounted) return;
+      setState(() {
+        _products = products.map((k) => k.toJson()).toList();
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
 
   final List<String> statusFilters = [
     'All Status',
@@ -37,21 +88,56 @@ class _SuppProductsPageState extends State<SuppProducts> {
   }
 
   void _editProduct(int index) async {
+    final product = _products[index];
     final editedProduct = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => AddSuppProductPage(
-          existingProduct: widget.products[index],
+          existingProduct: product,
         ),
       ),
     );
-    if (editedProduct != null && editedProduct is Map<String, dynamic>) {
-      setState(() => widget.products[index] = editedProduct);
+    if (editedProduct != null) {
+      _fetchProducts(); // Refresh after edit
     }
   }
 
-  void _deleteProduct(int index) {
-    setState(() => widget.products.removeAt(index));
+  void _deleteProduct(int index) async {
+    final product = _products[index];
+    final id = product['_id'] ?? product['id'];
+
+    if (id == null) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Product'),
+        content: const Text('Are you sure you want to delete this product?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await ApiService.deleteProduct(id.toString());
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Product deleted successfully')),
+        );
+        _fetchProducts();
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting product: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _navigateToAddProduct() async {
@@ -59,20 +145,34 @@ class _SuppProductsPageState extends State<SuppProducts> {
       context,
       MaterialPageRoute(builder: (context) => const AddSuppProductPage()),
     );
-    if (result != null && result is Map<String, dynamic>) {
-      setState(() => widget.products.add(result));
+    if (result != null) {
+      _fetchProducts(); // Refresh after add
     }
   }
 
   List<Map<String, dynamic>> get filteredProducts {
-    return widget.products.where((product) {
-      final matchesSearch = product['name']
-          .toString()
-          .toLowerCase()
-          .contains(searchQuery.toLowerCase());
-      final matchesStatus =
-          selectedStatus == 'All Status' || product['status'] == selectedStatus;
-      return matchesSearch && matchesStatus;
+    return _products.where((product) {
+      // Search
+      final name =
+          (product['name'] ?? product['productName'] ?? '').toString();
+      final matchesSearch =
+          name.toLowerCase().contains(searchQuery.toLowerCase());
+
+      // Status
+      final status = (product['status'] ?? 'Pending').toString();
+      final matchesStatus = selectedStatus == 'All Status' ||
+          status.toLowerCase() == selectedStatus.toLowerCase();
+
+      // Category
+      final catId = product['category'] is Map
+          ? product['category']['_id']?.toString()
+          : product['category']?.toString();
+      final matchesCategory = selectedCategoryId == null ||
+          catId == selectedCategoryId ||
+          (product['categoryName'] ?? product['category'] ?? '').toString() ==
+              selectedCategoryId;
+
+      return matchesSearch && matchesStatus && matchesCategory;
     }).toList();
   }
 
@@ -144,7 +244,7 @@ class _SuppProductsPageState extends State<SuppProducts> {
       drawer: const SupplierDrawer(currentPage: 'SuppProducts'),
       appBar: AppBar(
         title: Text(
-          "Supplier Product Catalog",
+          "Supplier Product",
           style: GoogleFonts.poppins(
             fontWeight: FontWeight.w600,
             color: Colors.black,
@@ -195,33 +295,82 @@ class _SuppProductsPageState extends State<SuppProducts> {
             Row(
               children: [
                 // Status dropdown
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey.shade300),
-                  ),
-                  child: DropdownButton<String>(
-                    value: selectedStatus,
-                    underline: const SizedBox(),
-                    items: statusFilters
-                        .map((status) => DropdownMenuItem(
-                              value: status,
-                              child: Text(
-                                status,
-                                style: GoogleFonts.poppins(fontSize: 12),
-                              ),
-                            ))
-                        .toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        selectedStatus = value!;
-                      });
-                    },
+                Expanded(
+                  flex: 3,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: selectedStatus,
+                        isExpanded: true,
+                        items: statusFilters
+                            .map((status) => DropdownMenuItem(
+                                  value: status,
+                                  child: Text(
+                                    status,
+                                    style: GoogleFonts.poppins(fontSize: 10),
+                                  ),
+                                ))
+                            .toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            selectedStatus = value!;
+                          });
+                        },
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
+
+                // Category dropdown
+                Expanded(
+                  flex: 3,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: selectedCategoryId,
+                        hint: Text(
+                          _isLoadingCategories ? '...' : 'All Category',
+                          style: GoogleFonts.poppins(fontSize: 10),
+                        ),
+                        isExpanded: true,
+                        items: [
+                          DropdownMenuItem<String>(
+                            value: null,
+                            child: Text('All Category',
+                                style: GoogleFonts.poppins(fontSize: 10)),
+                          ),
+                          ..._categories.map((cat) => DropdownMenuItem(
+                                value: cat['_id'].toString(),
+                                child: Text(
+                                  cat['name'] ?? '',
+                                  style: GoogleFonts.poppins(fontSize: 10),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              )),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            selectedCategoryId = value;
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
 
                 // Grid/List toggle
                 SegmentedButton<bool>(
@@ -349,77 +498,96 @@ class _SuppProductsPageState extends State<SuppProducts> {
 
             // Content
             Expanded(
-              child: filteredProducts.isEmpty
-                  ? _EmptyState(onAdd: _navigateToAddProduct)
-                  : AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 180),
-                      child: isGridView
-                          ? GridView.builder(
-                              key: const ValueKey('grid'),
-                              padding: EdgeInsets.zero,
-                              gridDelegate:
-                                  const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                childAspectRatio: 0.60,
-                                crossAxisSpacing: 12,
-                                mainAxisSpacing: 16,
-                              ),
-                              itemCount: filteredProducts.length,
-                              itemBuilder: (context, index) {
-                                final product = filteredProducts[index];
-                                return _GridCard(
-                                  product: product,
-                                  accent: accent,
-                                  approved: approved,
-                                  disapproved: disapproved,
-                                  pending: pending,
-                                  onEdit: () => _editProduct(
-                                      widget.products.indexOf(product)),
-                                  onDelete: () => _deleteProduct(
-                                      widget.products.indexOf(product)),
-                                  onPreview: (images, i) => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => ImagePreviewPage(
-                                        images: images,
-                                        initialIndex: i,
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _errorMessage != null
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text('Error: $_errorMessage',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(color: Colors.red)),
+                              const SizedBox(height: 10),
+                              ElevatedButton(
+                                  onPressed: _fetchProducts,
+                                  child: const Text('Retry')),
+                            ],
+                          ),
+                        )
+                      : filteredProducts.isEmpty
+                          ? _EmptyState(onAdd: _navigateToAddProduct)
+                          : AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 180),
+                              child: isGridView
+                                  ? GridView.builder(
+                                      key: const ValueKey('grid'),
+                                      padding: EdgeInsets.zero,
+                                      gridDelegate:
+                                          const SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 2,
+                                        childAspectRatio: 0.60,
+                                        crossAxisSpacing: 12,
+                                        mainAxisSpacing: 16,
                                       ),
+                                      itemCount: filteredProducts.length,
+                                      itemBuilder: (context, index) {
+                                        final product = filteredProducts[index];
+                                        return _GridCard(
+                                          product: product,
+                                          accent: accent,
+                                          approved: approved,
+                                          disapproved: disapproved,
+                                          pending: pending,
+                                          onEdit: () => _editProduct(
+                                              _products.indexOf(product)),
+                                          onDelete: () => _deleteProduct(
+                                              _products.indexOf(product)),
+                                          onPreview: (images, i) =>
+                                              Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => ImagePreviewPage(
+                                                images: images,
+                                                initialIndex: i,
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    )
+                                  : ListView.separated(
+                                      key: const ValueKey('list'),
+                                      padding: EdgeInsets.zero,
+                                      itemCount: filteredProducts.length,
+                                      separatorBuilder: (_, __) =>
+                                          const SizedBox(height: 8),
+                                      itemBuilder: (context, index) {
+                                        final product = filteredProducts[index];
+                                        return _ListTileCard(
+                                          product: product,
+                                          accent: accent,
+                                          approved: approved,
+                                          disapproved: disapproved,
+                                          pending: pending,
+                                          onEdit: () => _editProduct(
+                                              _products.indexOf(product)),
+                                          onDelete: () => _deleteProduct(
+                                              _products.indexOf(product)),
+                                          onPreview: (images, i) =>
+                                              Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => ImagePreviewPage(
+                                                images: images,
+                                                initialIndex: i,
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      },
                                     ),
-                                  ),
-                                );
-                              },
-                            )
-                          : ListView.separated(
-                              key: const ValueKey('list'),
-                              padding: EdgeInsets.zero,
-                              itemCount: filteredProducts.length,
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(height: 8),
-                              itemBuilder: (context, index) {
-                                final product = filteredProducts[index];
-                                return _ListTileCard(
-                                  product: product,
-                                  accent: accent,
-                                  approved: approved,
-                                  disapproved: disapproved,
-                                  pending: pending,
-                                  onEdit: () => _editProduct(
-                                      widget.products.indexOf(product)),
-                                  onDelete: () => _deleteProduct(
-                                      widget.products.indexOf(product)),
-                                  onPreview: (images, i) => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => ImagePreviewPage(
-                                        images: images,
-                                        initialIndex: i,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
                             ),
-                    ),
             ),
           ],
         ),
@@ -487,10 +655,14 @@ class _GridCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final images = (product['images'] as List?) ?? [];
+    final images = (product['productImages'] ??
+        product['product_images'] ??
+        product['images'] ??
+        []) as List;
     final status = (product['status'] ?? 'Pending') as String;
-    final stock = (product['stock_quantity'] ?? 0) as int;
-    final isInStock = stock > 0;
+    final stock = (product['stock'] ?? product['stock_quantity'] ?? 0);
+    final isInStock =
+        (stock is int ? stock : int.tryParse(stock.toString()) ?? 0) > 0;
     final rating = (product['rating'] ?? 4.4).toString();
     final brand = product['brand'] ?? '';
 
@@ -546,7 +718,7 @@ class _GridCard extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            status == 'Approved'
+                            status.toLowerCase() == 'approved'
                                 ? Icons.check_circle
                                 : Icons.pending,
                             color: Colors.white,
@@ -562,6 +734,27 @@ class _GridCard extends StatelessWidget {
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                  ),
+                  // Category Badge
+                  Positioned(
+                    bottom: 8,
+                    left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.6),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        product['categoryName'] ?? product['category'] ?? '',
+                        style: GoogleFonts.poppins(
+                          fontSize: 8,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   ),
@@ -608,7 +801,7 @@ class _GridCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   // Name
                   Text(
-                    product['name'] ?? '',
+                    product['name'] ?? product['productName'] ?? '',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.poppins(
@@ -622,7 +815,7 @@ class _GridCard extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        "₹${product['sale_price']}",
+                        "₹${product['salePrice'] ?? product['price'] ?? product['sale_price'] ?? 0}",
                         style: GoogleFonts.poppins(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -708,10 +901,14 @@ class _ListTileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final images = (product['images'] as List?) ?? [];
+    final images = (product['productImages'] ??
+        product['product_images'] ??
+        product['images'] ??
+        []) as List;
     final status = (product['status'] ?? 'Pending') as String;
-    final stock = (product['stock_quantity'] ?? 0) as int;
-    final isInStock = stock > 0;
+    final stock = (product['stock'] ?? product['stock_quantity'] ?? 0);
+    final isInStock =
+        (stock is int ? stock : int.tryParse(stock.toString()) ?? 0) > 0;
     final rating = (product['rating'] ?? 4.4).toString();
     final brand = product['brand'] ?? '';
 
@@ -766,7 +963,7 @@ class _ListTileCard extends StatelessWidget {
                         child: Row(
                           children: [
                             Icon(
-                              status == 'Approved'
+                              status.toLowerCase() == 'approved'
                                   ? Icons.check_circle
                                   : Icons.pending,
                               color: Colors.white,
@@ -817,20 +1014,41 @@ class _ListTileCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Brand
-                  if (brand.isNotEmpty)
-                    Text(
-                      brand,
-                      style: GoogleFonts.poppins(
-                        fontSize: 9,
-                        color: Theme.of(context).primaryColor,
-                        fontWeight: FontWeight.w500,
+                  // Brand & Category
+                  Row(
+                    children: [
+                      if (brand.isNotEmpty)
+                        Text(
+                          brand,
+                          style: GoogleFonts.poppins(
+                            fontSize: 9,
+                            color: accent,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          (product['categoryName'] ?? product['category'] ?? '')
+                              .toString(),
+                          style: GoogleFonts.poppins(
+                            fontSize: 8,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
+                  ),
                   const SizedBox(height: 2),
                   // Name
                   Text(
-                    product['name'] ?? '',
+                    product['productName'] ?? product['name'] ?? '',
                     style: GoogleFonts.poppins(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -844,11 +1062,11 @@ class _ListTileCard extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        "₹${product['sale_price']}",
+                        "₹${product['salePrice'] ?? product['sale_price'] ?? product['price'] ?? 0}",
                         style: GoogleFonts.poppins(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: Colors.green.shade700,
+                          color: accent,
                         ),
                       ),
                       const Spacer(),

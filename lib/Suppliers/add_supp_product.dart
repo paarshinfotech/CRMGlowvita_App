@@ -1,7 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
+import '../services/api_service.dart';
 
 class AddSuppProductPage extends StatefulWidget {
   final Map<String, dynamic>? existingProduct;
@@ -27,47 +28,102 @@ class _AddSuppProductPageState extends State<AddSuppProductPage> {
   final TextEditingController _keyIngredientsController =
       TextEditingController();
 
-  String? selectedCategory;
+  String? selectedCategoryId;
+  String? selectedCategoryName;
+  bool _showOnWebsite = true;
   List<XFile> images = [];
+  List<Map<String, dynamic>> _categories = [];
+  bool _isLoadingCategories = true;
+  bool _isSubmitting = false;
 
   final ImagePicker _picker = ImagePicker();
 
-  final List<String> categories = [
-    'Skin Care',
-    'Body Care',
-    'Hair Care',
-    'Makeup',
-    'Nails Care',
-    'Males Grooming',
-    'Beauty Tools and Accessories'
-  ];
+  final List<String> categories = [];
 
   @override
   void initState() {
     super.initState();
+    _fetchCategories();
     if (widget.existingProduct != null) {
       final product = widget.existingProduct!;
-      _nameController.text = product['name'] ?? '';
-      _descriptionController.text = product['description'] ?? '';
-      _priceController.text = product['price'] ?? '';
-      _salePriceController.text = product['sale_price'] ?? '';
-      _stockController.text = product['stock_quantity']?.toString() ?? '';
-      _brandController.text = product['brand'] ?? '';
-      _productTypeController.text = product['product_type'] ?? '';
-      _sizeController.text = product['size'] ?? '';
-      _sizeMetricController.text = product['size_metric'] ?? '';
-      _bodyPartController.text = product['body_part'] ?? '';
-      _bodyPartTypeController.text = product['body_part_type'] ?? '';
-      _keyIngredientsController.text = product['key_ingredients'] ?? '';
-      selectedCategory = product['category'];
+      _nameController.text =
+          (product['name'] ?? product['productName'] ?? '').toString();
+      _descriptionController.text = (product['description'] ?? '').toString();
+      _priceController.text = (product['price'] ?? '').toString();
+      _salePriceController.text =
+          (product['salePrice'] ?? product['sale_price'] ?? '').toString();
+      _stockController.text =
+          (product['stock'] ?? product['stock_quantity'] ?? '').toString();
+      _brandController.text = (product['brand'] ?? '').toString();
+      _productTypeController.text =
+          (product['productForm'] ?? product['product_type'] ?? '').toString();
+      _sizeController.text = (product['size'] ?? '').toString();
+      _sizeMetricController.text =
+          (product['sizeMetric'] ?? product['size_metric'] ?? '').toString();
+      _bodyPartController.text =
+          (product['forBodyPart'] ?? product['body_part'] ?? '').toString();
+      _bodyPartTypeController.text =
+          (product['bodyPartType'] ?? product['body_part_type'] ?? '')
+              .toString();
+      _keyIngredientsController.text = (product['keyIngredients'] is List
+          ? (product['keyIngredients'] as List).join(', ')
+          : (product['keyIngredients'] ?? product['key_ingredients'] ?? '')
+              .toString());
 
-      final existingImages = product['images'] ?? [];
+      selectedCategoryId = product['category'] is Map
+          ? product['category']['_id']
+          : product['category'];
+      selectedCategoryName =
+          product['category'] is Map ? product['category']['name'] : null;
+      _showOnWebsite = product['showOnWebsite'] ?? true;
+
+      final existingImages =
+          product['productImages'] ?? product['images'] ?? [];
       if (existingImages is List) {
         images = existingImages
             .where((item) => item != null)
             .map((item) => item is XFile ? item : XFile(item.toString()))
             .toList();
       }
+    }
+  }
+
+  Future<void> _fetchCategories() async {
+    setState(() {
+      _isLoadingCategories = true;
+    });
+    try {
+      final cats = await ApiService.getCRMProductCategories();
+      setState(() {
+        _categories = cats;
+        _isLoadingCategories = false;
+
+        if (selectedCategoryId != null) {
+          final match =
+              _categories.any((c) => c['_id'].toString() == selectedCategoryId);
+          if (!match) {
+            // Try matching by name if ID doesn't work (useful if name was stored as ID)
+            final nameMatch = _categories.firstWhere(
+                (c) =>
+                    c['name'] == selectedCategoryId ||
+                    c['name'] == selectedCategoryName,
+                orElse: () => {});
+            if (nameMatch.isNotEmpty) {
+              selectedCategoryId = nameMatch['_id'].toString();
+            } else {
+              // If still no match and it's not a valid ID, we might need to null it to avoid crash
+              // But we can also keep it and let the DropdownButton value check handle it
+            }
+          }
+        }
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingCategories = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading categories: $e')),
+      );
     }
   }
 
@@ -106,6 +162,7 @@ class _AddSuppProductPageState extends State<AddSuppProductPage> {
 
   void _showAddCategoryDialog() {
     final nameController = TextEditingController();
+    final descController = TextEditingController();
 
     showDialog(
       context: context,
@@ -114,15 +171,31 @@ class _AddSuppProductPageState extends State<AddSuppProductPage> {
           'Add New Category',
           style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
         ),
-        content: TextField(
-          controller: nameController,
-          decoration: InputDecoration(
-            labelText: 'Category Name',
-            labelStyle: GoogleFonts.poppins(),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: InputDecoration(
+                labelText: 'Category Name',
+                labelStyle: GoogleFonts.poppins(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
             ),
-          ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: descController,
+              decoration: InputDecoration(
+                labelText: 'Description',
+                labelStyle: GoogleFonts.poppins(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -130,20 +203,30 @@ class _AddSuppProductPageState extends State<AddSuppProductPage> {
             child: Text('Cancel', style: GoogleFonts.poppins()),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               if (nameController.text.isNotEmpty) {
-                setState(() {
-                  categories.add(nameController.text);
-                  selectedCategory = nameController.text;
-                });
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                        'Category "${nameController.text}" added successfully!'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
+                try {
+                  final newCat = await ApiService.addCRMProductCategory(
+                    nameController.text,
+                    descController.text,
+                  );
+                  await _fetchCategories();
+                  setState(() {
+                    selectedCategoryId = newCat['_id'];
+                  });
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                          'Category "${nameController.text}" added successfully!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error adding category: $e')),
+                  );
+                }
               }
             },
             style: ElevatedButton.styleFrom(
@@ -155,40 +238,112 @@ class _AddSuppProductPageState extends State<AddSuppProductPage> {
     );
   }
 
-  void _submitProduct() {
+  Future<void> _submitProduct() async {
     if (_nameController.text.isEmpty ||
         _salePriceController.text.isEmpty ||
-        _brandController.text.isEmpty) {
+        _brandController.text.isEmpty ||
+        selectedCategoryId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please fill in all required fields (*)'),
+          content:
+              Text('Please fill in all required fields (*) including Category'),
           backgroundColor: Colors.red,
         ),
       );
       return;
     }
 
-    final stockQuantity = int.tryParse(_stockController.text) ?? 0;
-    final imagePaths = images.map((image) => image.path).toList();
+    setState(() => _isSubmitting = true);
 
-    Navigator.pop(context, {
-      'id': DateTime.now().millisecondsSinceEpoch.toString(),
-      'name': _nameController.text,
-      'description': _descriptionController.text,
-      'category': selectedCategory,
-      'images': imagePaths,
-      'price': _priceController.text,
-      'sale_price': _salePriceController.text,
-      'stock_quantity': stockQuantity,
-      'rating': 4.4,
-      'brand': _brandController.text,
-      'product_type': _productTypeController.text,
-      'size': _sizeController.text,
-      'size_metric': _sizeMetricController.text,
-      'body_part': _bodyPartController.text,
-      'body_part_type': _bodyPartTypeController.text,
-      'key_ingredients': _keyIngredientsController.text,
-    });
+    try {
+      // Find category name instead of ID for the payload
+      final categoryMap = _categories.firstWhere(
+        (c) => c['_id'].toString() == selectedCategoryId,
+        orElse: () => {},
+      );
+      final categoryName = categoryMap['name'] ?? selectedCategoryId;
+
+      // Filter images into existing URLs and new local files
+      final List<String> existingImageUrls = [];
+      final List<String> newLocalImagePaths = [];
+
+      for (var img in images) {
+        if (img.path.startsWith('http')) {
+          existingImageUrls.add(img.path);
+        } else {
+          newLocalImagePaths.add(img.path);
+        }
+      }
+
+      final Map<String, dynamic> productData = {
+        'productName': _nameController.text,
+        'description': _descriptionController.text,
+        'category': categoryName,
+        'price': double.tryParse(_priceController.text) ?? 0.0,
+        'salePrice': double.tryParse(_salePriceController.text) ?? 0.0,
+        'stock': int.tryParse(_stockController.text) ?? 0,
+        'brand': _brandController.text,
+        'productForm': _productTypeController.text,
+        'size': _sizeController.text,
+        'sizeMetric': _sizeMetricController.text,
+        'forBodyPart': _bodyPartController.text,
+        'bodyPartType': _bodyPartTypeController.text,
+        'keyIngredients': _keyIngredientsController.text
+            .split(',')
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList(),
+        'showOnWebsite': _showOnWebsite,
+        'isActive': _showOnWebsite,
+      };
+
+      // Only add productImages field if there are existing URLs to preserve
+      // If none, we let the Multipart file fields handle it or send an empty array if creating
+      if (existingImageUrls.isNotEmpty) {
+        productData['productImages'] = existingImageUrls;
+      } else if (newLocalImagePaths.isEmpty) {
+        // If both are empty, send an empty array to clear images
+        productData['productImages'] = [];
+      } else if (widget.existingProduct != null && existingImageUrls.isEmpty) {
+        // Explicitly clear existing images if they were all removed
+        productData['productImages'] = [];
+      }
+
+      bool success;
+      if (widget.existingProduct == null) {
+        success = await ApiService.createProduct(productData,
+            imagePaths: newLocalImagePaths);
+        if (success && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Product created successfully'),
+                backgroundColor: Colors.green),
+          );
+          Navigator.pop(context, true);
+        }
+      } else {
+        final id =
+            widget.existingProduct!['_id'] ?? widget.existingProduct!['id'];
+        success = await ApiService.updateProduct(id.toString(), productData,
+            imagePaths: newLocalImagePaths);
+        if (success && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Product updated successfully'),
+                backgroundColor: Colors.green),
+          );
+          Navigator.pop(context, true);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 
   @override
@@ -280,12 +435,28 @@ class _AddSuppProductPageState extends State<AddSuppProductPage> {
                               children: [
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(6),
-                                  child: Image.file(
-                                    File(img.path),
-                                    width: 75,
-                                    height: 75,
-                                    fit: BoxFit.cover,
-                                  ),
+                                  child: img.path.startsWith('http')
+                                      ? Image.network(
+                                          img.path,
+                                          width: 75,
+                                          height: 75,
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) =>
+                                                  Container(
+                                            width: 75,
+                                            height: 75,
+                                            color: Colors.grey.shade200,
+                                            child: const Icon(Icons.error,
+                                                size: 20),
+                                          ),
+                                        )
+                                      : Image.file(
+                                          File(img.path),
+                                          width: 75,
+                                          height: 75,
+                                          fit: BoxFit.cover,
+                                        ),
                                 ),
                                 Positioned(
                                   top: -5,
@@ -357,22 +528,27 @@ class _AddSuppProductPageState extends State<AddSuppProductPage> {
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
-                        value: selectedCategory,
+                        value: (_categories.any((cat) =>
+                                cat['_id'].toString() == selectedCategoryId))
+                            ? selectedCategoryId
+                            : null,
                         hint: Text(
-                          'Select Category',
+                          _isLoadingCategories
+                              ? 'Loading...'
+                              : 'Select Category',
                           style: GoogleFonts.poppins(
                               color: Colors.grey.shade600, fontSize: 13),
                         ),
                         isExpanded: true,
-                        items: categories
-                            .map((category) => DropdownMenuItem(
-                                  value: category,
-                                  child: Text(category,
+                        items: _categories
+                            .map((cat) => DropdownMenuItem(
+                                  value: cat['_id'].toString(),
+                                  child: Text(cat['name'] ?? '',
                                       style: GoogleFonts.poppins(fontSize: 13)),
                                 ))
                             .toList(),
                         onChanged: (value) =>
-                            setState(() => selectedCategory = value),
+                            setState(() => selectedCategoryId = value),
                       ),
                     ),
                   ),
@@ -532,12 +708,51 @@ class _AddSuppProductPageState extends State<AddSuppProductPage> {
               icon: Icons.inventory,
               keyboardType: TextInputType.number,
             ),
+            // Show on Website
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Show on Website',
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      Switch(
+                        value: _showOnWebsite,
+                        onChanged: (v) => setState(() => _showOnWebsite = v),
+                        activeColor: Theme.of(context).primaryColor,
+                      ),
+                    ],
+                  ),
+                  Text(
+                    'Decide whether this product should be displayed on the public website.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 11,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 24),
+
             // Save Button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _submitProduct,
+                onPressed: _isSubmitting ? null : _submitProduct,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Theme.of(context).primaryColor,
                   padding: const EdgeInsets.symmetric(vertical: 14),

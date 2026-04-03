@@ -4,8 +4,17 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter/animation.dart';
 import './supp_drawer.dart';
-import '../products.dart';
 import 'supp_profile.dart';
+import '../services/api_service.dart';
+
+// ─────────────────────────────────────────────
+// BRAND COLORS
+// ─────────────────────────────────────────────
+const Color kPrimary = Color(0xFF3D1A47);
+const Color kPrimaryLight = Color(0xFF6B3FA0);
+const Color kBg = Color(0xFFF7F7F8);
+const Color kCard = Colors.white;
+const Color kBorder = Color(0xFFE5E7EB);
 
 class Supp_DashboardPage extends StatefulWidget {
   const Supp_DashboardPage({super.key});
@@ -16,771 +25,571 @@ class Supp_DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<Supp_DashboardPage>
     with TickerProviderStateMixin {
-  late AnimationController _kpiAnimationController;
-  late Animation<double> _kpiFadeAnimation;
+  late AnimationController _kpiCtrl;
+  late Animation<double> _kpiFade;
+  bool _isLoading = false;
+
+  // Filter state
+  String _filterType = 'Preset';
+  String _presetPeriod = 'All Time';
+
+  // Stats
+  double _totalRevenue = 542500.0;
+  int _totalOrders = 1250;
+  int _totalProducts = 45;
+  int _pendingOrders = 12;
+  int _shippedOrders = 45;
+  int _deliveredOrders = 1180;
+  int _cancelledOrders = 13;
+  double _avgOrderValue = 434.0;
 
   @override
   void initState() {
     super.initState();
-    print('Initializing Supplier Dashboard Page');
-
-    _kpiAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    );
-    _kpiFadeAnimation = CurvedAnimation(
-      parent: _kpiAnimationController,
-      curve: Curves.easeInOut,
-    );
+    _kpiCtrl = AnimationController(
+        duration: const Duration(milliseconds: 500), vsync: this);
+    _kpiFade = CurvedAnimation(parent: _kpiCtrl, curve: Curves.easeInOut);
 
     Future.delayed(const Duration(milliseconds: 100), () {
       if (!mounted) return;
-      _kpiAnimationController.forward();
+      _kpiCtrl.forward();
     });
   }
 
   @override
   void dispose() {
-    _kpiAnimationController.dispose();
+    _kpiCtrl.dispose();
     super.dispose();
+  }
+
+  void _applyFilter() {
+    setState(() => _isLoading = true);
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) setState(() => _isLoading = false);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    print('Building Supplier Dashboard Page');
-    final mediaQuery = MediaQuery.of(context);
-    final String today = DateFormat('dd MMM yyyy').format(DateTime.now());
+    final mq = MediaQuery.of(context);
     ScreenUtil.init(context, designSize: const Size(375, 812));
 
-    final double baseFontScale = (mediaQuery.size.width / 375).clamp(0.8, 0.95);
-
-    // Demo product data
-    final List<Map<String, dynamic>> productsList = [
-      {
-        'id': '1',
-        'name': 'Hydrating Face Serum',
-        'description':
-            'Deeply hydrating serum with hyaluronic acid and vitamin E for glowing skin.',
-        'category': 'Skin Care',
-        'images': [],
-        'price': '1299',
-        'sale_price': '999',
-        'stock_quantity': 45,
-        'status': 'Approved',
-        'rating': 4.8,
-      },
-      {
-        'id': '2',
-        'name': 'Luxury Body Butter',
-        'description':
-            'Rich, creamy body butter infused with shea butter and coconut oil.',
-        'category': 'Body Care',
-        'images': [],
-        'price': '899',
-        'sale_price': '749',
-        'stock_quantity': 0,
-        'status': 'Approved',
-        'rating': 4.5,
-      },
-      {
-        'id': '3',
-        'name': 'Argan Oil Hair Mask',
-        'description':
-            'Professional hair mask with pure argan oil for damaged hair repair.',
-        'category': 'Hair Care',
-        'images': [],
-        'price': '1599',
-        'sale_price': '1299',
-        'stock_quantity': 28,
-        'status': 'Pending',
-        'rating': 4.6,
-      },
-      {
-        'id': '4',
-        'name': 'Matte Lipstick Set',
-        'description':
-            'Premium matte lipstick collection with 6 vibrant shades.',
-        'category': 'Makeup',
-        'images': [],
-        'price': '2499',
-        'sale_price': '1999',
-        'stock_quantity': 15,
-        'status': 'Approved',
-        'rating': 4.7,
-      },
-      {
-        'id': '5',
-        'name': 'Gel Nail Polish Kit',
-        'description':
-            'Complete gel nail polish kit with UV lamp and 8 color options.',
-        'category': 'Nails Care',
-        'images': [],
-        'price': '3299',
-        'sale_price': '2799',
-        'stock_quantity': 12,
-        'status': 'Disapproved',
-        'rating': 4.3,
-      },
-    ];
-
-    // Calculate product summary statistics
-    final int totalProducts = productsList.length;
-    final int approvedProducts =
-        productsList.where((p) => p['status'] == 'Approved').length;
-    final int pendingProducts =
-        productsList.where((p) => p['status'] == 'Pending').length;
-    final int disapprovedProducts =
-        productsList.where((p) => p['status'] == 'Disapproved').length;
-    final int outOfStockProducts =
-        productsList.where((p) => p['stock_quantity'] == 0).length;
-    final int lowStockProducts = productsList
-        .where((p) => p['stock_quantity'] > 0 && p['stock_quantity'] <= 10)
-        .length;
-
-    // Category distribution
-    final Map<String, int> categoryDistribution = {};
-    for (var product in productsList) {
-      final category = product['category'];
-      categoryDistribution[category] =
-          (categoryDistribution[category] ?? 0) + 1;
-    }
-
-    const double bottomSheetInitialPadding = 120;
-
     return MediaQuery(
-      data: mediaQuery.copyWith(
-        textScaler: mediaQuery.textScaler.clamp(
-          minScaleFactor: 0.9,
-          maxScaleFactor: 1.1,
-        ),
-      ),
+      data: mq.copyWith(
+          textScaler:
+              mq.textScaler.clamp(minScaleFactor: 0.85, maxScaleFactor: 1.0)),
       child: Theme(
         data: Theme.of(context).copyWith(
-          textTheme: GoogleFonts.poppinsTextTheme(
-            Theme.of(context).textTheme,
-          ).apply(fontSizeFactor: baseFontScale),
+          primaryColor: kPrimary,
+          textTheme: GoogleFonts.poppinsTextTheme(Theme.of(context).textTheme),
         ),
         child: Scaffold(
           drawer: const SupplierDrawer(currentPage: 'Dashboard'),
-          backgroundColor: const Color(0xFFF7F7F8),
-          body: Stack(
-            children: [
-              CustomScrollView(
-                slivers: [
-                  SliverAppBar(
-                    backgroundColor: Colors.white,
-                    elevation: 0,
-                    pinned: true,
-                    expandedHeight: 150.h,
-                    leading: Builder(
-                      builder: (ctx) => IconButton(
-                        icon: const Icon(Icons.menu, color: Colors.black),
-                        onPressed: () {
-                          print('Opening supplier drawer menu');
-                          Scaffold.of(ctx).openDrawer();
-                        },
+          backgroundColor: kBg,
+          body: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : CustomScrollView(
+                  slivers: [
+                    SliverAppBar(
+                      backgroundColor: kCard,
+                      elevation: 0,
+                      pinned: true,
+                      leading: Builder(
+                        builder: (ctx) => IconButton(
+                          icon: const Icon(Icons.menu, color: Colors.black),
+                          onPressed: () => Scaffold.of(ctx).openDrawer(),
+                        ),
                       ),
-                    ),
-                    actions: [
-                      IconButton(
-                        icon: const Icon(Icons.notifications,
-                            color: Colors.black),
-                        onPressed: () {
-                          print('Opening notifications page');
-                          /* Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const NotificationPage()),
-                          );*/
-                        },
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          print('Opening profile page');
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => const SuppProfilePage()),
-                          );
-                        },
-                        child: Padding(
-                          padding: EdgeInsets.only(right: 12.w),
-                          child: Container(
-                            padding: EdgeInsets.all(2.w),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border:
-                                  Border.all(color: Colors.black, width: 1.w),
-                            ),
-                            child: const CircleAvatar(
+                      title: Text('Supplier Dashboard',
+                          style: TextStyle(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black)),
+                      actions: [
+                        IconButton(
+                          icon: const Icon(Icons.notifications_outlined,
+                              color: Colors.black),
+                          onPressed: () {},
+                        ),
+                        GestureDetector(
+                          onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const SuppProfilePage())),
+                          child: Padding(
+                            padding: EdgeInsets.only(right: 12.w),
+                            child: CircleAvatar(
                               radius: 16,
-                              backgroundImage:
-                                  AssetImage('assets/images/profile.jpeg'),
-                              backgroundColor: Colors.white,
+                              backgroundColor: kPrimary,
+                              child: const ClipOval(
+                                child: Icon(Icons.person,
+                                    size: 20, color: Colors.white),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                    flexibleSpace: FlexibleSpaceBar(
-                      collapseMode: CollapseMode.pin,
-                      background: Container(
-                        color: Colors.white,
-                        padding: EdgeInsets.fromLTRB(16.w, 70.h, 16.w, 12.h),
+                      ],
+                    ),
+
+                    // Filter Row
+                    SliverToBoxAdapter(
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 12.w, vertical: 8.h),
+                        color: kCard,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Dashboard',
-                              style: TextStyle(
-                                fontSize: 18.sp,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.black,
+                            Row(children: [
+                              Expanded(
+                                child: Text('Filter Type',
+                                    style: TextStyle(
+                                        fontSize: 9.sp,
+                                        color: Colors.grey[600],
+                                        fontWeight: FontWeight.w500)),
                               ),
-                            ),
+                              SizedBox(width: 10.w),
+                              Expanded(
+                                child: Text('Period',
+                                    style: TextStyle(
+                                        fontSize: 9.sp,
+                                        color: Colors.grey[600],
+                                        fontWeight: FontWeight.w500)),
+                              ),
+                              SizedBox(width: 10.w),
+                              const SizedBox(width: 68),
+                            ]),
                             SizedBox(height: 4.h),
-                            Row(
-                              children: [
-                                _MiniChip(
-                                    text: today,
-                                    icon: Icons.calendar_month_outlined),
-                                SizedBox(width: 8.w),
-                              ],
-                            ),
-                            SizedBox(height: 10.h),
+                            Row(children: [
+                              Expanded(
+                                child: _buildDropdown(
+                                  value: _filterType,
+                                  items: ['Preset', 'Custom'],
+                                  onChanged: (v) =>
+                                      setState(() => _filterType = v!),
+                                ),
+                              ),
+                              SizedBox(width: 10.w),
+                              Expanded(
+                                child: _buildDropdown(
+                                  value: _presetPeriod,
+                                  items: [
+                                    'Today',
+                                    'Yesterday',
+                                    'Last 7 Days',
+                                    'Last 30 Days',
+                                    'This Month',
+                                    'All Time'
+                                  ],
+                                  onChanged: (v) =>
+                                      setState(() => _presetPeriod = v!),
+                                ),
+                              ),
+                              SizedBox(width: 10.w),
+                              GestureDetector(
+                                onTap: _applyFilter,
+                                child: Container(
+                                  height: 38.h,
+                                  padding:
+                                      EdgeInsets.symmetric(horizontal: 18.w),
+                                  decoration: BoxDecoration(
+                                    color: kPrimary,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text('Apply',
+                                      style: TextStyle(
+                                          fontSize: 11.sp,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.white)),
+                                ),
+                              ),
+                            ]),
                           ],
                         ),
                       ),
                     ),
-                    bottom: PreferredSize(
-                      preferredSize: Size.fromHeight(10.h),
-                      child: Container(
-                        height: 10.h,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFF7F7F8),
-                          borderRadius:
-                              BorderRadius.vertical(top: Radius.circular(18)),
+
+                    SliverToBoxAdapter(child: SizedBox(height: 12.h)),
+
+                    // KPI Grid
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12.w),
+                        child: FadeTransition(
+                          opacity: _kpiFade,
+                          child: Column(children: [
+                            Row(children: [
+                              Expanded(
+                                  child: _KpiCard(
+                                      title: 'Total Revenue',
+                                      value:
+                                          '₹ ${NumberFormat('#,##,###').format(_totalRevenue)}',
+                                      icon: '💰',
+                                      color: const Color(0xFFFFF3E0))),
+                              SizedBox(width: 8.w),
+                              Expanded(
+                                  child: _KpiCard(
+                                      title: 'Total Orders',
+                                      value: '$_totalOrders',
+                                      icon: '📦',
+                                      color: const Color(0xFFE3F2FD))),
+                            ]),
+                            SizedBox(height: 8.h),
+                            Row(children: [
+                              Expanded(
+                                  child: _KpiCard(
+                                      title: 'Total Products',
+                                      value: '$_totalProducts',
+                                      icon: '🛍️',
+                                      color: const Color(0xFFE8F5E9))),
+                              SizedBox(width: 8.w),
+                              Expanded(
+                                  child: _KpiCard(
+                                      title: 'Pending Orders',
+                                      value: '$_pendingOrders',
+                                      icon: '⏳',
+                                      color: const Color(0xFFFFF8E1))),
+                            ]),
+                            SizedBox(height: 8.h),
+                            Row(children: [
+                              Expanded(
+                                  child: _KpiCard(
+                                      title: 'Shipped Orders',
+                                      value: '$_shippedOrders',
+                                      icon: '🚚',
+                                      color: const Color(0xFFF3E5F5))),
+                              SizedBox(width: 8.w),
+                              Expanded(
+                                  child: _KpiCard(
+                                      title: 'Delivered Orders',
+                                      value: '$_deliveredOrders',
+                                      icon: '✅',
+                                      color: const Color(0xFFE8F5E9))),
+                            ]),
+                            SizedBox(height: 8.h),
+                            Row(children: [
+                              Expanded(
+                                  child: _KpiCard(
+                                      title: 'Cancelled Orders',
+                                      value: '$_cancelledOrders',
+                                      icon: '❌',
+                                      color: const Color(0xFFFFEBEE))),
+                              SizedBox(width: 8.w),
+                              Expanded(
+                                  child: _KpiCard(
+                                      title: 'Avg. Order Value',
+                                      value: '₹ $_avgOrderValue',
+                                      icon: '📊',
+                                      color: const Color(0xFFFCE4EC))),
+                            ]),
+                          ]),
                         ),
                       ),
                     ),
-                  ),
 
-                  // ---- OVERVIEW ----
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 8.h),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('Overview',
-                              style: TextStyle(
-                                  fontSize: 13.sp,
-                                  fontWeight: FontWeight.w700)),
-                          Text('Swipe',
-                              style: TextStyle(
-                                  fontSize: 11.sp, color: Colors.grey[600])),
-                        ],
-                      ),
-                    ),
-                  ),
-                  SliverToBoxAdapter(
-                    child: SizedBox(
-                      height: 120.h,
-                      child: FadeTransition(
-                        opacity: _kpiFadeAnimation,
-                        child: ListView.separated(
-                          padding: EdgeInsets.symmetric(horizontal: 16.w),
-                          scrollDirection: Axis.horizontal,
-                          itemCount: 4,
-                          separatorBuilder: (_, __) => SizedBox(width: 12.w),
-                          itemBuilder: (context, i) {
-                            if (i == 0) {
-                              return _KpiCard(
-                                title: "Total Products",
-                                value: '$totalProducts',
-                                subtitle: 'In catalog',
-                                icon: Icons.inventory_2_outlined,
-                                accent: const Color(0xFF111827),
-                              );
-                            }
-                            if (i == 1) {
-                              return _KpiCard(
-                                title: 'Approved',
-                                value: '$approvedProducts',
-                                subtitle: 'Products',
-                                icon: Icons.check_circle_outline,
-                                accent: Theme.of(context).primaryColor,
-                              );
-                            }
-                            if (i == 2) {
-                              return _KpiCard(
-                                title: 'Pending Review',
-                                value: '$pendingProducts',
-                                subtitle: 'Products',
-                                icon: Icons.pending_outlined,
-                                accent: const Color(0xFFF97316),
-                              );
-                            }
+                    SliverToBoxAdapter(child: SizedBox(height: 20.h)),
 
-                            // Disapproved products
-                            return _KpiCard(
-                              title: 'Disapproved',
-                              value: '$disapprovedProducts',
-                              subtitle: 'Products',
-                              icon: Icons.cancel_outlined,
-                              accent: const Color(0xFFEF4444),
-                            );
-                          },
+                    // Top Selling Products Section
+                    SliverToBoxAdapter(
+                      child: _SectionCard(
+                        title: 'Top Selling Products',
+                        child: Column(
+                          children: [
+                            _TopProductRow(
+                                name: 'Hydrating Face Serum',
+                                sales: '450',
+                                revenue: '₹ 4,49,550'),
+                            _TopProductRow(
+                                name: 'Luxury Body Butter',
+                                sales: '280',
+                                revenue: '₹ 2,09,720'),
+                            _TopProductRow(
+                                name: 'Argan Oil Hair Mask',
+                                sales: '150',
+                                revenue: '₹ 1,94,850'),
+                          ],
                         ),
                       ),
                     ),
-                  ),
 
-                  // ---- PRODUCT SUMMARY ----
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 8.h),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('Product Summary',
-                              style: TextStyle(
-                                  fontSize: 13.sp,
-                                  fontWeight: FontWeight.w700)),
-                          TextButton(
-                            onPressed: () {
-                              print(
-                                  'Navigating to Products page from Dashboard');
-                              /* Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const Products(),
-                                ),
-                              );*/
-                            },
-                            child: Text('View All',
-                                style: TextStyle(
-                                    fontSize: 11.sp,
-                                    color: Theme.of(context).primaryColor)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                    SliverToBoxAdapter(child: SizedBox(height: 12.h)),
 
-                  // Stock Status Summary
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16.w),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE5E7EB)),
-                        ),
-                        child: Padding(
-                          padding: EdgeInsets.all(12.w),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Stock Status',
-                                style: TextStyle(
-                                  fontSize: 12.sp,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.black,
-                                ),
-                              ),
-                              SizedBox(height: 8.h),
-                              Row(
-                                children: [
-                                  _StockStatusIndicator(
-                                    title: 'In Stock',
-                                    value:
-                                        '${totalProducts - outOfStockProducts - lowStockProducts}',
-                                    color: Colors.green,
-                                    percentage: ((totalProducts -
-                                                outOfStockProducts -
-                                                lowStockProducts) /
-                                            totalProducts *
-                                            100)
-                                        .round(),
-                                  ),
-                                  SizedBox(width: 12.w),
-                                  _StockStatusIndicator(
-                                    title: 'Low Stock',
-                                    value: '$lowStockProducts',
-                                    color: Colors.orange,
-                                    percentage:
-                                        (lowStockProducts / totalProducts * 100)
-                                            .round(),
-                                  ),
-                                  SizedBox(width: 12.w),
-                                  _StockStatusIndicator(
-                                    title: 'Out of Stock',
-                                    value: '$outOfStockProducts',
-                                    color: Colors.red,
-                                    percentage: (outOfStockProducts /
-                                            totalProducts *
-                                            100)
-                                        .round(),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
+                    // Sales Overview Section
+                    SliverToBoxAdapter(
+                      child: _SectionCard(
+                        title: 'Sales Overview',
+                        child: Container(
+                          height: 150.h,
+                          child: _SimpleBarChart(),
                         ),
                       ),
                     ),
-                  ),
 
-                  SliverToBoxAdapter(child: SizedBox(height: 12.h)),
+                    SliverToBoxAdapter(child: SizedBox(height: 12.h)),
 
-                  // Category Distribution
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16.w),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE5E7EB)),
-                        ),
-                        child: Padding(
-                          padding: EdgeInsets.all(12.w),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Category Distribution',
-                                style: TextStyle(
-                                  fontSize: 12.sp,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.black,
-                                ),
-                              ),
-                              SizedBox(height: 8.h),
-                              SizedBox(
-                                height: 100.h,
-                                child: ListView.builder(
-                                  scrollDirection: Axis.horizontal,
-                                  itemCount: categoryDistribution.length,
-                                  itemBuilder: (context, index) {
-                                    final category = categoryDistribution.keys
-                                        .elementAt(index);
-                                    final count =
-                                        categoryDistribution[category]!;
-                                    final percentage =
-                                        (count / totalProducts * 100).round();
-
-                                    return Padding(
-                                      padding: EdgeInsets.only(right: 16.w),
-                                      child: Column(
-                                        children: [
-                                          Text(
-                                            category,
-                                            style: TextStyle(
-                                              fontSize: 10.sp,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.black,
-                                            ),
-                                          ),
-                                          SizedBox(height: 4.h),
-                                          Text(
-                                            '$count',
-                                            style: TextStyle(
-                                              fontSize: 14.sp,
-                                              fontWeight: FontWeight.w800,
-                                              color: Theme.of(context)
-                                                  .primaryColor,
-                                            ),
-                                          ),
-                                          SizedBox(height: 4.h),
-                                          Container(
-                                            width: 60.w,
-                                            height: 60.w,
-                                            decoration: BoxDecoration(
-                                              color: Theme.of(context)
-                                                  .primaryColor
-                                                  .withOpacity(0.1),
-                                              shape: BoxShape.circle,
-                                              border: Border.all(
-                                                color: Theme.of(context)
-                                                    .primaryColor,
-                                                width: 2.w,
-                                              ),
-                                            ),
-                                            child: Center(
-                                              child: Text(
-                                                '$percentage%',
-                                                style: TextStyle(
-                                                  fontSize: 10.sp,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: Theme.of(context)
-                                                      .primaryColor,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
+                    // Feedback Ratings
+                    SliverToBoxAdapter(
+                      child: _SectionCard(
+                        title: 'Client Feedback Ratings',
+                        child: Column(
+                          children: [
+                            _RatingRow(label: 'Total Reviews', value: '4.8/5', count: '128 reviews'),
+                            SizedBox(height: 12.h),
+                            _RatingRow(label: 'Product Quality', value: '4.9/5', progress: 0.98),
+                            _RatingRow(label: 'Shipping Speed', value: '4.7/5', progress: 0.94),
+                            _RatingRow(label: 'Service Response', value: '4.8/5', progress: 0.96),
+                          ],
                         ),
                       ),
                     ),
-                  ),
 
-                  SliverToBoxAdapter(
-                      child: SizedBox(height: bottomSheetInitialPadding.h)),
-                ],
-              ),
-            ],
-          ),
+                    SliverToBoxAdapter(child: SizedBox(height: 30.h)),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDropdown(
+      {required String value,
+      required List<String> items,
+      required ValueChanged<String?> onChanged}) {
+    return Container(
+      height: 38.h,
+      padding: EdgeInsets.symmetric(horizontal: 10.w),
+      decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: kBorder)),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          isExpanded: true,
+          icon: Icon(Icons.keyboard_arrow_down, size: 16.sp, color: Colors.grey),
+          items: items
+              .map((e) => DropdownMenuItem(
+                  value: e,
+                  child: Text(e,
+                      style: TextStyle(
+                          fontSize: 10.sp, fontWeight: FontWeight.w500))))
+              .toList(),
+          onChanged: onChanged,
         ),
       ),
     );
   }
 }
 
-class _StockStatusIndicator extends StatelessWidget {
+class _KpiCard extends StatelessWidget {
   final String title;
   final String value;
+  final String icon;
   final Color color;
-  final int percentage;
 
-  const _StockStatusIndicator({
-    required this.title,
-    required this.value,
-    required this.color,
-    required this.percentage,
-  });
+  const _KpiCard(
+      {required this.title,
+      required this.value,
+      required this.icon,
+      required this.color});
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
+    return Container(
+      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(
+          color: kCard,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: kBorder)),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            height: 60.h,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: color.withOpacity(0.3)),
-            ),
-            child: Stack(
-              children: [
-                Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Container(
-                    height: (60 * (percentage / 100)).h,
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-                Center(
-                  child: Text(
-                    value,
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(6.w),
+                decoration: BoxDecoration(
+                    color: color, borderRadius: BorderRadius.circular(8)),
+                child: Text(icon, style: TextStyle(fontSize: 16.sp)),
+              ),
+              SizedBox(width: 8.w),
+              Expanded(
+                child: Text(title,
                     style: TextStyle(
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w800,
-                      color: color,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+                        fontSize: 9.sp,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w600),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+              ),
+            ],
           ),
-          SizedBox(height: 4.h),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 10.sp,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[600],
-            ),
-          ),
-          Text(
-            '$percentage%',
-            style: TextStyle(
-              fontSize: 10.sp,
-              fontWeight: FontWeight.w700,
-              color: color,
-            ),
-          ),
+          SizedBox(height: 10.h),
+          Text(value,
+              style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800)),
         ],
       ),
     );
   }
 }
 
-// ----------------- UI Widgets (unchanged from your file) -----------------
+class _SectionCard extends StatelessWidget {
+  final String title;
+  final Widget child;
 
-class _MiniChip extends StatefulWidget {
-  final String text;
-  final IconData icon;
-
-  const _MiniChip({required this.text, required this.icon});
-
-  @override
-  State<_MiniChip> createState() => _MiniChipState();
-}
-
-class _MiniChipState extends State<_MiniChip>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-        duration: const Duration(milliseconds: 100), vsync: this);
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+  const _SectionCard({required this.title, required this.child});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => _controller.forward(),
-      onTapUp: (_) => _controller.reverse(),
-      onTapCancel: () => _controller.reverse(),
-      child: ScaleTransition(
-        scale: _scaleAnimation,
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF3F4F6),
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(widget.icon, size: 12, color: Colors.black87),
-              SizedBox(width: 4.w),
-              Text(widget.text,
-                  style: TextStyle(fontSize: 10.sp, color: Colors.black87)),
-            ],
-          ),
-        ),
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 12.w),
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+          color: kCard,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: kBorder)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title,
+              style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700)),
+          SizedBox(height: 16.h),
+          child,
+        ],
       ),
     );
   }
 }
 
-class _KpiCard extends StatefulWidget {
-  final String title;
-  final String value;
-  final String subtitle;
-  final IconData icon;
-  final Color accent;
-  final Widget? child;
+class _TopProductRow extends StatelessWidget {
+  final String name;
+  final String sales;
+  final String revenue;
 
-  const _KpiCard({
-    required this.title,
-    required this.value,
-    required this.subtitle,
-    required this.icon,
-    required this.accent,
-    this.child,
-  });
-
-  @override
-  State<_KpiCard> createState() => _KpiCardState();
-}
-
-class _KpiCardState extends State<_KpiCard>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-        duration: const Duration(milliseconds: 100), vsync: this);
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+  const _TopProductRow(
+      {required this.name, required this.sales, required this.revenue});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => _controller.forward(),
-      onTapUp: (_) => _controller.reverse(),
-      onTapCancel: () => _controller.reverse(),
-      child: ScaleTransition(
-        scale: _scaleAnimation,
-        child: Container(
-          width: 200.w,
-          padding: EdgeInsets.all(12.w),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE5E7EB)),
+    return Padding(
+      padding: EdgeInsets.only(bottom: 12.h),
+      child: Row(
+        children: [
+          Container(
+            width: 40.w,
+            height: 40.w,
+            decoration: BoxDecoration(
+                color: kBg, borderRadius: BorderRadius.circular(8)),
+            child: Icon(Icons.image_outlined, color: Colors.grey[400]),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name,
+                    style: TextStyle(
+                        fontSize: 11.sp, fontWeight: FontWeight.w600)),
+                Text('$sales sales',
+                    style: TextStyle(fontSize: 9.sp, color: Colors.grey[500])),
+              ],
+            ),
+          ),
+          Text(revenue,
+              style: TextStyle(
+                  fontSize: 11.sp,
+                  fontWeight: FontWeight.w700,
+                  color: kPrimary)),
+        ],
+      ),
+    );
+  }
+}
+
+class _RatingRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final String? count;
+  final double? progress;
+
+  const _RatingRow(
+      {required this.label, required this.value, this.count, this.progress});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 8.h),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              Text(label,
+                  style:
+                      TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w500)),
               Row(
                 children: [
-                  Container(
-                    width: 26.w,
-                    height: 26.w,
-                    decoration: BoxDecoration(
-                      color: widget.accent.withOpacity(0.10),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(widget.icon, size: 14, color: widget.accent),
-                  ),
-                  SizedBox(width: 8.w),
-                  Expanded(
-                    child: Text(
-                      widget.title,
+                  if (count != null)
+                    Text(count!,
+                        style:
+                            TextStyle(fontSize: 9.sp, color: Colors.grey[500])),
+                  if (count != null) SizedBox(width: 4.w),
+                  Text(value,
                       style: TextStyle(
-                          fontSize: 11.sp, fontWeight: FontWeight.w700),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
+                          fontSize: 10.sp, fontWeight: FontWeight.w700)),
+                  Icon(Icons.star, color: Colors.orange, size: 12.sp),
                 ],
               ),
-              SizedBox(height: 8.h),
-              Text(widget.value,
-                  style:
-                      TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800)),
-              SizedBox(height: 2.h),
-              Text(widget.subtitle,
-                  style: TextStyle(fontSize: 10.sp, color: Colors.grey[600])),
-              if (widget.child != null) ...[
-                SizedBox(height: 6.h),
-                Expanded(child: widget.child!),
-              ],
             ],
           ),
-        ),
+          if (progress != null) SizedBox(height: 4.h),
+          if (progress != null)
+            LinearProgressIndicator(
+              value: progress,
+              backgroundColor: kBg,
+              valueColor: AlwaysStoppedAnimation<Color>(kPrimaryLight),
+              minHeight: 4,
+              borderRadius: BorderRadius.circular(2),
+            ),
+        ],
       ),
     );
   }
 }
+
+class _SimpleBarChart extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final values = [0.4, 0.6, 0.5, 0.8, 0.7, 0.9, 0.85];
+    final labels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: List.generate(values.length, (i) {
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Container(
+              width: 25.w,
+              height: 100.h * values[i],
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [kPrimary, kPrimaryLight.withOpacity(0.6)],
+                ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
+              ),
+            ),
+            SizedBox(height: 8.h),
+            Text(labels[i],
+                style: TextStyle(fontSize: 9.sp, color: Colors.grey[600])),
+          ],
+        );
+      }),
+    );
+  }
+}
+
