@@ -31,6 +31,7 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
   final TextEditingController registrationNumberCtrl = TextEditingController();
   final TextEditingController categoryCtrl =
       TextEditingController(text: "general");
+  final TextEditingController descriptionCtrl = TextEditingController();
   final TextEditingController referralCtrl = TextEditingController();
   final TextEditingController phoneCtrl = TextEditingController();
   final TextEditingController emailCtrl = TextEditingController();
@@ -75,6 +76,7 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
     stateCtrl.dispose();
     cityCtrl.dispose();
     pincodeCtrl.dispose();
+    descriptionCtrl.dispose();
     emailOtpCtrl.dispose();
     phoneOtpCtrl.dispose();
     super.dispose();
@@ -136,7 +138,7 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
         "email": emailCtrl.text.trim(),
         "mobile": phoneCtrl.text.trim(),
         "shopName": shopNameCtrl.text.trim(),
-        "description": "", // You can add a description field later if needed
+        "description": descriptionCtrl.text.trim(),
         "country": "India",
         "state": stateCtrl.text.trim(),
         "city": cityCtrl.text.trim(),
@@ -401,6 +403,11 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
                 color: Theme.of(context).primaryColor,
               ),
             ),
+            validator: (v) {
+              if (v?.trim().isEmpty ?? true) return 'Confirm Password required';
+              if (v != passwordCtrl.text) return 'Passwords do not match';
+              return null;
+            },
           ),
           SizedBox(height: 16.h),
           _buildOutlinedField(
@@ -410,6 +417,18 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
             child: ElevatedButton(
               onPressed: () {
                 if (_formKey.currentState!.validate()) {
+                  if (!isEmailVerified) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Please verify your email.")),
+                    );
+                    return;
+                  }
+                  if (!isPhoneVerified) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Please verify your phone number.")),
+                    );
+                    return;
+                  }
                   _pageController.nextPage(
                       duration: const Duration(milliseconds: 300),
                       curve: Curves.ease);
@@ -467,6 +486,13 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
               label: "Registration Number *",
               controller: registrationNumberCtrl,
               validator: (v) => v?.trim().isEmpty ?? true ? 'Required' : null),
+          SizedBox(height: 16.h),
+          _buildOutlinedField(
+              label: "Business Description *",
+              controller: descriptionCtrl,
+              maxLines: 3,
+              validator: (v) =>
+                  v?.trim().isEmpty ?? true ? 'Description required' : null),
           SizedBox(height: 16.h),
           _buildOutlinedField(
               label: "Category *",
@@ -746,7 +772,8 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
           decoration: BoxDecoration(
             color: isVerified ? Colors.grey.shade50 : Colors.white,
             borderRadius: BorderRadius.circular(10.r),
-            border: isVerified ? Border.all(color: Colors.green.shade200) : null,
+            border:
+                isVerified ? Border.all(color: Colors.green.shade200) : null,
             boxShadow: [
               if (!isVerified)
                 BoxShadow(
@@ -858,7 +885,8 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
                             : Text(
                                 isOtpSent ? "Resend" : "Send OTP",
                                 style: GoogleFonts.poppins(
-                                    fontSize: 9.sp, fontWeight: FontWeight.w600),
+                                    fontSize: 9.sp,
+                                    fontWeight: FontWeight.w600),
                               ),
                       ),
                     ),

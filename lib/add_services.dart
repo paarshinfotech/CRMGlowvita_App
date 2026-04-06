@@ -942,7 +942,7 @@ class _AddServicePageState extends State<AddServicePage>
                       'type': _taxType,
                       'value': _taxValue,
                     },
-                    'online_booking': enableOnlineBooking,
+                    'onlineBooking': enableOnlineBooking,
                     'addOns': _selectedAddOnIds,
                   };
 

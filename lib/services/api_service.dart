@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'dart:async';
 import 'package:http/io_client.dart' as http_io;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
@@ -501,9 +502,12 @@ class ApiService {
   // Centralized HTTP client with SSL bypass
   static http.Client _getHttpClient() {
     final ioClient = HttpClient();
+    ioClient.connectionTimeout = const Duration(seconds: 15);
+    ioClient.maxConnectionsPerHost = 5; // limit concurrent connections per host
     ioClient.badCertificateCallback =
         (X509Certificate cert, String host, int port) => true;
-    return http_io.IOClient(ioClient);
+    return http_io.IOClient(
+        ioClient); //  fresh client every call — no shared state
   }
 
   static bool _isUnauthorizedHandling = false;
@@ -552,7 +556,7 @@ class ApiService {
   // Generic POST request helper
   static Future<http.Response> _post(String url, Map<String, dynamic> body,
       {Map<String, String>? headers, bool useAuth = true}) async {
-    final client = _getHttpClient();
+    final client = _getHttpClient(); // ✅ fresh client per request
     try {
       final Map<String, String> requestHeaders = {
         'Content-Type': 'application/json',
@@ -580,9 +584,20 @@ class ApiService {
         _handleUnauthorized();
       }
 
+      // ✅ Log errors clearly for debugging
+      if (response.statusCode >= 400) {
+        debugPrint('⚠️ POST $url → ${response.statusCode}: ${response.body}');
+      }
+
       return response;
+    } on TimeoutException {
+      debugPrint('⏱️ POST $url timed out');
+      rethrow;
+    } catch (e) {
+      debugPrint('❌ POST $url error: $e');
+      rethrow;
     } finally {
-      client.close();
+      client.close(); // ✅ always close to free connection
     }
   }
 
@@ -925,16 +940,17 @@ class ApiService {
       'email': email,
       'role': role.toLowerCase(),
     };
-    
+
     if (firstName != null && firstName.isNotEmpty) {
       body['firstName'] = firstName;
     }
     if (lastName != null && lastName.isNotEmpty) {
       body['lastName'] = lastName;
     }
-    
+
     // Add fullName as a fallback for some backend versions
-    if ((firstName != null && firstName.isNotEmpty) || (lastName != null && lastName.isNotEmpty)) {
+    if ((firstName != null && firstName.isNotEmpty) ||
+        (lastName != null && lastName.isNotEmpty)) {
       body['fullName'] = '${firstName ?? ""} ${lastName ?? ""}'.trim();
       body['name'] = body['fullName']; // Some backends expect 'name'
     }
@@ -955,7 +971,6 @@ class ApiService {
       useAuth: false,
     );
   }
-
 
   // Get all clients
   static Future<List<Customer>> getClients() async {
@@ -2108,7 +2123,7 @@ class ApiService {
                 'type': 'percentage',
                 'value': serviceData['tax_value'] ?? 0
               },
-        'onlineBooking': serviceData['online_booking'] ?? true,
+        'onlineBooking': serviceData['onlineBooking'] ?? true,
         if (serviceData['image'] != null)
           'image': serviceData['image'], // base64 data URL
         'addOns': serviceData['addOns'] ?? [],
@@ -2199,24 +2214,45 @@ class ApiService {
   static Future<bool> updateService(
       String serviceId, Map<String, dynamic> serviceData) async {
     try {
-      // Map the field names to match API expectations
+      // Map the field names to match API expectations (same structure as createService)
       final mappedServiceData = {
         '_id': serviceId,
         'name': serviceData['name'],
         'category': serviceData['category_id'],
         'price': (serviceData['price'] as num).toInt(),
-        'discountedPrice': serviceData['discounted_price'] != null
-            ? (serviceData['discounted_price'] as num).toInt()
-            : null,
-        'duration': _parseDuration(serviceData['duration']),
+        if (serviceData['discounted_price'] != null)
+          'discountedPrice':
+              (serviceData['discounted_price'] as num).toDouble().toInt(),
+        'duration': (serviceData['duration'] is int)
+            ? serviceData['duration'] as int
+            : _parseDuration(serviceData['duration']?.toString()),
         'description': serviceData['description'] ?? '',
         'gender': serviceData['gender'] ?? 'unisex',
         'staff': serviceData['staff'] ?? [],
         'commission': serviceData['allow_commission'] ?? false,
-        'homeService': serviceData['home_service'] ?? false,
-        'weddingService': serviceData['wedding_service'] ?? false,
-        'tax': serviceData['enable_tax'] ?? false,
-        'onlineBooking': serviceData['online_booking'] ?? true,
+        'homeService': serviceData['homeService'] is Map
+            ? serviceData['homeService']
+            : {
+                'available': serviceData['home_service'] ?? false,
+                'charges': serviceData['homeService']?['charges'],
+              },
+        'weddingService': serviceData['weddingService'] is Map
+            ? serviceData['weddingService']
+            : {
+                'available': serviceData['wedding_service'] ?? false,
+                'charges': serviceData['weddingService']?['charges'],
+              },
+        'bookingInterval':
+            int.tryParse(serviceData['booking_interval']?.toString() ?? '0') ??
+                0,
+        'tax': serviceData['tax'] is Map
+            ? serviceData['tax']
+            : {
+                'enabled': serviceData['enable_tax'] ?? false,
+                'type': 'percentage',
+                'value': serviceData['tax_value'] ?? 0,
+              },
+        'onlineBooking': serviceData['onlineBooking'] ?? true,
         'addOns': serviceData['addOns'] ?? [],
       };
 

@@ -460,18 +460,69 @@ class _ServicesState extends State<Services> {
               SizedBox(width: 4.w),
 
               // Online booking toggle
+              // Online booking toggle
               Transform.scale(
                 scale: 0.72,
                 child: Switch(
                   value: isOnlineBooking,
-                  onChanged: (val) {
+                  onChanged: (val) async {
+                    // Step 1: Update UI immediately (optimistic update)
+                    final originalIndex =
+                        services.indexOf(filteredServices[index]);
+                    if (originalIndex == -1) return;
+
                     setState(() {
-                      final originalIndex =
-                          services.indexOf(filteredServices[index]);
-                      if (originalIndex != -1) {
-                        services[originalIndex].onlineBooking = val;
-                      }
+                      services[originalIndex].onlineBooking = val;
                     });
+
+                    // Step 2: Build minimal payload with all required fields
+                    final service = services[originalIndex];
+                    try {
+                      final serviceId = service.id;
+                      if (serviceId == null) return;
+
+                      final payload = service.toJson();
+                      payload['onlineBooking'] = val;
+                      payload['category_id'] =
+                          service.categoryId ?? payload['categoryId'];
+
+                      final success =
+                          await ApiService.updateService(serviceId, payload);
+
+                      if (!success) {
+                        //  Step 3: Revert if API failed
+                        if (mounted) {
+                          setState(() {
+                            services[originalIndex].onlineBooking = !val;
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Failed to update online booking status',
+                                style: GoogleFonts.poppins(fontSize: 7.5.sp),
+                              ),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    } catch (e) {
+                      //  Step 4: Revert on error
+                      if (mounted) {
+                        setState(() {
+                          services[originalIndex].onlineBooking = !val;
+                        });
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Error: ${e.toString().replaceFirst('Exception: ', '')}',
+                              style: GoogleFonts.poppins(fontSize: 7.5.sp),
+                            ),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
                   },
                   activeColor: Colors.green.shade600,
                   thumbColor: WidgetStateProperty.all(Colors.white),

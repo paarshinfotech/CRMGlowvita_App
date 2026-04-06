@@ -1581,9 +1581,7 @@ class _My_ProfileState extends State<My_Profile>
   // ──────────────────────────────────────────────
   //  7. Opening Hours
   // ──────────────────────────────────────────────
-  // ──────────────────────────────────────────────
-//  7. Opening Hours – Ultra minimal + fixed
-// ──────────────────────────────────────────────
+
   Widget _buildOpeningHoursTab() {
     if (_isLoading) return _buildLoading();
 

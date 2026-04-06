@@ -32,6 +32,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController phoneCtrl = TextEditingController();
   final TextEditingController emailCtrl = TextEditingController();
   final TextEditingController passwordCtrl = TextEditingController();
+  final TextEditingController confirmPasswordCtrl = TextEditingController();
   final TextEditingController addressCtrl = TextEditingController();
   final TextEditingController stateCtrl = TextEditingController();
   final TextEditingController cityCtrl = TextEditingController();
@@ -56,14 +57,17 @@ class _RegisterPageState extends State<RegisterPage> {
 
   bool isLoading = false;
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   @override
   void dispose() {
     _pageController.dispose();
+    confirmPasswordCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _registerUser() async {
+    if (isLoading) return;
     if (!_formKey.currentState!.validate()) return;
 
     if (!isEmailVerified) {
@@ -96,7 +100,7 @@ class _RegisterPageState extends State<RegisterPage> {
         "businessName": businessNameCtrl.text.trim(),
         "email": emailCtrl.text.trim(),
         "phone": phoneCtrl.text.trim(),
-        "password": passwordCtrl.text, 
+        "password": passwordCtrl.text,
         "state": stateCtrl.text.trim(),
         "city": cityCtrl.text.trim(),
         "pincode": pincodeCtrl.text.trim(),
@@ -176,6 +180,13 @@ class _RegisterPageState extends State<RegisterPage> {
 
         /// Navigate forward
         Navigator.pop(context);
+      } else if (response.statusCode == 400) {
+        // Show exact backend validation message for 400 errors
+        throw Exception(data["message"] ??
+            data["error"] ??
+            "Invalid data. Please check your inputs.");
+      } else if (response.statusCode >= 500) {
+        throw Exception("Server error. Please try again in a moment.");
       } else {
         throw Exception(
             data["message"] ?? "Server error (${response.statusCode})");
@@ -229,15 +240,18 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                 ),
                 Expanded(
-                  child: PageView(
-                    controller: _pageController,
-                    physics: const NeverScrollableScrollPhysics(),
-                    onPageChanged: (index) =>
-                        setState(() => currentStep = index),
-                    children: [
-                      _buildBusinessSetupPage(),
-                      _buildLocationSetupPage(),
-                    ],
+                  child: Form(
+                    key: _formKey,
+                    child: PageView(
+                      controller: _pageController,
+                      physics: const NeverScrollableScrollPhysics(),
+                      onPageChanged: (index) =>
+                          setState(() => currentStep = index),
+                      children: [
+                        _buildBusinessSetupPage(),
+                        _buildLocationSetupPage(),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -316,6 +330,12 @@ class _RegisterPageState extends State<RegisterPage> {
                   label: "Enter business description",
                   controller: businessDescCtrl,
                   maxLines: 3,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Description is required';
+                    }
+                    return null;
+                  },
                 ),
               ),
             ],
@@ -476,6 +496,35 @@ class _RegisterPageState extends State<RegisterPage> {
               return null;
             },
           ),
+          const SizedBox(height: 16),
+          _buildOutlinedField(
+            label: "Confirm Password",
+            controller: confirmPasswordCtrl,
+            obscureText: _obscureConfirmPassword,
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscureConfirmPassword
+                    ? Icons.visibility_off
+                    : Icons.visibility,
+                size: 16.sp,
+                color: Theme.of(context).primaryColor,
+              ),
+              onPressed: () {
+                setState(() {
+                  _obscureConfirmPassword = !_obscureConfirmPassword;
+                });
+              },
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Confirm Password is required';
+              }
+              if (value != passwordCtrl.text) {
+                return 'Passwords do not match';
+              }
+              return null;
+            },
+          ),
           const SizedBox(height: 32),
 
           // Optional fields
@@ -504,10 +553,34 @@ class _RegisterPageState extends State<RegisterPage> {
           Center(
             child: ElevatedButton(
               onPressed: () {
-                _pageController.nextPage(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.ease,
-                );
+                if (_formKey.currentState!.validate()) {
+                  if (subCategories.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text(
+                              "Please select at least one sub category (Shop, Shop At Home, Onsite).")),
+                    );
+                    return;
+                  }
+                  if (!isEmailVerified) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text("Please verify your email.")),
+                    );
+                    return;
+                  }
+                  if (!isPhoneVerified) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text("Please verify your phone number.")),
+                    );
+                    return;
+                  }
+                  _pageController.nextPage(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.ease,
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).primaryColor,
@@ -535,210 +608,207 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget _buildLocationSetupPage() {
     return SingleChildScrollView(
       padding: EdgeInsets.symmetric(horizontal: 32.w),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(height: 20.h),
-            // Back button for second step
-            Align(
-              alignment: Alignment.centerLeft,
-              child: IconButton(
-                icon: Icon(Icons.arrow_back,
-                    color: Theme.of(context).primaryColor, size: 24.sp),
-                onPressed: () {
-                  _pageController.previousPage(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.ease,
-                  );
-                },
-              ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(height: 20.h),
+          // Back button for second step
+          Align(
+            alignment: Alignment.centerLeft,
+            child: IconButton(
+              icon: Icon(Icons.arrow_back,
+                  color: Theme.of(context).primaryColor, size: 24.sp),
+              onPressed: () {
+                _pageController.previousPage(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.ease,
+                );
+              },
             ),
-            SizedBox(height: 10.h),
-            Text(
-              "Where is your business located?",
-              style: GoogleFonts.poppins(
-                fontSize: 16.sp,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).primaryColor,
-                shadows: [
-                  Shadow(
-                    blurRadius: 3.0,
-                    color: Colors.black.withOpacity(0.25),
-                    offset: Offset(1.5, 1.5),
+          ),
+          SizedBox(height: 10.h),
+          Text(
+            "Where is your business located?",
+            style: GoogleFonts.poppins(
+              fontSize: 16.sp,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).primaryColor,
+              shadows: [
+                Shadow(
+                  blurRadius: 3.0,
+                  color: Colors.black.withOpacity(0.25),
+                  offset: Offset(1.5, 1.5),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 6.h),
+          Text(
+            "Set your business location and address details.",
+            style: GoogleFonts.poppins(
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w500,
+              color: Colors.black,
+            ),
+          ),
+          SizedBox(height: 30.h),
+          // Map picker
+          const Text("Location",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: () async {
+              final result = await showDialog<Map<String, dynamic>>(
+                context: context,
+                builder: (_) => const LocationPickerDialog(),
+              );
+              if (result != null) {
+                setState(() {
+                  selectedLat = result['lat'];
+                  selectedLng = result['lng'];
+                  addressCtrl.text = result['address'];
+                });
+
+                // Auto-fill state, city, pincode
+                try {
+                  List<Placemark> placemarks = await placemarkFromCoordinates(
+                      selectedLat!, selectedLng!);
+                  if (placemarks.isNotEmpty) {
+                    Placemark place = placemarks[0];
+                    setState(() {
+                      stateCtrl.text = place.administrativeArea ?? '';
+                      cityCtrl.text = place.locality ??
+                          place.subLocality ??
+                          place.subAdministrativeArea ??
+                          '';
+                      pincodeCtrl.text = place.postalCode ?? '';
+                    });
+                  }
+                } catch (e) {
+                  debugPrint("Error fetching placemarks: $e");
+                }
+              }
+            },
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.location_on, color: Colors.purple),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      addressCtrl.text.isEmpty
+                          ? "Choose from Map"
+                          : addressCtrl.text,
+                      style: TextStyle(
+                          color: addressCtrl.text.isEmpty
+                              ? Colors.grey.shade600
+                              : Colors.black),
+                      softWrap: true,
+                    ),
                   ),
                 ],
               ),
             ),
-            SizedBox(height: 6.h),
-            Text(
-              "Set your business location and address details.",
-              style: GoogleFonts.poppins(
-                fontSize: 12.sp,
-                fontWeight: FontWeight.w500,
-                color: Colors.black,
-              ),
-            ),
-            SizedBox(height: 30.h),
-            // Map picker
-            const Text("Location",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 12),
-            GestureDetector(
-              onTap: () async {
-                final result = await showDialog<Map<String, dynamic>>(
-                  context: context,
-                  builder: (_) => const LocationPickerDialog(),
-                );
-                if (result != null) {
-                  setState(() {
-                    selectedLat = result['lat'];
-                    selectedLng = result['lng'];
-                    addressCtrl.text = result['address'];
-                  });
-
-                  // Auto-fill state, city, pincode
-                  try {
-                    List<Placemark> placemarks = await placemarkFromCoordinates(
-                        selectedLat!, selectedLng!);
-                    if (placemarks.isNotEmpty) {
-                      Placemark place = placemarks[0];
-                      setState(() {
-                        stateCtrl.text = place.administrativeArea ?? '';
-                        cityCtrl.text = place.locality ??
-                            place.subLocality ??
-                            place.subAdministrativeArea ??
-                            '';
-                        pincodeCtrl.text = place.postalCode ?? '';
-                      });
+          ),
+          const SizedBox(height: 32),
+          // Full Address
+          _buildOutlinedField(
+            label: "Full Address",
+            controller: addressCtrl,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Full address is required';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 24),
+          // State, City, Pincode
+          Row(
+            children: [
+              Expanded(
+                child: _buildOutlinedField(
+                  label: "State",
+                  controller: stateCtrl,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'State is required';
                     }
-                  } catch (e) {
-                    debugPrint("Error fetching placemarks: $e");
-                  }
-                }
-              },
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(12),
+                    return null;
+                  },
                 ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.location_on, color: Colors.purple),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        addressCtrl.text.isEmpty
-                            ? "Choose from Map"
-                            : addressCtrl.text,
-                        style: TextStyle(
-                            color: addressCtrl.text.isEmpty
-                                ? Colors.grey.shade600
-                                : Colors.black),
-                        softWrap: true,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildOutlinedField(
+                  label: "City",
+                  controller: cityCtrl,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'City is required';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                flex: 1,
+                child: _buildOutlinedField(
+                  label: "Pincode",
+                  controller: pincodeCtrl,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Pincode is required';
+                    }
+                    if (!RegExp(r'^[0-9]{6}$').hasMatch(value)) {
+                      return 'Enter a valid 6-digit pincode';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 60),
+          // Submit button
+          Center(
+            child: ElevatedButton(
+              onPressed: isLoading ? null : _registerUser,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).primaryColor,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(vertical: 5.h),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10.r),
+                ),
+                elevation: 1,
+                textStyle: GoogleFonts.poppins(
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+                minimumSize: Size(200.w, 35.h),
+              ),
+              child: isLoading
+                  ? SizedBox(
+                      height: 18.h,
+                      width: 18.w,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2.w,
                       ),
-                    ),
-                  ],
-                ),
-              ),
+                    )
+                  : const Text('Complete Registration'),
             ),
-            const SizedBox(height: 32),
-            // Full Address
-            _buildOutlinedField(
-              label: "Full Address",
-              controller: addressCtrl,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Full address is required';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 24),
-            // State, City, Pincode
-            Row(
-              children: [
-                Expanded(
-                  child: _buildOutlinedField(
-                    label: "State",
-                    controller: stateCtrl,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'State is required';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildOutlinedField(
-                    label: "City",
-                    controller: cityCtrl,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'City is required';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  flex: 1,
-                  child: _buildOutlinedField(
-                    label: "Pincode",
-                    controller: pincodeCtrl,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Pincode is required';
-                      }
-                      if (!RegExp(r'^[0-9]{6}$').hasMatch(value)) {
-                        return 'Enter a valid 6-digit pincode';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 60),
-            // Submit button
-            Center(
-              child: ElevatedButton(
-                onPressed: isLoading ? null : _registerUser,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).primaryColor,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(vertical: 5.h),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10.r),
-                  ),
-                  elevation: 1,
-                  textStyle: GoogleFonts.poppins(
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  minimumSize: Size(200.w, 35.h),
-                ),
-                child: isLoading
-                    ? SizedBox(
-                        height: 18.h,
-                        width: 18.w,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2.w,
-                        ),
-                      )
-                    : const Text('Complete Registration'),
-              ),
-            ),
-            SizedBox(height: 30.h),
-          ],
-        ),
+          ),
+          SizedBox(height: 30.h),
+        ],
       ),
     );
   }
@@ -871,7 +941,8 @@ class _RegisterPageState extends State<RegisterPage> {
           decoration: BoxDecoration(
             color: isVerified ? Colors.grey.shade50 : Colors.white,
             borderRadius: BorderRadius.circular(10.r),
-            border: isVerified ? Border.all(color: Colors.green.shade200) : null,
+            border:
+                isVerified ? Border.all(color: Colors.green.shade200) : null,
             boxShadow: [
               if (!isVerified)
                 BoxShadow(
@@ -931,11 +1002,13 @@ class _RegisterPageState extends State<RegisterPage> {
                           decoration: InputDecoration(
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8.r),
-                              borderSide: BorderSide(color: Colors.grey.shade300),
+                              borderSide:
+                                  BorderSide(color: Colors.grey.shade300),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8.r),
-                              borderSide: BorderSide(color: Colors.grey.shade300),
+                              borderSide:
+                                  BorderSide(color: Colors.grey.shade300),
                             ),
                             contentPadding: EdgeInsets.symmetric(
                                 horizontal: 12.w, vertical: 8.h),
@@ -977,7 +1050,8 @@ class _RegisterPageState extends State<RegisterPage> {
                             : Text(
                                 isOtpSent ? "Resend" : "Send OTP",
                                 style: GoogleFonts.poppins(
-                                    fontSize: 10.sp, fontWeight: FontWeight.w600),
+                                    fontSize: 10.sp,
+                                    fontWeight: FontWeight.w600),
                               ),
                       ),
                     ),
@@ -1118,7 +1192,9 @@ class _RegisterPageState extends State<RegisterPage> {
       if (response.statusCode == 200) {
         setState(() => isEmailVerified = true);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Email verified successfully"), backgroundColor: Colors.green),
+          const SnackBar(
+              content: Text("Email verified successfully"),
+              backgroundColor: Colors.green),
         );
       } else {
         final data = jsonDecode(response.body);
@@ -1148,7 +1224,8 @@ class _RegisterPageState extends State<RegisterPage> {
       isSendingPhoneOtp = false;
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("OTP sent to your phone number (Use 123456)")),
+      const SnackBar(
+          content: Text("OTP sent to your phone number (Use 123456)")),
     );
   }
 
@@ -1156,7 +1233,9 @@ class _RegisterPageState extends State<RegisterPage> {
     if (phoneOtpCtrl.text == "123456") {
       setState(() => isPhoneVerified = true);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Phone verified successfully"), backgroundColor: Colors.green),
+        const SnackBar(
+            content: Text("Phone verified successfully"),
+            backgroundColor: Colors.green),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(

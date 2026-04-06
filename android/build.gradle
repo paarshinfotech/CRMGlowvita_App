@@ -26,6 +26,26 @@ rootProject.buildDir = "../build"
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
     project.evaluationDependsOn(":app")
+
+    // Workaround for: java.lang.IllegalArgumentException: this and base files have different roots
+    // which happens when the project and pub cache are on different drives.
+    def configureAndroidUnitTests = { p ->
+        if (p.hasProperty('android')) {
+            p.android {
+                testOptions {
+                    unitTests {
+                        includeAndroidResources = false
+                    }
+                }
+            }
+        }
+    }
+
+    if (project.state.executed) {
+        configureAndroidUnitTests(project)
+    } else {
+        project.afterEvaluate { configureAndroidUnitTests(it) }
+    }
 }
 
 
