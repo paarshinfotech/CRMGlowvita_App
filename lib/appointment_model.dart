@@ -196,6 +196,7 @@ class PaymentRecord {
 }
 
 class ServiceItem {
+  final String? service;
   final String? serviceName;
   final String? staffName;
   final String? startTime;
@@ -205,6 +206,7 @@ class ServiceItem {
   final List<AddOn>? addOns;
 
   ServiceItem({
+    this.service,
     this.serviceName,
     this.staffName,
     this.startTime,
@@ -216,6 +218,7 @@ class ServiceItem {
 
   factory ServiceItem.fromJson(Map<String, dynamic> json) {
     return ServiceItem(
+      service: json['service'],
       serviceName: json['serviceName'],
       staffName: json['staffName'],
       startTime: json['startTime'],

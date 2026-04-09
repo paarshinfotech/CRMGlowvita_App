@@ -74,8 +74,8 @@ flutter_launcher_icons:
   ios: true
   web:
     generate: true
-    image_path: "assets/images/favicon.jpg"
-  image_path: "assets/images/favicon.jpg"  # your logo file
+    image_path: "assets/images/favicon.png"
+  image_path: "assets/images/favicon.png"  # your logo file
   adaptive_icon_background: "#FFFFFF"   # background color for Android
 
   # The "flutter_lints" package below contains a set of recommended lints to

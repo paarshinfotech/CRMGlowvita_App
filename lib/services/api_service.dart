@@ -128,7 +128,7 @@ class StaffMember {
       email: json['emailAddress'] ?? json['email'],
       mobile: json['mobileNo'] ?? json['mobile'],
       position: json['position'],
-      photo: json['photo'],
+      photo: json['photo'] ?? json['image'] ?? json['profileImage'],
       status: json['status'] ?? 'Active',
       permissions: json['permissions']?.cast<dynamic>() ?? [],
       availability: availabilityMap,
@@ -151,7 +151,7 @@ class StaffMember {
   }
 
   Map<String, dynamic> toJson() {
-    return {
+    final Map<String, dynamic> data = {
       '_id': id,
       'vendorId': vendorId,
       'fullName': fullName,
@@ -161,8 +161,6 @@ class StaffMember {
       'photo': photo,
       'status': status,
       'permissions': permissions,
-      'availability': availability,
-      'blockedTimes': blockedTimes,
       'bankDetails': bankDetails,
       'salary': salary,
       'yearOfExperience': yearOfExperience,
@@ -174,6 +172,20 @@ class StaffMember {
       'endDate': endDate?.toIso8601String(),
       'description': description,
     };
+
+    if (availability != null) {
+      data['availability'] = availability;
+      // Flatten availability fields for API compatibility
+      availability!.forEach((key, value) {
+        data[key] = value;
+      });
+    }
+
+    if (blockedTimes != null) {
+      data['blockedTimes'] = blockedTimes;
+    }
+
+    return data;
   }
 
   String getWorkingHours(DateTime date) {
@@ -1092,6 +1104,38 @@ class ApiService {
       }
     } catch (e) {
       print('Error fetching products: $e');
+      rethrow;
+    }
+  }
+
+  // Get products by category
+  static Future<List<Product>> getProductMastersByCategory(
+      String categoryName) async {
+    try {
+      final response =
+          await _get('$baseUrl/crm/product-masters?category=$categoryName');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          List<dynamic> productsData = data['data'];
+          List<Product> allMasters = productsData
+              .map((json) => Product.fromJson(json))
+              .toList();
+          // Client-side filtering to ensure strict category matching
+          return allMasters
+              .where((p) =>
+                  p.category?.toLowerCase() == categoryName.toLowerCase())
+              .toList();
+        } else {
+          return [];
+        }
+      } else {
+        throw Exception(
+            'Failed to load product masters: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching product masters: $e');
       rethrow;
     }
   }
@@ -3845,9 +3889,11 @@ class Product {
       vendorId: (json['vendorId'] is Map)
           ? json['vendorId']['_id']
           : (json['vendorId']?.toString()),
-      productName: json['productName'],
+      productName: json['productName'] ?? json['name'],
       description: json['description'],
-      category: json['category'],
+      category: json['category'] is Map
+          ? (json['category']['name'] ?? json['categoryName'])
+          : json['categoryName'] ?? json['category'] ?? 'Uncategorized',
       categoryDescription: json['categoryDescription'],
       price: (json['price'] as num?)?.toInt(),
       salePrice: (json['salePrice'] as num?)?.toInt(),

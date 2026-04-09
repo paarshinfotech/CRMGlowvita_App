@@ -248,6 +248,10 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
         status.contains('success') ||
         isPaidFull;
 
+    final bool isCompletedWithoutPayment = status == 'completed_without_payment';
+    final bool isPaymentPending = _appointment?.paymentStatus == 'pending';
+    final bool isAmountRemaining = totalAmount > 0 && amountPaid < totalAmount;
+
     return Dialog(
       backgroundColor: Colors.white,
       insetPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
@@ -374,7 +378,7 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Action Buttons Row (Top)
-                      if (!isCompleted)
+                      if (!isCompleted || isCompletedWithoutPayment || isPaymentPending || isAmountRemaining)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 8.0),
                           child: Row(

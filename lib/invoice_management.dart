@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'widgets/custom_drawer.dart';
 import 'services/api_service.dart';
 import 'billing_invoice_model.dart';
+import 'appointment_model.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -20,17 +21,26 @@ class InvoiceManagementPage extends StatefulWidget {
   State<InvoiceManagementPage> createState() => _InvoiceManagementPageState();
 }
 
-class _InvoiceManagementPageState extends State<InvoiceManagementPage> {
+class _InvoiceManagementPageState extends State<InvoiceManagementPage>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   static const double _radius = 12;
   static const double _gap = 12;
 
   List<BillingInvoice> invoices = [];
+  List<AppointmentModel> appointments = [];
   bool _isLoading = true;
   String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) {
+        setState(() {});
+      }
+    });
     _fetchInvoices();
   }
 
@@ -41,8 +51,13 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage> {
     });
     try {
       final fetchedInvoices = await ApiService.getInvoices();
+      // Fetch appointments that are paid or have an invoice number
+      final apptResult = await ApiService.getAppointments(limit: 100);
+      final List<AppointmentModel> allAppts = apptResult['data'] ?? [];
+      
       setState(() {
         invoices = fetchedInvoices;
+        appointments = allAppts;
         _isLoading = false;
       });
     } catch (e) {
@@ -51,6 +66,65 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage> {
         _isLoading = false;
       });
     }
+  }
+
+  List<BillingInvoice> _generateAppointmentInvoices() {
+    return appointments.where((appt) {
+      bool isPaid = appt.paymentStatus == 'completed';
+      bool hasInvoice = appt.invoiceNumber != null && appt.invoiceNumber!.isNotEmpty;
+      return isPaid || hasInvoice;
+    }).map((appt) {
+      // Determine correct status based on payment rule
+      String finalStatus = appt.status ?? 'N/A';
+      if (appt.status == 'completed' && appt.paymentStatus != 'completed') {
+        finalStatus = 'completed_without_payment';
+      } else if (appt.paymentStatus == 'completed') {
+        finalStatus = 'completed';
+      }
+
+      return BillingInvoice(
+        id: appt.id ?? '',
+        invoiceNumber: appt.invoiceNumber ?? 'N/A',
+        clientInfo: ClientInfo(
+          fullName: appt.clientName ?? 'N/A',
+          email: appt.client?.email ?? '',
+          phone: appt.client?.phone ?? '',
+          profilePicture: '',
+          address: appt.venueAddress ?? '',
+        ),
+        vendorId: appt.vendorId ?? '',
+        clientId: appt.client?.id ?? '',
+        items: (appt.serviceItems ?? []).map((si) => BillingItem(
+          itemId: si.service ?? '',
+          itemType: 'Service',
+          name: si.serviceName ?? appt.serviceName ?? 'Service',
+          description: '',
+          price: si.amount ?? appt.amount ?? 0.0,
+          quantity: 1,
+          totalPrice: si.amount ?? appt.amount ?? 0.0,
+          duration: si.duration ?? appt.duration ?? 0,
+          addOns: (si.addOns ?? []).map((ao) => AddOnItem(
+            id: ao.id ?? '',
+            name: ao.name ?? '',
+            price: (ao.price ?? 0).toDouble(),
+            duration: ao.duration ?? 0,
+          )).toList(),
+          discount: 0,
+          discountType: 'flat',
+        )).toList(),
+        subtotal: appt.amount ?? 0.0,
+        taxRate: 0,
+        taxAmount: appt.serviceTax ?? 0.0,
+        platformFee: appt.platformFee ?? 0.0,
+        totalAmount: appt.totalAmount ?? appt.finalAmount ?? 0.0,
+        balance: appt.amountRemaining ?? 0.0,
+        paymentMethod: appt.paymentMethod ?? 'N/A',
+        paymentStatus: finalStatus,
+        billingType: 'Appointment',
+        createdAt: appt.date ?? DateTime.now(),
+        updatedAt: appt.date ?? DateTime.now(),
+      );
+    }).toList();
   }
 
   String _searchQuery = '';
@@ -77,7 +151,15 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage> {
               .length);
 
   List<BillingInvoice> get filteredInvoices {
-    return invoices.where((invoice) {
+    List<BillingInvoice> sourceInvoices = [];
+    if (_tabController.index == 0) {
+      sourceInvoices = invoices.where((i) => i.billingType != 'Appointment').toList();
+    } else {
+      sourceInvoices = _generateAppointmentInvoices();
+    }
+
+    return sourceInvoices.where((invoice) {
+
       final matchesSearch = _searchQuery.isEmpty ||
           invoice.invoiceNumber
               .toLowerCase()
@@ -141,6 +223,7 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage> {
   @override
   void dispose() {
     _searchController.dispose();
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -168,6 +251,45 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage> {
         backgroundColor: Colors.white,
         iconTheme: const IconThemeData(color: Colors.black),
         elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: Size.fromHeight(40.h),
+          child: Container(
+            margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(10.r),
+            ),
+            child: TabBar(
+              controller: _tabController,
+              indicator: BoxDecoration(
+                borderRadius: BorderRadius.circular(8.r),
+                color: Theme.of(context).primaryColor,
+                boxShadow: [
+                  BoxShadow(
+                    color: Theme.of(context).primaryColor.withOpacity(0.3),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              indicatorSize: TabBarIndicatorSize.tab,
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.blueGrey,
+              labelStyle: GoogleFonts.poppins(
+                fontSize: 10.sp,
+                fontWeight: FontWeight.w600,
+              ),
+              unselectedLabelStyle: GoogleFonts.poppins(
+                fontSize: 10.sp,
+                fontWeight: FontWeight.w500,
+              ),
+              tabs: const [
+                Tab(text: 'Counter Billing'),
+                Tab(text: 'Appointments'),
+              ],
+            ),
+          ),
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(_gap),
@@ -761,14 +883,14 @@ class InvoiceCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 5),
                 Text(
-                  invoice.paymentStatus == 'Paid'
-                      ? 'Completed'
-                      : invoice.paymentStatus,
+                  invoice.paymentStatus,
                   style: GoogleFonts.poppins(
                       fontSize: 10,
-                      color: invoice.paymentStatus == 'Paid'
+                      color: (invoice.paymentStatus.toLowerCase() == 'completed' || invoice.paymentStatus.toLowerCase() == 'paid')
                           ? Colors.green
-                          : Colors.orange,
+                          : (invoice.paymentStatus.toLowerCase() == 'completed_without_payment' 
+                              ? Colors.orange[800] 
+                              : Colors.orange),
                       fontWeight: FontWeight.w600),
                 )
               ],

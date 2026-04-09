@@ -112,7 +112,7 @@ class _NavBar extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(4.r),
                 child: Image.asset(
-                  'assets/images/favicon.jpg',
+                  'assets/images/favicon.png',
                   width: 28.w,
                   height: 28.w,
                   fit: BoxFit.cover,

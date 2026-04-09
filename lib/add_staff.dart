@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -8,8 +9,9 @@ import '../vendor_model.dart';
 
 class AddStaffDialog extends StatefulWidget {
   final Map? existing;
+  final VoidCallback? onRefresh;
 
-  const AddStaffDialog({Key? key, this.existing}) : super(key: key);
+  const AddStaffDialog({Key? key, this.existing, this.onRefresh}) : super(key: key);
 
   @override
   State<AddStaffDialog> createState() => _AddStaffDialogState();
@@ -87,12 +89,6 @@ class _AddStaffDialogState extends State<AddStaffDialog>
     'sunday': true,
   };
 
-  // Block time
-  DateTime? _blockDate;
-  TimeOfDay? _blockStart;
-  TimeOfDay? _blockEnd;
-  final _blockReason = TextEditingController();
-
   // Salon Opening Hours
   VendorProfile? _vendorProfile;
   bool _isLoadingSalonHours = true;
@@ -104,9 +100,10 @@ class _AddStaffDialogState extends State<AddStaffDialog>
   final _personalFormKey = GlobalKey<FormState>();
   final _employmentFormKey = GlobalKey<FormState>();
   final _bankFormKey = GlobalKey<FormState>();
-  final _blockFormKey = GlobalKey<FormState>();
 
   late final TabController _tabController;
+  bool _isSaving = false;
+  Map? _localExisting;
 
   // Mapping: Display permission -> API permission string
   static const Map<String, String> displayToPerm = {
@@ -150,15 +147,45 @@ class _AddStaffDialogState extends State<AddStaffDialog>
     'sunday': 'Sun',
   };
 
-  String _formatTime(TimeOfDay? time) {
-    if (time == null) return '';
-    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+  ImageProvider? _getImageProvider(String? path) {
+    if (path == null || path.isEmpty) return null;
+    if (path.startsWith('http')) return NetworkImage(path);
+    if (path.startsWith('data:image')) {
+      return MemoryImage(base64Decode(path.split(',').last));
+    }
+    if (path.contains('/')) {
+      // Relative path
+      final baseUrl = 'https://partners.glowvitasalon.com';
+      final fullUrl = '$baseUrl${path.startsWith('/') ? path : '/$path'}';
+      return NetworkImage(fullUrl);
+    }
+    // Local file path
+    return FileImage(File(path));
+  }
+
+  int _timeToMinutes(String time) {
+    if (time.isEmpty) return 0;
+    try {
+      // Try parsing with AM/PM first
+      try {
+        final date = DateFormat.jm().parse(time.trim());
+        return date.hour * 60 + date.minute;
+      } catch (_) {
+        // Fallback to 24h format
+        final date = DateFormat("HH:mm").parse(time.trim());
+        return date.hour * 60 + date.minute;
+      }
+    } catch (e) {
+      debugPrint('Error parsing time to minutes ($time): $e');
+      return 0;
+    }
   }
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 6, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
+    _localExisting = widget.existing;
     _fetchSalonHours();
 
     // Initialize default availability to true for all days
@@ -188,7 +215,8 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       _experience.text = (m['yearOfExperience'] ?? '').toString();
       _clients.text = (m['clientsServed'] ?? '').toString();
       _commissionEnabled = m['commission'] == true;
-      _commissionPercentage.text = (m['commissionRate'] ?? m['commissionPercentage'] ?? '').toString();
+      _commissionPercentage.text =
+          (m['commissionRate'] ?? m['commissionPercentage'] ?? '').toString();
 
       if (m['startDate'] != null)
         _startDate = DateTime.tryParse(m['startDate'].toString());
@@ -215,66 +243,43 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       for (final fullDay in dayFullToAbbr.keys) {
         final abbr = dayFullToAbbr[fullDay]!;
 
-        // 1. Try nested availability object first
-        final availabilityData = m['availability'] as Map<String, dynamic>?;
-        if (availabilityData != null && availabilityData.containsKey(fullDay)) {
-          final dayData = availabilityData[fullDay] as Map<String, dynamic>?;
-          if (dayData != null) {
-            final available = dayData['available'] == true;
-            final slots = (dayData['slots'] as List?) ?? [];
+        bool available = false;
+        List slots = [];
 
-            _weeklyAvailability[fullDay] = available;
-            if (available && slots.isNotEmpty) {
-              final slot = (slots.first as Map?) ?? {};
-              final start = (slot['startTime'] ?? '10:00').toString();
-              final end = (slot['endTime'] ?? '19:00').toString();
-              _weeklyTiming[abbr]!.text = '$start - $end';
+        // 1. Try flat fields (priority)
+        if (m.containsKey('${fullDay}Available')) {
+          available = m['${fullDay}Available'] == true;
+          slots = m['${fullDay}Slots'] as List? ?? [];
+        }
+        // 2. Try nested availability object
+        else {
+          final availabilityData = m['availability'] as Map?;
+          if (availabilityData != null) {
+            // Check for flattened key inside (StaffMember.toJson adds them there)
+            if (availabilityData.containsKey('${fullDay}Available')) {
+              available = availabilityData['${fullDay}Available'] == true;
+              slots = availabilityData['${fullDay}Slots'] as List? ?? [];
+            }
+            // Check for nested day key
+            else if (availabilityData.containsKey(fullDay)) {
+              final dayData = availabilityData[fullDay] as Map?;
+              if (dayData != null) {
+                available = dayData['available'] == true;
+                slots = dayData['slots'] as List? ?? [];
+              }
             }
           }
         }
-        // 2. Try flat fields (e.g., mondayAvailable, mondaySlots)
-        else if (m.containsKey('${fullDay}Available')) {
-          final available = m['${fullDay}Available'] == true;
-          final slots = (m['${fullDay}Slots'] as List?) ?? [];
 
-          _weeklyAvailability[fullDay] = available;
-          if (available && slots.isNotEmpty) {
-            final slot = (slots.first as Map?) ?? {};
-            final start = (slot['startTime'] ?? '10:00').toString();
-            final end = (slot['endTime'] ?? '19:00').toString();
-            _weeklyTiming[abbr]!.text = '$start - $end';
-          }
-        } else {
-          // Default to true as before if not found
-          _weeklyAvailability[fullDay] = true;
+        _weeklyAvailability[fullDay] = available;
+        if (available && slots.isNotEmpty) {
+          final slot = (slots.first as Map?) ?? {};
+          final start = (slot['startTime'] ?? '10:00').toString();
+          final end = (slot['endTime'] ?? '19:00').toString();
+          _weeklyTiming[abbr]!.text = '$start - $end';
         }
       }
 
-      // Blocked Times
-      final blocked = (m['blockedTimes'] as List?) ?? [];
-      if (blocked.isNotEmpty) {
-        final b = (blocked.first as Map?) ?? {};
-        // Try both 'date' and 'startDate' to handle different API responses
-        String? dateStr = (b['date'] ?? b['startDate'] ?? '').toString();
-        if (dateStr.isNotEmpty) {
-          _blockDate = DateTime.tryParse(dateStr);
-        }
-
-        final startStr = b['startTime']?.toString();
-        final endStr = b['endTime']?.toString();
-        if (startStr != null && startStr.contains(':')) {
-          final sp = startStr.split(':');
-          _blockStart =
-              TimeOfDay(hour: int.parse(sp[0]), minute: int.parse(sp[1]));
-        }
-        if (endStr != null && endStr.contains(':')) {
-          final ep = endStr.split(':');
-          _blockEnd =
-              TimeOfDay(hour: int.parse(ep[0]), minute: int.parse(ep[1]));
-        }
-
-        _blockReason.text = (b['reason'] ?? '').toString();
-      }
 
       // Photo
       if (m['photo'] != null && m['photo'].toString().isNotEmpty) {
@@ -355,7 +360,6 @@ class _AddStaffDialogState extends State<AddStaffDialog>
     _ifsc.dispose();
     _upi.dispose();
 
-    _blockReason.dispose();
     _weeklyTiming.values.forEach((c) => c.dispose());
 
     super.dispose();
@@ -384,117 +388,10 @@ class _AddStaffDialogState extends State<AddStaffDialog>
     }
   }
 
-  Future<void> _pickBlockDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _blockDate ?? DateTime.now(),
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
-    );
-    if (picked != null) setState(() => _blockDate = picked);
-  }
-
-  Future<void> _pickBlockTime(bool isStart) async {
-    final picked =
-        await showTimePicker(context: context, initialTime: TimeOfDay.now());
-    if (picked != null) {
-      setState(() {
-        if (isStart)
-          _blockStart = picked;
-        else
-          _blockEnd = picked;
-      });
-    }
-  }
-
-  void _nextTab() {
-    // Validate current tab before moving to next
-    bool isValid = true;
-    switch (_tabController.index) {
-      case 0: // Personal tab
-        isValid = _personalFormKey.currentState?.validate() ?? true;
-        break;
-      case 1: // Employment tab
-        isValid = _employmentFormKey.currentState?.validate() ?? true;
-        break;
-      case 2: // Bank tab
-        isValid = _bankFormKey.currentState?.validate() ?? true;
-        break;
-      case 5: // Block time tab
-        isValid = _blockFormKey.currentState?.validate() ?? true;
-        // Additional validation for block time fields
-        if (isValid) {
-          if ((_blockDate != null ||
-              _blockStart != null ||
-              _blockEnd != null ||
-              _blockReason.text.trim().isNotEmpty)) {
-            if (_blockDate == null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('Block date is required'),
-                    backgroundColor: Colors.red),
-              );
-              isValid = false;
-            }
-            if (_blockStart == null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('Block start time is required'),
-                    backgroundColor: Colors.red),
-              );
-              isValid = false;
-            }
-            if (_blockEnd == null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('Block end time is required'),
-                    backgroundColor: Colors.red),
-              );
-              isValid = false;
-            }
-            if (_blockReason.text.trim().isEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('Block reason is required'),
-                    backgroundColor: Colors.red),
-              );
-              isValid = false;
-            }
-
-            // Additional check: ensure start time is before end time
-            if (_blockStart != null && _blockEnd != null) {
-              int startMinutes = _blockStart!.hour * 60 + _blockStart!.minute;
-              int endMinutes = _blockEnd!.hour * 60 + _blockEnd!.minute;
-              if (startMinutes >= endMinutes) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Start time must be before end time'),
-                      backgroundColor: Colors.red),
-                );
-                isValid = false;
-              }
-            }
-          }
-        }
-        break;
-    }
-
-    if (isValid && _tabController.index < _tabController.length - 1) {
-      _tabController.animateTo(_tabController.index + 1);
-    }
-  }
-
-  void _prevTab() {
-    if (_tabController.index > 0) {
-      _tabController.animateTo(_tabController.index - 1);
-    }
-  }
-
   bool _validateAll() {
     final personalOk = _personalFormKey.currentState?.validate() ?? true;
     final employmentOk = _employmentFormKey.currentState?.validate() ?? true;
     final bankOk = _bankFormKey.currentState?.validate() ?? true;
-    final blockOk = _blockFormKey.currentState?.validate() ?? true;
 
     if (!personalOk) {
       _tabController.animateTo(0);
@@ -506,66 +403,6 @@ class _AddStaffDialogState extends State<AddStaffDialog>
     }
     if (!bankOk) {
       _tabController.animateTo(2);
-      return false;
-    }
-
-    // Additional validation for block time tab
-    bool blockTimeValid = true;
-    // Validate that if any block time field is filled, all required ones are filled
-    if ((_blockDate != null ||
-        _blockStart != null ||
-        _blockEnd != null ||
-        _blockReason.text.trim().isNotEmpty)) {
-      if (_blockDate == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Block date is required'),
-              backgroundColor: Colors.red),
-        );
-        blockTimeValid = false;
-      }
-      if (_blockStart == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Block start time is required'),
-              backgroundColor: Colors.red),
-        );
-        blockTimeValid = false;
-      }
-      if (_blockEnd == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Block end time is required'),
-              backgroundColor: Colors.red),
-        );
-        blockTimeValid = false;
-      }
-      if (_blockReason.text.trim().isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Block reason is required'),
-              backgroundColor: Colors.red),
-        );
-        blockTimeValid = false;
-      }
-
-      // Additional check: ensure start time is before end time
-      if (_blockStart != null && _blockEnd != null) {
-        int startMinutes = _blockStart!.hour * 60 + _blockStart!.minute;
-        int endMinutes = _blockEnd!.hour * 60 + _blockEnd!.minute;
-        if (startMinutes >= endMinutes) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Start time must be before end time'),
-                backgroundColor: Colors.red),
-          );
-          blockTimeValid = false;
-        }
-      }
-    }
-
-    if (!blockOk || !blockTimeValid) {
-      _tabController.animateTo(5);
       return false;
     }
 
@@ -625,7 +462,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
     return true;
   }
 
-  void _save() {
+  Future<void> _save() async {
     debugPrint('=== Staff Save Process Started ===');
     debugPrint('Status: Validating form data');
 
@@ -647,76 +484,45 @@ class _AddStaffDialogState extends State<AddStaffDialog>
         .toList();
     debugPrint('Activities: Permissions selected: $permissions');
 
-    // Availability format
-    final Map<String, dynamic> availability = {};
+    // Availability format (Flattened day-specific fields)
+    final Map<String, dynamic> availabilityFields = {};
+
     _weeklyTiming.forEach((abbr, controller) {
       final text = controller.text.trim();
-      if (text.isEmpty) return;
-      final parts = text.split(' - ');
-      if (parts.length != 2) return;
-
       final fullDay = dayAbbrToFull[abbr]!;
       final isAvailable = _weeklyAvailability[fullDay] ?? false;
 
-      availability[fullDay] = {
-        "available": isAvailable,
-        "slots": isAvailable && parts.length == 2
-            ? [
-                {"startTime": parts[0].trim(), "endTime": parts[1].trim()}
-              ]
-            : []
-      };
+      availabilityFields['${fullDay}Available'] = isAvailable;
+
+      if (!isAvailable || text.isEmpty) {
+        availabilityFields['${fullDay}Slots'] = [];
+      } else {
+        final parts = text.split(' - ');
+        if (parts.length == 2) {
+          final startTime = parts[0].trim();
+          final endTime = parts[1].trim();
+
+          availabilityFields['${fullDay}Slots'] = [
+            {
+              "startTime": startTime,
+              "endTime": endTime,
+              "startMinutes": _timeToMinutes(startTime),
+              "endMinutes": _timeToMinutes(endTime),
+            }
+          ];
+        } else {
+          availabilityFields['${fullDay}Slots'] = [];
+        }
+      }
     });
-    debugPrint('Activities: Availability set: $availability');
+    debugPrint('Activities: Availability fields set: $availabilityFields');
 
     // Commission percentage
     final double commissionPercentage =
         double.tryParse(_commissionPercentage.text.trim()) ?? 0.0;
 
-    // Blocked times
+    // Blocked times (None as requested)
     final List<Map<String, dynamic>> blockedTimes = [];
-    debugPrint(
-        'Activities: Processing blocked times - Date: $_blockDate, Start: $_blockStart, End: $_blockEnd, Reason: ${_blockReason.text.trim()}');
-
-    if (_blockDate != null &&
-        _blockStart != null &&
-        _blockEnd != null &&
-        _blockReason.text.trim().isNotEmpty) {
-      try {
-        // Verify that start time is before end time before saving
-        int startMinutes = _blockStart!.hour * 60 + _blockStart!.minute;
-        int endMinutes = _blockEnd!.hour * 60 + _blockEnd!.minute;
-        if (startMinutes < endMinutes) {
-          // Only proceed if start time is before end time
-          blockedTimes.add({
-            'date': DateFormat('yyyy-MM-dd').format(_blockDate!),
-            'startTime': _formatTime(_blockStart),
-            'endTime': _formatTime(_blockEnd),
-            'reason': _blockReason.text.trim(),
-          });
-          debugPrint('Activities: Blocked time added: ${blockedTimes.last}');
-        } else {
-          debugPrint(
-              'Exception in blocked times: Start time must be before end time');
-          // Show error to user
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                  content: Text('Start time must be before end time'),
-                  backgroundColor: Colors.red),
-            );
-          }
-        }
-      } catch (e) {
-        debugPrint('Exception in blocked times: $e');
-        // Handle potential date format errors
-        debugPrint(
-            'Status: Error formatting blocked times, continuing without blocked times');
-      }
-    } else {
-      debugPrint(
-          'Activities: Blocked times not provided or incomplete, skipping');
-    }
 
     // Bank details
     final Map<String, dynamic> bankDetails = {
@@ -758,6 +564,20 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       }
     }
 
+    // Convert photo to base64 if it's a local file
+    String? photoBase64 = _imagePath;
+    if (_imagePath != null &&
+        !_imagePath!.startsWith('http') &&
+        !_imagePath!.startsWith('data:image')) {
+      try {
+        final bytes = File(_imagePath!).readAsBytesSync();
+        photoBase64 =
+            'data:image/${_imagePath!.split('.').last};base64,${base64Encode(bytes)}';
+      } catch (e) {
+        debugPrint('Error converting image to base64: $e');
+      }
+    }
+
     final Map<String, dynamic> result = {
       'fullName': fullName.isEmpty ? 'Unnamed Staff' : fullName,
       'position': _position.text.trim(),
@@ -773,29 +593,59 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       'commissionRate': commissionPercentage,
       'permissions': permissions,
       'permission': permissions,
-      'availability': availability,
+      ...availabilityFields,
       'blockedTimes': blockedTimes,
       'bankDetails': bankDetails,
       'userType': 'staff',
       if (password != null) 'password': password,
-
-      // IMPORTANT: this is only useful if backend accepts string photo in JSON
-      // If imagePath is local file path, backend won't understand unless you upload it separately.
-      if (_imagePath != null) 'photo': _imagePath,
+      if (photoBase64 != null) 'photo': photoBase64,
     };
-
-    debugPrint('Activities: Staff data prepared for API: ${result.keys}');
-    debugPrint('Status: Staff data preparation complete, ready to save');
-    debugPrint('=== Staff Save Process Completed ===');
-
     // keep id for edit
-    if (widget.existing != null) {
-      result['id'] = widget.existing!['_id'];
-      result['_id'] = widget.existing!['_id'];
+    if (_localExisting != null) {
+      result['id'] = _localExisting!['_id'];
+      result['_id'] = _localExisting!['_id'];
       debugPrint('Activities: Editing existing staff with ID: ${result['id']}');
     }
 
-    Navigator.of(context).pop(result);
+    setState(() => _isSaving = true);
+    try {
+      if (_localExisting != null) {
+        await ApiService.updateStaff(_localExisting!['_id'], result);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Staff details updated successfully'),
+                backgroundColor: Colors.green),
+          );
+        }
+      } else {
+        final response = await ApiService.createStaff(result);
+        if (response.statusCode == 201 || response.statusCode == 200) {
+          final data = json.decode(response.body);
+          if (data['success'] == true && data['staff'] != null) {
+            _localExisting = data['staff'];
+          }
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                  content: Text('Staff created successfully'),
+                  backgroundColor: Colors.green),
+            );
+          }
+        }
+      }
+      widget.onRefresh?.call();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Error saving staff: $e'),
+              backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   @override
@@ -823,7 +673,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                   Text(
                     widget.existing == null ? 'Add New Staff' : 'Edit Staff',
                     style: GoogleFonts.poppins(
-                        fontSize: 18, fontWeight: FontWeight.w600),
+                        fontSize: 14, fontWeight: FontWeight.w600),
                   ),
                   const Spacer(),
                   IconButton(
@@ -838,13 +688,19 @@ class _AddStaffDialogState extends State<AddStaffDialog>
             TabBar(
               controller: _tabController,
               isScrollable: true,
+              labelStyle: GoogleFonts.poppins(
+                  fontSize: 10, fontWeight: FontWeight.w600),
+              unselectedLabelStyle: GoogleFonts.poppins(fontSize: 10),
+              labelColor: Theme.of(context).primaryColor,
+              unselectedLabelColor: Colors.grey,
+              indicatorColor: Theme.of(context).primaryColor,
+              indicatorSize: TabBarIndicatorSize.label,
               tabs: const [
                 Tab(text: 'Personal'),
                 Tab(text: 'Employment'),
                 Tab(text: 'Bank Details'),
                 Tab(text: 'Permissions'),
                 Tab(text: 'Timing'),
-                Tab(text: 'Block Time'),
               ],
             ),
 
@@ -858,37 +714,6 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                   _buildBankTab(),
                   _buildPermissionsTab(),
                   _buildTimingTab(),
-                  _buildBlockTimeTab(),
-                ],
-              ),
-            ),
-
-            // Footer
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                border: Border(top: BorderSide(color: Colors.grey.shade200)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancel')),
-                  Row(
-                    children: [
-                      TextButton(
-                          onPressed: _prevTab, child: const Text('Previous')),
-                      const SizedBox(width: 8),
-                      if (_tabController.index < _tabController.length - 1)
-                        TextButton(
-                            onPressed: _nextTab, child: const Text('Next')),
-                      if (_tabController.index == _tabController.length - 1)
-                        ElevatedButton(
-                            onPressed: _save, child: const Text('Save')),
-                    ],
-                  ),
                 ],
               ),
             ),
@@ -897,6 +722,34 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       ),
     );
   }
+
+  Widget _saveButton() => Padding(
+        padding: const EdgeInsets.only(top: 24, bottom: 8),
+        child: SizedBox(
+          width: double.infinity,
+          height: 40,
+          child: ElevatedButton(
+            onPressed: _isSaving ? null : _save,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4A2C40),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: _isSaving
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                        color: Colors.white, strokeWidth: 2))
+                : Text(
+                    _localExisting == null ? 'Save Staff' : 'Update Staff',
+                    style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600),
+                  ),
+          ),
+        ),
+      );
 
   Widget _buildPersonalTab() {
     return Form(
@@ -1009,12 +862,9 @@ class _AddStaffDialogState extends State<AddStaffDialog>
             Row(
               children: [
                 CircleAvatar(
-                  radius: 40,
-                  backgroundImage: _imagePath != null
-                      ? (_imagePath!.startsWith('http')
-                          ? NetworkImage(_imagePath!)
-                          : FileImage(File(_imagePath!)) as ImageProvider)
-                      : null,
+                  radius: 35,
+                  backgroundColor: Colors.grey[100],
+                  backgroundImage: _getImageProvider(_imagePath),
                   child: _imagePath == null
                       ? const Icon(Icons.person, size: 40)
                       : null,
@@ -1025,19 +875,33 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                   children: [
                     ElevatedButton.icon(
                       onPressed: _pickImage,
-                      icon: const Icon(Icons.photo),
-                      label: const Text('Upload Photo'),
+                      icon: const Icon(Icons.add_a_photo_outlined, size: 16),
+                      label: Text('Upload Photo',
+                          style: GoogleFonts.poppins(fontSize: 11)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4A2C40),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
+                      ),
                     ),
                     if (_imagePath != null)
                       TextButton.icon(
                         onPressed: () => setState(() => _imagePath = null),
-                        icon: const Icon(Icons.delete),
-                        label: const Text('Remove'),
+                        icon: const Icon(Icons.delete_outline,
+                            size: 14, color: Colors.red),
+                        label: Text('Remove',
+                            style: GoogleFonts.poppins(
+                                fontSize: 10, color: Colors.red)),
                       ),
                   ],
                 )
               ],
             ),
+            _saveButton(),
           ],
         ),
       ),
@@ -1121,7 +985,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                           ),
                           Text('Staff Commission',
                               style: GoogleFonts.poppins(
-                                  fontSize: 13, fontWeight: FontWeight.w500)),
+                                  fontSize: 10, fontWeight: FontWeight.w500)),
                         ],
                       ),
                     ],
@@ -1202,6 +1066,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                         onTap: () => _pickDate(start: false))),
               ],
             ),
+            _saveButton(),
           ],
         ),
       ),
@@ -1267,6 +1132,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                     : null,
               ),
             ),
+            _saveButton(),
           ],
         ),
       ),
@@ -1276,20 +1142,26 @@ class _AddStaffDialogState extends State<AddStaffDialog>
   Widget _buildPermissionsTab() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
-      child: Wrap(
-        spacing: 16,
-        runSpacing: 8,
-        children: _permissions.keys.map((key) {
-          return SizedBox(
-            width: 200,
-            child: CheckboxListTile(
-              title: Text(key),
-              value: _permissions[key],
-              onChanged: (v) => setState(() => _permissions[key] = v ?? false),
-              dense: true,
-            ),
-          );
-        }).toList(),
+      child: Column(
+        children: [
+          Wrap(
+            spacing: 16,
+            runSpacing: 8,
+            children: _permissions.keys.map((key) {
+              return SizedBox(
+                width: 200,
+                child: CheckboxListTile(
+                  title: Text(key, style: GoogleFonts.poppins(fontSize: 11)),
+                  value: _permissions[key],
+                  onChanged: (v) =>
+                      setState(() => _permissions[key] = v ?? false),
+                  dense: true,
+                ),
+              );
+            }).toList(),
+          ),
+          _saveButton(),
+        ],
       ),
     );
   }
@@ -1319,7 +1191,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                   child: Text(
                     'Set staff working hours within salon opening hours.',
                     style: GoogleFonts.poppins(
-                        fontSize: 12, color: Colors.blue.shade800),
+                        fontSize: 10, color: Colors.blue.shade800),
                   ),
                 ),
               ],
@@ -1348,7 +1220,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                         child: Text(
                           fullDay[0].toUpperCase() + fullDay.substring(1),
                           style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.w600, fontSize: 14),
+                              fontWeight: FontWeight.w600, fontSize: 11),
                         ),
                       ),
                       Switch(
@@ -1416,64 +1288,60 @@ class _AddStaffDialogState extends State<AddStaffDialog>
               ),
             );
           }).toList(),
+          _saveButton(),
         ],
       ),
     );
   }
 
-  Widget _buildBlockTimeTab() {
-    return Form(
-      key: _blockFormKey,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _DateField(
-                label: 'Block Date', date: _blockDate, onTap: _pickBlockDate),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                    child: _TimeField(
-                        label: 'Start Time',
-                        time: _blockStart,
-                        onTap: () => _pickBlockTime(true))),
-                const SizedBox(width: 16),
-                Expanded(
-                    child: _TimeField(
-                        label: 'End Time',
-                        time: _blockEnd,
-                        onTap: () => _pickBlockTime(false))),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _labeled(
-              'Reason',
-              TextFormField(
-                controller: _blockReason,
-                // Optional; if user fills time/date then reason should be required (handled in _save by checking trim)
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _labeled(String label, Widget field) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 6),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(label,
-                style:
-                    const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-            const SizedBox(height: 6),
-            field,
+                style: GoogleFonts.poppins(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[700])),
+            const SizedBox(height: 4),
+            Theme(
+              data: Theme.of(context).copyWith(
+                inputDecorationTheme: InputDecorationTheme(
+                  isDense: true,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Colors.grey.shade300)),
+                  enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Colors.grey.shade200)),
+                  focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide:
+                          BorderSide(color: Theme.of(context).primaryColor)),
+                  labelStyle: GoogleFonts.poppins(fontSize: 11),
+                  hintStyle:
+                      GoogleFonts.poppins(fontSize: 11, color: Colors.grey),
+                  errorStyle: GoogleFonts.poppins(fontSize: 9),
+                ),
+              ),
+              child: field,
+            ),
           ],
         ),
       );
+
+  Widget _buildBlockTimeTab() {
+    return Container();
+  }
+
+  Widget _buildNoData(String s) {
+    return Center(
+      child: Text(s, style: GoogleFonts.poppins(fontSize: 11)),
+    );
+  }
 }
 
 class _DateField extends StatelessWidget {
@@ -1489,57 +1357,28 @@ class _DateField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 6),
+        Text(label,
+            style: GoogleFonts.poppins(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[700])),
+        const SizedBox(height: 4),
         InkWell(
           onTap: onTap,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey),
+                border: Border.all(color: Colors.grey.shade200),
                 borderRadius: BorderRadius.circular(8)),
             child: Row(
               children: [
                 Expanded(
-                    child: Text(date == null
-                        ? 'Not set'
-                        : DateFormat('dd/MM/yyyy').format(date!))),
-                const Icon(Icons.calendar_today),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _TimeField extends StatelessWidget {
-  final String label;
-  final TimeOfDay? time;
-  final VoidCallback onTap;
-
-  const _TimeField(
-      {required this.label, required this.time, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 6),
-        InkWell(
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey),
-                borderRadius: BorderRadius.circular(8)),
-            child: Row(
-              children: [
-                Expanded(child: Text(time?.format(context) ?? 'Not set')),
-                const Icon(Icons.access_time),
+                    child: Text(
+                        date == null
+                            ? 'Not set'
+                            : DateFormat('dd/MM/yyyy').format(date!),
+                        style: GoogleFonts.poppins(fontSize: 11))),
+                Icon(Icons.calendar_today, size: 14, color: Colors.grey[600]),
               ],
             ),
           ),
@@ -1568,10 +1407,31 @@ class _TimeRangePickerState extends State<_TimeRangePicker> {
   TimeOfDay? start;
   TimeOfDay? end;
 
+  @override
+  void initState() {
+    super.initState();
+    _parseFromController();
+  }
+
+  void _parseFromController() {
+    final text = widget.controller.text.trim();
+    if (text.isEmpty) return;
+    final parts = text.split(' - ');
+    if (parts.length == 2) {
+      setState(() {
+        start = _parseTime(parts[0]);
+        end = _parseTime(parts[1]);
+      });
+    }
+  }
+
   void _updateText() {
     if (start != null && end != null) {
-      widget.controller.text =
-          '${start!.format(context)} - ${end!.format(context)}';
+      // Use 12h format with AM/PM for display
+      final now = DateTime.now();
+      final dtStart = DateTime(now.year, now.month, now.day, start!.hour, start!.minute);
+      final dtEnd = DateTime(now.year, now.month, now.day, end!.hour, end!.minute);
+      widget.controller.text = '${DateFormat.jm().format(dtStart)} - ${DateFormat.jm().format(dtEnd)}';
     } else {
       widget.controller.text = '';
     }
@@ -1631,8 +1491,22 @@ class _TimeRangePickerState extends State<_TimeRangePicker> {
   }
 
   TimeOfDay _parseTime(String time) {
-    final pts = time.split(':');
-    return TimeOfDay(hour: int.parse(pts[0]), minute: int.parse(pts[1]));
+    try {
+      // Try AM/PM
+      try {
+        final date = DateFormat.jm().parse(time.trim());
+        return TimeOfDay(hour: date.hour, minute: date.minute);
+      } catch (_) {
+        // Fallback to 24h
+        final pts = time.split(':');
+        return TimeOfDay(
+            hour: int.parse(pts[0].trim()),
+            minute: int.parse(pts[1].trim().split(' ')[0]));
+      }
+    } catch (e) {
+      debugPrint('Error parsing time string ($time): $e');
+      return const TimeOfDay(hour: 9, minute: 0);
+    }
   }
 
   @override
@@ -1650,24 +1524,27 @@ class _TimeRangePickerState extends State<_TimeRangePicker> {
                 color: Theme.of(context).primaryColor.withOpacity(0.05),
               ),
               child: Text(start?.format(context) ?? 'Start',
-                  textAlign: TextAlign.center),
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(fontSize: 10)),
             ),
           ),
         ),
         const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8), child: Text('-')),
+            padding: EdgeInsets.symmetric(horizontal: 8),
+            child: Text('-', style: TextStyle(color: Colors.grey))),
         Expanded(
           child: InkWell(
             onTap: () => _pick(false),
             child: Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                border: Border.all(),
+                border: Border.all(color: Colors.grey.shade200),
                 borderRadius: BorderRadius.circular(8),
-                color: Theme.of(context).primaryColor.withOpacity(0.05),
+                color: Theme.of(context).primaryColor.withOpacity(0.02),
               ),
               child: Text(end?.format(context) ?? 'End',
-                  textAlign: TextAlign.center),
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(fontSize: 10)),
             ),
           ),
         ),

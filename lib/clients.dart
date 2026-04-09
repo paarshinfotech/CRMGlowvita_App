@@ -875,26 +875,27 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                       ),
                     ),
                     SizedBox(width: 8.w),
-                    GestureDetector(
-                      onTap: () => _navigateAndAddCustomer(context),
-                      child: Container(
-                        height: 33.h,
-                        padding: EdgeInsets.symmetric(horizontal: 12.w),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).primaryColor,
-                          borderRadius: BorderRadius.circular(7.r),
+                    if (_currentTabIndex == 0)
+                      GestureDetector(
+                        onTap: () => _navigateAndAddCustomer(context),
+                        child: Container(
+                          height: 33.h,
+                          padding: EdgeInsets.symmetric(horizontal: 12.w),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).primaryColor,
+                            borderRadius: BorderRadius.circular(7.r),
+                          ),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Icon(Icons.add, size: 14.sp, color: Colors.white),
+                            SizedBox(width: 5.w),
+                            Text('Add Customer',
+                                style: GoogleFonts.poppins(
+                                    fontSize: 10.sp,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600)),
+                          ]),
                         ),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          Icon(Icons.add, size: 14.sp, color: Colors.white),
-                          SizedBox(width: 5.w),
-                          Text('Add Customer',
-                              style: GoogleFonts.poppins(
-                                  fontSize: 10.sp,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600)),
-                        ]),
                       ),
-                    ),
                   ],
                 ),
                 SizedBox(height: 10.h),

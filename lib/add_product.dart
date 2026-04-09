@@ -35,9 +35,12 @@ class _AddProductPageState extends State<AddProductPage> {
 
   bool isLoadingCategories = true;
   bool isSubmitting = false;
+  bool isLoadingProducts = false;
 
   List<XFile> images = [];
   List<Map<String, dynamic>> categoryObjects = [];
+  List<Product> productsBySelectedCategory = [];
+  String? selectedProductId;
 
   final ImagePicker _picker = ImagePicker();
 
@@ -116,16 +119,34 @@ class _AddProductPageState extends State<AddProductPage> {
 
   Future<void> _fetchCategories() async {
     try {
-      final fetchedCategories = await ApiService.getProductCategories();
+      final fetchedCategories = await ApiService.getCRMProductCategories();
       setState(() {
         categoryObjects = fetchedCategories;
         isLoadingCategories = false;
       });
+      // If editing or pre-filled category exists, fetch its products
+      if (_categoryController.text.isNotEmpty) {
+        _fetchProductsByCategory(_categoryController.text);
+      }
     } catch (e) {
       print('Error fetching categories: $e');
       setState(() {
         isLoadingCategories = false;
       });
+    }
+  }
+
+  Future<void> _fetchProductsByCategory(String categoryName) async {
+    setState(() => isLoadingProducts = true);
+    try {
+      final products = await ApiService.getProductMastersByCategory(categoryName);
+      setState(() {
+        productsBySelectedCategory = products;
+        isLoadingProducts = false;
+      });
+    } catch (e) {
+      print('Error fetching products by category: $e');
+      setState(() => isLoadingProducts = false);
     }
   }
 
@@ -201,7 +222,7 @@ class _AddProductPageState extends State<AddProductPage> {
           ElevatedButton(
             onPressed: () async {
               if (nameController.text.isNotEmpty) {
-                await ApiService.addProductCategory(
+                await ApiService.addCRMProductCategory(
                   nameController.text,
                   descController.text,
                 );
@@ -351,14 +372,177 @@ class _AddProductPageState extends State<AddProductPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Product Name
-                _buildSectionTitle('Product Name *'),
-                const SizedBox(height: 6),
-                _buildTextField(
-                  controller: _nameController,
-                  hint: 'Enter product name',
-                  icon: Icons.inventory_2,
+                // Category and Product Selection
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Category Selection
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildSectionTitle('Category'),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.grey.shade300),
+                                  ),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      value: categoryObjects.any((cat) =>
+                                              cat['name'] == _categoryController.text)
+                                          ? _categoryController.text
+                                          : null,
+                                      hint: Text(
+                                        isLoadingCategories
+                                            ? 'Loading...'
+                                            : 'Select Category',
+                                        style: GoogleFonts.poppins(
+                                            color: Colors.grey.shade500, fontSize: 13),
+                                      ),
+                                      isExpanded: true,
+                                      items: categoryObjects
+                                          .map((cat) => DropdownMenuItem(
+                                                value: cat['name'].toString(),
+                                                child: Text(cat['name'].toString(),
+                                                    style: GoogleFonts.poppins(
+                                                        fontSize: 13)),
+                                              ))
+                                          .toList(),
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _categoryController.text = value ?? '';
+                                          final selectedCat = categoryObjects.firstWhere(
+                                            (cat) => cat['name'] == value,
+                                            orElse: () => {},
+                                          );
+                                          _categoryDescController.text =
+                                              selectedCat['description'] ?? '';
+                                          // Clear products and fetch new ones
+                                          productsBySelectedCategory = [];
+                                          selectedProductId = null;
+                                        });
+                                        if (value != null) {
+                                          _fetchProductsByCategory(value);
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Container(
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.grey.shade200),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: IconButton(
+                                  icon: const Icon(Icons.add, size: 20),
+                                  onPressed: _showAddCategoryDialog,
+                                  constraints: const BoxConstraints(
+                                    minWidth: 40,
+                                    minHeight: 40,
+                                  ),
+                                  padding: EdgeInsets.zero,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Product Selection
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildSectionTitle('Product Name'),
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Theme.of(context).primaryColor,
+                              ),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: selectedProductId,
+                                hint: Text(
+                                  isLoadingProducts
+                                      ? 'Loading...'
+                                      : (productsBySelectedCategory.isEmpty &&
+                                              _categoryController.text.isNotEmpty)
+                                          ? 'No products available for this category'
+                                          : 'Select Product',
+                                  style: GoogleFonts.poppins(
+                                      color: Colors.grey.shade500, fontSize: 13),
+                                ),
+                                isExpanded: true,
+                                items: productsBySelectedCategory
+                                    .map((prod) => DropdownMenuItem<String>(
+                                          value: prod.id,
+                                          child: Text(prod.productName ?? '',
+                                              style: GoogleFonts.poppins(
+                                                  fontSize: 13)),
+                                        ))
+                                    .toList(),
+                                onChanged: (value) {
+                                  setState(() {
+                                    selectedProductId = value;
+                                    final prod = productsBySelectedCategory
+                                        .firstWhere((p) => p.id == value);
+                                    _nameController.text = prod.productName ?? '';
+                                    _descriptionController.text = prod.description ?? '';
+                                    _priceController.text = prod.price?.toString() ?? '';
+                                    _salePriceController.text =
+                                        prod.salePrice?.toString() ?? '';
+                                    _stockController.text = prod.stock?.toString() ?? '';
+                                    _brandController.text = prod.brand ?? '';
+                                    _sizeController.text = prod.size ?? '';
+                                    _sizeMetricController.text = prod.sizeMetric ?? '';
+                                    _productFormController.text = prod.productForm ?? '';
+                                    _bodyPartController.text = prod.forBodyPart ?? '';
+                                    _bodyPartTypeController.text = prod.bodyPartType ?? '';
+                                    if (prod.keyIngredients != null) {
+                                      _ingredientsController.text =
+                                          prod.keyIngredients!.join(', ');
+                                    }
+                                    if (prod.productImages != null) {
+                                      images = prod.productImages!
+                                          .map((path) => XFile(path))
+                                          .toList();
+                                    }
+                                  });
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
+                // Custom Product Name if no product is available for that category
+                if (productsBySelectedCategory.isEmpty &&
+                    !isLoadingProducts &&
+                    _categoryController.text.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  _buildTextField(
+                    controller: _nameController,
+                    hint: 'Or enter custom product name',
+                    icon: Icons.edit_note,
+                  ),
+                ],
                 const SizedBox(height: 16),
 
                 // Product Images
@@ -498,91 +682,6 @@ class _AddProductPageState extends State<AddProductPage> {
                 ),
                 const SizedBox(height: 16),
 
-                // Category
-                _buildSectionTitle('Category'),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey.shade300),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: categoryObjects.any((cat) =>
-                                    cat['name'] == _categoryController.text)
-                                ? _categoryController.text
-                                : null,
-                            hint: Text(
-                              isLoadingCategories
-                                  ? 'Loading...'
-                                  : 'Select Category',
-                              style: GoogleFonts.poppins(
-                                  color: Colors.grey.shade500, fontSize: 13),
-                            ),
-                            isExpanded: true,
-                            items: categoryObjects
-                                .map((cat) => DropdownMenuItem(
-                                      value: cat['name'].toString(),
-                                      child: Text(cat['name'].toString(),
-                                          style: GoogleFonts.poppins(
-                                              fontSize: 13)),
-                                    ))
-                                .toList(),
-                            onChanged: (value) {
-                              setState(() {
-                                _categoryController.text = value ?? '';
-                                final selectedCat = categoryObjects.firstWhere(
-                                  (cat) => cat['name'] == value,
-                                  orElse: () => {},
-                                );
-                                _categoryDescController.text =
-                                    selectedCat['description'] ?? '';
-                              });
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton.icon(
-                      onPressed: _showAddCategoryDialog,
-                      icon: const Icon(Icons.add, size: 16),
-                      label: Text(
-                        'Add',
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.w500,
-                          fontSize: 12,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).primaryColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Category Description (Auto-filled or manual)
-                _buildSectionTitle('Category Description'),
-                const SizedBox(height: 6),
-                _buildTextField(
-                  controller: _categoryDescController,
-                  hint: 'Category description...',
-                  icon: Icons.info_outline,
-                ),
                 const SizedBox(height: 16),
 
                 // Brand & Product Form

@@ -225,7 +225,7 @@ class _AddCustomerState extends State<AddCustomer> {
                   Text(
                     'Photo',
                     style: GoogleFonts.poppins(
-                        fontSize: 14, fontWeight: FontWeight.w600),
+                        fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -310,6 +310,7 @@ class _AddCustomerState extends State<AddCustomer> {
                         ? 'Select date'
                         : DateFormat('dd/MM/yyyy').format(_dateOfBirth!),
                     style: TextStyle(
+                      fontSize: 12,
                       color: _dateOfBirth == null
                           ? Colors.grey[600]
                           : Colors.black,
@@ -356,10 +357,10 @@ class _AddCustomerState extends State<AddCustomer> {
               const SizedBox(height: 16),
               CheckboxListTile(
                 title: Text('Online Client',
-                    style: GoogleFonts.poppins(fontSize: 14)),
+                    style: GoogleFonts.poppins(fontSize: 12)),
                 subtitle: Text('Can book appointments online',
                     style: GoogleFonts.poppins(
-                        fontSize: 11, color: Colors.grey[600])),
+                        fontSize: 9, color: Colors.grey[600])),
                 value: _isOnline,
                 onChanged: (val) => setState(() => _isOnline = val ?? false),
                 controlAffinity: ListTileControlAffinity.leading,
@@ -380,7 +381,7 @@ class _AddCustomerState extends State<AddCustomer> {
                 child: Text(
                   widget.existing == null ? "SAVE CUSTOMER" : "UPDATE CUSTOMER",
                   style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold),
+                      fontSize: 14, fontWeight: FontWeight.bold),
                 ),
               ),
             ],

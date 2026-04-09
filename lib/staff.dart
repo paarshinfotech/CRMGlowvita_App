@@ -41,6 +41,30 @@ class _StaffState extends State<Staff> {
   bool _sortAsc = true;
   VendorProfile? _profile;
 
+  static ImageProvider? _getImageProvider(dynamic image) {
+    if (image == null || image.toString().isEmpty) return null;
+
+    try {
+      final String imgStr = image.toString();
+      if (imgStr.startsWith('http')) {
+        return NetworkImage(imgStr);
+      }
+      if (imgStr.startsWith('data:image')) {
+        return MemoryImage(base64Decode(imgStr.split(',').last));
+      }
+      if (imgStr.contains('/')) {
+        // Relative path
+        final baseUrl = 'https://partners.glowvitasalon.com';
+        final fullUrl =
+            '$baseUrl${imgStr.startsWith('/') ? imgStr : '/$imgStr'}';
+        return NetworkImage(fullUrl);
+      }
+    } catch (e) {
+      debugPrint('Error getting image provider: $e');
+    }
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -130,7 +154,7 @@ class _StaffState extends State<Staff> {
 
   Future<void> _openAddStaff(
       {Map<String, dynamic>? existing, int? editIndex}) async {
-    final result = await showDialog<Map?>(
+    await showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => Theme(
@@ -139,227 +163,14 @@ class _StaffState extends State<Staff> {
           textTheme: GoogleFonts.poppinsTextTheme(Theme.of(ctx).textTheme)
               .apply(fontSizeFactor: 0.9),
         ),
-        child: AddStaffDialog(existing: existing?['raw']),
+        child: AddStaffDialog(
+          existing: existing?['raw'],
+          onRefresh: fetchStaff,
+        ),
       ),
     );
-
-    if (result != null) {
-      if (editIndex != null) {
-        await _updateStaff(
-            result['id'].toString(), Map<String, dynamic>.from(result));
-      } else {
-        await _createStaff(Map<String, dynamic>.from(result));
-      }
-      await fetchStaff();
-    }
   }
 
-  Future<void> _createStaff(Map<String, dynamic> staffData) async {
-    debugPrint('=== Staff Creation Process Started ===');
-    debugPrint('Status: Preparing to create staff');
-    debugPrint('Activities: Staff data keys: ${staffData.keys}');
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token') ?? '';
-      if (token.isEmpty) throw Exception('Authentication token missing.');
-      debugPrint('Activities: Auth token retrieved successfully');
-
-      final vendorId = prefs.getString('user_id') ?? '';
-      if (vendorId.isEmpty)
-        throw Exception('Vendor ID not found. Please login again.');
-      debugPrint('Activities: Vendor ID retrieved: $vendorId');
-
-      staffData['vendorId'] = vendorId;
-
-      if (!staffData.containsKey('permissions')) {
-        staffData['permissions'] = staffData['permission'] ?? [];
-      }
-      debugPrint('Activities: Permissions: ${staffData['permissions']}');
-
-      if (staffData.containsKey('availability')) {
-        final availability = staffData['availability'] as Map<String, dynamic>?;
-        if (availability != null) {
-          for (final day in [
-            'monday',
-            'tuesday',
-            'wednesday',
-            'thursday',
-            'friday',
-            'saturday',
-            'sunday'
-          ]) {
-            if (availability.containsKey(day)) {
-              final dayData = availability[day] as Map<String, dynamic>?;
-              if (dayData != null) {
-                final available = dayData['available'] == true;
-                final slots = (dayData['slots'] as List?) ?? [];
-
-                staffData['${day}Available'] = available;
-                staffData['${day}Slots'] = slots;
-
-                debugPrint(
-                    'Activities: Processed $day - Available: $available, Slots: $slots');
-              } else {
-                staffData['${day}Available'] = false;
-                staffData['${day}Slots'] = [];
-              }
-            } else {
-              staffData['${day}Available'] = false;
-              staffData['${day}Slots'] = [];
-            }
-          }
-        }
-        staffData.remove('availability');
-      }
-
-      if (staffData.containsKey('photo') && staffData['photo'] != null) {
-        if (!staffData['photo'].toString().startsWith('http')) {
-          debugPrint(
-              'Activities: Removing local photo path from request: ${staffData['photo']}');
-          staffData.remove('photo');
-        } else {
-          debugPrint(
-              'Activities: Keeping photo URL in request: ${staffData['photo']}');
-        }
-      }
-
-      debugPrint('Status: Sending staff creation request to API');
-
-      final response = await ApiService.createStaff(staffData);
-
-      debugPrint('Activities: API Response status: ${response.statusCode}');
-      debugPrint('Activities: API Response body: ${response.body}');
-
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        final responseJson = json.decode(response.body);
-        debugPrint('Status: Staff created successfully');
-        debugPrint('Activities: Server response: ${responseJson['message']}');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content:
-                Text(responseJson['message'] ?? 'Staff created successfully'),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      } else {
-        final error = json.decode(response.body);
-        debugPrint(
-            'Exception: API returned error status ${response.statusCode}');
-        throw Exception(error['message'] ?? 'Failed to create staff');
-      }
-    } catch (e) {
-      debugPrint('Exception: Error creating staff: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $e'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-    debugPrint('=== Staff Creation Process Completed ===');
-  }
-
-  Future<void> _updateStaff(
-      String staffId, Map<String, dynamic> staffData) async {
-    try {
-      if (staffData.containsKey('availability')) {
-        final availability = staffData['availability'] as Map<String, dynamic>?;
-        if (availability != null) {
-          for (final day in [
-            'monday',
-            'tuesday',
-            'wednesday',
-            'thursday',
-            'friday',
-            'saturday',
-            'sunday'
-          ]) {
-            if (availability.containsKey(day)) {
-              final dayData = availability[day] as Map<String, dynamic>?;
-              if (dayData != null) {
-                final available = dayData['available'] == true;
-                final slots = (dayData['slots'] as List?) ?? [];
-                staffData['${day}Available'] = available;
-                staffData['${day}Slots'] = slots;
-              } else {
-                staffData['${day}Available'] = false;
-                staffData['${day}Slots'] = [];
-              }
-            } else {
-              staffData['${day}Available'] = false;
-              staffData['${day}Slots'] = [];
-            }
-          }
-        }
-        staffData.remove('availability');
-      }
-
-      debugPrint('UPDATE STAFF PAYLOAD: ${jsonEncode(staffData)}');
-
-      final response = await ApiService.updateStaff(staffId, staffData);
-
-      debugPrint('UPDATE STATUS: ${response.statusCode}');
-      debugPrint('UPDATE BODY: ${response.body}');
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final updatedStaff = json.decode(response.body);
-
-        final fullName = updatedStaff['fullName'] ?? '';
-        final parts = fullName.split(' ');
-
-        final formattedStaff = {
-          'id': updatedStaff['_id'],
-          'firstName': parts.isNotEmpty ? parts.first : '',
-          'lastName': parts.length > 1 ? parts.sublist(1).join(' ') : '',
-          'fullName': fullName,
-          'email': updatedStaff['emailAddress'] ?? '',
-          'mobile': updatedStaff['mobileNo'] ?? '',
-          'position': updatedStaff['position'] ?? '',
-          'status': updatedStaff['status'] ?? 'Active',
-          'image': updatedStaff['photo'],
-          'raw': updatedStaff,
-        };
-
-        setState(() {
-          final index = staffList.indexWhere((s) => s['id'] == staffId);
-          if (index != -1) {
-            staffList[index] = formattedStaff;
-          }
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: Colors.green,
-            content: Text(
-              'Staff member updated successfully',
-              style: GoogleFonts.poppins(fontSize: 10, color: Colors.white),
-            ),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      } else {
-        final errorData = json.decode(response.body);
-        final errorMessage = errorData['message'] ??
-            'Failed to update staff: ${response.statusCode}';
-        throw Exception(errorMessage);
-      }
-    } catch (e) {
-      debugPrint('UPDATE STAFF ERROR: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: Colors.red,
-          content: Text(
-            'Error updating staff: $e',
-            style: GoogleFonts.poppins(fontSize: 10, color: Colors.white),
-          ),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
 
   Future<void> _deleteStaff(String staffId, String staffName) async {
     bool confirmDelete = await showDialog(
@@ -731,20 +542,29 @@ class _StaffState extends State<Staff> {
                           ],
                           child: Container(
                             height: 38,
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(6),
                               border: Border.all(color: Colors.grey[300]!),
                             ),
-                            child: Center(
-                              child: Text(
-                                'Export',
-                                style: GoogleFonts.poppins(
-                                    fontSize: 11,
-                                    color: Colors.black87,
-                                    fontWeight: FontWeight.w500),
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.upload_outlined,
+                                    size: 16, color: Colors.black54),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Export',
+                                  style: GoogleFonts.poppins(
+                                      fontSize: 11,
+                                      color: Colors.black87,
+                                      fontWeight: FontWeight.w500),
+                                ),
+                                const SizedBox(width: 4),
+                                Icon(Icons.keyboard_arrow_down,
+                                    size: 16, color: Colors.black38),
+                              ],
                             ),
                           ),
                         ),
@@ -1566,14 +1386,9 @@ class _StaffCard extends StatelessWidget {
               CircleAvatar(
                 radius: 22,
                 backgroundColor: Colors.grey[200],
-                backgroundImage: (staff['image'] != null &&
-                        staff['image'].toString().isNotEmpty &&
-                        staff['image'].toString().startsWith('http'))
-                    ? NetworkImage(staff['image'])
-                    : null,
+                backgroundImage: _StaffState._getImageProvider(staff['image']),
                 child: (staff['image'] == null ||
-                        staff['image'].toString().isEmpty ||
-                        !staff['image'].toString().startsWith('http'))
+                        staff['image'].toString().isEmpty)
                     ? Text(
                         staff['firstName'].toString().isNotEmpty
                             ? staff['firstName'][0].toUpperCase()

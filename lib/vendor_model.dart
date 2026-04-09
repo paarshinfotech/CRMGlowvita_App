@@ -354,73 +354,61 @@ class BankDetails {
 
 class Documents {
   String? aadharCard;
-  String? udyogAadhar;
+  String? shopAct;
   String? udhayamCert;
-  String? shopLicense;
   String? panCard;
   List<String> otherDocs;
   String? aadharCardStatus;
-  String? udyogAadharStatus;
+  String? shopActStatus;
   String? udhayamCertStatus;
-  String? shopLicenseStatus;
   String? panCardStatus;
   String? aadharCardRejectionReason;
-  String? udyogAadharRejectionReason;
+  String? shopActRejectionReason;
   String? udhayamCertRejectionReason;
-  String? shopLicenseRejectionReason;
   String? panCardRejectionReason;
   String? aadharCardAdminRejectionReason;
-  String? udyogAadharAdminRejectionReason;
+  String? shopActAdminRejectionReason;
   String? udhayamCertAdminRejectionReason;
-  String? shopLicenseAdminRejectionReason;
   String? panCardAdminRejectionReason;
 
   Documents({
     this.aadharCard,
-    this.udyogAadhar,
+    this.shopAct,
     this.udhayamCert,
-    this.shopLicense,
     this.panCard,
     required this.otherDocs,
     this.aadharCardStatus,
-    this.udyogAadharStatus,
+    this.shopActStatus,
     this.udhayamCertStatus,
-    this.shopLicenseStatus,
     this.panCardStatus,
     this.aadharCardRejectionReason,
-    this.udyogAadharRejectionReason,
+    this.shopActRejectionReason,
     this.udhayamCertRejectionReason,
-    this.shopLicenseRejectionReason,
     this.panCardRejectionReason,
     this.aadharCardAdminRejectionReason,
-    this.udyogAadharAdminRejectionReason,
+    this.shopActAdminRejectionReason,
     this.udhayamCertAdminRejectionReason,
-    this.shopLicenseAdminRejectionReason,
     this.panCardAdminRejectionReason,
   });
 
   factory Documents.fromJson(Map<String, dynamic> json) {
     return Documents(
       aadharCard: json['aadharCard'],
-      udyogAadhar: json['udyogAadhar'],
+      shopAct: json['shopAct'] ?? json['shopLicense'],
       udhayamCert: json['udhayamCert'],
-      shopLicense: json['shopLicense'],
       panCard: json['panCard'],
       otherDocs: List<String>.from(json['otherDocs'] ?? []),
       aadharCardStatus: json['aadharCardStatus'],
-      udyogAadharStatus: json['udyogAadharStatus'],
+      shopActStatus: json['shopActStatus'] ?? json['shopLicenseStatus'],
       udhayamCertStatus: json['udhayamCertStatus'],
-      shopLicenseStatus: json['shopLicenseStatus'],
       panCardStatus: json['panCardStatus'],
       aadharCardRejectionReason: json['aadharCardRejectionReason'],
-      udyogAadharRejectionReason: json['udyogAadharRejectionReason'],
+      shopActRejectionReason: json['shopActRejectionReason'] ?? json['shopLicenseRejectionReason'],
       udhayamCertRejectionReason: json['udhayamCertRejectionReason'],
-      shopLicenseRejectionReason: json['shopLicenseRejectionReason'],
       panCardRejectionReason: json['panCardRejectionReason'],
       aadharCardAdminRejectionReason: json['aadharCardAdminRejectionReason'],
-      udyogAadharAdminRejectionReason: json['udyogAadharAdminRejectionReason'],
+      shopActAdminRejectionReason: json['shopActAdminRejectionReason'] ?? json['shopLicenseAdminRejectionReason'],
       udhayamCertAdminRejectionReason: json['udhayamCertAdminRejectionReason'],
-      shopLicenseAdminRejectionReason: json['shopLicenseAdminRejectionReason'],
       panCardAdminRejectionReason: json['panCardAdminRejectionReason'],
     );
   }
@@ -428,25 +416,21 @@ class Documents {
   Map<String, dynamic> toJson() {
     return {
       'aadharCard': aadharCard,
-      'udyogAadhar': udyogAadhar,
+      'shopAct': shopAct,
       'udhayamCert': udhayamCert,
-      'shopLicense': shopLicense,
       'panCard': panCard,
       'otherDocs': otherDocs,
       'aadharCardStatus': aadharCardStatus,
-      'udyogAadharStatus': udyogAadharStatus,
+      'shopActStatus': shopActStatus,
       'udhayamCertStatus': udhayamCertStatus,
-      'shopLicenseStatus': shopLicenseStatus,
       'panCardStatus': panCardStatus,
       'aadharCardRejectionReason': aadharCardRejectionReason,
-      'udyogAadharRejectionReason': udyogAadharRejectionReason,
+      'shopActRejectionReason': shopActRejectionReason,
       'udhayamCertRejectionReason': udhayamCertRejectionReason,
-      'shopLicenseRejectionReason': shopLicenseRejectionReason,
       'panCardRejectionReason': panCardRejectionReason,
       'aadharCardAdminRejectionReason': aadharCardAdminRejectionReason,
-      'udyogAadharAdminRejectionReason': udyogAadharAdminRejectionReason,
+      'shopActAdminRejectionReason': shopActAdminRejectionReason,
       'udhayamCertAdminRejectionReason': udhayamCertAdminRejectionReason,
-      'shopLicenseAdminRejectionReason': shopLicenseAdminRejectionReason,
       'panCardAdminRejectionReason': panCardAdminRejectionReason,
     };
   }

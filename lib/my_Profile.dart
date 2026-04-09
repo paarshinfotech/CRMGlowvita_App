@@ -44,6 +44,7 @@ class _My_ProfileState extends State<My_Profile>
   bool _atSalon = true;
   bool _atHome = true;
   bool _customLocation = false;
+  String _selectedTaxType = "percentage";
 
   // Travel settings
   String _vendorType = "Shop Only (No travel)";
@@ -68,7 +69,7 @@ class _My_ProfileState extends State<My_Profile>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 9, vsync: this);
+    _tabController = TabController(length: 10, vsync: this);
     _fetchProfileData();
   }
 
@@ -254,6 +255,10 @@ class _My_ProfileState extends State<My_Profile>
           'ifscCode': _ifscCodeController.text,
           'accountHolder': _accountHolderController.text,
         },
+        'taxes': {
+          'taxValue': double.tryParse(_taxRateController.text) ?? 0.0,
+          'taxType': _selectedTaxType,
+        },
       });
 
       // Update base location if latitude/longitude are changed
@@ -412,6 +417,7 @@ class _My_ProfileState extends State<My_Profile>
       _selectedCategory = "unisex"; // Fallback
     }
     _taxRateController.text = profile.taxes?.taxValue.toString() ?? "0.0";
+    _selectedTaxType = profile.taxes?.taxType ?? "percentage";
 
     if (profile.bankDetails != null) {
       _bankNameController.text = profile.bankDetails!.bankName ?? "";
@@ -684,6 +690,7 @@ class _My_ProfileState extends State<My_Profile>
                       Tab(text: "Gallery"),
                       Tab(text: "Bank Details"),
                       Tab(text: "Documents"),
+                      Tab(text: "Taxes"),
                       Tab(text: "Opening Hours"),
                       Tab(text: "SMS Packages"),
                       Tab(text: "Categories"),
@@ -701,6 +708,7 @@ class _My_ProfileState extends State<My_Profile>
                 _buildGalleryTab(),
                 _buildBankDetailsTab(),
                 _buildDocumentsTab(),
+                _buildTaxesTab(),
                 _buildOpeningHoursTab(),
                 _buildSMSPackagesTab(),
                 _buildCategoriesTab(),
@@ -1493,20 +1501,11 @@ class _My_ProfileState extends State<My_Profile>
             },
             {"label": "PAN Card", "key": "panCard", "url": docs?.panCard},
             {
-              "label": "Udyog Aadhar",
-              "key": "udyogAadhar",
-              "url": docs?.udyogAadhar
-            },
-            {
               "label": "Udhayam Cert",
               "key": "udhayamCert",
               "url": docs?.udhayamCert
             },
-            {
-              "label": "Shop License",
-              "key": "shopLicense",
-              "url": docs?.shopLicense
-            },
+            {"label": "Shop Act", "key": "shopAct", "url": docs?.shopAct},
           ].map((doc) {
             final key = doc['key'] as String;
             final isNew = _newDocumentsBase64.containsKey(key);
@@ -1548,14 +1547,11 @@ class _My_ProfileState extends State<My_Profile>
                               case 'panCard':
                                 _profile?.documents?.panCard = null;
                                 break;
-                              case 'udyogAadhar':
-                                _profile?.documents?.udyogAadhar = null;
-                                break;
                               case 'udhayamCert':
                                 _profile?.documents?.udhayamCert = null;
                                 break;
-                              case 'shopLicense':
-                                _profile?.documents?.shopLicense = null;
+                              case 'shopAct':
+                                _profile?.documents?.shopAct = null;
                                 break;
                             }
                           }
@@ -1573,6 +1569,44 @@ class _My_ProfileState extends State<My_Profile>
           }),
           SizedBox(height: 24.h),
           _saveButton(text: "Save Documents"),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTaxesTab() {
+    if (_isLoading) return _buildLoading();
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(20.w),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Tax Settings",
+              style: GoogleFonts.inter(
+                  fontSize: 17.sp, fontWeight: FontWeight.w700)),
+          SizedBox(height: 4.h),
+          Text("Configure your tax rates and types.",
+              style: GoogleFonts.inter(
+                  fontSize: 10.5.sp, color: Colors.grey.shade600)),
+          SizedBox(height: 28.h),
+          _label("Tax Value"),
+          SizedBox(height: 6.h),
+          _textField(
+            controller: _taxRateController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            hint: "e.g. 18.0",
+          ),
+          SizedBox(height: 20.h),
+          _label("Tax Type"),
+          SizedBox(height: 6.h),
+          _dropdown(
+            ["percentage", "fixed"],
+            _selectedTaxType,
+            (v) => setState(() => _selectedTaxType = v!),
+          ),
+          SizedBox(height: 36.h),
+          _saveButton(text: "Update Tax Settings"),
         ],
       ),
     );

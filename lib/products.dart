@@ -212,53 +212,59 @@ class _ProductsPageState extends State<Products> {
 
   static Widget _buildImageWidget(dynamic image) {
     if (image == null) {
-      return Image.asset('assets/images/logo.png', fit: BoxFit.cover);
+      return Image.asset('assets/images/logo.png', fit: BoxFit.contain, alignment: Alignment.center);
     }
     try {
       if (image is String) {
         if (image.isEmpty)
-          return Image.asset('assets/images/logo.png', fit: BoxFit.cover);
+          return Image.asset('assets/images/logo.png', fit: BoxFit.contain, alignment: Alignment.center);
         if (image.startsWith('http'))
           return Image.network(image,
-              fit: BoxFit.cover,
+              fit: BoxFit.contain,
+              alignment: Alignment.center,
               errorBuilder: (_, __, ___) =>
-                  Image.asset('assets/images/logo.png', fit: BoxFit.cover));
+                  Image.asset('assets/images/logo.png', fit: BoxFit.contain, alignment: Alignment.center));
         if (image.startsWith('data:image')) {
           try {
             return Image.memory(base64Decode(image.split(',').last),
-                fit: BoxFit.cover,
+                fit: BoxFit.contain,
+                alignment: Alignment.center,
                 errorBuilder: (_, __, ___) =>
-                    Image.asset('assets/images/logo.png', fit: BoxFit.cover));
+                    Image.asset('assets/images/logo.png', fit: BoxFit.contain, alignment: Alignment.center));
           } catch (_) {
-            return Image.asset('assets/images/logo.png', fit: BoxFit.cover);
+            return Image.asset('assets/images/logo.png', fit: BoxFit.contain, alignment: Alignment.center);
           }
         }
         if (image.startsWith('assets/'))
           return Image.asset(image,
-              fit: BoxFit.cover,
+              fit: BoxFit.contain,
+              alignment: Alignment.center,
               errorBuilder: (_, __, ___) =>
-                  Image.asset('assets/images/logo.png', fit: BoxFit.cover));
+                  Image.asset('assets/images/logo.png', fit: BoxFit.contain, alignment: Alignment.center));
         if (image.contains('/')) {
           final fullUrl =
               'https://partners.glowvitasalon.com/${image.startsWith('/') ? image.substring(1) : image}';
           return Image.network(fullUrl,
-              fit: BoxFit.cover,
+              fit: BoxFit.contain,
+              alignment: Alignment.center,
               errorBuilder: (_, __, ___) =>
-                  Image.asset('assets/images/logo.png', fit: BoxFit.cover));
+                  Image.asset('assets/images/logo.png', fit: BoxFit.contain, alignment: Alignment.center));
         }
         if (File(image).existsSync())
           return Image.file(File(image),
-              fit: BoxFit.cover,
+              fit: BoxFit.contain,
+              alignment: Alignment.center,
               errorBuilder: (_, __, ___) =>
-                  Image.asset('assets/images/logo.png', fit: BoxFit.cover));
+                  Image.asset('assets/images/logo.png', fit: BoxFit.contain, alignment: Alignment.center));
       }
       if (image is XFile)
         return Image.file(File(image.path),
-            fit: BoxFit.cover,
+            fit: BoxFit.contain,
+            alignment: Alignment.center,
             errorBuilder: (_, __, ___) =>
-                Image.asset('assets/images/logo.png', fit: BoxFit.cover));
+                Image.asset('assets/images/logo.png', fit: BoxFit.contain, alignment: Alignment.center));
     } catch (_) {}
-    return Image.asset('assets/images/logo.png', fit: BoxFit.cover);
+    return Image.asset('assets/images/logo.png', fit: BoxFit.contain, alignment: Alignment.center);
   }
 
   int _discountPercent(dynamic price, dynamic salePrice) {

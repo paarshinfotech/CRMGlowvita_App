@@ -8,6 +8,16 @@ import 'vendor_model.dart';
 import 'my_Profile.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'widgets/subscription_wrapper.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
+import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:csv/csv.dart';
+import 'package:excel/excel.dart' hide Border, TextSpan;
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'package:open_file/open_file.dart';
+import 'dart:io';
 
 class Services extends StatefulWidget {
   const Services({super.key});
@@ -310,6 +320,156 @@ class _ServicesState extends State<Services> {
   // ══════════════════════════════════════════════════
   // ▲▲▲  END OF ORIGINAL BACKEND CODE  ▲▲▲
   // ══════════════════════════════════════════════════
+
+  void _handleExport(String type) {
+    switch (type) {
+      case 'copy':
+        _exportToCopy();
+        break;
+      case 'csv':
+        _exportToCSV();
+        break;
+      case 'excel':
+        _exportToExcel();
+        break;
+      case 'pdf':
+        _exportToPDF();
+        break;
+      case 'print':
+        _exportToPrint();
+        break;
+    }
+  }
+
+  Future<void> _exportToCopy() async {
+    try {
+      StringBuffer buffer = StringBuffer();
+      buffer.writeln('Name\tCategory\tPrice\tDisc. Price\tDuration\tGender\tStatus\tOnline Booking');
+      for (var s in filteredServices) {
+        buffer.writeln('${s.name ?? ''}\t${s.category ?? ''}\t₹${s.price ?? 0}\t₹${s.discountedPrice ?? s.price ?? 0}\t${s.duration ?? 0} min\t${s.gender ?? 'unisex'}\t${s.status ?? ''}\t${s.onlineBooking == true ? 'Yes' : 'No'}');
+      }
+      await Clipboard.setData(ClipboardData(text: buffer.toString()));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('${filteredServices.length} services copied to clipboard!', style: GoogleFonts.poppins(fontSize: 10.sp)),
+          backgroundColor: Colors.green,
+        ));
+      }
+    } catch (e) {
+      debugPrint('Error copying: $e');
+    }
+  }
+
+  Future<void> _exportToCSV() async {
+    try {
+      List<List<dynamic>> rows = [];
+      rows.add(['Name', 'Category', 'Price', 'Discount Price', 'Duration', 'Gender', 'Status', 'Online Booking']);
+      for (var s in filteredServices) {
+        rows.add([s.name ?? '', s.category ?? '', s.price ?? 0, s.discountedPrice ?? s.price ?? 0, s.duration ?? 0, s.gender ?? 'unisex', s.status ?? '', s.onlineBooking == true ? 'Yes' : 'No']);
+      }
+      String csv = const ListToCsvConverter().convert(rows);
+      final directory = await getApplicationDocumentsDirectory();
+      final path = '${directory.path}/services_export_${DateTime.now().millisecondsSinceEpoch}.csv';
+      final file = File(path);
+      await file.writeAsString(csv);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('CSV exported successfully!', style: GoogleFonts.poppins(fontSize: 10.sp)),
+          backgroundColor: Colors.green,
+          action: SnackBarAction(label: 'OPEN', textColor: Colors.white, onPressed: () => OpenFile.open(file.path)),
+        ));
+      }
+    } catch (e) {
+      debugPrint('Error exporting CSV: $e');
+    }
+  }
+
+  Future<void> _exportToExcel() async {
+    try {
+      var excel = Excel.createExcel();
+      Sheet sheetObject = excel['Services'];
+      var headers = ['Name', 'Category', 'Price', 'Discount Price', 'Duration', 'Gender', 'Status', 'Online Booking'];
+      for (int i = 0; i < headers.length; i++) {
+        var cell = sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0));
+        cell.value = TextCellValue(headers[i]);
+      }
+      for (int i = 0; i < filteredServices.length; i++) {
+        var s = filteredServices[i];
+        int rowIndex = i + 1;
+        sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex)).value = TextCellValue(s.name ?? '');
+        sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex)).value = TextCellValue(s.category ?? '');
+        sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex)).value = TextCellValue((s.price ?? 0).toString());
+        sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex)).value = TextCellValue((s.discountedPrice ?? s.price ?? 0).toString());
+        sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex)).value = TextCellValue((s.duration ?? 0).toString());
+        sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex)).value = TextCellValue(s.gender ?? 'unisex');
+        sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: rowIndex)).value = TextCellValue(s.status ?? '');
+        sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 7, rowIndex: rowIndex)).value = TextCellValue(s.onlineBooking == true ? 'Yes' : 'No');
+      }
+      var directory = await getApplicationDocumentsDirectory();
+      var filePath = '${directory.path}/services_export_${DateTime.now().millisecondsSinceEpoch}.xlsx';
+      var fileBytes = excel.save();
+      if (fileBytes != null) {
+        File(filePath)..createSync(recursive: true)..writeAsBytesSync(fileBytes);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Excel exported successfully!', style: GoogleFonts.poppins(fontSize: 10.sp)),
+            backgroundColor: Colors.green,
+            action: SnackBarAction(label: 'OPEN', textColor: Colors.white, onPressed: () => OpenFile.open(filePath)),
+          ));
+        }
+      }
+    } catch (e) {
+      debugPrint('Error exporting Excel: $e');
+    }
+  }
+
+  Future<void> _exportToPDF() async {
+    try {
+      final pdf = pw.Document();
+      pdf.addPage(pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        build: (context) => [
+          pw.Header(level: 0, child: pw.Text('Services Report - ${DateFormat('yyyy-MM-dd').format(DateTime.now())}')),
+          pw.TableHelper.fromTextArray(
+            headers: ['Name', 'Category', 'Price', 'Duration', 'Status'],
+            data: filteredServices.map((s) => [s.name ?? '', s.category ?? '', '₹${s.price ?? 0}', '${s.duration ?? 0}m', s.status ?? '']).toList(),
+          ),
+        ],
+      ));
+      final directory = await getApplicationDocumentsDirectory();
+      final path = '${directory.path}/services_export_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      final file = File(path);
+      await file.writeAsBytes(await pdf.save());
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('PDF exported successfully!', style: GoogleFonts.poppins(fontSize: 10.sp)),
+          backgroundColor: Colors.green,
+          action: SnackBarAction(label: 'OPEN', textColor: Colors.white, onPressed: () => OpenFile.open(file.path)),
+        ));
+      }
+    } catch (e) {
+      debugPrint('Error exporting PDF: $e');
+    }
+  }
+
+  Future<void> _exportToPrint() async {
+    try {
+      final pdf = pw.Document();
+      pdf.addPage(pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        build: (context) => [
+          pw.Header(level: 0, child: pw.Text('Services Report')),
+          pw.TableHelper.fromTextArray(
+            headers: ['Name', 'Category', 'Price', 'Duration', 'Status'],
+            data: filteredServices.map((s) => [s.name ?? '', s.category ?? '', '₹${s.price ?? 0}', '${s.duration ?? 0}m', s.status ?? '']).toList(),
+          ),
+        ],
+      ));
+      await Printing.layoutPdf(onLayout: (format) async => pdf.save());
+    } catch (e) {
+      debugPrint('Error printing: $e');
+    }
+  }
 
   // ── Status chip ───────────────────────────────────
   Widget _statusChip(String? status) {
@@ -801,23 +961,41 @@ class _ServicesState extends State<Services> {
                               ),
                             ),
                             SizedBox(width: 8.w),
-                            GestureDetector(
-                              onTap: _navigateToAddService,
+                            PopupMenuButton<String>(
+                              onSelected: _handleExport,
+                              itemBuilder: (context) => [
+                                _buildExportItem('copy', Icons.copy, 'Copy', Colors.grey[700]!),
+                                _buildExportItem('csv', Icons.table_chart, 'CSV', Colors.grey[700]!),
+                                _buildExportItem('excel', Icons.grid_on, 'Excel', Colors.green[700]!),
+                                _buildExportItem('pdf', Icons.picture_as_pdf, 'PDF', Colors.red[700]!),
+                                _buildExportItem('print', Icons.print, 'Print', Colors.grey[700]!),
+                              ],
                               child: Container(
                                 height: 34.h,
                                 padding: EdgeInsets.symmetric(horizontal: 14.w),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(8.r),
-                                  border:
-                                      Border.all(color: Colors.grey.shade300),
+                                  border: Border.all(color: Colors.grey.shade300),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.05),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
                                 ),
-                                child: Center(
-                                  child: Text('Export',
-                                      style: GoogleFonts.poppins(
-                                          fontSize: 8.5.sp,
-                                          color: Colors.black87,
-                                          fontWeight: FontWeight.w500)),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.file_download_outlined, size: 14.sp, color: Colors.blue[700]),
+                                    SizedBox(width: 4.w),
+                                    Text('Export',
+                                        style: GoogleFonts.poppins(
+                                            fontSize: 8.5.sp,
+                                            color: Colors.blue[700],
+                                            fontWeight: FontWeight.w600)),
+                                  ],
                                 ),
                               ),
                             ),
@@ -911,6 +1089,18 @@ class _ServicesState extends State<Services> {
                       ),
                     ),
                   ),
+      ),
+    );
+  }
+  PopupMenuItem<String> _buildExportItem(String value, IconData icon, String label, Color color) {
+    return PopupMenuItem(
+      value: value,
+      child: Row(
+        children: [
+          Icon(icon, size: 14.sp, color: color),
+          SizedBox(width: 8.w),
+          Text(label, style: GoogleFonts.poppins(fontSize: 9.sp)),
+        ],
       ),
     );
   }

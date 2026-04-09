@@ -874,6 +874,8 @@ class _AppointmentState extends State<Appointment>
         return const Color(0xFF1565C0);
       case 'completed':
         return const Color(0xFF2E7D32);
+      case 'completed_without_payment':
+        return Colors.brown;
       case 'cancelled':
         return const Color(0xFFC62828);
       case 'in_progress':
@@ -890,6 +892,8 @@ class _AppointmentState extends State<Appointment>
         return const Color(0xFFFFF3E0);
       case 'confirmed':
         return const Color(0xFFE3F2FD);
+      case 'completed_without_payment':
+        return const Color(0xFFFFF3E0);
       case 'completed':
         return const Color(0xFFE8F5E9);
       case 'cancelled':
@@ -1273,7 +1277,13 @@ class _AppointmentState extends State<Appointment>
                         ],
                       ]),
                 ),
-                _statusChip(appt.status ?? 'Schedule'),
+                Builder(builder: (context) {
+                  String displayStatus = appt.status ?? 'Schedule';
+                  if (displayStatus.toLowerCase() == 'completed' && appt.paymentStatus != 'completed') {
+                    displayStatus = 'completed_without_payment';
+                  }
+                  return _statusChip(displayStatus);
+                }),
               ],
             ),
           ),
@@ -1387,29 +1397,31 @@ class _AppointmentState extends State<Appointment>
             decoration: BoxDecoration(
                 border: Border(top: BorderSide(color: Colors.grey.shade100))),
             padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 1.h),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if ((appt.amountPaid ?? 0) <
-                        (appt.totalAmount ?? appt.amount ?? 0) &&
-                    !(appt.status?.toLowerCase().contains('cancelled') ??
-                        false) &&
-                    !(appt.status?.toLowerCase().contains('completed') ??
-                        false))
+            child: Builder(builder: (context) {
+              bool isCancelled = appt.status?.toLowerCase().contains('cancelled') ?? false;
+              bool isPaymentPending = appt.paymentStatus == 'pending';
+              bool isCompletedWithoutPayment = appt.status == 'completed_without_payment';
+              bool isAmountRemaining = (appt.amountPaid ?? 0) < (appt.totalAmount ?? appt.amount ?? 0);
+
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if ((isPaymentPending || isCompletedWithoutPayment || isAmountRemaining) && !isCancelled)
+                    _actionBtn(
+                        Icons.payments_outlined,
+                        'Pay',
+                        const Color(0xFF2E7D32),
+                        () => _showCollectPaymentDialog(appt)),
                   _actionBtn(
-                      Icons.payments_outlined,
-                      'Pay',
-                      const Color(0xFF2E7D32),
-                      () => _showCollectPaymentDialog(appt)),
-                _actionBtn(
-                    Icons.edit_outlined,
-                    'Edit',
-                    Theme.of(context).primaryColor,
-                    () => _editAppointment(appt)),
-                _actionBtn(Icons.delete_outline, 'Delete',
-                    const Color(0xFFC62828), () => _confirmDelete(appt)),
-              ],
-            ),
+                      Icons.edit_outlined,
+                      'Edit',
+                      Theme.of(context).primaryColor,
+                      () => _editAppointment(appt)),
+                  _actionBtn(Icons.delete_outline, 'Delete',
+                      const Color(0xFFC62828), () => _confirmDelete(appt)),
+                ],
+              );
+            }),
           ),
         ]),
       ),
