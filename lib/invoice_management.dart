@@ -76,10 +76,12 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
     }).map((appt) {
       // Determine correct status based on payment rule
       String finalStatus = appt.status ?? 'N/A';
-      if (appt.status == 'completed' && appt.paymentStatus != 'completed') {
-        finalStatus = 'completed_without_payment';
-      } else if (appt.paymentStatus == 'completed') {
-        finalStatus = 'completed';
+      if (appt.status == 'completed' && (appt.paymentStatus == 'completed' || appt.paymentStatus == 'Paid')) {
+        finalStatus = 'Paid';
+      } else if (appt.paymentStatus == 'completed' || appt.paymentStatus == 'Paid') {
+        finalStatus = 'Paid';
+      } else if (appt.status == 'completed' && appt.paymentStatus != 'completed' && appt.paymentStatus != 'Paid') {
+        finalStatus = 'Completed Without Payment';
       }
 
       return BillingInvoice(
@@ -790,11 +792,11 @@ class InvoiceCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      invoice.paymentStatus == 'Paid'
+                      (invoice.paymentStatus == 'Paid' || invoice.paymentStatus == 'completed' || invoice.paymentStatus == 'Completed')
                           ? 'Completed'
                           : invoice.paymentStatus,
                       style: GoogleFonts.poppins(
-                        color: invoice.paymentStatus == 'Paid'
+                        color: (invoice.paymentStatus == 'Paid' || invoice.paymentStatus == 'completed' || invoice.paymentStatus == 'Completed')
                             ? Colors.green
                             : Colors.orange,
                         fontWeight: FontWeight.w500,
