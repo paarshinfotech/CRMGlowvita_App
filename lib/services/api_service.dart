@@ -1059,7 +1059,7 @@ class ApiService {
     }
   }
 
-  // ==================== CLIENTS ==================== //
+  // Get all clients
   static Future<List<Customer>> getOnlineClients() async {
     try {
       final response = await _get('$baseUrl$clientsEndpoint?source=online');
@@ -1083,7 +1083,111 @@ class ApiService {
     }
   }
 
-  // Get all staff members
+  // ==================== SUPPLIER CLIENTS ==================== //
+  static Future<List<Customer>> getSupplierClients() async {
+    try {
+      final response = await _get('$baseUrl/crm/clients');
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          List<dynamic> clientsData = data['data'];
+          return clientsData.map((json) => Customer.fromJson(json)).toList();
+        } else {
+          throw Exception(
+              'Failed to load supplier clients: ${data['message'] ?? 'Unknown error'}');
+        }
+      } else {
+        throw Exception(
+            'Failed to load supplier clients: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching supplier clients: $e');
+      rethrow;
+    }
+  }
+
+  static Future<List<Customer>> getOnlineSupplierClients() async {
+    try {
+      final response = await _get('$baseUrl/crm/clients?source=online');
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          List<dynamic> clientsData = data['data'];
+          return clientsData.map((json) => Customer.fromJson(json)).toList();
+        } else {
+          throw Exception(
+              'Failed to load online supplier clients: ${data['message'] ?? 'Unknown error'}');
+        }
+      } else {
+        throw Exception(
+            'Failed to load online supplier clients: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching online supplier clients: $e');
+      rethrow;
+    }
+  }
+
+  static Future<Customer> addSupplierClient(Customer customer) async {
+    try {
+      final response = await _post('$baseUrl/crm/clients', customer.toJson());
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return Customer.fromJson(data['data']);
+        } else {
+          throw Exception(
+              'Failed to add supplier client: ${data['message'] ?? 'Unknown error'}');
+        }
+      } else {
+        throw Exception(
+            'Failed to add supplier client: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error adding supplier client: $e');
+      rethrow;
+    }
+  }
+
+  static Future<Customer> updateSupplierClient(Customer customer) async {
+    try {
+      if (customer.id == null)
+        throw Exception('Customer ID is required for update');
+      final response = await _put('$baseUrl/crm/clients', customer.toJson());
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return Customer.fromJson(data['data']);
+        } else {
+          throw Exception(
+              'Failed to update supplier client: ${data['message'] ?? 'Unknown error'}');
+        }
+      } else {
+        throw Exception(
+            'Failed to update supplier client: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error updating supplier client: $e');
+      rethrow;
+    }
+  }
+
+  static Future<bool> deleteSupplierClient(String clientId) async {
+    try {
+      final response =
+          await _delete('$baseUrl/crm/clients', body: {'id': clientId});
+      if ([200, 201, 204].contains(response.statusCode)) {
+        return true;
+      } else {
+        throw Exception(
+            'Failed to delete supplier client: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error deleting supplier client: $e');
+      rethrow;
+    }
+  }
+
   // Get all products
   static Future<List<Product>> getProducts() async {
     try {
@@ -1119,9 +1223,8 @@ class ApiService {
         final data = json.decode(response.body);
         if (data['success'] == true && data['data'] != null) {
           List<dynamic> productsData = data['data'];
-          List<Product> allMasters = productsData
-              .map((json) => Product.fromJson(json))
-              .toList();
+          List<Product> allMasters =
+              productsData.map((json) => Product.fromJson(json)).toList();
           // Client-side filtering to ensure strict category matching
           return allMasters
               .where((p) =>

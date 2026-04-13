@@ -125,29 +125,6 @@ class _CustomDrawerState extends State<CustomDrawer> {
                                     height: 24 * scale),
                           ),
                         ),
-                        SizedBox(width: 8 * scale),
-                        RichText(
-                          text: TextSpan(
-                            children: [
-                              TextSpan(
-                                text: 'Glow',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 20 * baseFontScale,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.black,
-                                ),
-                              ),
-                              TextSpan(
-                                text: 'Vita',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 20 * baseFontScale,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.black,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ],
                     ),
                     IconButton(

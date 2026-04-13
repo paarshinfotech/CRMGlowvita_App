@@ -3,19 +3,19 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:intl/intl.dart';
-import 'customer_model.dart';
-import 'services/api_service.dart';
+import '../customer_model.dart';
+import '../services/api_service.dart';
 
-class AddCustomer extends StatefulWidget {
+class AddSuppCustomer extends StatefulWidget {
   final Customer? existing;
 
-  const AddCustomer({super.key, this.existing});
+  const AddSuppCustomer({super.key, this.existing});
 
   @override
-  State<AddCustomer> createState() => _AddCustomerState();
+  State<AddSuppCustomer> createState() => _AddSuppCustomerState();
 }
 
-class _AddCustomerState extends State<AddCustomer> {
+class _AddSuppCustomerState extends State<AddSuppCustomer> {
   final _formKey = GlobalKey<FormState>();
 
   // Controllers to easily access form field values
@@ -111,12 +111,13 @@ class _AddCustomerState extends State<AddCustomer> {
       try {
         if (widget.existing != null) {
           // Update existing customer via API
-          final updatedCustomer = await ApiService.updateClient(newCustomer);
+          final updatedCustomer =
+              await ApiService.updateSupplierClient(newCustomer);
           // Pop the screen and return the updated customer object
           Navigator.pop(context, updatedCustomer);
         } else {
           // Add new customer via API
-          final addedCustomer = await ApiService.addClient(newCustomer);
+          final addedCustomer = await ApiService.addSupplierClient(newCustomer);
           // Pop the screen and return the new customer object
           Navigator.pop(context, addedCustomer);
         }

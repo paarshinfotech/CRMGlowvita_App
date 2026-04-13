@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:glowvita/vendor_model.dart';
+import 'package:glowvita/supplier_model.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:csv/csv.dart';
@@ -11,27 +11,29 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:open_file/open_file.dart';
-import 'customer_model.dart';
-import 'appointment_model.dart';
-import 'import_customers.dart';
-import 'add_customer.dart';
-import 'Notification.dart';
-import 'my_Profile.dart';
+import '../customer_model.dart';
+import '../appointment_model.dart';
+import '../import_customers.dart';
+import 'add_supp_clients.dart';
+import '../Notification.dart';
+import '../my_Profile.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
-import 'widgets/custom_drawer.dart';
-import 'services/api_service.dart';
-import 'widgets/customer_detail_popup.dart';
-import 'widgets/subscription_wrapper.dart';
+import 'supp_drawer.dart';
+import '../services/api_service.dart';
+import '../widgets/customer_detail_popup.dart';
+import '../widgets/subscription_wrapper.dart';
+import 'supp_profile.dart';
 
-class Client extends StatefulWidget {
-  const Client({super.key});
+class SuppClient extends StatefulWidget {
+  const SuppClient({super.key});
 
   @override
-  State<Client> createState() => _ClientState();
+  State<SuppClient> createState() => _SuppClientState();
 }
 
-class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
+class _SuppClientState extends State<SuppClient>
+    with SingleTickerProviderStateMixin {
   List<Customer> customers = [];
   String _searchQuery = '';
 
@@ -40,7 +42,7 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
 
   bool _isLoading = false;
   String? _errorMessage;
-  VendorProfile? _profile;
+  SupplierProfile? _profile;
 
   @override
   void initState() {
@@ -65,16 +67,12 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
 
   Future<void> _fetchProfile() async {
     try {
-      final p = await ApiService.getVendorProfile();
+      final p = await ApiService.getSupplierProfile();
       if (mounted) setState(() => _profile = p);
     } catch (e) {
       debugPrint('fetchProfile: $e');
     }
   }
-
-  // ══════════════════════════════════════════════════
-  // ▼▼▼  ORIGINAL BACKEND CODE — NOT MODIFIED  ▼▼▼
-  // ══════════════════════════════════════════════════
 
   Future<void> _fetchAndCalculateStats(List<Customer> currentCustomers) async {
     try {
@@ -134,7 +132,7 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
       _errorMessage = null;
     });
     try {
-      final loadedCustomers = await ApiService.getClients();
+      final loadedCustomers = await ApiService.getSupplierClients();
       setState(() {
         customers = loadedCustomers;
       });
@@ -153,7 +151,7 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
       _errorMessage = null;
     });
     try {
-      final loadedCustomers = await ApiService.getOnlineClients();
+      final loadedCustomers = await ApiService.getOnlineSupplierClients();
       setState(() {
         customers = loadedCustomers;
       });
@@ -172,14 +170,14 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
     super.dispose();
   }
 
-  void _navigateAndAddCustomer(BuildContext context) async {
+  void _navigateAndAddSuppCustomer(BuildContext context) async {
     final newCustomer = await Navigator.push<Customer>(
       context,
-      MaterialPageRoute(builder: (context) => const AddCustomer()),
+      MaterialPageRoute(builder: (context) => const AddSuppCustomer()),
     );
     if (newCustomer != null) {
       try {
-        final addedCustomer = await ApiService.addClient(newCustomer);
+        final addedCustomer = await ApiService.addSupplierClient(newCustomer);
         setState(() => customers.add(addedCustomer));
       } catch (e) {
         debugPrint('Error adding customer: ${e.toString()}');
@@ -190,11 +188,13 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
   void _editCustomer(Customer customer) async {
     final editedCustomer = await Navigator.push<Customer>(
       context,
-      MaterialPageRoute(builder: (context) => AddCustomer(existing: customer)),
+      MaterialPageRoute(
+          builder: (context) => AddSuppCustomer(existing: customer)),
     );
     if (editedCustomer != null) {
       try {
-        final updatedCustomer = await ApiService.updateClient(editedCustomer);
+        final updatedCustomer =
+            await ApiService.updateSupplierClient(editedCustomer);
         setState(() {
           final index = customers.indexWhere((c) => c.id == updatedCustomer.id);
           if (index != -1) customers[index] = updatedCustomer;
@@ -223,7 +223,8 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
           TextButton(
             onPressed: () async {
               try {
-                final success = await ApiService.deleteClient(customer.id!);
+                final success =
+                    await ApiService.deleteSupplierClient(customer.id!);
                 if (success) {
                   setState(() => customers.remove(customer));
                   Navigator.pop(ctx);
@@ -267,8 +268,6 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
     );
   }
 
-  // ── Export functions (unchanged) ──────────────────
-
   void _handleExport(String type) {
     switch (type) {
       case 'copy':
@@ -296,7 +295,7 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
           'Name\tEmail\tMobile\tBirth Day\tLast Visit\tTotal Bookings\tTotal Spent\tStatus');
       for (var customer in _filteredCustomers) {
         buffer.writeln(
-            '${customer.fullName}\t${customer.email ?? ''}\t${customer.mobile}\t${customer.dateOfBirth ?? ''}\t${customer.lastVisit ?? 'Never'}\t${customer.totalBookings}\t₹${customer.totalSpent.toStringAsFixed(2)}\t${customer.status}');
+            '${customer.fullName}\t${customer.email ?? ''}\t${customer.mobile}\t${customer.dateOfBirth ?? ''}\t${customer.lastVisit ?? 'Never'}\t${customer.totalBookings}\t${customer.totalSpent.toStringAsFixed(2)}\t${customer.status}');
       }
       await Clipboard.setData(ClipboardData(text: buffer.toString()));
       if (mounted) {
@@ -501,7 +500,7 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                       customer.birthDay ?? '',
                       customer.lastVisit ?? 'Never',
                       customer.totalBookings.toString(),
-                      '₹${customer.totalSpent.toStringAsFixed(2)}',
+                      '${customer.totalSpent.toStringAsFixed(2)}',
                       customer.status,
                     ])
                 .toList(),
@@ -583,7 +582,7 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                           customer.birthDay ?? '',
                           customer.lastVisit ?? 'Never',
                           customer.totalBookings.toString(),
-                          '₹${customer.totalSpent.toStringAsFixed(2)}',
+                          '${customer.totalSpent.toStringAsFixed(2)}',
                           customer.status,
                         ])
                     .toList(),
@@ -597,10 +596,6 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
       debugPrint('Error printing: $e');
     }
   }
-
-  // ══════════════════════════════════════════════════
-  // ▲▲▲  END OF ORIGINAL BACKEND CODE  ▲▲▲
-  // ══════════════════════════════════════════════════
 
   @override
   Widget build(BuildContext context) {
@@ -619,8 +614,8 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
             .apply(fontSizeFactor: 0.75),
       ),
       child: Scaffold(
-        drawer: const CustomDrawer(currentPage: 'Clients'),
-        // No FAB — button is inline now
+        drawer: const SupplierDrawer(currentPage: 'Clients'),
+        // No FAB button is inline now
         appBar: AppBar(
           backgroundColor: Colors.white,
           elevation: 0.5,
@@ -660,9 +655,9 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                           : null,
                   child: (_profile == null || _profile!.profileImage.isEmpty)
                       ? Text(
-                          ((_profile?.businessName ?? '').isNotEmpty
-                                  ? _profile!.businessName![0]
-                                  : ' ')
+                          ((_profile?.shopName ?? '').isNotEmpty
+                                  ? _profile!.shopName[0]
+                                  : 'S')
                               .toUpperCase(),
                           style: TextStyle(
                               color: Colors.white,
@@ -680,7 +675,6 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Search Bar ───────────────────────────
                 Container(
                   height: 38.h,
                   decoration: BoxDecoration(
@@ -706,7 +700,6 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                 ),
                 SizedBox(height: 10.h),
 
-                // ── Tabs ────────────────────────
                 Row(children: [
                   Expanded(
                     child: Container(
@@ -748,7 +741,6 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                 ]),
                 SizedBox(height: 10.h),
 
-                // ── 2×2 Stat Cards ───────────────────────
                 Row(children: [
                   Expanded(
                     child: _StatCard(
@@ -794,7 +786,7 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                 ]),
                 SizedBox(height: 8.h),
 
-                // ── Export + Add Customer (right-aligned, after stats) ──
+                // Export + Add Customer (right-aligned, after stats)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -878,7 +870,7 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                     SizedBox(width: 8.w),
                     if (_currentTabIndex == 0)
                       GestureDetector(
-                        onTap: () => _navigateAndAddCustomer(context),
+                        onTap: () => _navigateAndAddSuppCustomer(context),
                         child: Container(
                           height: 33.h,
                           padding: EdgeInsets.symmetric(horizontal: 12.w),
@@ -901,7 +893,7 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                 ),
                 SizedBox(height: 10.h),
 
-                // ── Customer List ────────────────────────
+                // Customer List
                 Expanded(
                   child: _isLoading
                       ? const Center(child: CircularProgressIndicator())
@@ -936,7 +928,7 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
   }
 }
 
-// ── Stat Card ─────────────────────────────────────
+// Stat Card
 class _StatCard extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
@@ -1000,7 +992,7 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-// ── Customer Card ─────────────────────────────────
+// Customer Card
 class _CustomerCard extends StatelessWidget {
   final Customer customer;
   final VoidCallback onEdit;
@@ -1036,7 +1028,7 @@ class _CustomerCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Top row: avatar + name/contact + status badge ──
+          // Top row: avatar + name/contact + status badge
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -1101,7 +1093,7 @@ class _CustomerCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
 
-              // Status badge — green outlined pill like the screenshot
+              // Status badge green outlined pill like the screenshot
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
@@ -1140,7 +1132,7 @@ class _CustomerCard extends StatelessWidget {
           Divider(height: 1, color: Colors.grey[100]),
           const SizedBox(height: 12),
 
-          // ── Info grid: 2×2 ───────────────────────────
+          // Info grid: 2×2
           Row(children: [
             Expanded(
                 child:
@@ -1159,7 +1151,6 @@ class _CustomerCard extends StatelessWidget {
 
           const SizedBox(height: 10),
 
-          // ── Action icons (right-aligned) ─────────────
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [

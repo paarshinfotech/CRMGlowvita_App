@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'supp_dashboard.dart';
 import 'supp_inventory.dart';
 import 'supp_products.dart';
+import 'supp_clients.dart';
 import 'supp_product_questions.dart';
 import 'supp_reviews.dart';
 import 'supp_orders.dart';
@@ -86,29 +87,6 @@ class SupplierDrawer extends StatelessWidget {
                             errorBuilder: (context, error, stackTrace) =>
                                 Image.asset('assets/images/logo.png',
                                     height: 24 * scale),
-                          ),
-                        ),
-                        SizedBox(width: 8 * scale),
-                        RichText(
-                          text: TextSpan(
-                            children: [
-                              TextSpan(
-                                text: 'Glow',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 18 * baseFontScale,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.black,
-                                ),
-                              ),
-                              TextSpan(
-                                text: 'Vita',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 18 * baseFontScale,
-                                  fontWeight: FontWeight.w600,
-                                  color: Theme.of(context).primaryColor,
-                                ),
-                              ),
-                            ],
                           ),
                         ),
                       ],
@@ -194,7 +172,8 @@ class SupplierDrawer extends StatelessWidget {
                       icon: Icons.dashboard_outlined,
                       title: 'Dashboard',
                       isSelected: currentPage == 'Dashboard',
-                      onTap: () => _navigateTo(context, const Supp_DashboardPage()),
+                      onTap: () =>
+                          _navigateTo(context, const Supp_DashboardPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
@@ -203,7 +182,8 @@ class SupplierDrawer extends StatelessWidget {
                       icon: Icons.inventory_2_outlined,
                       title: 'Inventory',
                       isSelected: currentPage == 'Inventory',
-                      onTap: () => _navigateTo(context, const SuppInventoryPage()),
+                      onTap: () =>
+                          _navigateTo(context, const SuppInventoryPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
@@ -218,10 +198,20 @@ class SupplierDrawer extends StatelessWidget {
                     ),
                     _buildMenuItem(
                       context: context,
+                      icon: Icons.group_outlined,
+                      title: 'Clients',
+                      isSelected: currentPage == 'Clients',
+                      onTap: () => _navigateTo(context, const SuppClient()),
+                      scale: scale,
+                      baseFontScale: baseFontScale,
+                    ),
+                    _buildMenuItem(
+                      context: context,
                       icon: Icons.question_answer_outlined,
                       title: 'Product Questions',
                       isSelected: currentPage == 'Product Questions',
-                      onTap: () => _navigateTo(context, const SuppProductQuestionsPage()),
+                      onTap: () => _navigateTo(
+                          context, const SuppProductQuestionsPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
@@ -230,7 +220,8 @@ class SupplierDrawer extends StatelessWidget {
                       icon: Icons.star_outline_rounded,
                       title: 'Reviews',
                       isSelected: currentPage == 'Reviews',
-                      onTap: () => _navigateTo(context, const SuppReviewsPage()),
+                      onTap: () =>
+                          _navigateTo(context, const SuppReviewsPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
@@ -257,7 +248,8 @@ class SupplierDrawer extends StatelessWidget {
                       icon: Icons.receipt_long_outlined,
                       title: 'Invoice Management',
                       isSelected: currentPage == 'Invoice Management',
-                      onTap: () => _navigateTo(context, const SuppInvoiceManagementPage()),
+                      onTap: () => _navigateTo(
+                          context, const SuppInvoiceManagementPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
@@ -266,7 +258,8 @@ class SupplierDrawer extends StatelessWidget {
                       icon: Icons.money_off_csred_outlined,
                       title: 'Expenses',
                       isSelected: currentPage == 'Expenses',
-                      onTap: () => _navigateTo(context, const SuppExpensesPage()),
+                      onTap: () =>
+                          _navigateTo(context, const SuppExpensesPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
@@ -275,7 +268,8 @@ class SupplierDrawer extends StatelessWidget {
                       icon: Icons.local_offer_outlined,
                       title: 'Offers and Coupons',
                       isSelected: currentPage == 'Offers and Coupons',
-                      onTap: () => _navigateTo(context, const SuppOffersCouponsPage()),
+                      onTap: () =>
+                          _navigateTo(context, const SuppOffersCouponsPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
@@ -284,7 +278,8 @@ class SupplierDrawer extends StatelessWidget {
                       icon: Icons.people_outline,
                       title: 'Referrals',
                       isSelected: currentPage == 'Referrals',
-                      onTap: () => _navigateTo(context, const SuppReferralsPage()),
+                      onTap: () =>
+                          _navigateTo(context, const SuppReferralsPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
@@ -293,7 +288,8 @@ class SupplierDrawer extends StatelessWidget {
                       icon: Icons.campaign_outlined,
                       title: 'Marketing',
                       isSelected: currentPage == 'Marketing',
-                      onTap: () => _navigateTo(context, const SuppMarketingPage()),
+                      onTap: () =>
+                          _navigateTo(context, const SuppMarketingPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
@@ -303,7 +299,8 @@ class SupplierDrawer extends StatelessWidget {
                       title: 'Notifications',
                       hasNotification: true,
                       isSelected: currentPage == 'Notifications',
-                      onTap: () => _navigateTo(context, const SuppNotificationsPage()),
+                      onTap: () =>
+                          _navigateTo(context, const SuppNotificationsPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
@@ -312,7 +309,8 @@ class SupplierDrawer extends StatelessWidget {
                       icon: Icons.assessment_outlined,
                       title: 'Reports',
                       isSelected: currentPage == 'Reports',
-                      onTap: () => _navigateTo(context, const SuppReportsPage()),
+                      onTap: () =>
+                          _navigateTo(context, const SuppReportsPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
@@ -334,14 +332,20 @@ class SupplierDrawer extends StatelessWidget {
             Container(
               padding: EdgeInsets.all(12 * scale),
               decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: Colors.grey[200]!, width: 1)),
+                border:
+                    Border(top: BorderSide(color: Colors.grey[200]!, width: 1)),
               ),
               child: ListTile(
                 onTap: () => _handleSignOut(context, baseFontScale, scale),
-                leading: Icon(Icons.logout_outlined, size: 18 * baseFontScale, color: Colors.red[400]),
-                title: Text('Sign Out', 
-                  style: GoogleFonts.poppins(fontSize: 13 * baseFontScale, fontWeight: FontWeight.w500, color: Colors.grey[700])),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8 * scale)),
+                leading: Icon(Icons.logout_outlined,
+                    size: 18 * baseFontScale, color: Colors.red[400]),
+                title: Text('Sign Out',
+                    style: GoogleFonts.poppins(
+                        fontSize: 13 * baseFontScale,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey[700])),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8 * scale)),
               ),
             ),
           ],
@@ -363,16 +367,32 @@ class SupplierDrawer extends StatelessWidget {
     return Container(
       margin: EdgeInsets.symmetric(vertical: 2 * scale),
       decoration: BoxDecoration(
-        color: isSelected ? Theme.of(context).primaryColor.withOpacity(0.08) : Colors.transparent,
+        color: isSelected
+            ? Theme.of(context).primaryColor.withOpacity(0.08)
+            : Colors.transparent,
         borderRadius: BorderRadius.circular(10 * scale),
       ),
       child: ListTile(
         onTap: onTap,
         dense: true,
-        leading: Icon(icon, size: 18 * baseFontScale, color: isSelected ? Theme.of(context).primaryColor : Colors.black87),
-        title: Text(title, 
-          style: GoogleFonts.poppins(fontSize: 12 * baseFontScale, fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500, color: isSelected ? Theme.of(context).primaryColor : Colors.black87)),
-        trailing: hasNotification ? Container(width: 6, height: 6, decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle)) : null,
+        leading: Icon(icon,
+            size: 18 * baseFontScale,
+            color:
+                isSelected ? Theme.of(context).primaryColor : Colors.black87),
+        title: Text(title,
+            style: GoogleFonts.poppins(
+                fontSize: 12 * baseFontScale,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                color: isSelected
+                    ? Theme.of(context).primaryColor
+                    : Colors.black87)),
+        trailing: hasNotification
+            ? Container(
+                width: 6,
+                height: 6,
+                decoration: const BoxDecoration(
+                    color: Colors.red, shape: BoxShape.circle))
+            : null,
       ),
     );
   }
@@ -382,26 +402,38 @@ class SupplierDrawer extends StatelessWidget {
     Navigator.push(context, MaterialPageRoute(builder: (context) => page));
   }
 
-  void _handleSignOut(BuildContext context, double baseFontScale, double scale) {
+  void _handleSignOut(
+      BuildContext context, double baseFontScale, double scale) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Sign Out', style: GoogleFonts.poppins(fontSize: 14 * baseFontScale, fontWeight: FontWeight.w600)),
-        content: Text('Are you sure you want to sign out?', style: GoogleFonts.poppins(fontSize: 12 * baseFontScale)),
+        title: Text('Sign Out',
+            style: GoogleFonts.poppins(
+                fontSize: 14 * baseFontScale, fontWeight: FontWeight.w600)),
+        content: Text('Are you sure you want to sign out?',
+            style: GoogleFonts.poppins(fontSize: 12 * baseFontScale)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel', style: TextStyle(fontSize: 12 * baseFontScale))),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel',
+                  style: TextStyle(fontSize: 12 * baseFontScale))),
           ElevatedButton(
             onPressed: () async {
               final prefs = await SharedPreferences.getInstance();
               await prefs.clear();
-              Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const IntroPage()), (route) => false);
+              Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const IntroPage()),
+                  (route) => false);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).primaryColor),
-            child: Text('Sign Out', style: TextStyle(fontSize: 12 * baseFontScale, color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).primaryColor),
+            child: Text('Sign Out',
+                style: TextStyle(
+                    fontSize: 12 * baseFontScale, color: Colors.white)),
           ),
         ],
       ),
     );
   }
 }
-
