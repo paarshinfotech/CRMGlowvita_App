@@ -39,6 +39,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController pincodeCtrl = TextEditingController();
   final TextEditingController emailOtpCtrl = TextEditingController();
   final TextEditingController phoneOtpCtrl = TextEditingController();
+  final TextEditingController gstCtrl = TextEditingController();
 
   bool isEmailOtpSent = false;
   bool isEmailVerified = false;
@@ -130,6 +131,9 @@ class _RegisterPageState extends State<RegisterPage> {
       if (referralCtrl.text.trim().isNotEmpty) {
         payload["referralCode"] = referralCtrl.text.trim();
       }
+      if (gstCtrl.text.trim().isNotEmpty) {
+        payload["gstNo"] = gstCtrl.text.trim();
+      }
 
       /// ✅ Correct subCategories as per API response example
       /// API expects: ["at-salon"] not "shop", "onsite", etc.
@@ -180,23 +184,101 @@ class _RegisterPageState extends State<RegisterPage> {
 
         /// Navigate forward
         Navigator.pop(context);
+      } else if (response.statusCode == 409) {
+        // Conflict — email/phone already registered
+        final backendMsg = data["message"] ?? data["error"] ?? "";
+        debugPrint("409 Conflict: $backendMsg");
+
+        // Detect which field caused the conflict
+        String conflictField = "email or phone number";
+        final lower = backendMsg.toLowerCase();
+        if (lower.contains("email") && !lower.contains("phone")) {
+          conflictField = "email address";
+        } else if (lower.contains("phone") && !lower.contains("email")) {
+          conflictField = "phone number";
+        }
+
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (_) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              title: Row(
+                children: [
+                  const Icon(Icons.person_off_outlined, color: Color(0xFF4A2C40)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "Account Already Exists",
+                      style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                  ),
+                ],
+              ),
+              content: Text(
+                "An account with this $conflictField is already registered.\n\nPlease log in instead, or use a different $conflictField.",
+                style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey.shade700),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text("Try Again", style: GoogleFonts.poppins(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4A2C40)),
+                  onPressed: () {
+                    Navigator.pop(context); // close dialog
+                    Navigator.pop(context); // go back to login
+                  },
+                  child: Text("Go to Login", style: GoogleFonts.poppins(color: Colors.white)),
+                ),
+              ],
+            ),
+          );
+        }
+        return; // don't fall through to generic snackbar
+      } else if (response.statusCode == 422) {
+        // Unprocessable entity — missing/invalid fields
+        final fields = data["errors"] ?? data["message"] ?? "Some fields are invalid.";
+        final msg = fields is List ? fields.join("\n") : fields.toString();
+        debugPrint("422 Unprocessable: $msg");
+        throw Exception("Validation failed:\n$msg");
       } else if (response.statusCode == 400) {
-        // Show exact backend validation message for 400 errors
-        throw Exception(data["message"] ??
-            data["error"] ??
-            "Invalid data. Please check your inputs.");
+        // Bad request — validation errors
+        final msg = data["message"] ?? data["error"] ?? "Invalid data. Please check your inputs.";
+        debugPrint("400 Bad Request: $msg");
+        throw Exception(msg);
       } else if (response.statusCode >= 500) {
-        throw Exception("Server error. Please try again in a moment.");
+        debugPrint("Server error ${response.statusCode}: ${response.body}");
+        throw Exception("Something went wrong on our end. Please try again shortly.");
       } else {
-        throw Exception(
-            data["message"] ?? "Server error (${response.statusCode})");
+        final msg = data["message"] ?? "Unexpected error (code: ${response.statusCode})";
+        debugPrint("Unexpected status ${response.statusCode}: $msg");
+        throw Exception(msg);
       }
     } catch (e) {
       debugPrint("Registration error: $e");
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst("Exception: ", ""))),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.red.shade700,
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    e.toString().replaceFirst("Exception: ", ""),
+                    style: GoogleFonts.poppins(color: Colors.white, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+            duration: const Duration(seconds: 5),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
@@ -205,40 +287,63 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // Background Image
-          Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage('assets/images/splash.png'),
-                fit: BoxFit.cover,
-                opacity: 0.8,
+          // ── Decorative background circles (matching login.dart) ────────────────
+          Positioned(
+            top: -100,
+            right: -100,
+            child: Container(
+              width: 350.w,
+              height: 350.h,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF3B1F2B).withOpacity(0.04),
               ),
             ),
           ),
-          // Content
+          Positioned(
+            top: 150,
+            right: -50,
+            child: Container(
+              width: 230.w,
+              height: 230.h,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF3B1F2B).withOpacity(0.03),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -60,
+            left: -80,
+            child: Container(
+              width: 300.w,
+              height: 300.h,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF3B1F2B).withOpacity(0.035),
+              ),
+            ),
+          ),
+
           SafeArea(
             child: Column(
               children: [
-                // Progress bar
-                Padding(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: LinearProgressIndicator(
-                          value: (currentStep + 1) / 2,
-                          backgroundColor: Colors.grey.shade300,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                              Theme.of(context).primaryColor),
-                          minHeight: 6,
-                        ),
-                      ),
-                    ],
+                SizedBox(height: 50.h),
+                // Logo section
+                Center(
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    width: 200.w,
+                    fit: BoxFit.contain,
                   ),
                 ),
+                SizedBox(height: 2.h),
+
+                // Form Section
                 Expanded(
                   child: Form(
                     key: _formKey,
@@ -248,566 +353,542 @@ class _RegisterPageState extends State<RegisterPage> {
                       onPageChanged: (index) =>
                           setState(() => currentStep = index),
                       children: [
+                        _buildPersonalInfoPage(),
                         _buildBusinessSetupPage(),
                         _buildLocationSetupPage(),
                       ],
                     ),
                   ),
                 ),
+
+                // Bottom: Prev / Indicators / Next
+                Padding(
+                  padding: EdgeInsets.only(bottom: 20.h),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // ── Prev button ──
+                      AnimatedOpacity(
+                        duration: const Duration(milliseconds: 200),
+                        opacity: currentStep > 0 ? 1.0 : 0.0,
+                        child: GestureDetector(
+                          onTap: currentStep > 0
+                              ? () => _pageController.previousPage(
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.ease,
+                                  )
+                              : null,
+                          child: Container(
+                            width: 32.w,
+                            height: 32.h,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: const Color(0xFF4A2C40).withOpacity(0.1),
+                            ),
+                            child: Icon(
+                              Icons.chevron_left_rounded,
+                              color: const Color(0xFF4A2C40),
+                              size: 20.sp,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 12.w),
+                      // ── Step dots ──
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children:
+                            List.generate(3, (index) => _buildIndicator(index)),
+                      ),
+                      SizedBox(width: 12.w),
+                      // ── Next button ──
+                      AnimatedOpacity(
+                        duration: const Duration(milliseconds: 200),
+                        opacity: currentStep < 2 ? 1.0 : 0.0,
+                        child: GestureDetector(
+                          onTap: currentStep < 2
+                              ? () {
+                                  if (currentStep == 0) {
+                                    if (!_formKey.currentState!.validate())
+                                      return;
+                                    if (!isEmailVerified || !isPhoneVerified) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                            content: Text(
+                                                "Please verify email and phone.")),
+                                      );
+                                      return;
+                                    }
+                                  } else if (currentStep == 1) {
+                                    if (!_formKey.currentState!.validate())
+                                      return;
+                                    if (subCategories.isEmpty) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                            content: Text(
+                                                "Select at least one service type.")),
+                                      );
+                                      return;
+                                    }
+                                  }
+                                  _pageController.nextPage(
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.ease,
+                                  );
+                                }
+                              : null,
+                          child: Container(
+                            width: 32.w,
+                            height: 32.h,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: const Color(0xFF4A2C40).withOpacity(0.1),
+                            ),
+                            child: Icon(
+                              Icons.chevron_right_rounded,
+                              color: const Color(0xFF4A2C40),
+                              size: 20.sp,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildIndicator(int index) {
+    bool isActive = currentStep == index;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      margin: EdgeInsets.symmetric(horizontal: 4.w),
+      height: 8.h,
+      width: isActive ? 24.w : 8.w,
+      decoration: BoxDecoration(
+        color: isActive ? const Color(0xFF4A2C40) : const Color(0xFFD1C4CE),
+        borderRadius: BorderRadius.circular(4.r),
+      ),
+    );
+  }
+
+  Widget _buildPersonalInfoPage() {
+    return Center(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.symmetric(horizontal: 24.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
+              "Create your account",
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF4A2C40),
+              ),
+            ),
+            SizedBox(height: 4.h),
+            Text(
+              "Enter your personal details to get started",
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 10.sp,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            SizedBox(height: 16.h),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildOutlinedField(
+                    label: "First Name",
+                    controller: firstNameCtrl,
+                    validator: (value) => value!.isEmpty ? 'Required' : null,
+                  ),
+                ),
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: _buildOutlinedField(
+                    label: "Last Name",
+                    controller: lastNameCtrl,
+                    validator: (value) => value!.isEmpty ? 'Required' : null,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 10.h),
+            _buildVerificationField(
+              label: "Contact No.",
+              controller: phoneCtrl,
+              otpController: phoneOtpCtrl,
+              isOtpSent: isPhoneOtpSent,
+              isVerified: isPhoneVerified,
+              isSending: isSendingPhoneOtp,
+              isVerifying: isVerifyingPhoneOtp,
+              onSendOtp: _handlePhoneOtp,
+              onVerify: _handlePhoneVerify,
+            ),
+            SizedBox(height: 10.h),
+            _buildVerificationField(
+              label: "Email",
+              controller: emailCtrl,
+              otpController: emailOtpCtrl,
+              isOtpSent: isEmailOtpSent,
+              isVerified: isEmailVerified,
+              isSending: isSendingEmailOtp,
+              isVerifying: isVerifyingEmailOtp,
+              onSendOtp: _handleEmailOtp,
+              onVerify: _handleEmailVerify,
+            ),
+            SizedBox(height: 10.h),
+            _buildOutlinedField(
+              label: "Password",
+              controller: passwordCtrl,
+              obscureText: _obscurePassword,
+              suffixIcon: IconButton(
+                icon: Icon(
+                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                    size: 18.sp),
+                onPressed: () =>
+                    setState(() => _obscurePassword = !_obscurePassword),
+              ),
+            ),
+            SizedBox(height: 10.h),
+            _buildOutlinedField(
+              label: "Confirm Password",
+              controller: confirmPasswordCtrl,
+              obscureText: _obscureConfirmPassword,
+              suffixIcon: IconButton(
+                icon: Icon(
+                    _obscureConfirmPassword
+                        ? Icons.visibility_off
+                        : Icons.visibility,
+                    size: 18.sp),
+                onPressed: () => setState(
+                    () => _obscureConfirmPassword = !_obscureConfirmPassword),
+              ),
+            ),
+            SizedBox(height: 10.h),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildOutlinedField(
+                    label: "Referral Code",
+                    controller: referralCtrl,
+                  ),
+                ),
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: _buildOutlinedField(
+                    label: "GST No",
+                    controller: gstCtrl,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 20.h),
+            _buildContinueButton(onPressed: () {
+              if (_formKey.currentState!.validate()) {
+                if (!isEmailVerified || !isPhoneVerified) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text("Please verify email and phone.")),
+                  );
+                  return;
+                }
+                _pageController.nextPage(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.ease);
+              }
+            }),
+            SizedBox(height: 20.h),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildBusinessSetupPage() {
-    return SingleChildScrollView(
-      padding: EdgeInsets.symmetric(horizontal: 32.w),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(height: 20.h),
-          // Back button for first step
-          if (currentStep == 0) ...[
-            Align(
-              alignment: Alignment.centerLeft,
-              child: IconButton(
-                icon: Icon(Icons.arrow_back,
-                    color: Theme.of(context).primaryColor, size: 24.sp),
-                onPressed: () {
-                  Navigator.pop(context);
-                },
+    return Center(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.symmetric(horizontal: 24.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
+              "Tell us about your business",
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF4A2C40),
+              ),
+            ),
+            SizedBox(height: 4.h),
+            Text(
+              "Provide your business information and services",
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 10.sp,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            SizedBox(height: 16.h),
+            _buildOutlinedField(
+              label: "Business Name",
+              controller: businessNameCtrl,
+              validator: (value) => value!.isEmpty ? 'Required' : null,
+            ),
+            SizedBox(height: 10.h),
+            _buildOutlinedField(
+              label: "Business Description",
+              controller: businessDescCtrl,
+              maxLines: 3,
+              validator: (value) => value!.isEmpty ? 'Required' : null,
+            ),
+            SizedBox(height: 10.h),
+            _buildOutlinedField(
+              label: "Salon Category",
+              controller: TextEditingController(text: selectedCategory),
+              readOnly: true,
+              suffixIcon: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: selectedCategory,
+                  icon: Icon(Icons.arrow_drop_down, size: 24.sp),
+                  onChanged: (val) => setState(() => selectedCategory = val!),
+                  items: ['unisex', 'male', 'female']
+                      .map((e) => DropdownMenuItem(
+                          value: e,
+                          child: Text(e,
+                              style: GoogleFonts.poppins(fontSize: 12.sp))))
+                      .toList(),
+                ),
               ),
             ),
             SizedBox(height: 10.h),
-          ],
-          Text(
-            "Tell us about your business",
-            style: GoogleFonts.poppins(
-              fontSize: 16.sp,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).primaryColor,
-              shadows: [
-                Shadow(
-                  blurRadius: 3.0,
-                  color: Colors.black.withOpacity(0.25),
-                  offset: Offset(1.5, 1.5),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(height: 6.h),
-          Text(
-            "Provide your business information and services.",
-            style: GoogleFonts.poppins(
-              fontSize: 12.sp,
-              fontWeight: FontWeight.w500,
-              color: Colors.black,
-            ),
-          ),
-          SizedBox(height: 30.h),
-
-          // Business Name & Description
-          Row(
-            children: [
-              Expanded(
-                child: _buildOutlinedField(
-                  label: "Enter business name",
-                  controller: businessNameCtrl,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Business name is required';
-                    }
-                    return null;
-                  },
-                ),
+            Container(
+              padding: EdgeInsets.all(8.w),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(10.r),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildOutlinedField(
-                  label: "Enter business description",
-                  controller: businessDescCtrl,
-                  maxLines: 3,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Description is required';
-                    }
-                    return null;
-                  },
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          // Category dropdown
-          _buildOutlinedField(
-            label: "Select salon category",
-            controller: TextEditingController(text: selectedCategory),
-            readOnly: true,
-            suffixIcon: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: selectedCategory,
-                icon: Icon(Icons.arrow_drop_down, size: 18.sp),
-                onChanged: (val) => setState(() => selectedCategory = val!),
-                items: ['unisex', 'male', 'female']
-                    .map((e) => DropdownMenuItem(
-                          value: e,
-                          child: Text(
-                            e,
-                            style: GoogleFonts.poppins(fontSize: 9.sp),
-                          ),
-                        ))
-                    .toList(),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildSimpleCheckbox("Shop", "shop"),
+                  _buildSimpleCheckbox("Shop at Home", "home"),
+                  _buildSimpleCheckbox("Onsite", "onsite"),
+                ],
               ),
             ),
-          ),
-          const SizedBox(height: 24),
-
-          // Service type checkboxes
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10.r),
-              boxShadow: [
-                BoxShadow(
-                  color: Theme.of(context).primaryColor.withOpacity(0.1),
-                  blurRadius: 4,
-                  offset: const Offset(0, 1),
-                ),
-              ],
+            SizedBox(height: 10.h),
+            _buildOutlinedField(
+              label: "https://example.com",
+              controller: websiteCtrl,
+              hint: "Website URL",
             ),
-            padding: EdgeInsets.all(12.w),
-            child: Wrap(
-              spacing: 16.w,
-              runSpacing: 8.h,
-              children: [
-                _buildCheckbox("Shop", "shop"),
-                _buildCheckbox("Shop At Home", "home"),
-                _buildCheckbox("Onsite", "onsite"),
-              ],
-            ),
-          ),
-          const SizedBox(height: 32),
-
-          // Personal info
-          Row(
-            children: [
-              Expanded(
-                child: _buildOutlinedField(
-                  label: "First Name",
-                  controller: firstNameCtrl,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'First name is required';
-                    }
-                    return null;
-                  },
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildOutlinedField(
-                  label: "Last Name",
-                  controller: lastNameCtrl,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Last name is required';
-                    }
-                    return null;
-                  },
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // Phone Number with Verification
-          _buildVerificationField(
-            label: "Phone",
-            controller: phoneCtrl,
-            otpController: phoneOtpCtrl,
-            isOtpSent: isPhoneOtpSent,
-            isVerified: isPhoneVerified,
-            isSending: isSendingPhoneOtp,
-            isVerifying: isVerifyingPhoneOtp,
-            keyboardType: TextInputType.phone,
-            onSendOtp: () => _handlePhoneOtp(),
-            onVerify: () => _handlePhoneVerify(),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Phone number is required';
-              }
-              if (!RegExp(r'^[0-9]{10,15}$').hasMatch(value)) {
-                return 'Enter a valid phone number';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 16),
-          // Email with Verification
-          _buildVerificationField(
-            label: "Email",
-            controller: emailCtrl,
-            otpController: emailOtpCtrl,
-            isOtpSent: isEmailOtpSent,
-            isVerified: isEmailVerified,
-            isSending: isSendingEmailOtp,
-            isVerifying: isVerifyingEmailOtp,
-            keyboardType: TextInputType.emailAddress,
-            onSendOtp: () => _handleEmailOtp(),
-            onVerify: () => _handleEmailVerify(),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Email is required';
-              }
-              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                  .hasMatch(value)) {
-                return 'Enter a valid email address';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 16),
-          _buildOutlinedField(
-            label: "Password",
-            controller: passwordCtrl,
-            obscureText: _obscurePassword,
-            suffixIcon: IconButton(
-              icon: Icon(
-                _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                size: 16.sp,
-                color: Theme.of(context).primaryColor,
-              ),
-              onPressed: () {
-                setState(() {
-                  _obscurePassword = !_obscurePassword;
-                });
-              },
-            ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Password is required';
-              }
-              if (value.length < 6) {
-                return 'Password must be at least 6 characters';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 16),
-          _buildOutlinedField(
-            label: "Confirm Password",
-            controller: confirmPasswordCtrl,
-            obscureText: _obscureConfirmPassword,
-            suffixIcon: IconButton(
-              icon: Icon(
-                _obscureConfirmPassword
-                    ? Icons.visibility_off
-                    : Icons.visibility,
-                size: 16.sp,
-                color: Theme.of(context).primaryColor,
-              ),
-              onPressed: () {
-                setState(() {
-                  _obscureConfirmPassword = !_obscureConfirmPassword;
-                });
-              },
-            ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Confirm Password is required';
-              }
-              if (value != passwordCtrl.text) {
-                return 'Passwords do not match';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 32),
-
-          // Optional fields
-          Row(
-            children: [
-              Expanded(
-                child: _buildOutlinedField(
-                  label: "https://example.com",
-                  controller: websiteCtrl,
-                  hint: "Website (optional)",
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildOutlinedField(
-                  label: "Enter referral code if any",
-                  controller: referralCtrl,
-                  hint: "Referral code (optional)",
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 48),
-
-          // Next button
-          Center(
-            child: ElevatedButton(
-              onPressed: () {
-                if (_formKey.currentState!.validate()) {
-                  if (subCategories.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text(
-                              "Please select at least one sub category (Shop, Shop At Home, Onsite).")),
-                    );
-                    return;
-                  }
-                  if (!isEmailVerified) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text("Please verify your email.")),
-                    );
-                    return;
-                  }
-                  if (!isPhoneVerified) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text("Please verify your phone number.")),
-                    );
-                    return;
-                  }
-                  _pageController.nextPage(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.ease,
-                  );
+            SizedBox(height: 20.h),
+            _buildContinueButton(onPressed: () {
+              if (_formKey.currentState!.validate()) {
+                if (subCategories.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text("Select at least one service type.")));
+                  return;
                 }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).primaryColor,
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(vertical: 5.h),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10.r),
-                ),
-                elevation: 1,
-                textStyle: GoogleFonts.poppins(
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.bold,
-                ),
-                minimumSize: Size(200.w, 35.h),
-              ),
-              child: Text('Continue'),
-            ),
-          ),
-          SizedBox(height: 30.h),
-        ],
+                _pageController.nextPage(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.ease);
+              }
+            }),
+            SizedBox(height: 20.h),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildLocationSetupPage() {
-    return SingleChildScrollView(
-      padding: EdgeInsets.symmetric(horizontal: 32.w),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(height: 20.h),
-          // Back button for second step
-          Align(
-            alignment: Alignment.centerLeft,
-            child: IconButton(
-              icon: Icon(Icons.arrow_back,
-                  color: Theme.of(context).primaryColor, size: 24.sp),
-              onPressed: () {
-                _pageController.previousPage(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.ease,
+    return Center(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.symmetric(horizontal: 24.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
+              "Where is your business located?",
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF4A2C40),
+              ),
+            ),
+            SizedBox(height: 4.h),
+            Text(
+              "Set your business location and address details.",
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 10.sp,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            SizedBox(height: 16.h),
+            _buildOutlinedField(
+              label: "Select location from map",
+              controller: TextEditingController(
+                  text: addressCtrl.text.isEmpty ? "" : addressCtrl.text),
+              readOnly: true,
+            ),
+            SizedBox(height: 10.h),
+            _buildContinueButton(
+              label: "Choose from Map",
+              icon: Icons.location_on_outlined,
+              onPressed: () async {
+                final result = await showDialog<Map<String, dynamic>>(
+                  context: context,
+                  builder: (_) => const LocationPickerDialog(),
                 );
+                if (result != null) {
+                  setState(() {
+                    selectedLat = result['lat'];
+                    selectedLng = result['lng'];
+                    addressCtrl.text = result['address'];
+                  });
+                  try {
+                    List<Placemark> placemarks = await placemarkFromCoordinates(
+                        selectedLat!, selectedLng!);
+                    if (placemarks.isNotEmpty) {
+                      Placemark place = placemarks[0];
+                      setState(() {
+                        stateCtrl.text = place.administrativeArea ?? '';
+                        cityCtrl.text =
+                            place.locality ?? place.subLocality ?? '';
+                        pincodeCtrl.text = place.postalCode ?? '';
+                      });
+                    }
+                  } catch (_) {}
+                }
               },
             ),
-          ),
-          SizedBox(height: 10.h),
-          Text(
-            "Where is your business located?",
-            style: GoogleFonts.poppins(
-              fontSize: 16.sp,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).primaryColor,
-              shadows: [
-                Shadow(
-                  blurRadius: 3.0,
-                  color: Colors.black.withOpacity(0.25),
-                  offset: Offset(1.5, 1.5),
+            SizedBox(height: 10.h),
+            _buildOutlinedField(label: "Full Address", controller: addressCtrl),
+            SizedBox(height: 10.h),
+            Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: _buildOutlinedField(label: "State", controller: stateCtrl),
+                ),
+                SizedBox(width: 6.w),
+                Expanded(
+                  flex: 2,
+                  child: _buildOutlinedField(label: "City", controller: cityCtrl),
+                ),
+                SizedBox(width: 6.w),
+                Expanded(
+                  flex: 1,
+                  child: _buildOutlinedField(
+                    label: "Pincode",
+                    controller: pincodeCtrl,
+                    keyboardType: TextInputType.number,
+                  ),
                 ),
               ],
             ),
-          ),
-          SizedBox(height: 6.h),
-          Text(
-            "Set your business location and address details.",
-            style: GoogleFonts.poppins(
-              fontSize: 12.sp,
-              fontWeight: FontWeight.w500,
-              color: Colors.black,
+            SizedBox(height: 20.h),
+            _buildContinueButton(
+              label: isLoading ? "Processing..." : "Continue",
+              onPressed: isLoading ? () {} : _registerUser,
             ),
-          ),
-          SizedBox(height: 30.h),
-          // Map picker
-          const Text("Location",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 12),
-          GestureDetector(
-            onTap: () async {
-              final result = await showDialog<Map<String, dynamic>>(
-                context: context,
-                builder: (_) => const LocationPickerDialog(),
-              );
-              if (result != null) {
-                setState(() {
-                  selectedLat = result['lat'];
-                  selectedLng = result['lng'];
-                  addressCtrl.text = result['address'];
-                });
+            SizedBox(height: 20.h),
+          ],
+        ),
+      ),
+    );
+  }
 
-                // Auto-fill state, city, pincode
-                try {
-                  List<Placemark> placemarks = await placemarkFromCoordinates(
-                      selectedLat!, selectedLng!);
-                  if (placemarks.isNotEmpty) {
-                    Placemark place = placemarks[0];
-                    setState(() {
-                      stateCtrl.text = place.administrativeArea ?? '';
-                      cityCtrl.text = place.locality ??
-                          place.subLocality ??
-                          place.subAdministrativeArea ??
-                          '';
-                      pincodeCtrl.text = place.postalCode ?? '';
-                    });
-                  }
-                } catch (e) {
-                  debugPrint("Error fetching placemarks: $e");
-                }
-              }
-            },
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.location_on, color: Colors.purple),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      addressCtrl.text.isEmpty
-                          ? "Choose from Map"
-                          : addressCtrl.text,
-                      style: TextStyle(
-                          color: addressCtrl.text.isEmpty
-                              ? Colors.grey.shade600
-                              : Colors.black),
-                      softWrap: true,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+  Widget _buildContinueButton(
+      {required VoidCallback onPressed,
+      String label = "Continue",
+      IconData? icon}) {
+    return Container(
+      width: double.infinity,
+      height: 40.h,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF5A3E50), Color(0xFF3B2535)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+        borderRadius: BorderRadius.circular(10.r),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
           ),
-          const SizedBox(height: 32),
-          // Full Address
-          _buildOutlinedField(
-            label: "Full Address",
-            controller: addressCtrl,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Full address is required';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 24),
-          // State, City, Pincode
-          Row(
-            children: [
-              Expanded(
-                child: _buildOutlinedField(
-                  label: "State",
-                  controller: stateCtrl,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'State is required';
-                    }
-                    return null;
-                  },
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildOutlinedField(
-                  label: "City",
-                  controller: cityCtrl,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'City is required';
-                    }
-                    return null;
-                  },
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                flex: 1,
-                child: _buildOutlinedField(
-                  label: "Pincode",
-                  controller: pincodeCtrl,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Pincode is required';
-                    }
-                    if (!RegExp(r'^[0-9]{6}$').hasMatch(value)) {
-                      return 'Enter a valid 6-digit pincode';
-                    }
-                    return null;
-                  },
-                ),
-              ),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, color: Colors.white, size: 16.sp),
+              SizedBox(width: 6.w)
             ],
-          ),
-          const SizedBox(height: 60),
-          // Submit button
-          Center(
-            child: ElevatedButton(
-              onPressed: isLoading ? null : _registerUser,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).primaryColor,
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(vertical: 5.h),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10.r),
-                ),
-                elevation: 1,
-                textStyle: GoogleFonts.poppins(
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.bold,
-                ),
-                minimumSize: Size(200.w, 35.h),
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 12.sp,
               ),
-              child: isLoading
-                  ? SizedBox(
-                      height: 18.h,
-                      width: 18.w,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2.w,
-                      ),
-                    )
-                  : const Text('Complete Registration'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSimpleCheckbox(String title, String value) {
+    bool checked = subCategories.contains(value);
+    return InkWell(
+      onTap: () => setState(() =>
+          checked ? subCategories.remove(value) : subCategories.add(value)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            height: 20.h,
+            width: 20.w,
+            child: Checkbox(
+              value: checked,
+              onChanged: (v) => setState(() =>
+                  v! ? subCategories.add(value) : subCategories.remove(value)),
+              activeColor: const Color(0xFF4A2C40),
+              side: BorderSide(color: Colors.grey.shade400),
             ),
           ),
-          SizedBox(height: 30.h),
+          SizedBox(width: 4.w),
+          Text(title,
+              style: GoogleFonts.poppins(
+                  fontSize: 10.sp, color: Colors.grey.shade700)),
         ],
       ),
     );
@@ -824,96 +905,48 @@ class _RegisterPageState extends State<RegisterPage> {
     Widget? suffixIcon,
     String? Function(String?)? validator,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10.r),
-        boxShadow: [
-          BoxShadow(
-            color: Theme.of(context).primaryColor.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: keyboardType,
-        obscureText: obscureText,
-        readOnly: readOnly,
-        maxLines: maxLines,
-        validator: validator,
-        style: GoogleFonts.poppins(fontSize: 10.sp),
-        decoration: InputDecoration(
-          label: Container(
-            padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 1.h),
-            decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(5.r),
-            ),
-            child: Text(
-              label,
-              style: GoogleFonts.poppins(
-                color: Theme.of(context).primaryColor,
-                fontSize: 9.sp,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10.r),
-            borderSide: BorderSide.none,
-          ),
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
-          suffixIcon: suffixIcon,
-          hintText: hint,
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      obscureText: obscureText,
+      readOnly: readOnly,
+      maxLines: maxLines,
+      validator: validator,
+      style: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.black87),
+      decoration: InputDecoration(
+        hintText: label,
+        hintStyle:
+            GoogleFonts.poppins(fontSize: 10.sp, color: Colors.grey.shade400),
+        suffixIcon: suffixIcon != null
+            ? Padding(
+                padding: EdgeInsets.only(right: 6.w),
+                child: suffixIcon,
+              )
+            : null,
+        suffixIconConstraints: BoxConstraints(minWidth: 30.w, minHeight: 30.h),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: EdgeInsets.symmetric(
+            horizontal: 14.w, vertical: maxLines > 1 ? 12.h : 10.h),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.r),
+          borderSide: BorderSide(color: Colors.grey.shade200, width: 1),
         ),
-      ),
-    );
-  }
-
-  Widget _buildCheckbox(String title, String value) {
-    bool checked = subCategories.contains(value);
-    return GestureDetector(
-      onTap: () => setState(() {
-        if (checked) {
-          subCategories.remove(value);
-        } else {
-          subCategories.add(value);
-        }
-      }),
-      child: Container(
-        decoration: BoxDecoration(
-          color: checked
-              ? Theme.of(context).primaryColor.withOpacity(0.1)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(6.r),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.r),
+          borderSide: BorderSide(color: Colors.grey.shade200, width: 1),
         ),
-        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Checkbox(
-              value: checked,
-              onChanged: (val) => setState(() {
-                if (val == true) {
-                  subCategories.add(value);
-                } else {
-                  subCategories.remove(value);
-                }
-              }),
-              activeColor: Theme.of(context).primaryColor,
-            ),
-            Text(
-              title,
-              style: GoogleFonts.poppins(
-                fontSize: 10.sp,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.r),
+          borderSide: const BorderSide(color: Color(0xFF3B1F2B), width: 1.2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.r),
+          borderSide: const BorderSide(color: Colors.red, width: 1),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.r),
+          borderSide: const BorderSide(color: Colors.red, width: 1.2),
         ),
       ),
     );
@@ -935,201 +968,168 @@ class _RegisterPageState extends State<RegisterPage> {
     String? Function(String?)? validator,
   }) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          decoration: BoxDecoration(
-            color: isVerified ? Colors.grey.shade50 : Colors.white,
-            borderRadius: BorderRadius.circular(10.r),
-            border:
-                isVerified ? Border.all(color: Colors.green.shade200) : null,
-            boxShadow: [
-              if (!isVerified)
-                BoxShadow(
-                  color: Theme.of(context).primaryColor.withOpacity(0.1),
-                  blurRadius: 4,
-                  offset: const Offset(0, 1),
+        Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: controller,
+                enabled: !isVerified,
+                keyboardType: keyboardType,
+                style: GoogleFonts.poppins(
+                    fontSize: 10.sp,
+                    color: isVerified ? Colors.grey : Colors.black87),
+                decoration: InputDecoration(
+                  hintText: label,
+                  hintStyle: GoogleFonts.poppins(
+                      color: Colors.grey.shade400, fontSize: 10.sp),
+                  suffixIcon: isVerified
+                      ? Padding(
+                          padding: EdgeInsets.only(right: 10.w),
+                          child: Icon(Icons.check_circle,
+                              color: Colors.green, size: 16.sp),
+                        )
+                      : null,
+                  suffixIconConstraints:
+                      BoxConstraints(minWidth: 30.w, minHeight: 30.h),
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.r),
+                    borderSide:
+                        BorderSide(color: Colors.grey.shade200, width: 1),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.r),
+                    borderSide:
+                        BorderSide(color: Colors.grey.shade200, width: 1),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.r),
+                    borderSide:
+                        const BorderSide(color: Color(0xFF3B1F2B), width: 1.2),
+                  ),
+                  errorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.r),
+                    borderSide: const BorderSide(color: Colors.red, width: 1),
+                  ),
+                  focusedErrorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.r),
+                    borderSide: const BorderSide(color: Colors.red, width: 1.2),
+                  ),
                 ),
-            ],
-          ),
-          padding: EdgeInsets.all(12.w),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              label,
-                              style: GoogleFonts.poppins(
-                                color: Colors.black87,
-                                fontSize: 10.sp,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(" *",
-                                style: GoogleFonts.poppins(
-                                    color: Colors.red, fontSize: 10.sp)),
-                            const Spacer(),
-                            if (isVerified)
-                              Row(
-                                children: [
-                                  Icon(Icons.check_circle_outline,
-                                      color: Colors.green, size: 14.sp),
-                                  SizedBox(width: 4.w),
-                                  Text("Verified",
-                                      style: GoogleFonts.poppins(
-                                          color: Colors.green,
-                                          fontSize: 10.sp,
-                                          fontWeight: FontWeight.w600)),
-                                ],
-                              ),
-                          ],
-                        ),
-                        SizedBox(height: 4.h),
-                        TextFormField(
-                          controller: controller,
-                          enabled: !isVerified,
-                          keyboardType: keyboardType,
+              ),
+            ),
+            if (!isVerified) ...[
+              SizedBox(width: 8.w),
+              Container(
+                height: 40.h,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF5A3E50), Color(0xFF3B2535)],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                child: ElevatedButton(
+                  onPressed: isSending ? null : onSendOtp,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    padding: EdgeInsets.symmetric(horizontal: 10.w),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.r)),
+                  ),
+                  child: isSending
+                      ? SizedBox(
+                          height: 16.h,
+                          width: 16.w,
+                          child: const CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2))
+                      : Text(isOtpSent ? "Resend" : "Send OTP",
                           style: GoogleFonts.poppins(
-                            fontSize: 11.sp,
-                            color: isVerified ? Colors.grey : Colors.black,
-                          ),
-                          decoration: InputDecoration(
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8.r),
-                              borderSide:
-                                  BorderSide(color: Colors.grey.shade300),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8.r),
-                              borderSide:
-                                  BorderSide(color: Colors.grey.shade300),
-                            ),
-                            contentPadding: EdgeInsets.symmetric(
-                                horizontal: 12.w, vertical: 8.h),
-                            filled: isVerified,
-                            fillColor: isVerified
-                                ? Colors.blue.withOpacity(0.05)
-                                : Colors.white,
-                          ),
-                          validator: validator,
-                        ),
-                      ],
+                              color: Colors.white,
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ],
+        ),
+        if (isOtpSent && !isVerified) ...[
+          SizedBox(height: 8.h),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: otpController,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                      fontSize: 12.sp, fontWeight: FontWeight.bold),
+                  decoration: InputDecoration(
+                    hintText: "Enter OTP",
+                    hintStyle: GoogleFonts.poppins(
+                        color: Colors.grey.shade400,
+                        fontSize: 10.sp,
+                        fontWeight: FontWeight.normal),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                      borderSide:
+                          BorderSide(color: Colors.grey.shade200, width: 1),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                      borderSide:
+                          BorderSide(color: Colors.grey.shade200, width: 1),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                      borderSide: const BorderSide(
+                          color: Color(0xFF3B1F2B), width: 1.2),
                     ),
                   ),
-                  if (!isVerified) ...[
-                    SizedBox(width: 12.w),
-                    SizedBox(
-                      height: 40.h,
-                      child: ElevatedButton(
-                        onPressed: isSending ? null : onSendOtp,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              Theme.of(context).primaryColor.withOpacity(0.1),
-                          foregroundColor: Theme.of(context).primaryColor,
-                          elevation: 0,
-                          padding: EdgeInsets.symmetric(horizontal: 16.w),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8.r),
-                          ),
-                        ),
-                        child: isSending
-                            ? SizedBox(
-                                height: 12.h,
-                                width: 12.w,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 1.5,
-                                  color: Theme.of(context).primaryColor,
-                                ),
-                              )
-                            : Text(
-                                isOtpSent ? "Resend" : "Send OTP",
-                                style: GoogleFonts.poppins(
-                                    fontSize: 10.sp,
-                                    fontWeight: FontWeight.w600),
-                              ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-              if (isOtpSent && !isVerified) ...[
-                SizedBox(height: 12.h),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: otpController,
-                        keyboardType: TextInputType.number,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.poppins(
-                            fontSize: 12.sp,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 4),
-                        decoration: InputDecoration(
-                          hintText: "OTP",
-                          hintStyle: GoogleFonts.poppins(
-                              fontSize: 11.sp,
-                              letterSpacing: 0,
-                              color: Colors.grey.shade400),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8.r),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          contentPadding: EdgeInsets.symmetric(vertical: 8.h),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 12.w),
-                    SizedBox(
-                      height: 40.h,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Theme.of(context).primaryColor.withOpacity(0.6),
-                              Theme.of(context).primaryColor,
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(8.r),
-                        ),
-                        child: ElevatedButton(
-                          onPressed: isVerifying ? null : onVerify,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            foregroundColor: Colors.white,
-                            shadowColor: Colors.transparent,
-                            padding: EdgeInsets.symmetric(horizontal: 24.w),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8.r),
-                            ),
-                          ),
-                          child: isVerifying
-                              ? SizedBox(
-                                  height: 12.h,
-                                  width: 12.w,
-                                  child: const CircularProgressIndicator(
-                                      strokeWidth: 1.5, color: Colors.white))
-                              : Text(
-                                  "Verify",
-                                  style: GoogleFonts.poppins(
-                                      fontSize: 11.sp,
-                                      fontWeight: FontWeight.w600),
-                                ),
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
-              ],
+              ),
+              SizedBox(width: 8.w),
+              Container(
+                height: 40.h,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4A2C40),
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                child: ElevatedButton(
+                  onPressed: isVerifying ? null : onVerify,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    padding: EdgeInsets.symmetric(horizontal: 16.w),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.r)),
+                  ),
+                  child: isVerifying
+                      ? SizedBox(
+                          height: 16.h,
+                          width: 16.w,
+                          child: const CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2))
+                      : Text("Verify",
+                          style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.bold)),
+                ),
+              ),
             ],
           ),
-        ),
+        ],
       ],
     );
   }

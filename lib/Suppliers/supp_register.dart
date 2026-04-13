@@ -235,37 +235,63 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
-          Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage('assets/images/splash.png'),
-                fit: BoxFit.cover,
-                opacity: 0.8,
+          // ── Decorative background circles (matching login.dart) ──
+          Positioned(
+            top: -100,
+            right: -100,
+            child: Container(
+              width: 350.w,
+              height: 350.h,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF3B1F2B).withOpacity(0.04),
               ),
             ),
           ),
+          Positioned(
+            top: 150,
+            right: -50,
+            child: Container(
+              width: 230.w,
+              height: 230.h,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF3B1F2B).withOpacity(0.03),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -60,
+            left: -80,
+            child: Container(
+              width: 300.w,
+              height: 300.h,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF3B1F2B).withOpacity(0.035),
+              ),
+            ),
+          ),
+
           SafeArea(
             child: Column(
               children: [
-                Padding(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: LinearProgressIndicator(
-                          value: (currentStep + 1) / 3,
-                          backgroundColor: Colors.grey.shade300,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                              Theme.of(context).primaryColor),
-                          minHeight: 6,
-                        ),
-                      ),
-                    ],
+                SizedBox(height: 24.h),
+                // Logo
+                Center(
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    width: 200.w,
+                    fit: BoxFit.contain,
                   ),
                 ),
+                SizedBox(height: 6.h),
+
+                // Form pages
                 Expanded(
                   child: Form(
                     key: _formKey,
@@ -282,6 +308,99 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
                     ),
                   ),
                 ),
+
+                // Bottom: Prev / Indicators / Next
+                Padding(
+                  padding: EdgeInsets.only(bottom: 20.h),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // ── Prev button ──
+                      AnimatedOpacity(
+                        duration: const Duration(milliseconds: 200),
+                        opacity: currentStep > 0 ? 1.0 : 0.0,
+                        child: GestureDetector(
+                          onTap: currentStep > 0
+                              ? () => _pageController.previousPage(
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.ease,
+                                  )
+                              : null,
+                          child: Container(
+                            width: 32.w,
+                            height: 32.h,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: const Color(0xFF4A2C40).withOpacity(0.1),
+                            ),
+                            child: Icon(
+                              Icons.chevron_left_rounded,
+                              color: const Color(0xFF4A2C40),
+                              size: 20.sp,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 12.w),
+                      // ── Step dots ──
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children:
+                            List.generate(3, (index) => _buildIndicator(index)),
+                      ),
+                      SizedBox(width: 12.w),
+                      // ── Next button (validated) ──
+                      AnimatedOpacity(
+                        duration: const Duration(milliseconds: 200),
+                        opacity: currentStep < 2 ? 1.0 : 0.0,
+                        child: GestureDetector(
+                          onTap: currentStep < 2
+                              ? () {
+                                  if (currentStep == 0) {
+                                    if (!_formKey.currentState!.validate())
+                                      return;
+                                    if (!isEmailVerified) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(const SnackBar(
+                                              content: Text(
+                                                  "Please verify your email.")));
+                                      return;
+                                    }
+                                    if (!isPhoneVerified) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(const SnackBar(
+                                              content: Text(
+                                                  "Please verify your phone.")));
+                                      return;
+                                    }
+                                  } else if (currentStep == 1) {
+                                    if (!_formKey.currentState!.validate())
+                                      return;
+                                  }
+                                  _pageController.nextPage(
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.ease,
+                                  );
+                                }
+                              : null,
+                          child: Container(
+                            width: 32.w,
+                            height: 32.h,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: const Color(0xFF4A2C40).withOpacity(0.1),
+                            ),
+                            child: Icon(
+                              Icons.chevron_right_rounded,
+                              color: const Color(0xFF4A2C40),
+                              size: 20.sp,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -290,404 +409,370 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
     );
   }
 
-  // Your existing UI methods remain 100% unchanged
+  Widget _buildIndicator(int index) {
+    bool isActive = currentStep == index;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      margin: EdgeInsets.symmetric(horizontal: 4.w),
+      height: 8.h,
+      width: isActive ? 24.w : 8.w,
+      decoration: BoxDecoration(
+        color: isActive ? const Color(0xFF4A2C40) : const Color(0xFFD1C4CE),
+        borderRadius: BorderRadius.circular(4.r),
+      ),
+    );
+  }
+
   Widget _buildPersonalDetailsPage() {
-    return SingleChildScrollView(
-      padding: EdgeInsets.symmetric(horizontal: 32.w),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(height: 20.h),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: IconButton(
-              icon: Icon(Icons.arrow_back,
-                  color: Theme.of(context).primaryColor, size: 20.sp),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ),
-          SizedBox(height: 10.h),
-          Text("Personal Details",
+    return Center(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.symmetric(horizontal: 24.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
+              "Create your account",
+              textAlign: TextAlign.center,
               style: GoogleFonts.poppins(
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).primaryColor)),
-          SizedBox(height: 6.h),
-          Text("Tell us about yourself",
-              style: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.black)),
-          SizedBox(height: 30.h),
-          Row(children: [
-            Expanded(
-                child: _buildOutlinedField(
-                    label: "First Name *",
+                fontSize: 14.sp,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF4A2C40),
+              ),
+            ),
+            SizedBox(height: 4.h),
+            Text(
+              "Enter your personal details to get started",
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                  fontSize: 10.sp, color: Colors.grey.shade600),
+            ),
+            SizedBox(height: 16.h),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildOutlinedField(
+                    label: "First Name",
                     controller: firstNameCtrl,
                     validator: (v) =>
-                        v?.trim().isEmpty ?? true ? 'Required' : null)),
-            SizedBox(width: 16.w),
-            Expanded(
-                child: _buildOutlinedField(
-                    label: "Last Name *",
+                        v?.trim().isEmpty ?? true ? 'Required' : null,
+                  ),
+                ),
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: _buildOutlinedField(
+                    label: "Last Name",
                     controller: lastNameCtrl,
                     validator: (v) =>
-                        v?.trim().isEmpty ?? true ? 'Required' : null)),
-          ]),
-          SizedBox(height: 16.h),
-          // Email with Verification
-          _buildVerificationField(
-            label: "Email",
-            controller: emailCtrl,
-            otpController: emailOtpCtrl,
-            isOtpSent: isEmailOtpSent,
-            isVerified: isEmailVerified,
-            isSending: isSendingEmailOtp,
-            isVerifying: isVerifyingEmailOtp,
-            keyboardType: TextInputType.emailAddress,
-            onSendOtp: () => _handleEmailOtp(),
-            onVerify: () => _handleEmailVerify(),
-            validator: (v) {
-              if (v?.trim().isEmpty ?? true) return 'Required';
-              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                  .hasMatch(v!.trim())) return 'Invalid email';
-              return null;
-            },
-          ),
-          SizedBox(height: 16.h),
-          // Mobile Number with Verification
-          _buildVerificationField(
-            label: "Mobile Number",
-            controller: phoneCtrl,
-            otpController: phoneOtpCtrl,
-            isOtpSent: isPhoneOtpSent,
-            isVerified: isPhoneVerified,
-            isSending: isSendingPhoneOtp,
-            isVerifying: isVerifyingPhoneOtp,
-            keyboardType: TextInputType.phone,
-            onSendOtp: () => _handlePhoneOtp(),
-            onVerify: () => _handlePhoneVerify(),
-            validator: (v) {
-              if (v?.trim().isEmpty ?? true) return 'Required';
-              if (!RegExp(r'^[6-9][0-9]{9}$').hasMatch(v!.trim()))
-                return 'Invalid phone';
-              return null;
-            },
-          ),
-          SizedBox(height: 16.h),
-          _buildOutlinedField(
-              label: "Password *",
+                        v?.trim().isEmpty ?? true ? 'Required' : null,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 10.h),
+            _buildVerificationField(
+              label: "Email",
+              controller: emailCtrl,
+              otpController: emailOtpCtrl,
+              isOtpSent: isEmailOtpSent,
+              isVerified: isEmailVerified,
+              isSending: isSendingEmailOtp,
+              isVerifying: isVerifyingEmailOtp,
+              keyboardType: TextInputType.emailAddress,
+              onSendOtp: _handleEmailOtp,
+              onVerify: _handleEmailVerify,
+              validator: (v) {
+                if (v?.trim().isEmpty ?? true) return 'Required';
+                if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                    .hasMatch(v!.trim())) return 'Invalid email';
+                return null;
+              },
+            ),
+            SizedBox(height: 10.h),
+            _buildVerificationField(
+              label: "Mobile Number",
+              controller: phoneCtrl,
+              otpController: phoneOtpCtrl,
+              isOtpSent: isPhoneOtpSent,
+              isVerified: isPhoneVerified,
+              isSending: isSendingPhoneOtp,
+              isVerifying: isVerifyingPhoneOtp,
+              keyboardType: TextInputType.phone,
+              onSendOtp: _handlePhoneOtp,
+              onVerify: _handlePhoneVerify,
+              validator: (v) {
+                if (v?.trim().isEmpty ?? true) return 'Required';
+                if (!RegExp(r'^[6-9][0-9]{9}$').hasMatch(v!.trim()))
+                  return 'Invalid phone';
+                return null;
+              },
+            ),
+            SizedBox(height: 10.h),
+            _buildOutlinedField(
+              label: "Password",
               controller: passwordCtrl,
               obscureText: _obscurePassword,
               suffixIcon: IconButton(
+                icon: Icon(
+                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                    size: 18.sp),
                 onPressed: () =>
                     setState(() => _obscurePassword = !_obscurePassword),
-                icon: Icon(
-                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                  size: 16.sp,
-                  color: Theme.of(context).primaryColor,
-                ),
               ),
               validator: (v) =>
-                  (v?.length ?? 0) < 6 ? 'Minimum 6 characters' : null),
-          SizedBox(height: 16.h),
-          _buildOutlinedField(
-            label: "Confirm Password *",
-            controller: confirmPasswordCtrl,
-            obscureText: _obscureConfirmPassword,
-            suffixIcon: IconButton(
-              onPressed: () => setState(
-                  () => _obscureConfirmPassword = !_obscureConfirmPassword),
-              icon: Icon(
-                _obscureConfirmPassword
-                    ? Icons.visibility_off
-                    : Icons.visibility,
-                size: 16.sp,
-                color: Theme.of(context).primaryColor,
+                  (v?.length ?? 0) < 6 ? 'Minimum 6 characters' : null,
+            ),
+            SizedBox(height: 10.h),
+            _buildOutlinedField(
+              label: "Confirm Password",
+              controller: confirmPasswordCtrl,
+              obscureText: _obscureConfirmPassword,
+              suffixIcon: IconButton(
+                icon: Icon(
+                    _obscureConfirmPassword
+                        ? Icons.visibility_off
+                        : Icons.visibility,
+                    size: 18.sp),
+                onPressed: () => setState(
+                    () => _obscureConfirmPassword = !_obscureConfirmPassword),
               ),
-            ),
-            validator: (v) {
-              if (v?.trim().isEmpty ?? true) return 'Confirm Password required';
-              if (v != passwordCtrl.text) return 'Passwords do not match';
-              return null;
-            },
-          ),
-          SizedBox(height: 16.h),
-          _buildOutlinedField(
-              label: "Referral Code (optional)", controller: referralCtrl),
-          SizedBox(height: 48.h),
-          Center(
-            child: ElevatedButton(
-              onPressed: () {
-                if (_formKey.currentState!.validate()) {
-                  if (!isEmailVerified) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Please verify your email.")),
-                    );
-                    return;
-                  }
-                  if (!isPhoneVerified) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Please verify your phone number.")),
-                    );
-                    return;
-                  }
-                  _pageController.nextPage(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.ease);
-                }
+              validator: (v) {
+                if (v?.trim().isEmpty ?? true) return 'Required';
+                if (v != passwordCtrl.text) return 'Passwords do not match';
+                return null;
               },
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).primaryColor,
-                  foregroundColor: Colors.white,
-                  minimumSize: Size(200.w, 40.h),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8.r))),
-              child: Text('Continue',
-                  style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.bold, fontSize: 12.sp)),
             ),
-          ),
-          SizedBox(height: 30.h),
-        ],
+            SizedBox(height: 10.h),
+            _buildOutlinedField(
+                label: "Referral Code (Optional)", controller: referralCtrl),
+            SizedBox(height: 20.h),
+            _buildContinueButton(onPressed: () {
+              if (_formKey.currentState!.validate()) {
+                if (!isEmailVerified) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text("Please verify your email.")));
+                  return;
+                }
+                if (!isPhoneVerified) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text("Please verify your phone number.")));
+                  return;
+                }
+                _pageController.nextPage(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.ease);
+              }
+            }),
+            SizedBox(height: 20.h),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildBusinessDetailsPage() {
-    return SingleChildScrollView(
-      padding: EdgeInsets.symmetric(horizontal: 32.w),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(height: 20.h),
-          Align(
-              alignment: Alignment.centerLeft,
-              child: IconButton(
-                  icon: Icon(Icons.arrow_back,
-                      color: Theme.of(context).primaryColor, size: 20.sp),
-                  onPressed: () => _pageController.previousPage(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.ease))),
-          SizedBox(height: 10.h),
-          Text("Business Details",
+    return Center(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.symmetric(horizontal: 24.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
+              "Tell us about your business",
+              textAlign: TextAlign.center,
               style: GoogleFonts.poppins(
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).primaryColor)),
-          SizedBox(height: 6.h),
-          Text("Provide your business information",
-              style: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.black)),
-          SizedBox(height: 30.h),
-          _buildOutlinedField(
-              label: "Shop Name *",
+                fontSize: 14.sp,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF4A2C40),
+              ),
+            ),
+            SizedBox(height: 4.h),
+            Text(
+              "Provide your business information",
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                  fontSize: 10.sp, color: Colors.grey.shade600),
+            ),
+            SizedBox(height: 16.h),
+            _buildOutlinedField(
+              label: "Shop Name",
               controller: shopNameCtrl,
               validator: (v) =>
-                  v?.trim().isEmpty ?? true ? 'Shop name required' : null),
-          SizedBox(height: 16.h),
-          _buildOutlinedField(
-              label: "Registration Number *",
+                  v?.trim().isEmpty ?? true ? 'Shop name required' : null,
+            ),
+            SizedBox(height: 10.h),
+            _buildOutlinedField(
+              label: "Registration Number",
               controller: registrationNumberCtrl,
-              validator: (v) => v?.trim().isEmpty ?? true ? 'Required' : null),
-          SizedBox(height: 16.h),
-          _buildOutlinedField(
-              label: "Business Description *",
+              validator: (v) => v?.trim().isEmpty ?? true ? 'Required' : null,
+            ),
+            SizedBox(height: 10.h),
+            _buildOutlinedField(
+              label: "Business Description",
               controller: descriptionCtrl,
               maxLines: 3,
               validator: (v) =>
-                  v?.trim().isEmpty ?? true ? 'Description required' : null),
-          SizedBox(height: 16.h),
-          _buildOutlinedField(
-              label: "Category *",
+                  v?.trim().isEmpty ?? true ? 'Description required' : null,
+            ),
+            SizedBox(height: 10.h),
+            _buildOutlinedField(
+              label: "Category",
               controller: categoryCtrl,
               hint: "general",
               validator: (v) =>
-                  v?.trim().isEmpty ?? true ? 'Category required' : null),
-          SizedBox(height: 48.h),
-          Center(
-            child: ElevatedButton(
-              onPressed: () {
-                if (_formKey.currentState!.validate()) {
-                  _pageController.nextPage(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.ease);
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).primaryColor,
-                  foregroundColor: Colors.white,
-                  minimumSize: Size(200.w, 40.h),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8.r))),
-              child: Text('Continue',
-                  style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.bold, fontSize: 12.sp)),
+                  v?.trim().isEmpty ?? true ? 'Category required' : null,
             ),
-          ),
-          SizedBox(height: 30.h),
-        ],
+            SizedBox(height: 20.h),
+            _buildContinueButton(onPressed: () {
+              if (_formKey.currentState!.validate()) {
+                _pageController.nextPage(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.ease);
+              }
+            }),
+            SizedBox(height: 20.h),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildLocationSetupPage() {
-    return SingleChildScrollView(
-      padding: EdgeInsets.symmetric(horizontal: 32.w),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(height: 20.h),
-          Align(
-              alignment: Alignment.centerLeft,
-              child: IconButton(
-                  icon: Icon(Icons.arrow_back,
-                      color: Theme.of(context).primaryColor, size: 20.sp),
-                  onPressed: () => _pageController.previousPage(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.ease))),
-          SizedBox(height: 10.h),
-          Text("Business Location",
+    return Center(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.symmetric(horizontal: 24.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
+              "Where is your business located?",
+              textAlign: TextAlign.center,
               style: GoogleFonts.poppins(
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).primaryColor)),
-          SizedBox(height: 6.h),
-          Text("Set your business location",
-              style: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.black)),
-          SizedBox(height: 30.h),
-          GestureDetector(
-            onTap: () async {
-              final result = await showDialog<Map<String, dynamic>>(
-                context: context,
-                builder: (_) => const LocationPickerDialog(),
-              );
-              if (result != null && mounted) {
-                setState(() {
-                  selectedLat = result['lat'] as double?;
-                  selectedLng = result['lng'] as double?;
-                  addressCtrl.text = (result['address'] ?? '').toString();
-                });
-
-                // Auto-fill state, city, pincode
-                if (selectedLat != null && selectedLng != null) {
-                  try {
-                    List<Placemark> placemarks = await placemarkFromCoordinates(
-                        selectedLat!, selectedLng!);
-                    if (placemarks.isNotEmpty) {
-                      Placemark place = placemarks[0];
-                      setState(() {
-                        stateCtrl.text = place.administrativeArea ?? '';
-                        cityCtrl.text = place.locality ??
-                            place.subLocality ??
-                            place.subAdministrativeArea ??
-                            '';
-                        pincodeCtrl.text = place.postalCode ?? '';
-                      });
-                    }
-                  } catch (e) {
-                    developer.log("Error fetching placemarks: $e");
+                fontSize: 14.sp,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF4A2C40),
+              ),
+            ),
+            SizedBox(height: 4.h),
+            Text(
+              "Set your business location and address details.",
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                  fontSize: 10.sp, color: Colors.grey.shade600),
+            ),
+            SizedBox(height: 16.h),
+            _buildOutlinedField(
+              label: "Select location from map",
+              controller: TextEditingController(
+                  text: addressCtrl.text.isEmpty ? "" : addressCtrl.text),
+              readOnly: true,
+            ),
+            SizedBox(height: 10.h),
+            _buildContinueButton(
+              label: "Choose from Map",
+              icon: Icons.location_on_outlined,
+              onPressed: () async {
+                final result = await showDialog<Map<String, dynamic>>(
+                  context: context,
+                  builder: (_) => const LocationPickerDialog(),
+                );
+                if (result != null && mounted) {
+                  setState(() {
+                    selectedLat = result['lat'] as double?;
+                    selectedLng = result['lng'] as double?;
+                    addressCtrl.text = (result['address'] ?? '').toString();
+                  });
+                  if (selectedLat != null && selectedLng != null) {
+                    try {
+                      List<Placemark> placemarks =
+                          await placemarkFromCoordinates(
+                              selectedLat!, selectedLng!);
+                      if (placemarks.isNotEmpty) {
+                        Placemark place = placemarks[0];
+                        setState(() {
+                          stateCtrl.text = place.administrativeArea ?? '';
+                          cityCtrl.text = place.locality ??
+                              place.subLocality ??
+                              place.subAdministrativeArea ??
+                              '';
+                          pincodeCtrl.text = place.postalCode ?? '';
+                        });
+                      }
+                    } catch (_) {}
                   }
                 }
-              }
-            },
-            child: Container(
-              width: double.infinity,
-              padding: EdgeInsets.all(12.w),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10.r),
-                border: Border.all(
-                    color: Theme.of(context).primaryColor.withOpacity(0.3)),
-                boxShadow: [
-                  BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2))
-                ],
-              ),
-              child: Row(children: [
-                Icon(Icons.location_on,
-                    color: Theme.of(context).primaryColor, size: 18.sp),
-                SizedBox(width: 12.w),
-                Expanded(
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                            addressCtrl.text.isEmpty
-                                ? "Tap to select location"
-                                : addressCtrl.text,
-                            style: GoogleFonts.poppins(
-                                fontSize: 9.sp, color: Colors.grey.shade600),
-                            softWrap: true),
-                        if (selectedLat != null)
-                          Text(
-                              "Lat: ${selectedLat!.toStringAsFixed(6)}, Lng: ${selectedLng!.toStringAsFixed(6)}",
-                              style: GoogleFonts.poppins(
-                                  fontSize: 9.sp,
-                                  color: Theme.of(context).primaryColor)),
-                      ]),
-                ),
-              ]),
+              },
             ),
-          ),
-          SizedBox(height: 16.h),
-          _buildOutlinedField(
-              label: "Full Address *",
-              controller: addressCtrl,
-              maxLines: 2,
-              validator: (v) =>
-                  v?.trim().isEmpty ?? true ? 'Address required' : null),
-          SizedBox(height: 16.h),
-          Row(children: [
-            Expanded(
-                child: _buildOutlinedField(
-                    label: "State *",
-                    controller: stateCtrl,
-                    validator: (v) =>
-                        v?.trim().isEmpty ?? true ? 'State required' : null)),
-            SizedBox(width: 12.w),
-            Expanded(
-                child: _buildOutlinedField(
-                    label: "City *",
-                    controller: cityCtrl,
-                    validator: (v) =>
-                        v?.trim().isEmpty ?? true ? 'City required' : null)),
-            SizedBox(width: 12.w),
-            Expanded(
-                child: _buildOutlinedField(
-                    label: "Pincode *",
-                    controller: pincodeCtrl,
-                    keyboardType: TextInputType.number,
-                    validator: (v) {
-                      if (v?.trim().isEmpty ?? true) return 'Pincode required';
-                      if (!RegExp(r'^[0-9]{6}$').hasMatch(v!.trim()))
-                        return 'Enter valid 6-digit pincode';
-                      return null;
-                    })),
-          ]),
-          SizedBox(height: 60.h),
-          Center(
-            child: ElevatedButton(
-              onPressed: isLoading ? null : _registerSupplier,
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).primaryColor,
-                  foregroundColor: Colors.white,
-                  minimumSize: Size(280.w, 45.h),
-                  padding: EdgeInsets.symmetric(vertical: 10.h),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10.r)),
-                  elevation: 3),
-              child: isLoading
-                  ? SizedBox(
-                      height: 18.h,
-                      width: 18.w,
-                      child: CircularProgressIndicator(
-                          color: Colors.white, strokeWidth: 2.w))
-                  : Text('Complete Registration',
-                      style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.bold, fontSize: 12.sp)),
+            SizedBox(height: 10.h),
+            _buildOutlinedField(label: "Full Address", controller: addressCtrl),
+            SizedBox(height: 10.h),
+            _buildOutlinedField(label: "State", controller: stateCtrl),
+            SizedBox(height: 10.h),
+            _buildOutlinedField(label: "City", controller: cityCtrl),
+            SizedBox(height: 10.h),
+            _buildOutlinedField(
+              label: "Pincode",
+              controller: pincodeCtrl,
+              keyboardType: TextInputType.number,
             ),
+            SizedBox(height: 20.h),
+            _buildContinueButton(
+              label: isLoading ? "Processing..." : "Complete Registration",
+              onPressed: isLoading ? () {} : _registerSupplier,
+            ),
+            SizedBox(height: 20.h),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContinueButton(
+      {required VoidCallback onPressed,
+      String label = "Continue",
+      IconData? icon}) {
+    return Container(
+      width: double.infinity,
+      height: 40.h,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF5A3E50), Color(0xFF3B2535)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+        borderRadius: BorderRadius.circular(10.r),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
           ),
-          SizedBox(height: 30.h),
         ],
+      ),
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, color: Colors.white, size: 16.sp),
+              SizedBox(width: 6.w)
+            ],
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 12.sp,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -697,53 +782,54 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
     required TextEditingController controller,
     TextInputType keyboardType = TextInputType.text,
     bool obscureText = false,
+    bool readOnly = false,
     int maxLines = 1,
     String? hint,
     Widget? suffixIcon,
     String? Function(String?)? validator,
   }) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 8.h),
-      decoration: BoxDecoration(
-          color: Colors.white,
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      obscureText: obscureText,
+      readOnly: readOnly,
+      maxLines: maxLines,
+      validator: validator,
+      style: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.black87),
+      decoration: InputDecoration(
+        hintText: label,
+        hintStyle:
+            GoogleFonts.poppins(fontSize: 10.sp, color: Colors.grey.shade400),
+        suffixIcon: suffixIcon != null
+            ? Padding(
+                padding: EdgeInsets.only(right: 6.w),
+                child: suffixIcon,
+              )
+            : null,
+        suffixIconConstraints: BoxConstraints(minWidth: 30.w, minHeight: 30.h),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: EdgeInsets.symmetric(
+            horizontal: 14.w, vertical: maxLines > 1 ? 12.h : 10.h),
+        border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.r),
-          boxShadow: [
-            BoxShadow(
-                color: Theme.of(context).primaryColor.withOpacity(0.1),
-                blurRadius: 8,
-                offset: const Offset(0, 2))
-          ]),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: keyboardType,
-        obscureText: obscureText,
-        maxLines: maxLines,
-        validator: validator,
-        style: GoogleFonts.poppins(fontSize: 10.sp),
-        decoration: InputDecoration(
-          label: Text(label,
-              style: GoogleFonts.poppins(
-                  color: Theme.of(context).primaryColor,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 8.sp)),
-          hintText: hint,
-          border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.r),
-              borderSide: BorderSide(
-                  color: Theme.of(context).primaryColor.withOpacity(0.2))),
-          enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.r),
-              borderSide: BorderSide(
-                  color: Theme.of(context).primaryColor.withOpacity(0.2))),
-          focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.r),
-              borderSide:
-                  BorderSide(color: Theme.of(context).primaryColor, width: 2)),
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding:
-              EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-          suffixIcon: suffixIcon,
+          borderSide: BorderSide(color: Colors.grey.shade200, width: 1),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.r),
+          borderSide: BorderSide(color: Colors.grey.shade200, width: 1),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.r),
+          borderSide: const BorderSide(color: Color(0xFF3B1F2B), width: 1.2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.r),
+          borderSide: const BorderSide(color: Colors.red, width: 1),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.r),
+          borderSide: const BorderSide(color: Colors.red, width: 1.2),
         ),
       ),
     );
@@ -765,209 +851,171 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
     String? Function(String?)? validator,
   }) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          margin: EdgeInsets.only(bottom: 8.h),
-          decoration: BoxDecoration(
-            color: isVerified ? Colors.grey.shade50 : Colors.white,
-            borderRadius: BorderRadius.circular(10.r),
-            border:
-                isVerified ? Border.all(color: Colors.green.shade200) : null,
-            boxShadow: [
-              if (!isVerified)
-                BoxShadow(
-                  color: Theme.of(context).primaryColor.withOpacity(0.1),
-                  blurRadius: 4,
-                  offset: const Offset(0, 1),
+        Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: controller,
+                enabled: !isVerified,
+                keyboardType: keyboardType,
+                style: GoogleFonts.poppins(
+                    fontSize: 10.sp,
+                    color: isVerified ? Colors.grey : Colors.black87),
+                validator: validator,
+                decoration: InputDecoration(
+                  hintText: label,
+                  hintStyle: GoogleFonts.poppins(
+                      color: Colors.grey.shade400, fontSize: 10.sp),
+                  suffixIcon: isVerified
+                      ? Padding(
+                          padding: EdgeInsets.only(right: 10.w),
+                          child: Icon(Icons.check_circle,
+                              color: Colors.green, size: 16.sp),
+                        )
+                      : null,
+                  suffixIconConstraints:
+                      BoxConstraints(minWidth: 30.w, minHeight: 30.h),
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.r),
+                    borderSide:
+                        BorderSide(color: Colors.grey.shade200, width: 1),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.r),
+                    borderSide:
+                        BorderSide(color: Colors.grey.shade200, width: 1),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.r),
+                    borderSide:
+                        const BorderSide(color: Color(0xFF3B1F2B), width: 1.2),
+                  ),
+                  errorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.r),
+                    borderSide: const BorderSide(color: Colors.red, width: 1),
+                  ),
+                  focusedErrorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.r),
+                    borderSide: const BorderSide(color: Colors.red, width: 1.2),
+                  ),
                 ),
-            ],
-          ),
-          padding: EdgeInsets.all(12.w),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              label,
-                              style: GoogleFonts.poppins(
-                                color: Theme.of(context).primaryColor,
-                                fontSize: 8.sp,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(" *",
-                                style: GoogleFonts.poppins(
-                                    color: Colors.red, fontSize: 8.sp)),
-                            const Spacer(),
-                            if (isVerified)
-                              Row(
-                                children: [
-                                  Icon(Icons.check_circle_outline,
-                                      color: Colors.green, size: 12.sp),
-                                  SizedBox(width: 4.w),
-                                  Text("Verified",
-                                      style: GoogleFonts.poppins(
-                                          color: Colors.green,
-                                          fontSize: 8.sp,
-                                          fontWeight: FontWeight.w600)),
-                                ],
-                              ),
-                          ],
-                        ),
-                        SizedBox(height: 4.h),
-                        TextFormField(
-                          controller: controller,
-                          enabled: !isVerified,
-                          keyboardType: keyboardType,
+              ),
+            ),
+            if (!isVerified) ...[
+              SizedBox(width: 8.w),
+              Container(
+                height: 40.h,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF5A3E50), Color(0xFF3B2535)],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                child: ElevatedButton(
+                  onPressed: isSending ? null : onSendOtp,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    padding: EdgeInsets.symmetric(horizontal: 10.w),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.r)),
+                  ),
+                  child: isSending
+                      ? SizedBox(
+                          height: 16.h,
+                          width: 16.w,
+                          child: const CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2))
+                      : Text(
+                          isOtpSent ? "Resend" : "Send OTP",
                           style: GoogleFonts.poppins(
-                            fontSize: 10.sp,
-                            color: isVerified ? Colors.grey : Colors.black,
-                          ),
-                          decoration: InputDecoration(
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8.r),
-                              borderSide: BorderSide(
-                                  color: Theme.of(context)
-                                      .primaryColor
-                                      .withOpacity(0.2)),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8.r),
-                              borderSide: BorderSide(
-                                  color: Theme.of(context)
-                                      .primaryColor
-                                      .withOpacity(0.2)),
-                            ),
-                            contentPadding: EdgeInsets.symmetric(
-                                horizontal: 12.w, vertical: 8.h),
-                            filled: isVerified,
-                            fillColor: isVerified
-                                ? Colors.blue.withOpacity(0.05)
-                                : Colors.white,
-                          ),
-                          validator: validator,
+                              color: Colors.white,
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.bold),
                         ),
-                      ],
+                ),
+              ),
+            ],
+          ],
+        ),
+        if (isOtpSent && !isVerified) ...[
+          SizedBox(height: 8.h),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: otpController,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                      fontSize: 12.sp, fontWeight: FontWeight.bold),
+                  decoration: InputDecoration(
+                    hintText: "Enter OTP",
+                    hintStyle: GoogleFonts.poppins(
+                        color: Colors.grey.shade400,
+                        fontSize: 10.sp,
+                        fontWeight: FontWeight.normal),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                      borderSide:
+                          BorderSide(color: Colors.grey.shade200, width: 1),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                      borderSide:
+                          BorderSide(color: Colors.grey.shade200, width: 1),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                      borderSide: const BorderSide(
+                          color: Color(0xFF3B1F2B), width: 1.2),
                     ),
                   ),
-                  if (!isVerified) ...[
-                    SizedBox(width: 12.w),
-                    SizedBox(
-                      height: 40.h,
-                      child: ElevatedButton(
-                        onPressed: isSending ? null : onSendOtp,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              Theme.of(context).primaryColor.withOpacity(0.1),
-                          foregroundColor: Theme.of(context).primaryColor,
-                          elevation: 0,
-                          padding: EdgeInsets.symmetric(horizontal: 16.w),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8.r),
-                          ),
-                        ),
-                        child: isSending
-                            ? SizedBox(
-                                height: 12.h,
-                                width: 12.w,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 1.5,
-                                  color: Theme.of(context).primaryColor,
-                                ),
-                              )
-                            : Text(
-                                isOtpSent ? "Resend" : "Send OTP",
-                                style: GoogleFonts.poppins(
-                                    fontSize: 9.sp,
-                                    fontWeight: FontWeight.w600),
-                              ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-              if (isOtpSent && !isVerified) ...[
-                SizedBox(height: 12.h),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: otpController,
-                        keyboardType: TextInputType.number,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.poppins(
-                            fontSize: 12.sp,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 4),
-                        decoration: InputDecoration(
-                          hintText: "OTP",
-                          hintStyle: GoogleFonts.poppins(
-                              fontSize: 10.sp,
-                              letterSpacing: 0,
-                              color: Colors.grey.shade400),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8.r),
-                            borderSide: BorderSide(
-                                color: Theme.of(context)
-                                    .primaryColor
-                                    .withOpacity(0.2)),
-                          ),
-                          contentPadding: EdgeInsets.symmetric(vertical: 8.h),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 12.w),
-                    SizedBox(
-                      height: 40.h,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Theme.of(context).primaryColor.withOpacity(0.6),
-                              Theme.of(context).primaryColor,
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(8.r),
-                        ),
-                        child: ElevatedButton(
-                          onPressed: isVerifying ? null : onVerify,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            foregroundColor: Colors.white,
-                            shadowColor: Colors.transparent,
-                            padding: EdgeInsets.symmetric(horizontal: 24.w),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8.r),
-                            ),
-                          ),
-                          child: isVerifying
-                              ? SizedBox(
-                                  height: 12.h,
-                                  width: 12.w,
-                                  child: const CircularProgressIndicator(
-                                      strokeWidth: 1.5, color: Colors.white))
-                              : Text(
-                                  "Verify",
-                                  style: GoogleFonts.poppins(
-                                      fontSize: 10.sp,
-                                      fontWeight: FontWeight.w600),
-                                ),
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
-              ],
+              ),
+              SizedBox(width: 8.w),
+              Container(
+                height: 40.h,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4A2C40),
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                child: ElevatedButton(
+                  onPressed: isVerifying ? null : onVerify,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    padding: EdgeInsets.symmetric(horizontal: 16.w),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.r)),
+                  ),
+                  child: isVerifying
+                      ? SizedBox(
+                          height: 16.h,
+                          width: 16.w,
+                          child: const CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2))
+                      : Text("Verify",
+                          style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.bold)),
+                ),
+              ),
             ],
           ),
-        ),
+        ],
       ],
     );
   }
