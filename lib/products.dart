@@ -748,7 +748,8 @@ class _ProductDetailsDialog extends StatelessWidget {
                             style: GoogleFonts.poppins(
                                 fontSize: 22,
                                 fontWeight: FontWeight.w700,
-                                color: Colors.black87)),
+                                color: Colors.black87),
+                            softWrap: true),
                         const SizedBox(height: 6),
                         // Price
                         Row(
@@ -764,11 +765,14 @@ class _ProductDetailsDialog extends StatelessWidget {
                                 salePrice != null &&
                                 price != salePrice) ...[
                               const SizedBox(width: 8),
-                              Text('₹$price.00',
-                                  style: GoogleFonts.poppins(
-                                      fontSize: 12,
-                                      color: Colors.grey.shade500,
-                                      decoration: TextDecoration.lineThrough)),
+                              Flexible(
+                                child: Text('₹$price.00',
+                                    style: GoogleFonts.poppins(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade500,
+                                        decoration:
+                                            TextDecoration.lineThrough)),
+                              ),
                             ],
                           ],
                         ),
@@ -784,7 +788,8 @@ class _ProductDetailsDialog extends StatelessWidget {
                         const SizedBox(height: 3),
                         Text(description.isNotEmpty ? description : 'N/A',
                             style: GoogleFonts.poppins(
-                                fontSize: 12, color: Colors.black87)),
+                                fontSize: 12, color: Colors.black87),
+                            softWrap: true),
                         const SizedBox(height: 14),
                         Divider(color: Colors.grey.shade200),
                         const SizedBox(height: 10),

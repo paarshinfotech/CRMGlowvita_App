@@ -108,35 +108,40 @@ class _CustomDrawerState extends State<CustomDrawer> {
               ),
               child: SafeArea(
                 bottom: false,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(4 * scale),
-                          child: Image.asset(
-                            'assets/images/favicon.jpg', // Using favicon as requested logo.jpg might be this
-                            height: 24 * scale,
-                            width: 24 * scale,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                Image.asset('assets/images/logo.png',
-                                    height: 24 * scale),
-                          ),
+                child: SizedBox(
+                  height: 60 * scale,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Centered Logo
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8 * scale),
+                        child: Image.asset(
+                          'assets/images/favicon.jpg',
+                          height: 50 * scale,
+                          width: 50 * scale,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              Image.asset('assets/images/logo.png',
+                                  height: 50 * scale),
                         ),
-                      ],
-                    ),
-                    IconButton(
-                      icon: Icon(
-                        Icons.chevron_left,
-                        size: 25 * baseFontScale,
                       ),
-                      onPressed: () => Navigator.pop(context),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  ],
+                      // Back Button on the right
+                      Positioned(
+                        right: 0,
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.chevron_left,
+                            size: 28 * baseFontScale,
+                            color: Colors.black87,
+                          ),
+                          onPressed: () => Navigator.pop(context),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

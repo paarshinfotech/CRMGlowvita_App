@@ -657,7 +657,7 @@ class _SuppClientState extends State<SuppClient>
                       ? Text(
                           ((_profile?.shopName ?? '').isNotEmpty
                                   ? _profile!.shopName[0]
-                                  : 'S')
+                                  : ' ')
                               .toUpperCase(),
                           style: TextStyle(
                               color: Colors.white,

@@ -20,7 +20,7 @@ import 'widgets/subscription_wrapper.dart';
 // ─────────────────────────────────────────────
 // BRAND COLORS  (deep plum from the Apply button)
 // ─────────────────────────────────────────────
-const Color kPrimary = Color(0xFF3D1A47);
+const Color kPrimary = Color(0xFF4A2C3C);
 const Color kPrimaryLight = Color(0xFF6B3FA0);
 const Color kBg = Color(0xFFF7F7F8);
 const Color kCard = Colors.white;

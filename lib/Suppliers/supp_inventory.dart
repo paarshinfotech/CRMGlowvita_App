@@ -332,71 +332,146 @@ class _SuppInventoryPageState extends State<SuppInventoryPage>
             (p.category ?? '').toLowerCase().contains(_searchQuery))
         .toList();
 
-    if (filtered.isEmpty) {
-      return _buildNoData('No products found matching "$_searchQuery"');
-    }
-
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(14.w),
-      child: Container(
-        decoration: BoxDecoration(
-          color: kCardBg,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: kBorder),
+    return Column(
+      children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(14.w, 4.h, 14.w, 10.h),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Current Stock (${filtered.length})',
+                style: TextStyle(
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black,
+                ),
+              ),
+              _buildSearchField(),
+            ],
+          ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        Expanded(
+          child: filtered.isEmpty
+              ? _buildNoData('No products found matching "$_searchQuery"')
+              : ListView.builder(
+                  padding: EdgeInsets.symmetric(horizontal: 14.w),
+                  itemCount: filtered.length,
+                  itemBuilder: (context, index) =>
+                      _buildProductStockCard(filtered[index]),
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProductStockCard(Product p) {
+    final String image =
+        (p.productImages != null && p.productImages!.isNotEmpty)
+            ? p.productImages!.first
+            : '';
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 12.h),
+      padding: EdgeInsets.all(10.w),
+      decoration: BoxDecoration(
+        color: kCardBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: kBorder),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: IntrinsicHeight(
+        child: Row(
           children: [
-            // Header
-            Padding(
-              padding: EdgeInsets.fromLTRB(14.w, 12.h, 14.w, 12.h),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // Product Image
+            Container(
+              width: 70.w,
+              height: 70.w,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9F9F9),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: kBorder),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: image.isNotEmpty
+                  ? Image.network(
+                      image,
+                      fit: BoxFit.cover,
+                      errorBuilder: (ctx, _, __) => Icon(Icons.image,
+                          size: 24.sp, color: Colors.grey[300]),
+                      loadingBuilder: (ctx, child, progress) => progress == null
+                          ? child
+                          : const Center(
+                              child: CircularProgressIndicator(strokeWidth: 2)),
+                    )
+                  : Icon(Icons.image, size: 24.sp, color: Colors.grey[300]),
+            ),
+            SizedBox(width: 12.w),
+            // Product Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Current Stock Levels',
+                    p.productName ?? 'N/A',
                     style: TextStyle(
-                      fontSize: 12.5.sp,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black,
-                      letterSpacing: -0.2,
-                    ),
+                        fontSize: 11.5.sp,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  _buildSearchField(),
+                  Text(
+                    p.category ?? 'Uncategorized',
+                    style: TextStyle(fontSize: 9.5.sp, color: Colors.grey[600]),
+                  ),
+                  SizedBox(height: 6.h),
+                  Row(
+                    children: [
+                      Text(
+                        '₹${p.salePrice ?? p.price ?? 0}',
+                        style: TextStyle(
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.w700,
+                            color: kPrimary),
+                      ),
+                      const Spacer(),
+                      _buildStockBadge(p.stock ?? 0),
+                    ],
+                  ),
                 ],
               ),
             ),
-            Divider(height: 1, color: kBorder),
-            // Table
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columnSpacing: 16.w,
-                headingRowHeight: 38.h,
-                dataRowMinHeight: 48.h,
-                dataRowMaxHeight: 56.h,
-                headingRowColor:
-                    WidgetStateProperty.all(const Color(0xFFFAFAFA)),
-                border: TableBorder(
-                  horizontalInside:
-                      BorderSide(color: const Color(0xFFF7F7F7), width: 1),
+            SizedBox(width: 8.w),
+            VerticalDivider(
+                width: 1, indent: 5.h, endIndent: 5.h, color: kBorder),
+            SizedBox(width: 8.w),
+            // Actions
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _ActionButton(
+                  icon: Icons.edit_note_rounded,
+                  label: 'Adjust',
+                  color: kPrimary,
+                  onTap: () => _showAdjustStockDialog(
+                      p.productName ?? 'N/A', p.stock ?? 0),
                 ),
-                columns: [
-                  _buildDataColumn('Product Name'),
-                  _buildDataColumn('Category'),
-                  _buildDataColumn('Price'),
-                  _buildDataColumn('Current Stock'),
-                  _buildDataColumn('Actions'),
-                ],
-                rows: filtered
-                    .map((p) => _buildStockRow(
-                          p.productName ?? 'N/A',
-                          p.category ?? 'Uncategorized',
-                          '₹${p.salePrice ?? p.price ?? 0}',
-                          p.stock ?? 0,
-                        ))
-                    .toList(),
-              ),
+                SizedBox(height: 8.h),
+                _ActionButton(
+                  icon: Icons.visibility_outlined,
+                  label: 'Details',
+                  color: Colors.grey[700]!,
+                  onTap: () => _showProductDetailsDialog(p),
+                ),
+              ],
             ),
           ],
         ),
@@ -404,104 +479,59 @@ class _SuppInventoryPageState extends State<SuppInventoryPage>
     );
   }
 
+  Widget _buildStockBadge(int stock) {
+    final bool isLow = stock < 10;
+    final bool isOut = stock <= 0;
+    Color bg = const Color(0xFFEEF2FF);
+    Color fg = const Color(0xFF3730A3);
+    String label = 'In Stock: $stock';
+
+    if (isOut) {
+      bg = const Color(0xFFFEE2E2);
+      fg = const Color(0xFFB91C1C);
+      label = 'Out of Stock';
+    } else if (isLow) {
+      bg = const Color(0xFFFFF7ED);
+      fg = const Color(0xFFEA580C);
+      label = 'Low Stock: $stock';
+    }
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style:
+            TextStyle(fontSize: 8.5.sp, fontWeight: FontWeight.w700, color: fg),
+      ),
+    );
+  }
+
   Widget _buildSearchField() {
-    return SizedBox(
-      width: 138.w,
+    return Container(
+      width: 140.w,
       height: 32.h,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: kBorder),
+      ),
       child: TextField(
         controller: _searchController,
         style: TextStyle(fontSize: 10.sp, color: Colors.black),
+        onChanged: (v) => setState(() {}),
         decoration: InputDecoration(
-          hintText: 'Search products...',
+          hintText: 'Search stock...',
           hintStyle: TextStyle(fontSize: 10.sp, color: const Color(0xFFAAAAAA)),
           prefixIcon:
               Icon(Icons.search, size: 13.sp, color: const Color(0xFFAAAAAA)),
           contentPadding: EdgeInsets.zero,
-          filled: true,
-          fillColor: const Color(0xFFF9F9F9),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: kBorder),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFF7C3FA0)),
-          ),
+          border: InputBorder.none,
         ),
       ),
-    );
-  }
-
-  DataColumn _buildDataColumn(String label) {
-    return DataColumn(
-      label: Text(
-        label.toUpperCase(),
-        style: TextStyle(
-          fontSize: 9.sp,
-          fontWeight: FontWeight.w700,
-          color: Colors.black,
-          letterSpacing: 0.2,
-        ),
-      ),
-    );
-  }
-
-  DataRow _buildStockRow(
-      String name, String category, String price, int stock) {
-    final bool isLow = stock < 10;
-    final Color badgeBg =
-        isLow ? const Color(0xFFFEE2E2) : const Color(0xFFEEF2FF);
-    final Color badgeFg =
-        isLow ? const Color(0xFFB91C1C) : const Color(0xFF3730A3);
-
-    return DataRow(
-      color: WidgetStateProperty.resolveWith<Color?>((states) {
-        if (states.contains(WidgetState.hovered))
-          return const Color(0xFFFAFAFA);
-        return null;
-      }),
-      cells: [
-        DataCell(Text(
-          name,
-          style: TextStyle(
-              fontSize: 10.sp,
-              fontWeight: FontWeight.w600,
-              color: Colors.black),
-        )),
-        DataCell(Text(
-          category,
-          style: TextStyle(fontSize: 10.sp, color: const Color(0xFF666666)),
-        )),
-        DataCell(Text(
-          price,
-          style: TextStyle(
-              fontSize: 10.sp,
-              fontWeight: FontWeight.w600,
-              color: Colors.black),
-        )),
-        DataCell(
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
-            decoration: BoxDecoration(
-              color: badgeBg,
-              borderRadius: BorderRadius.circular(11),
-            ),
-            child: Text(
-              '$stock',
-              style: TextStyle(
-                fontSize: 9.5.sp,
-                fontWeight: FontWeight.w700,
-                color: badgeFg,
-              ),
-            ),
-          ),
-        ),
-        DataCell(
-          _AdjustButton(
-            onTap: () => _showAdjustStockDialog(name, stock),
-          ),
-        ),
-      ],
     );
   }
 
@@ -519,6 +549,13 @@ class _SuppInventoryPageState extends State<SuppInventoryPage>
           color: kCardBg,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: kBorder),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.01),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            )
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -526,39 +563,33 @@ class _SuppInventoryPageState extends State<SuppInventoryPage>
             Padding(
               padding: EdgeInsets.fromLTRB(14.w, 12.h, 14.w, 12.h),
               child: Text(
-                'Transaction History',
+                'Audit Logs',
                 style: TextStyle(
-                  fontSize: 12.5.sp,
+                  fontSize: 12.sp,
                   fontWeight: FontWeight.w700,
                   color: Colors.black,
-                  letterSpacing: -0.2,
                 ),
               ),
             ),
-            Divider(height: 1, color: kBorder),
+            const Divider(height: 1),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
-                columnSpacing: 14.w,
+                columnSpacing: 16.w,
                 headingRowHeight: 38.h,
                 dataRowMinHeight: 44.h,
                 dataRowMaxHeight: 52.h,
                 headingRowColor:
                     WidgetStateProperty.all(const Color(0xFFFAFAFA)),
-                border: TableBorder(
-                  horizontalInside:
-                      BorderSide(color: const Color(0xFFF7F7F7), width: 1),
-                ),
+                dividerThickness: 0.5,
                 columns: [
                   _buildDataColumn('Date'),
                   _buildDataColumn('Product'),
-                  _buildDataColumn('Category'),
                   _buildDataColumn('Type'),
-                  _buildDataColumn('Change'),
-                  _buildDataColumn('New Stock'),
+                  _buildDataColumn('Qty'),
+                  _buildDataColumn('New'),
                   _buildDataColumn('Reason'),
                   _buildDataColumn('Reference'),
-                  _buildDataColumn('User'),
                 ],
                 rows: _transactions.map((h) => _buildHistoryRow(h)).toList(),
               ),
@@ -574,8 +605,15 @@ class _SuppInventoryPageState extends State<SuppInventoryPage>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.inventory_2_outlined,
-              size: 40.sp, color: Colors.grey[300]),
+          Container(
+            padding: EdgeInsets.all(20.w),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.inventory_2_outlined,
+                size: 32.sp, color: Colors.grey[300]),
+          ),
           SizedBox(height: 12.h),
           Text(
             message,
@@ -586,53 +624,54 @@ class _SuppInventoryPageState extends State<SuppInventoryPage>
     );
   }
 
+  DataColumn _buildDataColumn(String label) {
+    return DataColumn(
+      label: Text(
+        label.toUpperCase(),
+        style: TextStyle(
+          fontSize: 8.5.sp,
+          fontWeight: FontWeight.w700,
+          color: Colors.black,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+
   DataRow _buildHistoryRow(InventoryTransaction h) {
     final bool isOut = h.type.toUpperCase() == 'OUT';
-    final Color typeBg =
-        isOut ? const Color(0xFFFEE2E2) : const Color(0xFFDCFCE7);
     final Color typeFg =
         isOut ? const Color(0xFFB91C1C) : const Color(0xFF15803D);
 
-    final String formattedDate =
-        DateFormat('MMM dd, yyyy HH:mm').format(h.date);
+    final String formattedDate = DateFormat('MMM dd, hh:mm a').format(h.date);
 
     return DataRow(cells: [
       DataCell(Text(formattedDate,
-          style: TextStyle(fontSize: 9.sp, color: const Color(0xFF666666)))),
+          style: TextStyle(fontSize: 8.5.sp, color: const Color(0xFF666666)))),
       DataCell(Text(h.productId.productName,
           style: TextStyle(
-              fontSize: 9.5.sp,
+              fontSize: 9.sp,
               fontWeight: FontWeight.w600,
               color: Colors.black))),
-      DataCell(Text(h.category?.name ?? 'N/A',
-          style: TextStyle(fontSize: 9.5.sp, color: const Color(0xFF666666)))),
       DataCell(
-        Container(
-          padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
-          decoration: BoxDecoration(
-              color: typeBg, borderRadius: BorderRadius.circular(5)),
-          child: Text(
-            h.type,
-            style: TextStyle(
-                fontSize: 8.sp,
-                fontWeight: FontWeight.w700,
-                color: typeFg,
-                letterSpacing: 0.3),
-          ),
+        Text(
+          h.type,
+          style: TextStyle(
+              fontSize: 8.5.sp, fontWeight: FontWeight.w800, color: typeFg),
         ),
       ),
       DataCell(Text(
         '${isOut ? "-" : "+"}${h.quantity}',
         style: TextStyle(
-            fontSize: 9.5.sp, fontWeight: FontWeight.w700, color: typeFg),
+            fontSize: 9.sp, fontWeight: FontWeight.w800, color: typeFg),
       )),
       DataCell(Text('${h.newStock}',
           style: TextStyle(
-              fontSize: 9.5.sp,
+              fontSize: 9.sp,
               fontWeight: FontWeight.w600,
               color: Colors.black))),
       DataCell(SizedBox(
-        width: 130.w,
+        width: 100.w,
         child: Text(
           h.reason,
           style: TextStyle(fontSize: 8.5.sp, color: const Color(0xFF666666)),
@@ -641,8 +680,6 @@ class _SuppInventoryPageState extends State<SuppInventoryPage>
       )),
       DataCell(Text(h.reference ?? '-',
           style: TextStyle(fontSize: 8.5.sp, color: const Color(0xFF444444)))),
-      DataCell(Text(h.performedBy ?? 'System',
-          style: TextStyle(fontSize: 8.5.sp, color: const Color(0xFFAAAAAA)))),
     ]);
   }
 
@@ -653,6 +690,164 @@ class _SuppInventoryPageState extends State<SuppInventoryPage>
         productName: productName,
         currentStock: currentStock,
         onSuccess: _fetchData,
+      ),
+    );
+  }
+
+  void _showProductDetailsDialog(Product p) {
+    showDialog(
+      context: context,
+      builder: (ctx) => _ProductDetailsDialog(product: p),
+    );
+  }
+}
+
+// ─── Minimal Action Button for Card ──────────────────────────────────────────
+
+class _ActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Icon(icon, size: 18.sp, color: color),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 8.sp,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Product Details Dialog ──────────────────────────────────────────────────
+
+class _ProductDetailsDialog extends StatelessWidget {
+  final Product product;
+  const _ProductDetailsDialog({required this.product});
+
+  @override
+  Widget build(BuildContext context) {
+    final image =
+        (product.productImages != null && product.productImages!.isNotEmpty)
+            ? product.productImages!.first
+            : '';
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        width: 320.w,
+        padding: EdgeInsets.all(16.w),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Product Details',
+                    style: TextStyle(
+                        fontSize: 14.sp, fontWeight: FontWeight.w700)),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
+            ),
+            const Divider(),
+            SizedBox(height: 10.h),
+            Center(
+              child: Container(
+                width: 120.w,
+                height: 120.w,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F5F5),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFEEEEEE)),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: image.isNotEmpty
+                    ? Image.network(image, fit: BoxFit.cover)
+                    : const Icon(Icons.image, size: 40, color: Colors.grey),
+              ),
+            ),
+            SizedBox(height: 16.h),
+            _infoRow('Product Name', product.productName ?? 'N/A'),
+            _infoRow('Category', product.category ?? 'Uncategorized'),
+            _infoRow('Price', '₹${product.price ?? 0}'),
+            _infoRow(
+                'Sale Price', '₹${product.salePrice ?? product.price ?? 0}'),
+            _infoRow('Available Stock', '${product.stock ?? 0} units'),
+            _infoRow(
+                'Size', '${product.size ?? "N/A"} ${product.sizeMetric ?? ""}'),
+            _infoRow('Brand', product.brand ?? 'N/A'),
+            SizedBox(height: 12.h),
+            Text('Description',
+                style: TextStyle(
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey[700])),
+            SizedBox(height: 4.h),
+            Text(product.description ?? 'No description available',
+                style: TextStyle(
+                    fontSize: 10.sp, color: Colors.grey[600], height: 1.4)),
+            SizedBox(height: 16.h),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4A2C3C),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                ),
+                child: const Text('Back to Inventory'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _infoRow(String label, String value) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 6.h),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+              width: 90.w,
+              child: Text(label,
+                  style: TextStyle(fontSize: 10.sp, color: Colors.grey[500]))),
+          Expanded(
+              child: Text(value,
+                  style: TextStyle(
+                      fontSize: 10.sp,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87))),
+        ],
       ),
     );
   }

@@ -27,8 +27,8 @@ class _LoginPageState extends State<Login> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
-  static const Color _primary = Color(0xFF3B1F2B);
-  static const Color _primaryLight = Color(0xFF5C3347);
+  static const Color _primary = Color(0xFF4A2C3C);
+  static const Color _primaryLight = Color(0xFF5C3C4C);
 
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;

@@ -19,19 +19,46 @@ import 'supp_notifications.dart';
 import 'supp_reports.dart';
 import 'supp_wallet.dart';
 import '../intro_page.dart';
+import 'supp_profile.dart';
+import '../services/api_service.dart';
+import '../supplier_model.dart';
 
 // Drawer implementation for the app
-class SupplierDrawer extends StatelessWidget {
+class SupplierDrawer extends StatefulWidget {
   final String currentPage;
   final String userName;
-  final String userType;
 
   const SupplierDrawer({
     Key? key,
     required this.currentPage,
-    this.userName = 'Supplier Account',
-    this.userType = 'Pro Supplier',
+    this.userName = ' ',
   }) : super(key: key);
+
+  @override
+  State<SupplierDrawer> createState() => _SupplierDrawerState();
+}
+
+class _SupplierDrawerState extends State<SupplierDrawer> {
+  SupplierProfile? _supplierProfile;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSupplierProfile();
+  }
+
+  Future<void> _loadSupplierProfile() async {
+    try {
+      final profile = await ApiService.getSupplierProfile();
+      if (mounted) {
+        setState(() {
+          _supplierProfile = profile;
+        });
+      }
+    } catch (e) {
+      print('Error loading supplier profile in drawer: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -72,94 +99,125 @@ class SupplierDrawer extends StatelessWidget {
               ),
               child: SafeArea(
                 bottom: false,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(4 * scale),
-                          child: Image.asset(
-                            'assets/images/favicon.jpg',
-                            height: 24 * scale,
-                            width: 24 * scale,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                Image.asset('assets/images/logo.png',
-                                    height: 24 * scale),
-                          ),
+                child: SizedBox(
+                  height: 60 * scale,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Centered Logo
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8 * scale),
+                        child: Image.asset(
+                          'assets/images/favicon.jpg',
+                          height: 50 * scale,
+                          width: 50 * scale,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              Image.asset('assets/images/logo.png',
+                                  height: 50 * scale),
                         ),
-                      ],
-                    ),
-                    IconButton(
-                      icon: Icon(
-                        Icons.chevron_left,
-                        size: 22 * baseFontScale,
                       ),
-                      onPressed: () => Navigator.pop(context),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  ],
+                      // Back Button on the right
+                      Positioned(
+                        right: 0,
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.chevron_left,
+                            size: 28 * baseFontScale,
+                            color: Colors.black87,
+                          ),
+                          onPressed: () => Navigator.pop(context),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
 
-            // User Info Section
-            Container(
-              padding: EdgeInsets.all(10 * scale),
-              margin: EdgeInsets.all(12 * scale),
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(10 * scale),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 36 * scale,
-                    height: 36 * scale,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor.withOpacity(0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(
-                        userName.isNotEmpty ? userName[0].toUpperCase() : 'S',
-                        style: GoogleFonts.poppins(
-                          fontSize: 14 * baseFontScale,
-                          fontWeight: FontWeight.w600,
-                          color: Theme.of(context).primaryColor,
+            GestureDetector(
+              onTap: () {
+                Navigator.pop(context); // Close drawer
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SuppProfilePage()),
+                );
+              },
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: 16 * scale,
+                  vertical: 16 * scale,
+                ),
+                child: Container(
+                  padding: EdgeInsets.all(12 * scale),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12 * scale),
+                    border: Border.all(color: Colors.grey[200]!),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 20 * scale,
+                        backgroundColor: Theme.of(context).primaryColor,
+                        child: Text(
+                          ((_supplierProfile?.shopName ?? widget.userName)
+                                  .trim()
+                                  .isNotEmpty)
+                              ? (_supplierProfile?.shopName ?? widget.userName)
+                                  .trim()[0]
+                                  .toUpperCase()
+                              : 'S',
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18 * scale,
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                  SizedBox(width: 10 * scale),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          userName,
-                          style: GoogleFonts.poppins(
-                            fontSize: 13 * baseFontScale,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black,
-                          ),
-                          overflow: TextOverflow.ellipsis,
+                      SizedBox(width: 12 * scale),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              (_supplierProfile?.shopName ?? widget.userName)
+                                      .trim()
+                                      .isNotEmpty
+                                  ? (_supplierProfile?.shopName ??
+                                      widget.userName)
+                                  : 'Supplier',
+                              style: GoogleFonts.poppins(
+                                fontSize: 13 * baseFontScale,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            SizedBox(height: 2 * scale),
+                            Text(
+                              'Supplier Account',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11 * baseFontScale,
+                                fontWeight: FontWeight.w400,
+                                color: Colors.grey[600],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                         ),
-                        Text(
-                          userType,
-                          style: GoogleFonts.poppins(
-                            fontSize: 11 * baseFontScale,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
+            Divider(height: 1, color: Colors.grey[100]),
+            SizedBox(height: 10 * scale),
 
             // Menu Items
             Expanded(
@@ -171,7 +229,7 @@ class SupplierDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.dashboard_outlined,
                       title: 'Dashboard',
-                      isSelected: currentPage == 'Dashboard',
+                      isSelected: widget.currentPage == 'Dashboard',
                       onTap: () =>
                           _navigateTo(context, const Supp_DashboardPage()),
                       scale: scale,
@@ -181,7 +239,7 @@ class SupplierDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.inventory_2_outlined,
                       title: 'Inventory',
-                      isSelected: currentPage == 'Inventory',
+                      isSelected: widget.currentPage == 'Inventory',
                       onTap: () =>
                           _navigateTo(context, const SuppInventoryPage()),
                       scale: scale,
@@ -191,7 +249,7 @@ class SupplierDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.shopping_bag_outlined,
                       title: 'Products',
-                      isSelected: currentPage == 'Products',
+                      isSelected: widget.currentPage == 'Products',
                       onTap: () => _navigateTo(context, const SuppProducts()),
                       scale: scale,
                       baseFontScale: baseFontScale,
@@ -200,7 +258,7 @@ class SupplierDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.group_outlined,
                       title: 'Clients',
-                      isSelected: currentPage == 'Clients',
+                      isSelected: widget.currentPage == 'Clients',
                       onTap: () => _navigateTo(context, const SuppClient()),
                       scale: scale,
                       baseFontScale: baseFontScale,
@@ -209,7 +267,7 @@ class SupplierDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.question_answer_outlined,
                       title: 'Product Questions',
-                      isSelected: currentPage == 'Product Questions',
+                      isSelected: widget.currentPage == 'Product Questions',
                       onTap: () => _navigateTo(
                           context, const SuppProductQuestionsPage()),
                       scale: scale,
@@ -219,7 +277,7 @@ class SupplierDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.star_outline_rounded,
                       title: 'Reviews',
-                      isSelected: currentPage == 'Reviews',
+                      isSelected: widget.currentPage == 'Reviews',
                       onTap: () =>
                           _navigateTo(context, const SuppReviewsPage()),
                       scale: scale,
@@ -229,7 +287,7 @@ class SupplierDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.shopping_cart_outlined,
                       title: 'Orders',
-                      isSelected: currentPage == 'Orders',
+                      isSelected: widget.currentPage == 'Orders',
                       onTap: () => _navigateTo(context, const SuppOrdersPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
@@ -238,7 +296,7 @@ class SupplierDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.bar_chart_rounded,
                       title: 'Sales',
-                      isSelected: currentPage == 'Sales',
+                      isSelected: widget.currentPage == 'Sales',
                       onTap: () => _navigateTo(context, const SuppSalesPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
@@ -247,7 +305,7 @@ class SupplierDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.receipt_long_outlined,
                       title: 'Invoice Management',
-                      isSelected: currentPage == 'Invoice Management',
+                      isSelected: widget.currentPage == 'Invoice Management',
                       onTap: () => _navigateTo(
                           context, const SuppInvoiceManagementPage()),
                       scale: scale,
@@ -257,7 +315,7 @@ class SupplierDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.money_off_csred_outlined,
                       title: 'Expenses',
-                      isSelected: currentPage == 'Expenses',
+                      isSelected: widget.currentPage == 'Expenses',
                       onTap: () =>
                           _navigateTo(context, const SuppExpensesPage()),
                       scale: scale,
@@ -267,7 +325,7 @@ class SupplierDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.local_offer_outlined,
                       title: 'Offers and Coupons',
-                      isSelected: currentPage == 'Offers and Coupons',
+                      isSelected: widget.currentPage == 'Offers and Coupons',
                       onTap: () =>
                           _navigateTo(context, const SuppOffersCouponsPage()),
                       scale: scale,
@@ -277,7 +335,7 @@ class SupplierDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.people_outline,
                       title: 'Referrals',
-                      isSelected: currentPage == 'Referrals',
+                      isSelected: widget.currentPage == 'Referrals',
                       onTap: () =>
                           _navigateTo(context, const SuppReferralsPage()),
                       scale: scale,
@@ -287,7 +345,7 @@ class SupplierDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.campaign_outlined,
                       title: 'Marketing',
-                      isSelected: currentPage == 'Marketing',
+                      isSelected: widget.currentPage == 'Marketing',
                       onTap: () =>
                           _navigateTo(context, const SuppMarketingPage()),
                       scale: scale,
@@ -298,7 +356,7 @@ class SupplierDrawer extends StatelessWidget {
                       icon: Icons.notifications_none_rounded,
                       title: 'Notifications',
                       hasNotification: true,
-                      isSelected: currentPage == 'Notifications',
+                      isSelected: widget.currentPage == 'Notifications',
                       onTap: () =>
                           _navigateTo(context, const SuppNotificationsPage()),
                       scale: scale,
@@ -308,7 +366,7 @@ class SupplierDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.assessment_outlined,
                       title: 'Reports',
-                      isSelected: currentPage == 'Reports',
+                      isSelected: widget.currentPage == 'Reports',
                       onTap: () =>
                           _navigateTo(context, const SuppReportsPage()),
                       scale: scale,
@@ -318,7 +376,7 @@ class SupplierDrawer extends StatelessWidget {
                       context: context,
                       icon: Icons.account_balance_wallet_outlined,
                       title: 'Wallet',
-                      isSelected: currentPage == 'Wallet',
+                      isSelected: widget.currentPage == 'Wallet',
                       onTap: () => _navigateTo(context, const SuppWalletPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
@@ -367,31 +425,37 @@ class SupplierDrawer extends StatelessWidget {
     return Container(
       margin: EdgeInsets.symmetric(vertical: 2 * scale),
       decoration: BoxDecoration(
-        color: isSelected
-            ? Theme.of(context).primaryColor.withOpacity(0.08)
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(10 * scale),
+        color: isSelected ? Theme.of(context).primaryColor : Colors.transparent,
+        borderRadius: BorderRadius.circular(12 * scale),
       ),
       child: ListTile(
         onTap: onTap,
-        dense: true,
-        leading: Icon(icon,
-            size: 18 * baseFontScale,
-            color:
-                isSelected ? Theme.of(context).primaryColor : Colors.black87),
-        title: Text(title,
-            style: GoogleFonts.poppins(
-                fontSize: 12 * baseFontScale,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                color: isSelected
-                    ? Theme.of(context).primaryColor
-                    : Colors.black87)),
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: 16 * scale,
+          vertical: 4 * scale,
+        ),
+        leading: Icon(
+          icon,
+          size: 20 * baseFontScale,
+          color: isSelected ? Colors.white : Colors.black54,
+        ),
+        title: Text(
+          title,
+          style: GoogleFonts.poppins(
+            fontSize: 14 * baseFontScale,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            color: isSelected ? Colors.white : Colors.black87,
+          ),
+        ),
         trailing: hasNotification
             ? Container(
-                width: 6,
-                height: 6,
+                width: 8 * scale,
+                height: 8 * scale,
                 decoration: const BoxDecoration(
-                    color: Colors.red, shape: BoxShape.circle))
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
+              )
             : null,
       ),
     );
