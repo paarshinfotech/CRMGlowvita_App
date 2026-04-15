@@ -54,7 +54,7 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
       // Fetch appointments that are paid or have an invoice number
       final apptResult = await ApiService.getAppointments(limit: 100);
       final List<AppointmentModel> allAppts = apptResult['data'] ?? [];
-      
+
       setState(() {
         invoices = fetchedInvoices;
         appointments = allAppts;
@@ -71,16 +71,21 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
   List<BillingInvoice> _generateAppointmentInvoices() {
     return appointments.where((appt) {
       bool isPaid = appt.paymentStatus == 'completed';
-      bool hasInvoice = appt.invoiceNumber != null && appt.invoiceNumber!.isNotEmpty;
+      bool hasInvoice =
+          appt.invoiceNumber != null && appt.invoiceNumber!.isNotEmpty;
       return isPaid || hasInvoice;
     }).map((appt) {
       // Determine correct status based on payment rule
       String finalStatus = appt.status ?? 'N/A';
-      if (appt.status == 'completed' && (appt.paymentStatus == 'completed' || appt.paymentStatus == 'Paid')) {
+      if (appt.status == 'completed' &&
+          (appt.paymentStatus == 'completed' || appt.paymentStatus == 'Paid')) {
         finalStatus = 'Paid';
-      } else if (appt.paymentStatus == 'completed' || appt.paymentStatus == 'Paid') {
+      } else if (appt.paymentStatus == 'completed' ||
+          appt.paymentStatus == 'Paid') {
         finalStatus = 'Paid';
-      } else if (appt.status == 'completed' && appt.paymentStatus != 'completed' && appt.paymentStatus != 'Paid') {
+      } else if (appt.status == 'completed' &&
+          appt.paymentStatus != 'completed' &&
+          appt.paymentStatus != 'Paid') {
         finalStatus = 'Completed Without Payment';
       }
 
@@ -96,24 +101,28 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
         ),
         vendorId: appt.vendorId ?? '',
         clientId: appt.client?.id ?? '',
-        items: (appt.serviceItems ?? []).map((si) => BillingItem(
-          itemId: si.service ?? '',
-          itemType: 'Service',
-          name: si.serviceName ?? appt.serviceName ?? 'Service',
-          description: '',
-          price: si.amount ?? appt.amount ?? 0.0,
-          quantity: 1,
-          totalPrice: si.amount ?? appt.amount ?? 0.0,
-          duration: si.duration ?? appt.duration ?? 0,
-          addOns: (si.addOns ?? []).map((ao) => AddOnItem(
-            id: ao.id ?? '',
-            name: ao.name ?? '',
-            price: (ao.price ?? 0).toDouble(),
-            duration: ao.duration ?? 0,
-          )).toList(),
-          discount: 0,
-          discountType: 'flat',
-        )).toList(),
+        items: (appt.serviceItems ?? [])
+            .map((si) => BillingItem(
+                  itemId: si.service ?? '',
+                  itemType: 'Service',
+                  name: si.serviceName ?? appt.serviceName ?? 'Service',
+                  description: '',
+                  price: si.amount ?? appt.amount ?? 0.0,
+                  quantity: 1,
+                  totalPrice: si.amount ?? appt.amount ?? 0.0,
+                  duration: si.duration ?? appt.duration ?? 0,
+                  addOns: (si.addOns ?? [])
+                      .map((ao) => AddOnItem(
+                            id: ao.id ?? '',
+                            name: ao.name ?? '',
+                            price: (ao.price ?? 0).toDouble(),
+                            duration: ao.duration ?? 0,
+                          ))
+                      .toList(),
+                  discount: 0,
+                  discountType: 'flat',
+                ))
+            .toList(),
         subtotal: appt.amount ?? 0.0,
         taxRate: 0,
         taxAmount: appt.serviceTax ?? 0.0,
@@ -155,13 +164,13 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
   List<BillingInvoice> get filteredInvoices {
     List<BillingInvoice> sourceInvoices = [];
     if (_tabController.index == 0) {
-      sourceInvoices = invoices.where((i) => i.billingType != 'Appointment').toList();
+      sourceInvoices =
+          invoices.where((i) => i.billingType != 'Appointment').toList();
     } else {
       sourceInvoices = _generateAppointmentInvoices();
     }
 
     return sourceInvoices.where((invoice) {
-
       final matchesSearch = _searchQuery.isEmpty ||
           invoice.invoiceNumber
               .toLowerCase()
@@ -792,11 +801,15 @@ class InvoiceCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      (invoice.paymentStatus == 'Paid' || invoice.paymentStatus == 'completed' || invoice.paymentStatus == 'Completed')
+                      (invoice.paymentStatus == 'Paid' ||
+                              invoice.paymentStatus == 'completed' ||
+                              invoice.paymentStatus == 'Completed')
                           ? 'Completed'
                           : invoice.paymentStatus,
                       style: GoogleFonts.poppins(
-                        color: (invoice.paymentStatus == 'Paid' || invoice.paymentStatus == 'completed' || invoice.paymentStatus == 'Completed')
+                        color: (invoice.paymentStatus == 'Paid' ||
+                                invoice.paymentStatus == 'completed' ||
+                                invoice.paymentStatus == 'Completed')
                             ? Colors.green
                             : Colors.orange,
                         fontWeight: FontWeight.w500,
@@ -888,11 +901,14 @@ class InvoiceCard extends StatelessWidget {
                   invoice.paymentStatus,
                   style: GoogleFonts.poppins(
                       fontSize: 10,
-                      color: (invoice.paymentStatus.toLowerCase() == 'completed' || invoice.paymentStatus.toLowerCase() == 'paid')
-                          ? Colors.green
-                          : (invoice.paymentStatus.toLowerCase() == 'completed_without_payment' 
-                              ? Colors.orange[800] 
-                              : Colors.orange),
+                      color:
+                          (invoice.paymentStatus.toLowerCase() == 'completed' ||
+                                  invoice.paymentStatus.toLowerCase() == 'paid')
+                              ? Colors.green
+                              : (invoice.paymentStatus.toLowerCase() ==
+                                      'completed_without_payment'
+                                  ? Colors.orange[800]
+                                  : Colors.orange),
                       fontWeight: FontWeight.w600),
                 )
               ],
