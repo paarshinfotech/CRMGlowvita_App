@@ -22,7 +22,7 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace "com.paarsh.glowvitacrm"
     compileSdkVersion 36
-    ndkVersion "27.0.12077973"  // Using a pre-installed, stable NDK version
+    ndkVersion "28.2.13676358" 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -39,7 +39,7 @@ android {
 
     defaultConfig {
         applicationId "com.paarsh.glowvitacrm"
-        minSdkVersion 23
+        minSdkVersion flutter.minSdkVersion
         targetSdkVersion 35
         versionCode 1
         versionName "1.0"

@@ -6,6 +6,7 @@ import './supp_drawer.dart';
 import '../customer_model.dart';
 import '../services/api_service.dart';
 import '../supplier_model.dart';
+import '../widgets/subscription_wrapper.dart';
 import 'dart:async';
 
 class SuppSalesPage extends StatefulWidget {
@@ -851,11 +852,13 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
           const SizedBox(width: 10),
         ],
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator(color: _primary))
-          : isWide
-              ? _buildWideLayout(width)
-              : _buildMobileLayout(),
+      body: SubscriptionWrapper(
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator(color: _primary))
+            : isWide
+                ? _buildWideLayout(width)
+                : _buildMobileLayout(),
+      ),
     );
   }
 

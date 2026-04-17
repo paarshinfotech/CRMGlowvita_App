@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'supp_drawer.dart';
+import '../widgets/subscription_wrapper.dart';
 
 class SuppMarketingPage extends StatelessWidget {
   const SuppMarketingPage({super.key});
@@ -18,7 +19,9 @@ class SuppMarketingPage extends StatelessWidget {
         foregroundColor: Colors.black,
         elevation: 0,
       ),
-      body: const Center(child: Text('Marketing Coming Soon')),
+      body: SubscriptionWrapper(
+        child: const Center(child: Text('Marketing Coming Soon')),
+      ),
     );
   }
 }

@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'supp_drawer.dart';
 import '../services/api_service.dart';
+import '../widgets/subscription_wrapper.dart';
 
 class SuppOffersCouponsPage extends StatefulWidget {
   const SuppOffersCouponsPage({super.key});
@@ -503,7 +504,8 @@ class _SuppOffersCouponsPageState extends State<SuppOffersCouponsPage> {
         ),
         iconTheme: const IconThemeData(color: Colors.black),
       ),
-      body: SafeArea(
+      body: SubscriptionWrapper(
+        child: SafeArea(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : Column(
@@ -829,6 +831,7 @@ class _SuppOffersCouponsPageState extends State<SuppOffersCouponsPage> {
                   ),
                 ],
               ),
+        ),
       ),
     );
   }

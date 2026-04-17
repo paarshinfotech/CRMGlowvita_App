@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'supp_drawer.dart';
+import '../widgets/subscription_wrapper.dart';
 
 class SuppShippingPage extends StatefulWidget {
   const SuppShippingPage({super.key});
@@ -51,7 +52,8 @@ class _SuppShippingConfigPageState extends State<SuppShippingPage> {
           ),
         ),
       ),
-      body: LayoutBuilder(
+      body: SubscriptionWrapper(
+        child: LayoutBuilder(
         builder: (context, constraints) {
           final isMobile = constraints.maxWidth < 600;
           final cardPadding = EdgeInsets.all(isMobile ? 10 : 16);
@@ -246,6 +248,7 @@ class _SuppShippingConfigPageState extends State<SuppShippingPage> {
           );
         },
       ),
+    ),
     );
   }
 }

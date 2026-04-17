@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 import './supp_drawer.dart';
 import '../services/api_service.dart';
+import '../widgets/subscription_wrapper.dart';
 
 class SuppInventoryPage extends StatefulWidget {
   const SuppInventoryPage({super.key});
@@ -90,29 +91,29 @@ class _SuppInventoryPageState extends State<SuppInventoryPage>
         backgroundColor: kBg,
         drawer: const SupplierDrawer(currentPage: 'Inventory'),
         appBar: _buildAppBar(),
-        body: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildStatsRow(),
-            SizedBox(height: 12.h),
-            _buildTabBar(),
-            SizedBox(height: 12.h),
-            Expanded(
-              child: _isLoading
-                  ? Center(
-                      child: CircularProgressIndicator(color: kPrimary),
-                    )
-                  : _errorMessage.isNotEmpty
-                      ? _buildErrorState()
-                      : TabBarView(
-                          controller: _tabController,
-                          children: [
-                            _buildStockManagement(),
-                            _buildTransactionHistory(),
-                          ],
-                        ),
-            ),
-          ],
+        body: SubscriptionWrapper(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildStatsRow(),
+              SizedBox(height: 12.h),
+              _buildTabBar(),
+              SizedBox(height: 12.h),
+              Expanded(
+                child: _isLoading
+                    ? Center(child: CircularProgressIndicator(color: kPrimary))
+                    : _errorMessage.isNotEmpty
+                    ? _buildErrorState()
+                    : TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildStockManagement(),
+                          _buildTransactionHistory(),
+                        ],
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -177,7 +178,8 @@ class _SuppInventoryPageState extends State<SuppInventoryPage>
               foregroundColor: Colors.white,
               padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             child: Text('Retry', style: TextStyle(fontSize: 12.sp)),
           ),
@@ -327,9 +329,11 @@ class _SuppInventoryPageState extends State<SuppInventoryPage>
 
   Widget _buildStockManagement() {
     final filtered = _products
-        .where((p) =>
-            (p.productName ?? '').toLowerCase().contains(_searchQuery) ||
-            (p.category ?? '').toLowerCase().contains(_searchQuery))
+        .where(
+          (p) =>
+              (p.productName ?? '').toLowerCase().contains(_searchQuery) ||
+              (p.category ?? '').toLowerCase().contains(_searchQuery),
+        )
         .toList();
 
     return Column(
@@ -368,8 +372,8 @@ class _SuppInventoryPageState extends State<SuppInventoryPage>
   Widget _buildProductStockCard(Product p) {
     final String image =
         (p.productImages != null && p.productImages!.isNotEmpty)
-            ? p.productImages!.first
-            : '';
+        ? p.productImages!.first
+        : '';
 
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
@@ -383,7 +387,7 @@ class _SuppInventoryPageState extends State<SuppInventoryPage>
             color: Colors.black.withOpacity(0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
-          )
+          ),
         ],
       ),
       child: IntrinsicHeight(
@@ -403,12 +407,16 @@ class _SuppInventoryPageState extends State<SuppInventoryPage>
                   ? Image.network(
                       image,
                       fit: BoxFit.cover,
-                      errorBuilder: (ctx, _, __) => Icon(Icons.image,
-                          size: 24.sp, color: Colors.grey[300]),
+                      errorBuilder: (ctx, _, __) => Icon(
+                        Icons.image,
+                        size: 24.sp,
+                        color: Colors.grey[300],
+                      ),
                       loadingBuilder: (ctx, child, progress) => progress == null
                           ? child
                           : const Center(
-                              child: CircularProgressIndicator(strokeWidth: 2)),
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
                     )
                   : Icon(Icons.image, size: 24.sp, color: Colors.grey[300]),
             ),
@@ -422,9 +430,10 @@ class _SuppInventoryPageState extends State<SuppInventoryPage>
                   Text(
                     p.productName ?? 'N/A',
                     style: TextStyle(
-                        fontSize: 11.5.sp,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black),
+                      fontSize: 11.5.sp,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -438,9 +447,10 @@ class _SuppInventoryPageState extends State<SuppInventoryPage>
                       Text(
                         '₹${p.salePrice ?? p.price ?? 0}',
                         style: TextStyle(
-                            fontSize: 11.sp,
-                            fontWeight: FontWeight.w700,
-                            color: kPrimary),
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w700,
+                          color: kPrimary,
+                        ),
                       ),
                       const Spacer(),
                       _buildStockBadge(p.stock ?? 0),
@@ -451,7 +461,11 @@ class _SuppInventoryPageState extends State<SuppInventoryPage>
             ),
             SizedBox(width: 8.w),
             VerticalDivider(
-                width: 1, indent: 5.h, endIndent: 5.h, color: kBorder),
+              width: 1,
+              indent: 5.h,
+              endIndent: 5.h,
+              color: kBorder,
+            ),
             SizedBox(width: 8.w),
             // Actions
             Column(
@@ -462,7 +476,9 @@ class _SuppInventoryPageState extends State<SuppInventoryPage>
                   label: 'Adjust',
                   color: kPrimary,
                   onTap: () => _showAdjustStockDialog(
-                      p.productName ?? 'N/A', p.stock ?? 0),
+                    p.productName ?? 'N/A',
+                    p.stock ?? 0,
+                  ),
                 ),
                 SizedBox(height: 8.h),
                 _ActionButton(
@@ -504,8 +520,11 @@ class _SuppInventoryPageState extends State<SuppInventoryPage>
       ),
       child: Text(
         label,
-        style:
-            TextStyle(fontSize: 8.5.sp, fontWeight: FontWeight.w700, color: fg),
+        style: TextStyle(
+          fontSize: 8.5.sp,
+          fontWeight: FontWeight.w700,
+          color: fg,
+        ),
       ),
     );
   }
@@ -526,8 +545,11 @@ class _SuppInventoryPageState extends State<SuppInventoryPage>
         decoration: InputDecoration(
           hintText: 'Search stock...',
           hintStyle: TextStyle(fontSize: 10.sp, color: const Color(0xFFAAAAAA)),
-          prefixIcon:
-              Icon(Icons.search, size: 13.sp, color: const Color(0xFFAAAAAA)),
+          prefixIcon: Icon(
+            Icons.search,
+            size: 13.sp,
+            color: const Color(0xFFAAAAAA),
+          ),
           contentPadding: EdgeInsets.zero,
           border: InputBorder.none,
         ),
@@ -554,7 +576,7 @@ class _SuppInventoryPageState extends State<SuppInventoryPage>
               color: Colors.black.withOpacity(0.01),
               blurRadius: 10,
               offset: const Offset(0, 4),
-            )
+            ),
           ],
         ),
         child: Column(
@@ -579,8 +601,9 @@ class _SuppInventoryPageState extends State<SuppInventoryPage>
                 headingRowHeight: 38.h,
                 dataRowMinHeight: 44.h,
                 dataRowMaxHeight: 52.h,
-                headingRowColor:
-                    WidgetStateProperty.all(const Color(0xFFFAFAFA)),
+                headingRowColor: WidgetStateProperty.all(
+                  const Color(0xFFFAFAFA),
+                ),
                 dividerThickness: 0.5,
                 columns: [
                   _buildDataColumn('Date'),
@@ -611,8 +634,11 @@ class _SuppInventoryPageState extends State<SuppInventoryPage>
               color: Colors.grey[100],
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.inventory_2_outlined,
-                size: 32.sp, color: Colors.grey[300]),
+            child: Icon(
+              Icons.inventory_2_outlined,
+              size: 32.sp,
+              color: Colors.grey[300],
+            ),
           ),
           SizedBox(height: 12.h),
           Text(
@@ -640,47 +666,81 @@ class _SuppInventoryPageState extends State<SuppInventoryPage>
 
   DataRow _buildHistoryRow(InventoryTransaction h) {
     final bool isOut = h.type.toUpperCase() == 'OUT';
-    final Color typeFg =
-        isOut ? const Color(0xFFB91C1C) : const Color(0xFF15803D);
+    final Color typeFg = isOut
+        ? const Color(0xFFB91C1C)
+        : const Color(0xFF15803D);
 
     final String formattedDate = DateFormat('MMM dd, hh:mm a').format(h.date);
 
-    return DataRow(cells: [
-      DataCell(Text(formattedDate,
-          style: TextStyle(fontSize: 8.5.sp, color: const Color(0xFF666666)))),
-      DataCell(Text(h.productId.productName,
-          style: TextStyle(
+    return DataRow(
+      cells: [
+        DataCell(
+          Text(
+            formattedDate,
+            style: TextStyle(fontSize: 8.5.sp, color: const Color(0xFF666666)),
+          ),
+        ),
+        DataCell(
+          Text(
+            h.productId.productName,
+            style: TextStyle(
               fontSize: 9.sp,
               fontWeight: FontWeight.w600,
-              color: Colors.black))),
-      DataCell(
-        Text(
-          h.type,
-          style: TextStyle(
-              fontSize: 8.5.sp, fontWeight: FontWeight.w800, color: typeFg),
+              color: Colors.black,
+            ),
+          ),
         ),
-      ),
-      DataCell(Text(
-        '${isOut ? "-" : "+"}${h.quantity}',
-        style: TextStyle(
-            fontSize: 9.sp, fontWeight: FontWeight.w800, color: typeFg),
-      )),
-      DataCell(Text('${h.newStock}',
-          style: TextStyle(
+        DataCell(
+          Text(
+            h.type,
+            style: TextStyle(
+              fontSize: 8.5.sp,
+              fontWeight: FontWeight.w800,
+              color: typeFg,
+            ),
+          ),
+        ),
+        DataCell(
+          Text(
+            '${isOut ? "-" : "+"}${h.quantity}',
+            style: TextStyle(
+              fontSize: 9.sp,
+              fontWeight: FontWeight.w800,
+              color: typeFg,
+            ),
+          ),
+        ),
+        DataCell(
+          Text(
+            '${h.newStock}',
+            style: TextStyle(
               fontSize: 9.sp,
               fontWeight: FontWeight.w600,
-              color: Colors.black))),
-      DataCell(SizedBox(
-        width: 100.w,
-        child: Text(
-          h.reason,
-          style: TextStyle(fontSize: 8.5.sp, color: const Color(0xFF666666)),
-          overflow: TextOverflow.ellipsis,
+              color: Colors.black,
+            ),
+          ),
         ),
-      )),
-      DataCell(Text(h.reference ?? '-',
-          style: TextStyle(fontSize: 8.5.sp, color: const Color(0xFF444444)))),
-    ]);
+        DataCell(
+          SizedBox(
+            width: 100.w,
+            child: Text(
+              h.reason,
+              style: TextStyle(
+                fontSize: 8.5.sp,
+                color: const Color(0xFF666666),
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ),
+        DataCell(
+          Text(
+            h.reference ?? '-',
+            style: TextStyle(fontSize: 8.5.sp, color: const Color(0xFF444444)),
+          ),
+        ),
+      ],
+    );
   }
 
   void _showAdjustStockDialog(String productName, int currentStock) {
@@ -749,8 +809,8 @@ class _ProductDetailsDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final image =
         (product.productImages != null && product.productImages!.isNotEmpty)
-            ? product.productImages!.first
-            : '';
+        ? product.productImages!.first
+        : '';
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -764,9 +824,13 @@ class _ProductDetailsDialog extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Product Details',
-                    style: TextStyle(
-                        fontSize: 14.sp, fontWeight: FontWeight.w700)),
+                Text(
+                  'Product Details',
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 IconButton(
                   icon: const Icon(Icons.close),
                   onPressed: () => Navigator.pop(context),
@@ -796,21 +860,33 @@ class _ProductDetailsDialog extends StatelessWidget {
             _infoRow('Category', product.category ?? 'Uncategorized'),
             _infoRow('Price', '₹${product.price ?? 0}'),
             _infoRow(
-                'Sale Price', '₹${product.salePrice ?? product.price ?? 0}'),
+              'Sale Price',
+              '₹${product.salePrice ?? product.price ?? 0}',
+            ),
             _infoRow('Available Stock', '${product.stock ?? 0} units'),
             _infoRow(
-                'Size', '${product.size ?? "N/A"} ${product.sizeMetric ?? ""}'),
+              'Size',
+              '${product.size ?? "N/A"} ${product.sizeMetric ?? ""}',
+            ),
             _infoRow('Brand', product.brand ?? 'N/A'),
             SizedBox(height: 12.h),
-            Text('Description',
-                style: TextStyle(
-                    fontSize: 10.sp,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.grey[700])),
+            Text(
+              'Description',
+              style: TextStyle(
+                fontSize: 10.sp,
+                fontWeight: FontWeight.w700,
+                color: Colors.grey[700],
+              ),
+            ),
             SizedBox(height: 4.h),
-            Text(product.description ?? 'No description available',
-                style: TextStyle(
-                    fontSize: 10.sp, color: Colors.grey[600], height: 1.4)),
+            Text(
+              product.description ?? 'No description available',
+              style: TextStyle(
+                fontSize: 10.sp,
+                color: Colors.grey[600],
+                height: 1.4,
+              ),
+            ),
             SizedBox(height: 16.h),
             SizedBox(
               width: double.infinity,
@@ -820,7 +896,8 @@ class _ProductDetailsDialog extends StatelessWidget {
                   backgroundColor: const Color(0xFF4A2C3C),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
                 child: const Text('Back to Inventory'),
               ),
@@ -838,15 +915,22 @@ class _ProductDetailsDialog extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-              width: 90.w,
-              child: Text(label,
-                  style: TextStyle(fontSize: 10.sp, color: Colors.grey[500]))),
+            width: 90.w,
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 10.sp, color: Colors.grey[500]),
+            ),
+          ),
           Expanded(
-              child: Text(value,
-                  style: TextStyle(
-                      fontSize: 10.sp,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87))),
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 10.sp,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -939,8 +1023,11 @@ class _AdjustStockDialogState extends State<_AdjustStockDialog> {
                         color: const Color(0xFFF4F4F4),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(Icons.close,
-                          size: 16.sp, color: const Color(0xFF555555)),
+                      child: Icon(
+                        Icons.close,
+                        size: 16.sp,
+                        color: const Color(0xFF555555),
+                      ),
                     ),
                   ),
                 ],
@@ -951,10 +1038,7 @@ class _AdjustStockDialogState extends State<_AdjustStockDialog> {
               _buildLabel('Action'),
               _buildDropdown(
                 value: _selectedAction,
-                items: [
-                  'Add Stock (+)',
-                  'Remove Stock (-)',
-                ],
+                items: ['Add Stock (+)', 'Remove Stock (-)'],
                 onChanged: (v) => setState(() => _selectedAction = v!),
               ),
               SizedBox(height: 13.h),
@@ -977,7 +1061,7 @@ class _AdjustStockDialogState extends State<_AdjustStockDialog> {
                   'New Purchase / Restock',
                   'Customer Return',
                   'Stock Correction (Audit Found)',
-                  'Other'
+                  'Other',
                 ],
                 onChanged: (v) => setState(() => _selectedReason = v!),
               ),
@@ -1037,19 +1121,26 @@ class _AdjustStockDialogState extends State<_AdjustStockDialog> {
         child: DropdownButton<String>(
           value: value,
           isExpanded: true,
-          icon:
-              Icon(Icons.keyboard_arrow_down, size: 18.sp, color: Colors.black),
+          icon: Icon(
+            Icons.keyboard_arrow_down,
+            size: 18.sp,
+            color: Colors.black,
+          ),
           style: TextStyle(
             fontSize: 11.sp,
             color: Colors.black,
             fontFamily: 'DM Sans',
           ),
           items: items
-              .map((e) => DropdownMenuItem(
-                    value: e,
-                    child: Text(e,
-                        style: TextStyle(fontSize: 11.sp, color: Colors.black)),
-                  ))
+              .map(
+                (e) => DropdownMenuItem(
+                  value: e,
+                  child: Text(
+                    e,
+                    style: TextStyle(fontSize: 11.sp, color: Colors.black),
+                  ),
+                ),
+              )
               .toList(),
           onChanged: onChanged,
         ),
@@ -1160,8 +1251,9 @@ class _AdjustButtonState extends State<_AdjustButton> {
           decoration: BoxDecoration(
             color: _hovered ? const Color(0xFFF3F4F6) : Colors.white,
             border: Border.all(
-              color:
-                  _hovered ? const Color(0xFFBEBEBE) : const Color(0xFFDCDCDC),
+              color: _hovered
+                  ? const Color(0xFFBEBEBE)
+                  : const Color(0xFFDCDCDC),
             ),
             borderRadius: BorderRadius.circular(7),
           ),

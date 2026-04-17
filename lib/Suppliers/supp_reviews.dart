@@ -4,6 +4,7 @@ import './supp_drawer.dart';
 import '../services/api_service.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../widgets/subscription_wrapper.dart';
 
 class SuppReviewsPage extends StatefulWidget {
   const SuppReviewsPage({super.key});
@@ -206,7 +207,8 @@ class _SuppReviewsPageState extends State<SuppReviewsPage> {
           ),
         ],
       ),
-      body: SafeArea(
+      body: SubscriptionWrapper(
+        child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -274,6 +276,7 @@ class _SuppReviewsPageState extends State<SuppReviewsPage> {
           ],
         ),
       ),
+    ),
     );
   }
 

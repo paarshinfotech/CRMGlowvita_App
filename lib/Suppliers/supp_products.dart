@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'add_supp_product.dart';
 import './supp_drawer.dart';
 import '../services/api_service.dart';
+import '../widgets/subscription_wrapper.dart';
 
 class SuppProducts extends StatefulWidget {
   const SuppProducts({super.key});
@@ -285,8 +286,9 @@ class _SuppProductsPageState extends State<SuppProducts> {
         iconTheme: const IconThemeData(color: Colors.black),
       ),
       backgroundColor: scaffoldBg,
-      body: Padding(
-        padding: const EdgeInsets.all(_gap),
+      body: SubscriptionWrapper(
+        child: Padding(
+          padding: const EdgeInsets.all(_gap),
         child: Column(
           children: [
             // Search
@@ -623,6 +625,7 @@ class _SuppProductsPageState extends State<SuppProducts> {
                             ),
             ),
           ],
+        ),
         ),
       ),
     );
@@ -1188,7 +1191,7 @@ class _ImagePreviewPageState extends State<ImagePreviewPage> {
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
-        children: [
+          children: [
           PageView.builder(
             controller: _controller,
             onPageChanged: (i) => setState(() => _currentIndex = i),

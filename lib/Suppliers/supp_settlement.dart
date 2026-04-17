@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'supp_drawer.dart';
+import '../widgets/subscription_wrapper.dart';
 
 class SuppSettlementsPage extends StatefulWidget {
   const SuppSettlementsPage({super.key});
@@ -146,7 +147,8 @@ class _SuppSettlementsPageState extends State<SuppSettlementsPage> {
         ),
         iconTheme: const IconThemeData(color: Colors.black),
       ),
-      body: SingleChildScrollView(
+      body: SubscriptionWrapper(
+        child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
@@ -332,6 +334,7 @@ class _SuppSettlementsPageState extends State<SuppSettlementsPage> {
           ],
         ),
       ),
+    ),
     );
   }
 

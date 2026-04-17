@@ -345,6 +345,7 @@ class SupplierSubscriptionHistory {
   final DateTime? startDate;
   final DateTime? endDate;
   final String status;
+  final String? paymentMode;
   final String id;
 
   SupplierSubscriptionHistory({
@@ -352,6 +353,7 @@ class SupplierSubscriptionHistory {
     this.startDate,
     this.endDate,
     required this.status,
+    this.paymentMode,
     required this.id,
   });
 
@@ -367,6 +369,7 @@ class SupplierSubscriptionHistory {
       startDate: json['startDate'] != null ? DateTime.parse(json['startDate']) : null,
       endDate: json['endDate'] != null ? DateTime.parse(json['endDate']) : null,
       status: s(json['status']),
+      paymentMode: s(json['paymentMode'] ?? 'Online'),
       id: s(json['_id']),
     );
   }
@@ -377,6 +380,7 @@ class SupplierSubscriptionHistory {
       'startDate': startDate?.toIso8601String(),
       'endDate': endDate?.toIso8601String(),
       'status': status,
+      'paymentMode': paymentMode,
       '_id': id,
     };
   }
