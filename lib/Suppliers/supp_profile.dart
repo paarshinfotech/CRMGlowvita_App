@@ -9,6 +9,8 @@ import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
+import '../services/razorpay_service.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 class SuppProfilePage extends StatefulWidget {
   const SuppProfilePage({super.key});
@@ -751,6 +753,8 @@ class _SuppProfilePageState extends State<SuppProfilePage>
                               onPlanChanged: () {
                                 _fetchProfileData();
                               },
+                              email: _profile?.email,
+                              phone: _profile?.mobile,
                             ),
                           );
                         },
@@ -1643,8 +1647,15 @@ class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
 class ChangePlanDialog extends StatefulWidget {
   final String? currentPlanName;
   final VoidCallback onPlanChanged;
+  final String? email;
+  final String? phone;
 
-  const ChangePlanDialog({this.currentPlanName, required this.onPlanChanged});
+  const ChangePlanDialog({
+    this.currentPlanName,
+    required this.onPlanChanged,
+    this.email,
+    this.phone,
+  });
 
   @override
   State<ChangePlanDialog> createState() => _ChangePlanDialogState();
@@ -1655,11 +1666,19 @@ class _ChangePlanDialogState extends State<ChangePlanDialog> {
   bool _isLoading = true;
   String? _selectedPlanId;
   bool _isSaving = false;
+  late RazorpayService _razorpayService;
 
   @override
   void initState() {
     super.initState();
+    _razorpayService = RazorpayService();
     _fetchPlans();
+  }
+
+  @override
+  void dispose() {
+    _razorpayService.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchPlans() async {
@@ -1691,33 +1710,67 @@ class _ChangePlanDialogState extends State<ChangePlanDialog> {
     if (_selectedPlanId == null) return;
 
     final selectedPlan = _plans.firstWhere((p) => p.id == _selectedPlanId);
+    final amount = (selectedPlan.discountedPrice > 0 &&
+            selectedPlan.discountedPrice < selectedPlan.price)
+        ? selectedPlan.discountedPrice
+        : selectedPlan.price;
 
     setState(() => _isSaving = true);
-    try {
-      final success = await ApiService.renewSubscription(
-        planId: selectedPlan.id,
-        userType: 'supplier',
-        amount:
-            (selectedPlan.discountedPrice > 0 &&
-                selectedPlan.discountedPrice < selectedPlan.price)
-            ? selectedPlan.discountedPrice
-            : selectedPlan.price,
-      );
 
-      if (success && mounted) {
-        widget.onPlanChanged();
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Subscription updated successfully")),
+    _razorpayService.onSuccess = (PaymentSuccessResponse response) async {
+      try {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Verifying payment...")),
+          );
+        }
+
+        final success = await ApiService.renewSubscription(
+          planId: selectedPlan.id,
+          userType: 'supplier',
+          amount: amount.toInt(),
+          paymentId: response.paymentId,
         );
+
+        if (success && mounted) {
+          widget.onPlanChanged();
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Subscription updated successfully")),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isSaving = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Failed to verify payment: $e")),
+          );
+        }
       }
-    } catch (e) {
+    };
+
+    _razorpayService.onFailure = (PaymentFailureResponse response) {
       if (mounted) {
         setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to update subscription: $e")),
+          SnackBar(content: Text("Payment failed: ${response.message}")),
         );
       }
+    };
+
+    try {
+      _razorpayService.openCheckout(
+        amount: amount.toDouble(),
+        contact: widget.phone ?? '',
+        email: widget.email ?? '',
+        description: 'Subscription for ${selectedPlan.name}',
+      );
+    } catch (e) {
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error opening checkout: $e")),
+      );
     }
   }
 

@@ -11,6 +11,7 @@ import 'widgets/subscription_banner.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'services/notification_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -32,6 +33,9 @@ void main() async {
 
   // Initialize notification service
   await NotificationService().initialize();
+  
+  // Initialize environment variables
+  await dotenv.load(fileName: ".env");
 
   runApp(const MyApp());
 }

@@ -81,7 +81,8 @@ class StaffMember {
           .where((e) => e != null)
           .toList();
       debugPrint(
-          '⚡ _parseBlockedTimes: parsed ${result.length} blocked entries');
+        '⚡ _parseBlockedTimes: parsed ${result.length} blocked entries',
+      );
       return result;
     } catch (e) {
       debugPrint('⚡ _parseBlockedTimes ERROR: $e  raw=$raw');
@@ -103,7 +104,7 @@ class StaffMember {
         'thursday',
         'friday',
         'saturday',
-        'sunday'
+        'sunday',
       ];
       availabilityMap = {};
       for (var day in days) {
@@ -140,8 +141,9 @@ class StaffMember {
       yearOfExperience: (json['yearOfExperience'] as num?)?.toInt(),
       clientsServed: (json['clientsServed'] as num?)?.toInt(),
       commission: json['commission'] ?? false,
-      startDate:
-          json['startDate'] != null ? DateTime.parse(json['startDate']) : null,
+      startDate: json['startDate'] != null
+          ? DateTime.parse(json['startDate'])
+          : null,
       endDate: json['endDate'] != null ? DateTime.parse(json['endDate']) : null,
       description: json['description'],
       commissionPercentage:
@@ -199,7 +201,7 @@ class StaffMember {
       'thursday',
       'friday',
       'saturday',
-      'sunday'
+      'sunday',
     ];
     final dayName = days[date.weekday - 1]; // 0-indexed for array
 
@@ -260,16 +262,18 @@ class B2BOrder {
       totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? 0.0,
       shippingAddress: json['shippingAddress'] is Map
           ? (json['shippingAddress']['formattedAddress'] ??
-              json['shippingAddress'].toString())
+                json['shippingAddress'].toString())
           : (json['shippingAddress']?.toString() ?? ''),
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'].toString())
           : DateTime.now(),
-      items: (json['items'] as List?)
+      items:
+          (json['items'] as List?)
               ?.map((i) => OrderItem.fromJson(i))
               .toList() ??
           [],
-      statusHistory: (json['statusHistory'] as List?)
+      statusHistory:
+          (json['statusHistory'] as List?)
               ?.map((s) => StatusHistory.fromJson(s))
               .toList() ??
           [],
@@ -320,7 +324,8 @@ class ClientOrder {
       userId: json['userId']?.toString() ?? '',
       vendorId: json['vendorId']?.toString() ?? '',
       regionId: json['regionId']?.toString() ?? '',
-      items: (json['items'] as List?)
+      items:
+          (json['items'] as List?)
               ?.map((i) => ClientOrderItem.fromJson(i))
               .toList() ??
           [],
@@ -329,7 +334,7 @@ class ClientOrder {
       taxAmount: (json['taxAmount'] as num?)?.toDouble() ?? 0.0,
       shippingAddress: json['shippingAddress'] is Map
           ? (json['shippingAddress']['formattedAddress'] ??
-              json['shippingAddress'].toString())
+                json['shippingAddress'].toString())
           : (json['shippingAddress']?.toString() ?? ''),
       contactNumber: json['contactNumber']?.toString() ?? '',
       paymentMethod: json['paymentMethod']?.toString() ?? '',
@@ -388,7 +393,7 @@ class Cart {
       vendorId: json['vendorId'] ?? '',
       items:
           (json['items'] as List?)?.map((i) => CartItem.fromJson(i)).toList() ??
-              [],
+          [],
       updatedAt: json['updatedAt'] != null
           ? DateTime.parse(json['updatedAt'])
           : DateTime.now(),
@@ -466,8 +471,9 @@ class StatusHistory {
     return StatusHistory(
       status: json['status'] ?? '',
       notes: json['notes'] ?? '',
-      date:
-          json['date'] != null ? DateTime.parse(json['date']) : DateTime.now(),
+      date: json['date'] != null
+          ? DateTime.parse(json['date'])
+          : DateTime.now(),
     );
   }
 }
@@ -500,7 +506,8 @@ class ApiService {
 
     if (token.isEmpty) {
       print(
-          'Warning: No authentication token found in SharedPreferences. API calls may fail.');
+        'Warning: No authentication token found in SharedPreferences. API calls may fail.',
+      );
     }
 
     return token.isEmpty ? null : token;
@@ -519,7 +526,8 @@ class ApiService {
     ioClient.badCertificateCallback =
         (X509Certificate cert, String host, int port) => true;
     return http_io.IOClient(
-        ioClient); //  fresh client every call — no shared state
+      ioClient,
+    ); //  fresh client every call — no shared state
   }
 
   static bool _isUnauthorizedHandling = false;
@@ -538,8 +546,9 @@ class ApiService {
 
       if (navigatorKey.currentState != null) {
         // Show a message to the user
-        ScaffoldMessengerState? scaffoldMessenger =
-            ScaffoldMessenger.maybeOf(navigatorKey.currentContext!);
+        ScaffoldMessengerState? scaffoldMessenger = ScaffoldMessenger.maybeOf(
+          navigatorKey.currentContext!,
+        );
 
         if (scaffoldMessenger != null) {
           scaffoldMessenger.showSnackBar(
@@ -566,8 +575,12 @@ class ApiService {
   }
 
   // Generic POST request helper
-  static Future<http.Response> _post(String url, Map<String, dynamic> body,
-      {Map<String, String>? headers, bool useAuth = true}) async {
+  static Future<http.Response> _post(
+    String url,
+    Map<String, dynamic> body, {
+    Map<String, String>? headers,
+    bool useAuth = true,
+  }) async {
     final client = _getHttpClient(); // ✅ fresh client per request
     try {
       final Map<String, String> requestHeaders = {
@@ -615,8 +628,12 @@ class ApiService {
 
   // Generic Multipart request helper
   static Future<http.StreamedResponse> _multipartRequest(
-      String method, String url, Map<String, dynamic> body,
-      {List<http.MultipartFile>? files, bool useAuth = true}) async {
+    String method,
+    String url,
+    Map<String, dynamic> body, {
+    List<http.MultipartFile>? files,
+    bool useAuth = true,
+  }) async {
     final client = _getHttpClient();
     try {
       final request = http.MultipartRequest(method, Uri.parse(url));
@@ -652,8 +669,11 @@ class ApiService {
   }
 
   // Generic GET request helper
-  static Future<http.Response> _get(String url,
-      {Map<String, String>? headers, bool useAuth = true}) async {
+  static Future<http.Response> _get(
+    String url, {
+    Map<String, String>? headers,
+    bool useAuth = true,
+  }) async {
     final client = _getHttpClient();
     try {
       final Map<String, String> requestHeaders = {
@@ -671,10 +691,7 @@ class ApiService {
       }
 
       final response = await client
-          .get(
-            Uri.parse(url),
-            headers: requestHeaders,
-          )
+          .get(Uri.parse(url), headers: requestHeaders)
           .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 401 && useAuth) {
@@ -688,8 +705,12 @@ class ApiService {
   }
 
   // Generic PUT request helper
-  static Future<http.Response> _put(String url, Map<String, dynamic> body,
-      {Map<String, String>? headers, bool useAuth = true}) async {
+  static Future<http.Response> _put(
+    String url,
+    Map<String, dynamic> body, {
+    Map<String, String>? headers,
+    bool useAuth = true,
+  }) async {
     final client = _getHttpClient();
     try {
       final Map<String, String> requestHeaders = {
@@ -707,11 +728,7 @@ class ApiService {
       }
 
       final response = await client
-          .put(
-            Uri.parse(url),
-            headers: requestHeaders,
-            body: json.encode(body),
-          )
+          .put(Uri.parse(url), headers: requestHeaders, body: json.encode(body))
           .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 401 && useAuth) {
@@ -725,10 +742,12 @@ class ApiService {
   }
 
   // Generic DELETE request helper
-  static Future<http.Response> _delete(String url,
-      {Map<String, dynamic>? body,
-      Map<String, String>? headers,
-      bool useAuth = true}) async {
+  static Future<http.Response> _delete(
+    String url, {
+    Map<String, dynamic>? body,
+    Map<String, String>? headers,
+    bool useAuth = true,
+  }) async {
     final client = _getHttpClient();
     try {
       final Map<String, String> requestHeaders = {
@@ -765,8 +784,12 @@ class ApiService {
   }
 
   // Generic PATCH request helper
-  static Future<http.Response> _patch(String url, Map<String, dynamic> body,
-      {Map<String, String>? headers, bool useAuth = true}) async {
+  static Future<http.Response> _patch(
+    String url,
+    Map<String, dynamic> body, {
+    Map<String, String>? headers,
+    bool useAuth = true,
+  }) async {
     final client = _getHttpClient();
     try {
       final Map<String, String> requestHeaders = {
@@ -803,20 +826,17 @@ class ApiService {
 
   // Login
   static Future<http.Response> login(String email, String password) async {
-    return await _post(
-      '$baseUrl/crm/auth/login',
-      {'email': email, 'password': password},
-      useAuth: false,
-    );
+    return await _post('$baseUrl/crm/auth/login', {
+      'email': email,
+      'password': password,
+    }, useAuth: false);
   }
 
   // A. Token Registration (POST)
   static Future<http.Response> registerFCMToken(String token) async {
-    return await _post(
-      '$baseUrl$notificationTokenEndpoint',
-      {'token': token},
-      useAuth: true,
-    );
+    return await _post('$baseUrl$notificationTokenEndpoint', {
+      'token': token,
+    }, useAuth: true);
   }
 
   // B. Fetch Notification History (GET)
@@ -844,8 +864,10 @@ class ApiService {
   }
 
   // C. Mark as Read (PATCH)
-  static Future<http.Response> markNotificationAsRead(
-      {String? notificationId, bool markAll = false}) async {
+  static Future<http.Response> markNotificationAsRead({
+    String? notificationId,
+    bool markAll = false,
+  }) async {
     final Map<String, dynamic> body = {};
     if (markAll) {
       body['markAll'] = true;
@@ -853,18 +875,15 @@ class ApiService {
       body['notificationId'] = notificationId;
     }
 
-    return await _patch(
-      '$baseUrl$notificationsEndpoint',
-      body,
-      useAuth: true,
-    );
+    return await _patch('$baseUrl$notificationsEndpoint', body, useAuth: true);
   }
 
   // --- CRM Broadcast Management (Vendors Only) ---
 
   // POST /api/crm/notifications (Create/Send Broadcast)
   static Future<http.Response> createBroadcast(
-      Map<String, dynamic> payload) async {
+    Map<String, dynamic> payload,
+  ) async {
     return await _post(
       '$baseUrl$crmNotificationsEndpoint',
       payload,
@@ -881,7 +900,8 @@ class ApiService {
         final notifications = data['notifications'] as List? ?? [];
 
         // Use server provided stats or compute from list
-        final stats = data['stats'] ??
+        final stats =
+            data['stats'] ??
             {
               'total': notifications.length,
               'pushSent': notifications.where((n) {
@@ -895,10 +915,7 @@ class ApiService {
               'mostTargeted': 'None',
             };
 
-        return {
-          'notifications': notifications,
-          'stats': stats,
-        };
+        return {'notifications': notifications, 'stats': stats};
       }
       throw Exception('Failed to fetch broadcast logs');
     } catch (e) {
@@ -918,26 +935,22 @@ class ApiService {
 
   // Forgot Password
   static Future<http.Response> forgotPassword(String email) async {
-    return await _post(
-      '$baseUrl/crm/auth/forgot-password',
-      {'email': email},
-      useAuth: false,
-    );
+    return await _post('$baseUrl/crm/auth/forgot-password', {
+      'email': email,
+    }, useAuth: false);
   }
 
   // Vendor Register
   static Future<http.Response> registerVendor(
-      Map<String, dynamic> payload) async {
-    return await _post(
-      '$baseUrl/crm/auth/register',
-      payload,
-      useAuth: false,
-    );
+    Map<String, dynamic> payload,
+  ) async {
+    return await _post('$baseUrl/crm/auth/register', payload, useAuth: false);
   }
 
   // Supplier Register
   static Future<http.Response> registerSupplier(
-      Map<String, dynamic> payload) async {
+    Map<String, dynamic> payload,
+  ) async {
     return await _post(
       '$adminBaseUrl/admin/suppliers',
       payload,
@@ -946,8 +959,12 @@ class ApiService {
   }
 
   // Send OTP for email verification
-  static Future<http.Response> sendOtp(String email,
-      {String? firstName, String? lastName, String role = 'vendor'}) async {
+  static Future<http.Response> sendOtp(
+    String email, {
+    String? firstName,
+    String? lastName,
+    String role = 'vendor',
+  }) async {
     final Map<String, dynamic> body = {
       'email': email,
       'role': role.toLowerCase(),
@@ -967,21 +984,20 @@ class ApiService {
       body['name'] = body['fullName']; // Some backends expect 'name'
     }
 
-    return await _post(
-      '$baseUrl/crm/auth/send-otp',
-      body,
-      useAuth: false,
-    );
+    return await _post('$baseUrl/crm/auth/send-otp', body, useAuth: false);
   }
 
   // Verify OTP for email verification
-  static Future<http.Response> verifyOtp(String email, String otp,
-      {String role = 'vendor'}) async {
-    return await _post(
-      '$baseUrl/crm/auth/verify-otp',
-      {'email': email, 'otp': otp, 'role': role.toLowerCase()},
-      useAuth: false,
-    );
+  static Future<http.Response> verifyOtp(
+    String email,
+    String otp, {
+    String role = 'vendor',
+  }) async {
+    return await _post('$baseUrl/crm/auth/verify-otp', {
+      'email': email,
+      'otp': otp,
+      'role': role.toLowerCase(),
+    }, useAuth: false);
   }
 
   // Get all clients
@@ -996,11 +1012,13 @@ class ApiService {
           return clientsData.map((json) => Customer.fromJson(json)).toList();
         } else {
           throw Exception(
-              'Failed to load clients: ${data['message'] ?? 'Unknown error'}');
+            'Failed to load clients: ${data['message'] ?? 'Unknown error'}',
+          );
         }
       } else {
         throw Exception(
-            'Failed to load clients: ${response.statusCode} - ${response.body}');
+          'Failed to load clients: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error fetching clients: $e');
@@ -1022,11 +1040,13 @@ class ApiService {
           return profile;
         } else {
           throw Exception(
-              'Failed to load supplier profile: ${data['message'] ?? 'Unknown error'}');
+            'Failed to load supplier profile: ${data['message'] ?? 'Unknown error'}',
+          );
         }
       } else {
         throw Exception(
-            'Failed to load supplier profile: ${response.statusCode} - ${response.body}');
+          'Failed to load supplier profile: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error fetching supplier profile: $e');
@@ -1035,7 +1055,8 @@ class ApiService {
   }
 
   static Future<SupplierProfile> updateSupplierProfile(
-      Map<String, dynamic> profileData) async {
+    Map<String, dynamic> profileData,
+  ) async {
     try {
       final response = await _put('$baseUrl/crm/supplier-profile', profileData);
 
@@ -1047,11 +1068,13 @@ class ApiService {
           return profile;
         } else {
           throw Exception(
-              'Failed to update supplier profile: ${data['message'] ?? 'Unknown error'}');
+            'Failed to update supplier profile: ${data['message'] ?? 'Unknown error'}',
+          );
         }
       } else {
         throw Exception(
-            'Failed to update supplier profile: ${response.statusCode} - ${response.body}');
+          'Failed to update supplier profile: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error updating supplier profile: $e');
@@ -1071,11 +1094,13 @@ class ApiService {
           return clientsData.map((json) => Customer.fromJson(json)).toList();
         } else {
           throw Exception(
-              'Failed to load online clients: ${data['message'] ?? 'Unknown error'}');
+            'Failed to load online clients: ${data['message'] ?? 'Unknown error'}',
+          );
         }
       } else {
         throw Exception(
-            'Failed to load online clients: ${response.statusCode} - ${response.body}');
+          'Failed to load online clients: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error fetching online clients: $e');
@@ -1094,11 +1119,13 @@ class ApiService {
           return clientsData.map((json) => Customer.fromJson(json)).toList();
         } else {
           throw Exception(
-              'Failed to load supplier clients: ${data['message'] ?? 'Unknown error'}');
+            'Failed to load supplier clients: ${data['message'] ?? 'Unknown error'}',
+          );
         }
       } else {
         throw Exception(
-            'Failed to load supplier clients: ${response.statusCode} - ${response.body}');
+          'Failed to load supplier clients: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error fetching supplier clients: $e');
@@ -1116,11 +1143,13 @@ class ApiService {
           return clientsData.map((json) => Customer.fromJson(json)).toList();
         } else {
           throw Exception(
-              'Failed to load online supplier clients: ${data['message'] ?? 'Unknown error'}');
+            'Failed to load online supplier clients: ${data['message'] ?? 'Unknown error'}',
+          );
         }
       } else {
         throw Exception(
-            'Failed to load online supplier clients: ${response.statusCode} - ${response.body}');
+          'Failed to load online supplier clients: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error fetching online supplier clients: $e');
@@ -1137,11 +1166,13 @@ class ApiService {
           return Customer.fromJson(data['data']);
         } else {
           throw Exception(
-              'Failed to add supplier client: ${data['message'] ?? 'Unknown error'}');
+            'Failed to add supplier client: ${data['message'] ?? 'Unknown error'}',
+          );
         }
       } else {
         throw Exception(
-            'Failed to add supplier client: ${response.statusCode} - ${response.body}');
+          'Failed to add supplier client: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error adding supplier client: $e');
@@ -1160,11 +1191,13 @@ class ApiService {
           return Customer.fromJson(data['data']);
         } else {
           throw Exception(
-              'Failed to update supplier client: ${data['message'] ?? 'Unknown error'}');
+            'Failed to update supplier client: ${data['message'] ?? 'Unknown error'}',
+          );
         }
       } else {
         throw Exception(
-            'Failed to update supplier client: ${response.statusCode} - ${response.body}');
+          'Failed to update supplier client: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error updating supplier client: $e');
@@ -1174,13 +1207,16 @@ class ApiService {
 
   static Future<bool> deleteSupplierClient(String clientId) async {
     try {
-      final response =
-          await _delete('$baseUrl/crm/clients', body: {'id': clientId});
+      final response = await _delete(
+        '$baseUrl/crm/clients',
+        body: {'id': clientId},
+      );
       if ([200, 201, 204].contains(response.statusCode)) {
         return true;
       } else {
         throw Exception(
-            'Failed to delete supplier client: ${response.statusCode} - ${response.body}');
+          'Failed to delete supplier client: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error deleting supplier client: $e');
@@ -1200,11 +1236,13 @@ class ApiService {
           return productsData.map((json) => Product.fromJson(json)).toList();
         } else {
           throw Exception(
-              'Failed to load products: ${data['message'] ?? 'Unknown error'}');
+            'Failed to load products: ${data['message'] ?? 'Unknown error'}',
+          );
         }
       } else {
         throw Exception(
-            'Failed to load products: ${response.statusCode} - ${response.body}');
+          'Failed to load products: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error fetching products: $e');
@@ -1214,28 +1252,33 @@ class ApiService {
 
   // Get products by category
   static Future<List<Product>> getProductMastersByCategory(
-      String categoryName) async {
+    String categoryName,
+  ) async {
     try {
-      final response =
-          await _get('$baseUrl/crm/product-masters?category=$categoryName');
+      final response = await _get(
+        '$baseUrl/crm/product-masters?category=$categoryName',
+      );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true && data['data'] != null) {
           List<dynamic> productsData = data['data'];
-          List<Product> allMasters =
-              productsData.map((json) => Product.fromJson(json)).toList();
+          List<Product> allMasters = productsData
+              .map((json) => Product.fromJson(json))
+              .toList();
           // Client-side filtering to ensure strict category matching
           return allMasters
-              .where((p) =>
-                  p.category?.toLowerCase() == categoryName.toLowerCase())
+              .where(
+                (p) => p.category?.toLowerCase() == categoryName.toLowerCase(),
+              )
               .toList();
         } else {
           return [];
         }
       } else {
         throw Exception(
-            'Failed to load product masters: ${response.statusCode} - ${response.body}');
+          'Failed to load product masters: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error fetching product masters: $e');
@@ -1246,8 +1289,10 @@ class ApiService {
   // Delete a product
   static Future<bool> deleteProduct(String productId) async {
     try {
-      final response =
-          await _delete('$baseUrl/crm/products', body: {'id': productId});
+      final response = await _delete(
+        '$baseUrl/crm/products',
+        body: {'id': productId},
+      );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -1255,11 +1300,13 @@ class ApiService {
           return true;
         } else {
           throw Exception(
-              'Failed to delete product: ${data['message'] ?? 'Unknown error'}');
+            'Failed to delete product: ${data['message'] ?? 'Unknown error'}',
+          );
         }
       } else {
         throw Exception(
-            'Failed to delete product: ${response.statusCode} - ${response.body}');
+          'Failed to delete product: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error deleting product: $e');
@@ -1268,8 +1315,10 @@ class ApiService {
   }
 
   // Create a new product
-  static Future<bool> createProduct(Map<String, dynamic> productData,
-      {List<String>? imagePaths}) async {
+  static Future<bool> createProduct(
+    Map<String, dynamic> productData, {
+    List<String>? imagePaths,
+  }) async {
     try {
       if (imagePaths != null && imagePaths.isNotEmpty) {
         final List<http.MultipartFile> files = [];
@@ -1292,7 +1341,8 @@ class ApiService {
           return data['success'] == true;
         } else {
           throw Exception(
-              'Failed to create product: ${response.statusCode} - ${response.body}');
+            'Failed to create product: ${response.statusCode} - ${response.body}',
+          );
         }
       } else {
         final response = await _post('$baseUrl/crm/products', productData);
@@ -1301,7 +1351,8 @@ class ApiService {
           return data['success'] == true;
         } else {
           throw Exception(
-              'Failed to create product: ${response.statusCode} - ${response.body}');
+            'Failed to create product: ${response.statusCode} - ${response.body}',
+          );
         }
       }
     } catch (e) {
@@ -1312,8 +1363,10 @@ class ApiService {
 
   // Update an existing product
   static Future<bool> updateProduct(
-      String productId, Map<String, dynamic> productData,
-      {List<String>? imagePaths}) async {
+    String productId,
+    Map<String, dynamic> productData, {
+    List<String>? imagePaths,
+  }) async {
     try {
       if (imagePaths != null && imagePaths.isNotEmpty) {
         final List<http.MultipartFile> files = [];
@@ -1336,7 +1389,8 @@ class ApiService {
           return data['success'] == true;
         } else {
           throw Exception(
-              'Failed to update product: ${response.statusCode} - ${response.body}');
+            'Failed to update product: ${response.statusCode} - ${response.body}',
+          );
         }
       } else {
         final response = await _put('$baseUrl/crm/products?id=$productId', {
@@ -1348,7 +1402,8 @@ class ApiService {
           return data['success'] == true;
         } else {
           throw Exception(
-              'Failed to update product: ${response.statusCode} - ${response.body}');
+            'Failed to update product: ${response.statusCode} - ${response.body}',
+          );
         }
       }
     } catch (e) {
@@ -1360,8 +1415,10 @@ class ApiService {
   // Get all product categories
   static Future<List<Map<String, dynamic>>> getProductCategories() async {
     try {
-      final response =
-          await _get('$adminBaseUrl$productCategoriesEndpoint', useAuth: false);
+      final response = await _get(
+        '$adminBaseUrl$productCategoriesEndpoint',
+        useAuth: false,
+      );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -1369,7 +1426,8 @@ class ApiService {
           return List<Map<String, dynamic>>.from(data['data']);
         } else {
           throw Exception(
-              'Failed to load categories: ${data['message'] ?? 'Unknown error'}');
+            'Failed to load categories: ${data['message'] ?? 'Unknown error'}',
+          );
         }
       } else {
         throw Exception('Failed to load categories: ${response.statusCode}');
@@ -1382,16 +1440,14 @@ class ApiService {
 
   // Add a new product category
   static Future<Map<String, dynamic>> addProductCategory(
-      String name, String description) async {
+    String name,
+    String description,
+  ) async {
     try {
-      final response = await _post(
-        '$adminBaseUrl$productCategoriesEndpoint',
-        {
-          'name': name,
-          'description': description,
-        },
-        useAuth: false,
-      );
+      final response = await _post('$adminBaseUrl$productCategoriesEndpoint', {
+        'name': name,
+        'description': description,
+      }, useAuth: false);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
@@ -1399,7 +1455,8 @@ class ApiService {
           return Map<String, dynamic>.from(data['data']);
         } else {
           throw Exception(
-              'Failed to add category: ${data['message'] ?? 'Unknown error'}');
+            'Failed to add category: ${data['message'] ?? 'Unknown error'}',
+          );
         }
       } else {
         throw Exception('Failed to add category: ${response.statusCode}');
@@ -1422,11 +1479,13 @@ class ApiService {
           return List<Map<String, dynamic>>.from(data['data']);
         } else {
           throw Exception(
-              'Failed to load crm categories: ${data['message'] ?? 'Unknown error'}');
+            'Failed to load crm categories: ${data['message'] ?? 'Unknown error'}',
+          );
         }
       } else {
         throw Exception(
-            'Failed to load crm categories: ${response.statusCode}');
+          'Failed to load crm categories: ${response.statusCode}',
+        );
       }
     } catch (e) {
       print('Error fetching crm categories: $e');
@@ -1435,15 +1494,14 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> addCRMProductCategory(
-      String name, String description) async {
+    String name,
+    String description,
+  ) async {
     try {
-      final response = await _post(
-        '$baseUrl$crmProductCategoriesEndpoint',
-        {
-          'name': name,
-          'description': description,
-        },
-      );
+      final response = await _post('$baseUrl$crmProductCategoriesEndpoint', {
+        'name': name,
+        'description': description,
+      });
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
@@ -1451,7 +1509,8 @@ class ApiService {
           return Map<String, dynamic>.from(data['data']);
         } else {
           throw Exception(
-              'Failed to add crm category: ${data['message'] ?? 'Unknown error'}');
+            'Failed to add crm category: ${data['message'] ?? 'Unknown error'}',
+          );
         }
       } else {
         throw Exception('Failed to add crm category: ${response.statusCode}');
@@ -1479,7 +1538,8 @@ class ApiService {
         return staffList.map((json) => StaffMember.fromJson(json)).toList();
       } else {
         throw Exception(
-            'Failed to load staff: ${response.statusCode} - ${response.body}');
+          'Failed to load staff: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error fetching staff: $e');
@@ -1489,13 +1549,16 @@ class ApiService {
 
   // Create a new staff member
   static Future<http.Response> createStaff(
-      Map<String, dynamic> staffData) async {
+    Map<String, dynamic> staffData,
+  ) async {
     return await _post('$baseUrl$staffEndpoint', staffData);
   }
 
   // Update an existing staff member
   static Future<http.Response> updateStaff(
-      String staffId, Map<String, dynamic> staffData) async {
+    String staffId,
+    Map<String, dynamic> staffData,
+  ) async {
     return await _put('$baseUrl$staffEndpoint?id=$staffId', staffData);
   }
 
@@ -1513,7 +1576,8 @@ class ApiService {
         return json.decode(response.body);
       } else {
         throw Exception(
-            'Failed to load staff earnings: ${response.statusCode}');
+          'Failed to load staff earnings: ${response.statusCode}',
+        );
       }
     } catch (e) {
       print('Error fetching staff earnings: $e');
@@ -1523,19 +1587,21 @@ class ApiService {
 
   // Record a new payout for staff
   static Future<http.Response> recordStaffPayout(
-      String staffId, Map<String, dynamic> payoutData) async {
+    String staffId,
+    Map<String, dynamic> payoutData,
+  ) async {
     return await _post('$baseUrl$staffEndpoint/earnings/$staffId', payoutData);
   }
 
   // Send login credentials to a staff member via email
   static Future<bool> sendStaffCredentials(String staffId) async {
     try {
-      final response = await _post(
-        '$baseUrl$staffEndpoint/send-credentials',
-        {'staffId': staffId},
-      );
+      final response = await _post('$baseUrl$staffEndpoint/send-credentials', {
+        'staffId': staffId,
+      });
       print(
-          'Send Credentials Response [${response.statusCode}]: ${response.body}');
+        'Send Credentials Response [${response.statusCode}]: ${response.body}',
+      );
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
         return data['success'] == true ||
@@ -1545,7 +1611,8 @@ class ApiService {
                 true;
       } else {
         throw Exception(
-            'Failed to send credentials: ${response.statusCode} - ${response.body}');
+          'Failed to send credentials: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error sending staff credentials: $e');
@@ -1567,11 +1634,13 @@ class ApiService {
               .toList();
         } else {
           throw Exception(
-              data['message'] ?? 'Failed to load supplier products');
+            data['message'] ?? 'Failed to load supplier products',
+          );
         }
       } else {
         throw Exception(
-            'Failed to load supplier products: ${response.statusCode} - ${response.body}');
+          'Failed to load supplier products: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error fetching supplier products: $e');
@@ -1581,7 +1650,8 @@ class ApiService {
 
   /// Create a new order in the marketplace
   static Future<Map<String, dynamic>> createOrder(
-      Map<String, dynamic> orderData) async {
+    Map<String, dynamic> orderData,
+  ) async {
     try {
       final response = await _post('$baseUrl/crm/orders', orderData);
 
@@ -1589,7 +1659,8 @@ class ApiService {
         return json.decode(response.body);
       } else {
         throw Exception(
-            'Failed to create order: ${response.statusCode} - ${response.body}');
+          'Failed to create order: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error creating order: $e');
@@ -1612,7 +1683,8 @@ class ApiService {
         return ordersData.map((json) => B2BOrder.fromJson(json)).toList();
       } else {
         throw Exception(
-            'Failed to load orders: ${response.statusCode} - ${response.body}');
+          'Failed to load orders: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error fetching orders: $e');
@@ -1635,7 +1707,8 @@ class ApiService {
         return ordersData.map((json) => ClientOrder.fromJson(json)).toList();
       } else {
         throw Exception(
-            'Failed to load client orders: ${response.statusCode} - ${response.body}');
+          'Failed to load client orders: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error fetching client orders: $e');
@@ -1652,10 +1725,7 @@ class ApiService {
     bool isClientOrder = false,
   }) async {
     try {
-      final Map<String, dynamic> body = {
-        'orderId': orderId,
-        'status': status,
-      };
+      final Map<String, dynamic> body = {'orderId': orderId, 'status': status};
 
       if (trackingNumber != null && trackingNumber.isNotEmpty) {
         body['trackingNumber'] = trackingNumber;
@@ -1671,7 +1741,8 @@ class ApiService {
         return json.decode(response.body);
       } else {
         throw Exception(
-            'Failed to update order status: ${response.statusCode} - ${response.body}');
+          'Failed to update order status: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error updating order status: $e');
@@ -1692,7 +1763,8 @@ class ApiService {
         }
       } else {
         throw Exception(
-            'Failed to add to cart: ${response.statusCode} - ${response.body}');
+          'Failed to add to cart: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error adding to cart: $e');
@@ -1703,8 +1775,10 @@ class ApiService {
   /// Update cart item quantity
   static Future<Cart> updateCartQuantity(String productId, int quantity) async {
     try {
-      final response = await _put(
-          '$baseUrl/crm/cart', {"productId": productId, "quantity": quantity});
+      final response = await _put('$baseUrl/crm/cart', {
+        "productId": productId,
+        "quantity": quantity,
+      });
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true && data['data'] != null) {
@@ -1714,7 +1788,8 @@ class ApiService {
         }
       } else {
         throw Exception(
-            'Failed to update cart: ${response.statusCode} - ${response.body}');
+          'Failed to update cart: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error updating cart quantity: $e');
@@ -1725,8 +1800,10 @@ class ApiService {
   /// Delete item from cart
   static Future<Cart> deleteFromCart(String productId) async {
     try {
-      final response =
-          await _delete('$baseUrl/crm/cart', body: {"productId": productId});
+      final response = await _delete(
+        '$baseUrl/crm/cart',
+        body: {"productId": productId},
+      );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true && data['data'] != null) {
@@ -1736,7 +1813,8 @@ class ApiService {
         }
       } else {
         throw Exception(
-            'Failed to delete from cart: ${response.statusCode} - ${response.body}');
+          'Failed to delete from cart: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error deleting from cart: $e');
@@ -1756,7 +1834,8 @@ class ApiService {
         return null; // Cart might be empty
       } else {
         throw Exception(
-            'Failed to load cart: ${response.statusCode} - ${response.body}');
+          'Failed to load cart: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error fetching cart: $e');
@@ -1767,7 +1846,7 @@ class ApiService {
   // ==================== INVENTORY ==================== //
 
   static Future<List<InventoryTransaction>>
-      getSupplierInventoryTransactions() async {
+  getSupplierInventoryTransactions() async {
     try {
       final response = await _get('$baseUrl/crm/inventory/transactions');
       if (response.statusCode == 200) {
@@ -1778,11 +1857,13 @@ class ApiService {
               .toList();
         } else {
           throw Exception(
-              data['message'] ?? 'Failed to load inventory transactions');
+            data['message'] ?? 'Failed to load inventory transactions',
+          );
         }
       } else {
         throw Exception(
-            'Failed to load inventory transactions: ${response.statusCode} - ${response.body}');
+          'Failed to load inventory transactions: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error fetching inventory transactions: $e');
@@ -1805,7 +1886,8 @@ class ApiService {
         }
       } else {
         throw Exception(
-            'Failed to load questions: ${response.statusCode} - ${response.body}');
+          'Failed to load questions: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error fetching product questions: $e');
@@ -1815,7 +1897,10 @@ class ApiService {
 
   /// Answer or update a product question (also controls isPublished)
   static Future<bool> answerProductQuestion(
-      String questionId, String answer, bool isPublished) async {
+    String questionId,
+    String answer,
+    bool isPublished,
+  ) async {
     final client = _getHttpClient();
     try {
       final token = await _getAuthToken();
@@ -1829,8 +1914,10 @@ class ApiService {
       }
 
       final url = '$baseUrl/crm/product-questions/$questionId';
-      final bodyStr =
-          json.encode({'answer': answer, 'isPublished': isPublished});
+      final bodyStr = json.encode({
+        'answer': answer,
+        'isPublished': isPublished,
+      });
 
       // Build raw PATCH request (same pattern as DELETE to avoid SSL issues)
       final request = http.Request('PATCH', Uri.parse(url));
@@ -1839,19 +1926,22 @@ class ApiService {
 
       print('PATCH $url  body=$bodyStr');
 
-      final streamedResponse =
-          await client.send(request).timeout(const Duration(seconds: 30));
+      final streamedResponse = await client
+          .send(request)
+          .timeout(const Duration(seconds: 30));
       final response = await http.Response.fromStream(streamedResponse);
 
       print(
-          'Answer product question response [${response.statusCode}]: ${response.body}');
+        'Answer product question response [${response.statusCode}]: ${response.body}',
+      );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
         return data['success'] == true;
       } else {
         throw Exception(
-            'Failed to answer question: ${response.statusCode} - ${response.body}');
+          'Failed to answer question: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error answering product question: $e');
@@ -1863,7 +1953,9 @@ class ApiService {
 
   /// Toggle publish status of a product question
   static Future<bool> togglePublishProductQuestion(
-      String questionId, bool isPublished) async {
+    String questionId,
+    bool isPublished,
+  ) async {
     try {
       final response = await _put(
         '$baseUrl/crm/product-questions/$questionId',
@@ -1874,7 +1966,8 @@ class ApiService {
         return data['success'] == true;
       } else {
         throw Exception(
-            'Failed to toggle publish: ${response.statusCode} - ${response.body}');
+          'Failed to toggle publish: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error toggling publish product question: $e');
@@ -1885,8 +1978,9 @@ class ApiService {
   /// Delete a product question
   static Future<bool> deleteProductQuestion(String questionId) async {
     try {
-      final response =
-          await _delete('$baseUrl/crm/product-questions/$questionId');
+      final response = await _delete(
+        '$baseUrl/crm/product-questions/$questionId',
+      );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return data['success'] == true;
@@ -1894,7 +1988,8 @@ class ApiService {
         return true;
       } else {
         throw Exception(
-            'Failed to delete question: ${response.statusCode} - ${response.body}');
+          'Failed to delete question: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error deleting product question: $e');
@@ -1905,8 +2000,10 @@ class ApiService {
   // Add a new client
   static Future<Customer> addClient(Customer customer) async {
     try {
-      final response =
-          await _post('$baseUrl$clientsEndpoint', customer.toJson());
+      final response = await _post(
+        '$baseUrl$clientsEndpoint',
+        customer.toJson(),
+      );
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -1914,11 +2011,13 @@ class ApiService {
           return Customer.fromJson(data['data']);
         } else {
           throw Exception(
-              'Failed to add client: ${data['message'] ?? 'Unknown error'}');
+            'Failed to add client: ${data['message'] ?? 'Unknown error'}',
+          );
         }
       } else {
         throw Exception(
-            'Failed to add client: ${response.statusCode} - ${response.body}');
+          'Failed to add client: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error adding client: $e');
@@ -1932,8 +2031,10 @@ class ApiService {
       if (customer.id == null)
         throw Exception('Customer ID is required for update');
 
-      final response =
-          await _put('$baseUrl$clientsEndpoint', customer.toJson());
+      final response = await _put(
+        '$baseUrl$clientsEndpoint',
+        customer.toJson(),
+      );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -1941,11 +2042,13 @@ class ApiService {
           return Customer.fromJson(data['data']);
         } else {
           throw Exception(
-              'Failed to update client: ${data['message'] ?? 'Unknown error'}');
+            'Failed to update client: ${data['message'] ?? 'Unknown error'}',
+          );
         }
       } else {
         throw Exception(
-            'Failed to update client: ${response.statusCode} - ${response.body}');
+          'Failed to update client: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error updating client: $e');
@@ -1956,14 +2059,17 @@ class ApiService {
   // Delete a client
   static Future<bool> deleteClient(String clientId) async {
     try {
-      final response =
-          await _delete('$baseUrl$clientsEndpoint', body: {'id': clientId});
+      final response = await _delete(
+        '$baseUrl$clientsEndpoint',
+        body: {'id': clientId},
+      );
 
       if ([200, 201, 204].contains(response.statusCode)) {
         return true;
       } else {
         throw Exception(
-            'Failed to delete client: ${response.statusCode} - ${response.body}');
+          'Failed to delete client: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error deleting client: $e');
@@ -1991,7 +2097,8 @@ class ApiService {
         return servicesList.map((json) => Service.fromJson(json)).toList();
       } else {
         throw Exception(
-            'Failed to load services: ${response.statusCode} - ${response.body}');
+          'Failed to load services: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error fetching services: $e');
@@ -2010,17 +2117,20 @@ class ApiService {
           final servicesData = data['data']['services'] as List? ?? [];
 
           return {
-            'staff':
-                staffData.map((json) => StaffMember.fromJson(json)).toList(),
-            'services':
-                servicesData.map((json) => Service.fromJson(json)).toList(),
+            'staff': staffData
+                .map((json) => StaffMember.fromJson(json))
+                .toList(),
+            'services': servicesData
+                .map((json) => Service.fromJson(json))
+                .toList(),
           };
         } else {
           return {'staff': [], 'services': []};
         }
       } else {
         throw Exception(
-            'Failed to load wedding packages: ${response.statusCode}');
+          'Failed to load wedding packages: ${response.statusCode}',
+        );
       }
     } catch (e) {
       print('Error fetching wedding packages: $e');
@@ -2036,7 +2146,8 @@ class ApiService {
         final decoded = json.decode(response.body);
         if (decoded is List) return List<Map<String, dynamic>>.from(decoded);
         if (decoded is Map) {
-          final data = decoded['data'] ??
+          final data =
+              decoded['data'] ??
               decoded['categories'] ??
               decoded['category'] ??
               [];
@@ -2053,17 +2164,20 @@ class ApiService {
   }
 
   static Future<http.Response> createServiceCategory(
-      Map<String, dynamic> data) async {
+    Map<String, dynamic> data,
+  ) async {
     return await _post('$baseUrl/crm/categories', data);
   }
 
   // ==================== SERVICES BY CATEGORY ==================== //
   static Future<List<Map<String, dynamic>>> getServicesByCategory(
-      String categoryName) async {
+    String categoryName,
+  ) async {
     try {
       // Filtering by category (can be ID or name depending on server)
-      final response =
-          await _get('$baseUrl/crm/services?category=$categoryName');
+      final response = await _get(
+        '$baseUrl/crm/services?category=$categoryName',
+      );
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
         List<dynamic> list = [];
@@ -2084,12 +2198,14 @@ class ApiService {
 
   // ==================== MASTER SERVICES ==================== //
   static Future<http.Response> createMasterCategory(
-      Map<String, dynamic> data) async {
+    Map<String, dynamic> data,
+  ) async {
     return await _post('$adminBaseUrl/admin/categories', data);
   }
 
   static Future<http.Response> createMasterService(
-      Map<String, dynamic> data) async {
+    Map<String, dynamic> data,
+  ) async {
     return await _post('$adminBaseUrl/admin/services', data);
   }
 
@@ -2113,7 +2229,8 @@ class ApiService {
         }
       } else {
         throw Exception(
-            'Failed to load add-ons: ${response.statusCode} - ${response.body}');
+          'Failed to load add-ons: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error fetching add-ons: $e');
@@ -2130,7 +2247,8 @@ class ApiService {
         return data['addOn'] != null || data['success'] == true;
       } else {
         throw Exception(
-            'Failed to create add-on: ${response.statusCode} - ${response.body}');
+          'Failed to create add-on: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error creating add-on: $e');
@@ -2149,7 +2267,8 @@ class ApiService {
             data['success'] == true;
       } else {
         throw Exception(
-            'Failed to update add-on: ${response.statusCode} - ${response.body}');
+          'Failed to update add-on: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error updating add-on: $e');
@@ -2166,7 +2285,8 @@ class ApiService {
         return data['message']?.contains('successfully') == true;
       } else {
         throw Exception(
-            'Failed to delete add-on: ${response.statusCode} - ${response.body}');
+          'Failed to delete add-on: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error deleting add-on: $e');
@@ -2177,11 +2297,14 @@ class ApiService {
 
   static Future<bool> deleteService(String serviceId) async {
     try {
-      final response = await _delete('$baseUrl$servicesEndpoint',
-          body: {'serviceId': serviceId});
+      final response = await _delete(
+        '$baseUrl$servicesEndpoint',
+        body: {'serviceId': serviceId},
+      );
 
       print(
-          'Delete Service Response [${response.statusCode}]: ${response.body}');
+        'Delete Service Response [${response.statusCode}]: ${response.body}',
+      );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -2192,15 +2315,18 @@ class ApiService {
         }
       } else if (response.statusCode == 401) {
         throw Exception(
-            'Unauthorized. Your session may have expired. Please login again.');
+          'Unauthorized. Your session may have expired. Please login again.',
+        );
       } else if (response.statusCode == 403) {
         throw Exception(
-            'Access denied. You do not have permission to delete this service.');
+          'Access denied. You do not have permission to delete this service.',
+        );
       } else if (response.statusCode == 404) {
         throw Exception('Service not found. It may have already been deleted.');
       } else {
         throw Exception(
-            'Server error ${response.statusCode}: ${response.body}');
+          'Server error ${response.statusCode}: ${response.body}',
+        );
       }
     } on FormatException catch (e) {
       print('JSON parsing error: $e');
@@ -2226,9 +2352,9 @@ class ApiService {
       // Staff must be list of staff IDs (from StaffMember.id), not names
       final List<String> staffIds =
           ((serviceData['staff_ids'] ?? serviceData['staff']) as List<dynamic>?)
-                  ?.whereType<String>()
-                  .toList() ??
-              [];
+              ?.whereType<String>()
+              .toList() ??
+          [];
 
       // Parse duration string like "30 min" → minutes (int)
       final int durationMinutes = _parseDuration(serviceData['duration']);
@@ -2239,8 +2365,9 @@ class ApiService {
         'category': categoryId,
         'price': (serviceData['price'] as num).toDouble().toInt(),
         if (serviceData['discounted_price'] != null)
-          'discountedPrice':
-              (serviceData['discounted_price'] as num).toDouble().toInt(),
+          'discountedPrice': (serviceData['discounted_price'] as num)
+              .toDouble()
+              .toInt(),
         'duration': durationMinutes,
         'description': serviceData['description']?.toString().trim() ?? '',
         'gender': serviceData['gender'] ?? 'unisex',
@@ -2249,26 +2376,26 @@ class ApiService {
         'homeService': serviceData['home_service'] is Map
             ? serviceData['home_service']
             : serviceData['homeService'] ??
-                {
-                  'available': serviceData['home_service'] ?? false,
-                  'charges': null
-                },
+                  {
+                    'available': serviceData['home_service'] ?? false,
+                    'charges': null,
+                  },
         'weddingService': serviceData['wedding_service'] is Map
             ? serviceData['wedding_service']
             : serviceData['weddingService'] ??
-                {
-                  'available': serviceData['wedding_service'] ?? false,
-                  'charges': null
-                },
+                  {
+                    'available': serviceData['wedding_service'] ?? false,
+                    'charges': null,
+                  },
         'bookingInterval':
             int.tryParse(serviceData['booking_interval']?.toString() ?? '0') ??
-                0,
+            0,
         'tax': serviceData['tax'] is Map
             ? serviceData['tax']
             : {
                 'enabled': serviceData['enable_tax'] ?? false,
                 'type': 'percentage',
-                'value': serviceData['tax_value'] ?? 0
+                'value': serviceData['tax_value'] ?? 0,
               },
         'onlineBooking': serviceData['onlineBooking'] ?? true,
         if (serviceData['image'] != null)
@@ -2277,11 +2404,12 @@ class ApiService {
       };
 
       final response = await _post('$baseUrl$servicesEndpoint', {
-        'services': [mappedServiceData]
+        'services': [mappedServiceData],
       });
 
       print(
-          'Create Service Response [${response.statusCode}]: ${response.body}');
+        'Create Service Response [${response.statusCode}]: ${response.body}',
+      );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
@@ -2293,13 +2421,16 @@ class ApiService {
         }
       } else if (response.statusCode == 401) {
         throw Exception(
-            'Unauthorized. Your session may have expired. Please login again.');
+          'Unauthorized. Your session may have expired. Please login again.',
+        );
       } else if (response.statusCode == 403) {
         throw Exception(
-            'Access denied. You do not have permission to create services.');
+          'Access denied. You do not have permission to create services.',
+        );
       } else {
         throw Exception(
-            'Server error ${response.statusCode}: ${response.body}');
+          'Server error ${response.statusCode}: ${response.body}',
+        );
       }
     } on FormatException catch (e) {
       print('JSON parsing error: $e');
@@ -2359,7 +2490,9 @@ class ApiService {
   }
 
   static Future<bool> updateService(
-      String serviceId, Map<String, dynamic> serviceData) async {
+    String serviceId,
+    Map<String, dynamic> serviceData,
+  ) async {
     try {
       // Map the field names to match API expectations (same structure as createService)
       final mappedServiceData = {
@@ -2368,8 +2501,9 @@ class ApiService {
         'category': serviceData['category_id'],
         'price': (serviceData['price'] as num).toInt(),
         if (serviceData['discounted_price'] != null)
-          'discountedPrice':
-              (serviceData['discounted_price'] as num).toDouble().toInt(),
+          'discountedPrice': (serviceData['discounted_price'] as num)
+              .toDouble()
+              .toInt(),
         'duration': (serviceData['duration'] is int)
             ? serviceData['duration'] as int
             : _parseDuration(serviceData['duration']?.toString()),
@@ -2391,7 +2525,7 @@ class ApiService {
               },
         'bookingInterval':
             int.tryParse(serviceData['booking_interval']?.toString() ?? '0') ??
-                0,
+            0,
         'tax': serviceData['tax'] is Map
             ? serviceData['tax']
             : {
@@ -2408,11 +2542,12 @@ class ApiService {
       }
 
       final response = await _put('$baseUrl$servicesEndpoint', {
-        'services': [mappedServiceData]
+        'services': [mappedServiceData],
       });
 
       print(
-          'Update Service Response [${response.statusCode}]: ${response.body}');
+        'Update Service Response [${response.statusCode}]: ${response.body}',
+      );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -2423,13 +2558,16 @@ class ApiService {
         }
       } else if (response.statusCode == 401) {
         throw Exception(
-            'Unauthorized. Your session may have expired. Please login again.');
+          'Unauthorized. Your session may have expired. Please login again.',
+        );
       } else if (response.statusCode == 403) {
         throw Exception(
-            'Access denied. You do not have permission to update this service.');
+          'Access denied. You do not have permission to update this service.',
+        );
       } else {
         throw Exception(
-            'Server error ${response.statusCode}: ${response.body}');
+          'Server error ${response.statusCode}: ${response.body}',
+        );
       }
     } on FormatException catch (e) {
       print('JSON parsing error: $e');
@@ -2443,8 +2581,10 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> getAppointments(
-      {int? page, int? limit}) async {
+  static Future<Map<String, dynamic>> getAppointments({
+    int? page,
+    int? limit,
+  }) async {
     try {
       String url = '$baseUrl/crm/appointments';
       Map<String, String> queryParams = {};
@@ -2482,19 +2622,18 @@ class ApiService {
                 .toList();
           }
           // Some APIs use 'total', 'totalItems', 'count', etc.
-          total = data['total'] ??
+          total =
+              data['total'] ??
               data['totalItems'] ??
               data['count'] ??
               items.length;
         }
 
-        return {
-          'data': items,
-          'total': total,
-        };
+        return {'data': items, 'total': total};
       } else {
         throw Exception(
-            'Failed to load appointments: ${response.statusCode} - ${response.body}');
+          'Failed to load appointments: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error fetching appointments: $e');
@@ -2504,13 +2643,12 @@ class ApiService {
 
   // Update appointment status
   static Future<Map<String, dynamic>> updateAppointmentStatus(
-      String id, String status,
-      {String? cancellationReason}) async {
+    String id,
+    String status, {
+    String? cancellationReason,
+  }) async {
     try {
-      final Map<String, dynamic> body = {
-        '_id': id,
-        'status': status,
-      };
+      final Map<String, dynamic> body = {'_id': id, 'status': status};
 
       if (status == 'cancelled' && cancellationReason != null) {
         body['cancellationReason'] = cancellationReason;
@@ -2521,14 +2659,16 @@ class ApiService {
       final response = await _patch('$baseUrl/crm/appointments', body);
 
       print(
-          '📥 Update Status Response [${response.statusCode}]: ${response.body}');
+        '📥 Update Status Response [${response.statusCode}]: ${response.body}',
+      );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return data; // Returns the full response including updated appointment
       } else {
         throw Exception(
-            'Failed to update status: ${response.statusCode} - ${response.body}');
+          'Failed to update status: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('❌ Error updating status: $e');
@@ -2563,11 +2703,13 @@ class ApiService {
           return AppointmentModel.fromJson(data['data']);
         } else {
           throw Exception(
-              'Unexpected response format from appointment detail API');
+            'Unexpected response format from appointment detail API',
+          );
         }
       } else {
         throw Exception(
-            'Failed to load appointment details: ${response.statusCode} - ${response.body}');
+          'Failed to load appointment details: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('❌ Error fetching appointment details: $e');
@@ -2576,17 +2718,21 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> createAppointment(
-      Map<String, dynamic> appointmentData) async {
+    Map<String, dynamic> appointmentData,
+  ) async {
     try {
-      final response =
-          await _post('$baseUrl/crm/appointments', appointmentData);
+      final response = await _post(
+        '$baseUrl/crm/appointments',
+        appointmentData,
+      );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
         return data;
       } else {
         throw Exception(
-            'Failed to create appointment: ${response.statusCode} - ${response.body}');
+          'Failed to create appointment: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error creating appointment: $e');
@@ -2606,7 +2752,8 @@ class ApiService {
         print('✅ Successfully deleted appointment: $id');
       } else {
         throw Exception(
-            'Failed to delete appointment: ${response.statusCode} - ${response.body}');
+          'Failed to delete appointment: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('❌ Error deleting appointment: $e');
@@ -2615,23 +2762,29 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> collectPayment(
-      Map<String, dynamic> paymentData) async {
+    Map<String, dynamic> paymentData,
+  ) async {
     try {
       print(
-          '🔄 Collecting payment for appointment ID: ${paymentData['appointmentId']}');
+        '🔄 Collecting payment for appointment ID: ${paymentData['appointmentId']}',
+      );
 
-      final response =
-          await _post('$baseUrl/crm/payments/collect', paymentData);
+      final response = await _post(
+        '$baseUrl/crm/payments/collect',
+        paymentData,
+      );
 
       print(
-          '📥 Collect Payment Response [${response.statusCode}]: ${response.body}');
+        '📥 Collect Payment Response [${response.statusCode}]: ${response.body}',
+      );
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final data = json.decode(response.body);
         return data;
       } else {
         throw Exception(
-            'Failed to collect payment: ${response.statusCode} - ${response.body}');
+          'Failed to collect payment: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('❌ Error collecting payment: $e');
@@ -2640,22 +2793,28 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> updateAppointment(
-      String id, Map<String, dynamic> appointmentData) async {
+    String id,
+    Map<String, dynamic> appointmentData,
+  ) async {
     try {
       print('🔄 Updating appointment with ID: $id');
 
-      final response =
-          await _put('$baseUrl/crm/appointments/$id', appointmentData);
+      final response = await _put(
+        '$baseUrl/crm/appointments/$id',
+        appointmentData,
+      );
 
       print(
-          '📥 Update Appointment Response [${response.statusCode}]: ${response.body}');
+        '📥 Update Appointment Response [${response.statusCode}]: ${response.body}',
+      );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return data;
       } else {
         throw Exception(
-            'Failed to update appointment: ${response.statusCode} - ${response.body}');
+          'Failed to update appointment: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('❌ Error updating appointment: $e');
@@ -2668,7 +2827,8 @@ class ApiService {
       final response = await _get('$baseUrl/crm/wedding-packages');
 
       print(
-          'Wedding Packages Response [${response.statusCode}]: ${response.body}');
+        'Wedding Packages Response [${response.statusCode}]: ${response.body}',
+      );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -2690,7 +2850,8 @@ class ApiService {
         }
       } else {
         throw Exception(
-            'Failed to load wedding packages: ${response.statusCode}');
+          'Failed to load wedding packages: ${response.statusCode}',
+        );
       }
     } catch (e) {
       print('Error fetching wedding packages: $e');
@@ -2699,10 +2860,13 @@ class ApiService {
   }
 
   static Future<bool> toggleWeddingPackageStatus(
-      String id, bool isActive) async {
+    String id,
+    bool isActive,
+  ) async {
     try {
-      final response = await _patch(
-          '$baseUrl/crm/wedding-packages/$id', {'isActive': isActive});
+      final response = await _patch('$baseUrl/crm/wedding-packages/$id', {
+        'isActive': isActive,
+      });
 
       if (response.statusCode == 200) {
         return true;
@@ -2716,13 +2880,17 @@ class ApiService {
   }
 
   static Future<bool> createWeddingPackage(
-      Map<String, dynamic> packageData) async {
+    Map<String, dynamic> packageData,
+  ) async {
     try {
-      final response =
-          await _post('$baseUrl/crm/wedding-packages', packageData);
+      final response = await _post(
+        '$baseUrl/crm/wedding-packages',
+        packageData,
+      );
 
       print(
-          'Create Wedding Package Response [${response.statusCode}]: ${response.body}');
+        'Create Wedding Package Response [${response.statusCode}]: ${response.body}',
+      );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
@@ -2733,7 +2901,8 @@ class ApiService {
         }
       } else {
         throw Exception(
-            'Failed to create wedding package: ${response.statusCode}');
+          'Failed to create wedding package: ${response.statusCode}',
+        );
       }
     } catch (e) {
       print('Error creating wedding package: $e');
@@ -2742,7 +2911,9 @@ class ApiService {
   }
 
   static Future<bool> updateWeddingPackage(
-      String? id, Map<String, dynamic> packageData) async {
+    String? id,
+    Map<String, dynamic> packageData,
+  ) async {
     try {
       if (id == null) return false;
 
@@ -2752,7 +2923,8 @@ class ApiService {
       });
 
       print(
-          'Update Wedding Package Response [${response.statusCode}]: ${response.body}');
+        'Update Wedding Package Response [${response.statusCode}]: ${response.body}',
+      );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -2764,7 +2936,8 @@ class ApiService {
         }
       } else {
         throw Exception(
-            'Failed to update wedding package: ${response.statusCode}');
+          'Failed to update wedding package: ${response.statusCode}',
+        );
       }
     } catch (e) {
       print('Error updating wedding package: $e');
@@ -2774,11 +2947,14 @@ class ApiService {
 
   static Future<bool> deleteWeddingPackage(String id) async {
     try {
-      final response = await _delete('$baseUrl/crm/wedding-packages',
-          body: {'packageId': id});
+      final response = await _delete(
+        '$baseUrl/crm/wedding-packages',
+        body: {'packageId': id},
+      );
 
       print(
-          'Delete Wedding Package Response [${response.statusCode}]: ${response.body}');
+        'Delete Wedding Package Response [${response.statusCode}]: ${response.body}',
+      );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -2786,7 +2962,8 @@ class ApiService {
             data['message']?.toString().contains('successfully') == true;
       } else {
         throw Exception(
-            'Failed to delete wedding package: ${response.statusCode}');
+          'Failed to delete wedding package: ${response.statusCode}',
+        );
       }
     } catch (e) {
       print('Error deleting wedding package: $e');
@@ -2807,11 +2984,13 @@ class ApiService {
           return profile;
         } else {
           throw Exception(
-              'Failed to load vendor profile: ${data['message'] ?? 'Unknown error'}');
+            'Failed to load vendor profile: ${data['message'] ?? 'Unknown error'}',
+          );
         }
       } else {
         throw Exception(
-            'Failed to load vendor profile: ${response.statusCode} - ${response.body}');
+          'Failed to load vendor profile: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error fetching vendor profile: $e');
@@ -2820,7 +2999,8 @@ class ApiService {
   }
 
   static Future<VendorProfile> updateVendorProfile(
-      Map<String, dynamic> profileData) async {
+    Map<String, dynamic> profileData,
+  ) async {
     try {
       final response = await _put('$baseUrl/crm/vendor', profileData);
 
@@ -2830,11 +3010,13 @@ class ApiService {
           return VendorProfile.fromJson(data['data']);
         } else {
           throw Exception(
-              'Failed to update vendor profile: ${data['message'] ?? 'Unknown error'}');
+            'Failed to update vendor profile: ${data['message'] ?? 'Unknown error'}',
+          );
         }
       } else {
         throw Exception(
-            'Failed to update vendor profile: ${response.statusCode} - ${response.body}');
+          'Failed to update vendor profile: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error updating vendor profile: $e');
@@ -2878,7 +3060,9 @@ class ApiService {
   }
 
   static Future<bool> updateExpense(
-      String id, Map<String, dynamic> data) async {
+    String id,
+    Map<String, dynamic> data,
+  ) async {
     try {
       final response = await _put('$baseUrl/crm/expenses?id=$id', {
         ...data,
@@ -2908,7 +3092,8 @@ class ApiService {
         return list.map((i) => Plan.fromJson(i)).toList();
       } else {
         throw Exception(
-            'Failed to load subscription plans: ${response.statusCode}');
+          'Failed to load subscription plans: ${response.statusCode}',
+        );
       }
     } catch (e) {
       print('Error fetching subscription plans: $e');
@@ -2920,20 +3105,23 @@ class ApiService {
     required String planId,
     required String userType,
     required int amount,
+    String? paymentId,
   }) async {
     try {
       final response = await _post('$baseUrl/crm/subscription/renew', {
         'planId': planId,
         'userType': userType,
         'amount': amount,
+        if (paymentId != null) 'paymentId': paymentId,
       });
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         return true;
       } else {
         final data = json.decode(response.body);
-        throw Exception(data['message'] ??
-            'Failed to renew subscription: ${response.body}');
+        throw Exception(
+          data['message'] ?? 'Failed to renew subscription: ${response.body}',
+        );
       }
     } catch (e) {
       print('Error renewing subscription: $e');
@@ -2968,7 +3156,8 @@ class ApiService {
         return data.map((json) => OfferModel.fromJson(json)).toList();
       } else {
         throw Exception(
-            'Failed to load offers: ${response.statusCode} - ${response.body}');
+          'Failed to load offers: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('❌ Error fetching offers: $e');
@@ -2981,7 +3170,8 @@ class ApiService {
       print('🚀 Creating new offer...');
       final response = await _post('$baseUrl/crm/offers', data);
       print(
-          '📥 Create Offer Response [${response.statusCode}]: ${response.body}');
+        '📥 Create Offer Response [${response.statusCode}]: ${response.body}',
+      );
       return response;
     } catch (e) {
       print('❌ Error creating offer: $e');
@@ -2990,18 +3180,18 @@ class ApiService {
   }
 
   static Future<http.Response> updateOffer(
-      String id, Map<String, dynamic> data) async {
+    String id,
+    Map<String, dynamic> data,
+  ) async {
     try {
       print('🔄 Updating offer with ID: $id...');
       // Merge ID into data as requested
-      final Map<String, dynamic> payload = {
-        ...data,
-        'id': id,
-      };
+      final Map<String, dynamic> payload = {...data, 'id': id};
 
       final response = await _put('$baseUrl/crm/offers', payload);
       print(
-          '📥 Update Offer Response [${response.statusCode}]: ${response.body}');
+        '📥 Update Offer Response [${response.statusCode}]: ${response.body}',
+      );
       return response;
     } catch (e) {
       print('❌ Error updating offer: $e');
@@ -3038,14 +3228,16 @@ class ApiService {
       final response = await _delete('$baseUrl/crm/offers?id=$id');
 
       print(
-          '📥 Delete Offer Response [${response.statusCode}]: ${response.body}');
+        '📥 Delete Offer Response [${response.statusCode}]: ${response.body}',
+      );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return data['success'] == true;
       } else {
         throw Exception(
-            'Failed to delete offer: ${response.statusCode} - ${response.body}');
+          'Failed to delete offer: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('❌ Error deleting offer: $e');
@@ -3061,14 +3253,16 @@ class ApiService {
       final response = await _get('$baseUrl/crm/workinghours');
 
       print(
-          '📥 Working Hours Response [${response.statusCode}]: ${response.body}');
+        '📥 Working Hours Response [${response.statusCode}]: ${response.body}',
+      );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return data;
       } else {
         throw Exception(
-            'Failed to load working hours: ${response.statusCode} - ${response.body}');
+          'Failed to load working hours: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('❌ Error fetching working hours: $e');
@@ -3077,16 +3271,20 @@ class ApiService {
   }
 
   static Future<bool> updateWorkingHours(
-      Map<String, dynamic> workingHoursData) async {
+    Map<String, dynamic> workingHoursData,
+  ) async {
     try {
       print('🔄 Updating working hours...');
       print('📤 Data: ${json.encode(workingHoursData)}');
 
-      final response =
-          await _put('$baseUrl/crm/workinghours', workingHoursData);
+      final response = await _put(
+        '$baseUrl/crm/workinghours',
+        workingHoursData,
+      );
 
       print(
-          '📥 Update Working Hours Response [${response.statusCode}]: ${response.body}');
+        '📥 Update Working Hours Response [${response.statusCode}]: ${response.body}',
+      );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -3095,7 +3293,8 @@ class ApiService {
             data['message']?.toString().contains('updated') == true;
       } else {
         throw Exception(
-            'Failed to update working hours: ${response.statusCode} - ${response.body}');
+          'Failed to update working hours: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('❌ Error updating working hours: $e');
@@ -3117,11 +3316,13 @@ class ApiService {
               .toList();
         } else {
           throw Exception(
-              'Failed to load invoices: ${data['message'] ?? 'Unknown error'}');
+            'Failed to load invoices: ${data['message'] ?? 'Unknown error'}',
+          );
         }
       } else {
         throw Exception(
-            'Failed to load invoices: ${response.statusCode} - ${response.body}');
+          'Failed to load invoices: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error fetching invoices: $e');
@@ -3131,18 +3332,21 @@ class ApiService {
 
   // Create a new bill
   static Future<Map<String, dynamic>> createBilling(
-      Map<String, dynamic> payload) async {
+    Map<String, dynamic> payload,
+  ) async {
     try {
       final response = await _post('$baseUrl/crm/billing', payload);
       print(
-          '📥 Create Billing Response [${response.statusCode}]: ${response.body}');
+        '📥 Create Billing Response [${response.statusCode}]: ${response.body}',
+      );
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
         return data;
       } else {
         final data = json.decode(response.body);
         throw Exception(
-            'Failed to create bill: ${data['message'] ?? response.statusCode}');
+          'Failed to create bill: ${data['message'] ?? response.statusCode}',
+        );
       }
     } catch (e) {
       print('❌ Error creating bill: $e');
@@ -3171,13 +3375,14 @@ class ApiService {
   }
 
   static Future<bool> updateReviewStatus(
-      String reviewId, bool isApproved) async {
+    String reviewId,
+    bool isApproved,
+  ) async {
     try {
       print('📤 Updating review $reviewId status to isApproved: $isApproved');
-      final response = await _patch(
-        '$baseUrl/crm/reviews/$reviewId',
-        {'isApproved': isApproved},
-      );
+      final response = await _patch('$baseUrl/crm/reviews/$reviewId', {
+        'isApproved': isApproved,
+      });
 
       print('📥 Response Status: ${response.statusCode}');
       print('📥 Response Body: ${response.body}');
@@ -3188,7 +3393,8 @@ class ApiService {
         return data['success'] == true;
       } else {
         throw Exception(
-            'Failed to update review status [${response.statusCode}]: ${response.body}');
+          'Failed to update review status [${response.statusCode}]: ${response.body}',
+        );
       }
     } catch (e) {
       print('❌ Error updating review status: $e');
@@ -3215,9 +3421,9 @@ class ApiService {
     }
   }
 
-// ══════════════════════════════════════════════════
-// SETTLEMENTS METHODS
-// ══════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════
+  // SETTLEMENTS METHODS
+  // ══════════════════════════════════════════════════
 
   static Future<Map<String, dynamic>> getSettlements() async {
     try {
@@ -3228,10 +3434,7 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return {
-          'data': data['data'] ?? [],
-          'summary': data['summary'] ?? {},
-        };
+        return {'data': data['data'] ?? [], 'summary': data['summary'] ?? {}};
       } else {
         throw Exception('Failed to load settlements');
       }
@@ -3242,7 +3445,8 @@ class ApiService {
   }
 
   static Future<bool> recordSettlementPayment(
-      Map<String, dynamic> paymentData) async {
+    Map<String, dynamic> paymentData,
+  ) async {
     try {
       final response = await _post('$baseUrl/crm/settlements', paymentData);
 
@@ -3295,8 +3499,9 @@ class ApiService {
       if (status != null) queryParams['status'] = status;
       if (bookingType != null) queryParams['bookingType'] = bookingType;
 
-      final uri = Uri.parse('$baseUrl/crm/vendor/reports/all-appointments')
-          .replace(queryParameters: queryParams.isEmpty ? null : queryParams);
+      final uri = Uri.parse(
+        '$baseUrl/crm/vendor/reports/all-appointments',
+      ).replace(queryParameters: queryParams.isEmpty ? null : queryParams);
 
       final response = await _get(uri.toString());
 
@@ -3306,11 +3511,13 @@ class ApiService {
           return data;
         } else {
           throw Exception(
-              'Failed to load appointments report: ${data['message'] ?? 'Unknown error'}');
+            'Failed to load appointments report: ${data['message'] ?? 'Unknown error'}',
+          );
         }
       } else {
         throw Exception(
-            'Failed to load completed appointments report: ${response.statusCode} - ${response.body}');
+          'Failed to load completed appointments report: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error fetching completed appointments report: $e');
@@ -3341,8 +3548,9 @@ class ApiService {
       if (status != null) queryParams['status'] = status;
       if (isActive != null) queryParams['isActive'] = isActive;
 
-      final uri = Uri.parse('$baseUrl/crm/vendor/reports/sales-by-product')
-          .replace(queryParameters: queryParams.isEmpty ? null : queryParams);
+      final uri = Uri.parse(
+        '$baseUrl/crm/vendor/reports/sales-by-product',
+      ).replace(queryParameters: queryParams.isEmpty ? null : queryParams);
 
       final response = await _get(uri.toString());
 
@@ -3352,11 +3560,13 @@ class ApiService {
           return data;
         } else {
           throw Exception(
-              'Failed to load sales by product report: ${data['message'] ?? 'Unknown error'}');
+            'Failed to load sales by product report: ${data['message'] ?? 'Unknown error'}',
+          );
         }
       } else {
         throw Exception(
-            'Failed to load sales by product report: ${response.statusCode} - ${response.body}');
+          'Failed to load sales by product report: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error fetching sales by product report: $e');
@@ -3391,10 +3601,9 @@ class ApiService {
       if (status != null) queryParams['status'] = status;
       if (bookingType != null) queryParams['bookingType'] = bookingType;
 
-      final uri =
-          Uri.parse('$baseUrl/crm/vendor/reports/completed-appointments')
-              .replace(
-                  queryParameters: queryParams.isEmpty ? null : queryParams);
+      final uri = Uri.parse(
+        '$baseUrl/crm/vendor/reports/completed-appointments',
+      ).replace(queryParameters: queryParams.isEmpty ? null : queryParams);
 
       final response = await _get(uri.toString());
 
@@ -3404,11 +3613,13 @@ class ApiService {
           return data;
         } else {
           throw Exception(
-              'Failed to load completed appointments report: ${data['message'] ?? 'Unknown error'}');
+            'Failed to load completed appointments report: ${data['message'] ?? 'Unknown error'}',
+          );
         }
       } else {
         throw Exception(
-            'Failed to load completed appointments report: ${response.statusCode} - ${response.body}');
+          'Failed to load completed appointments report: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error fetching completed appointments report: $e');
@@ -3443,10 +3654,9 @@ class ApiService {
       if (status != null) queryParams['status'] = status;
       if (bookingType != null) queryParams['bookingType'] = bookingType;
 
-      final uri =
-          Uri.parse('$baseUrl/crm/vendor/reports/cancelled-appointments')
-              .replace(
-                  queryParameters: queryParams.isEmpty ? null : queryParams);
+      final uri = Uri.parse(
+        '$baseUrl/crm/vendor/reports/cancelled-appointments',
+      ).replace(queryParameters: queryParams.isEmpty ? null : queryParams);
 
       final response = await _get(uri.toString());
 
@@ -3456,11 +3666,13 @@ class ApiService {
           return data;
         } else {
           throw Exception(
-              'Failed to load cancelled appointments report: ${data['message'] ?? 'Unknown error'}');
+            'Failed to load cancelled appointments report: ${data['message'] ?? 'Unknown error'}',
+          );
         }
       } else {
         throw Exception(
-            'Failed to load cancelled appointments report: ${response.statusCode} - ${response.body}');
+          'Failed to load cancelled appointments report: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error fetching cancelled appointments report: $e');
@@ -3494,8 +3706,9 @@ class ApiService {
       if (status != null) queryParams['status'] = status;
       if (bookingType != null) queryParams['bookingType'] = bookingType;
 
-      final uri = Uri.parse('$baseUrl/crm/vendor/reports/summary-by-service')
-          .replace(queryParameters: queryParams.isEmpty ? null : queryParams);
+      final uri = Uri.parse(
+        '$baseUrl/crm/vendor/reports/summary-by-service',
+      ).replace(queryParameters: queryParams.isEmpty ? null : queryParams);
 
       final response = await _get(uri.toString());
 
@@ -3505,11 +3718,13 @@ class ApiService {
           return data;
         } else {
           throw Exception(
-              'Failed to load summary by service report: ${data['message'] ?? 'Unknown error'}');
+            'Failed to load summary by service report: ${data['message'] ?? 'Unknown error'}',
+          );
         }
       } else {
         throw Exception(
-            'Failed to load summary by service report: ${response.statusCode} - ${response.body}');
+          'Failed to load summary by service report: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error fetching summary by service report: $e');
@@ -3551,8 +3766,9 @@ class ApiService {
       if (status != null) queryParams['status'] = status;
       if (bookingType != null) queryParams['bookingType'] = bookingType;
 
-      final uri = Uri.parse('$baseUrl/crm/vendor/reports/settlement-summary')
-          .replace(queryParameters: queryParams.isEmpty ? null : queryParams);
+      final uri = Uri.parse(
+        '$baseUrl/crm/vendor/reports/settlement-summary',
+      ).replace(queryParameters: queryParams.isEmpty ? null : queryParams);
 
       final response = await _get(uri.toString());
 
@@ -3562,11 +3778,13 @@ class ApiService {
           return data;
         } else {
           throw Exception(
-              'Failed to load settlement summary report: ${data['message'] ?? 'Unknown error'}');
+            'Failed to load settlement summary report: ${data['message'] ?? 'Unknown error'}',
+          );
         }
       } else {
         throw Exception(
-            'Failed to load settlement summary report: ${response.statusCode} - ${response.body}');
+          'Failed to load settlement summary report: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error fetching settlement summary report: $e');
@@ -3577,19 +3795,22 @@ class ApiService {
   /// Fetches product summary report
   static Future<Map<String, dynamic>> getProductSummaryReport() async {
     try {
-      final response =
-          await _get('$baseUrl/crm/vendor/reports/product-summary');
+      final response = await _get(
+        '$baseUrl/crm/vendor/reports/product-summary',
+      );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true && data['data'] != null) {
           return data;
         } else {
           throw Exception(
-              'Failed to load product summary report: ${data['message'] ?? 'Unknown error'}');
+            'Failed to load product summary report: ${data['message'] ?? 'Unknown error'}',
+          );
         }
       } else {
         throw Exception(
-            'Failed to load product summary report: ${response.statusCode} - ${response.body}');
+          'Failed to load product summary report: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error fetching product summary report: $e');
@@ -3600,19 +3821,22 @@ class ApiService {
   /// Fetches inventory stock report
   static Future<Map<String, dynamic>> getInventoryStockReport() async {
     try {
-      final response =
-          await _get('$baseUrl/crm/vendor/reports/inventory-stock');
+      final response = await _get(
+        '$baseUrl/crm/vendor/reports/inventory-stock',
+      );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true && data['data'] != null) {
           return data;
         } else {
           throw Exception(
-              'Failed to load inventory stock report: ${data['message'] ?? 'Unknown error'}');
+            'Failed to load inventory stock report: ${data['message'] ?? 'Unknown error'}',
+          );
         }
       } else {
         throw Exception(
-            'Failed to load inventory stock report: ${response.statusCode} - ${response.body}');
+          'Failed to load inventory stock report: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error fetching inventory stock report: $e');
@@ -3623,19 +3847,22 @@ class ApiService {
   /// Fetches category-wise product report
   static Future<Map<String, dynamic>> getCategoryWiseProductReport() async {
     try {
-      final response =
-          await _get('$baseUrl/crm/vendor/reports/category-wise-product');
+      final response = await _get(
+        '$baseUrl/crm/vendor/reports/category-wise-product',
+      );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true && data['data'] != null) {
           return data;
         } else {
           throw Exception(
-              'Failed to load category-wise product report: ${data['message'] ?? 'Unknown error'}');
+            'Failed to load category-wise product report: ${data['message'] ?? 'Unknown error'}',
+          );
         }
       } else {
         throw Exception(
-            'Failed to load category-wise product report: ${response.statusCode} - ${response.body}');
+          'Failed to load category-wise product report: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error fetching category-wise product report: $e');
@@ -3665,8 +3892,9 @@ class ApiService {
       if (status != null) queryParams['status'] = status;
       if (bookingType != null) queryParams['bookingType'] = bookingType;
 
-      final uri = Uri.parse('$baseUrl/crm/vendor/reports/sales-by-customer')
-          .replace(queryParameters: queryParams.isEmpty ? null : queryParams);
+      final uri = Uri.parse(
+        '$baseUrl/crm/vendor/reports/sales-by-customer',
+      ).replace(queryParameters: queryParams.isEmpty ? null : queryParams);
 
       final response = await _get(uri.toString());
 
@@ -3676,7 +3904,8 @@ class ApiService {
         throw Exception(data['message'] ?? 'Unknown error');
       } else {
         throw Exception(
-            'Failed to load sales by customer: ${response.statusCode}');
+          'Failed to load sales by customer: ${response.statusCode}',
+        );
       }
     } catch (e) {
       print('Error fetching sales by customer: $e');
@@ -3706,8 +3935,9 @@ class ApiService {
       if (status != null) queryParams['status'] = status;
       if (bookingType != null) queryParams['bookingType'] = bookingType;
 
-      final uri = Uri.parse('$baseUrl/crm/vendor/reports/sales-by-service')
-          .replace(queryParameters: queryParams.isEmpty ? null : queryParams);
+      final uri = Uri.parse(
+        '$baseUrl/crm/vendor/reports/sales-by-service',
+      ).replace(queryParameters: queryParams.isEmpty ? null : queryParams);
 
       final response = await _get(uri.toString());
 
@@ -3717,7 +3947,8 @@ class ApiService {
         throw Exception(data['message'] ?? 'Unknown error');
       } else {
         throw Exception(
-            'Failed to load sales by service: ${response.statusCode}');
+          'Failed to load sales by service: ${response.statusCode}',
+        );
       }
     } catch (e) {
       print('Error fetching sales by service: $e');
@@ -3736,10 +3967,9 @@ class ApiService {
       if (startDate != null) queryParams['startDate'] = startDate;
       if (endDate != null) queryParams['endDate'] = endDate;
 
-      final uri =
-          Uri.parse('$baseUrl/crm/reports/vendor/staff-commission').replace(
-        queryParameters: queryParams.isEmpty ? null : queryParams,
-      );
+      final uri = Uri.parse(
+        '$baseUrl/crm/reports/vendor/staff-commission',
+      ).replace(queryParameters: queryParams.isEmpty ? null : queryParams);
 
       final response = await _get(uri.toString());
 
@@ -3753,10 +3983,12 @@ class ApiService {
         // Or wrapped: { success: true, data: [...] }
         if (decoded is Map && decoded['data'] is List) return decoded['data'];
         throw Exception(
-            'Unexpected response format for staff commission report');
+          'Unexpected response format for staff commission report',
+        );
       } else {
         throw Exception(
-            'Failed to load staff commission report: ${response.statusCode} - ${response.body}');
+          'Failed to load staff commission report: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('Error fetching staff commission report: $e');
@@ -3865,11 +4097,10 @@ class Service {
       weddingServiceCharges: (json['weddingService'] is Map)
           ? (json['weddingService']['charges'] as num?)?.toDouble()
           : (json['eventService'] is Map
-              ? (json['eventService']['charges'] as num?)?.toDouble()
-              : null),
+                ? (json['eventService']['charges'] as num?)?.toDouble()
+                : null),
 
       // === END FIX ===
-
       isActive: json['status'] == 'approved',
       status: json['status'],
       onlineBooking: json['onlineBooking'] ?? false,
@@ -3889,12 +4120,12 @@ class Service {
               return a.toString();
             }).toList()
           : (json['addons'] is List
-              ? (json['addons'] as List).map((a) => a.toString()).toList()
-              : (json['mappedAddons'] is List
-                  ? (json['mappedAddons'] as List)
-                      .map((a) => a.toString())
-                      .toList()
-                  : null)),
+                ? (json['addons'] as List).map((a) => a.toString()).toList()
+                : (json['mappedAddons'] is List
+                      ? (json['mappedAddons'] as List)
+                            .map((a) => a.toString())
+                            .toList()
+                      : null)),
     );
   }
 
@@ -3916,7 +4147,7 @@ class Service {
       'image': image,
       'weddingService': {
         'available': eventService,
-        'charges': weddingServiceCharges
+        'charges': weddingServiceCharges,
       },
       'homeService': {'available': homeService, 'charges': homeServiceCharges},
       'status': status,
@@ -4001,12 +4232,14 @@ class Product {
       price: (json['price'] as num?)?.toInt(),
       salePrice: (json['salePrice'] as num?)?.toInt(),
       stock: (json['stock'] as num?)?.toInt(),
-      productImages:
-          (json['productImages'] as List?)?.map((e) => e.toString()).toList(),
+      productImages: (json['productImages'] as List?)
+          ?.map((e) => e.toString())
+          .toList(),
       size: json['size'],
       sizeMetric: json['sizeMetric'],
-      keyIngredients:
-          (json['keyIngredients'] as List?)?.map((e) => e.toString()).toList(),
+      keyIngredients: (json['keyIngredients'] as List?)
+          ?.map((e) => e.toString())
+          .toList(),
       forBodyPart: json['forBodyPart'],
       bodyPartType: json['bodyPartType'],
       productForm: json['productForm'],
@@ -4092,8 +4325,9 @@ class WeddingPackage {
       discountedPrice: (json['discountedPrice'] as num?)?.toDouble(),
       duration: (json['duration'] as num?)?.toInt(),
       staffCount: (json['staffCount'] as num?)?.toInt(),
-      assignedStaff:
-          json['assignedStaff'] is List ? json['assignedStaff'] : null,
+      assignedStaff: json['assignedStaff'] is List
+          ? json['assignedStaff']
+          : null,
       image: json['image'],
       status: json['status'],
       isActive: json['isActive'] == true || json['isActive'] == 1,
@@ -4160,8 +4394,9 @@ class OfferModel {
       type: json['type'],
       value: json['value'],
       status: json['status'],
-      startDate:
-          json['startDate'] != null ? DateTime.parse(json['startDate']) : null,
+      startDate: json['startDate'] != null
+          ? DateTime.parse(json['startDate'])
+          : null,
       expires: json['expires'] != null ? DateTime.parse(json['expires']) : null,
       redeemed: json['redeemed'],
       applicableSpecialties: json['applicableSpecialties'],
@@ -4245,8 +4480,9 @@ class InventoryTransaction {
       reason: json['reason'] ?? '',
       reference: json['reference'],
       performedBy: json['performedBy'],
-      date:
-          json['date'] != null ? DateTime.parse(json['date']) : DateTime.now(),
+      date: json['date'] != null
+          ? DateTime.parse(json['date'])
+          : DateTime.now(),
     );
   }
 }
@@ -4268,7 +4504,7 @@ class TransactionProduct {
       productName: json['productName'] ?? '',
       productImages:
           (json['productImages'] as List?)?.map((e) => e.toString()).toList() ??
-              [],
+          [],
     );
   }
 }
@@ -4280,9 +4516,6 @@ class TransactionCategory {
   TransactionCategory({required this.id, required this.name});
 
   factory TransactionCategory.fromJson(Map<String, dynamic> json) {
-    return TransactionCategory(
-      id: json['_id'] ?? '',
-      name: json['name'] ?? '',
-    );
+    return TransactionCategory(id: json['_id'] ?? '', name: json['name'] ?? '');
   }
 }
