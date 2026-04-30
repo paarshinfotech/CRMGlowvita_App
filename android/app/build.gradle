@@ -13,6 +13,18 @@ if (localPropertiesFile.exists()) {
     }
 }
 
+def env = [:]
+def envFile = rootProject.file('../../.env')
+if (envFile.exists()) {
+    envFile.eachLine { line ->
+        def parts = line.split('=')
+        if (parts.length == 2) {
+            env[parts[0].trim()] = parts[1].trim()
+        }
+    }
+}
+
+
 def keystoreProperties = new Properties()
 def keystorePropertiesFile = rootProject.file('key.properties')
 if (keystorePropertiesFile.exists()) {
@@ -43,7 +55,11 @@ android {
         targetSdkVersion 35
         versionCode 1
         versionName "1.0"
+        manifestPlaceholders = [
+            googleMapsApiKey: env['GOOGLE_MAPS_API_KEY'] ?: ""
+        ]
     }
+
 
     signingConfigs {
         release {
