@@ -119,9 +119,9 @@ class _My_ProfileState extends State<My_Profile>
         _isLoading = false;
         _errorMessage = e.toString();
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading profile: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error loading profile: $e')));
     }
   }
 
@@ -133,8 +133,10 @@ class _My_ProfileState extends State<My_Profile>
       }
 
       final isPM = time12.toUpperCase().contains('PM');
-      final timeWithoutPeriod =
-          time12.replaceAll(RegExp(r'[AP]M', caseSensitive: false), '');
+      final timeWithoutPeriod = time12.replaceAll(
+        RegExp(r'[AP]M', caseSensitive: false),
+        '',
+      );
       final parts = timeWithoutPeriod.split(':');
       int hour = int.parse(parts[0]);
       final minute = parts[1];
@@ -243,8 +245,8 @@ class _My_ProfileState extends State<My_Profile>
         'category': _selectedCategory.toLowerCase() == "male"
             ? "men"
             : (_selectedCategory.toLowerCase() == "female"
-                ? "women"
-                : "unisex"),
+                  ? "women"
+                  : "unisex"),
         'subCategories': subCategories,
         'vendorType': vendorTypeApi,
         'travelRadius': int.tryParse(_radiusController.text) ?? 0,
@@ -284,9 +286,9 @@ class _My_ProfileState extends State<My_Profile>
                       {
                         'openTime': openTimes['Monday'] ?? '09:00',
                         'closeTime': closeTimes['Monday'] ?? '18:30',
-                      }
+                      },
                     ]
-                  : []
+                  : [],
             },
             'tuesday': {
               'isOpen': openDays['Tuesday'] ?? false,
@@ -295,9 +297,9 @@ class _My_ProfileState extends State<My_Profile>
                       {
                         'openTime': openTimes['Tuesday'] ?? '09:00',
                         'closeTime': closeTimes['Tuesday'] ?? '18:30',
-                      }
+                      },
                     ]
-                  : []
+                  : [],
             },
             'wednesday': {
               'isOpen': openDays['Wednesday'] ?? false,
@@ -306,9 +308,9 @@ class _My_ProfileState extends State<My_Profile>
                       {
                         'openTime': openTimes['Wednesday'] ?? '09:00',
                         'closeTime': closeTimes['Wednesday'] ?? '18:30',
-                      }
+                      },
                     ]
-                  : []
+                  : [],
             },
             'thursday': {
               'isOpen': openDays['Thursday'] ?? false,
@@ -317,9 +319,9 @@ class _My_ProfileState extends State<My_Profile>
                       {
                         'openTime': openTimes['Thursday'] ?? '09:00',
                         'closeTime': closeTimes['Thursday'] ?? '18:30',
-                      }
+                      },
                     ]
-                  : []
+                  : [],
             },
             'friday': {
               'isOpen': openDays['Friday'] ?? false,
@@ -328,9 +330,9 @@ class _My_ProfileState extends State<My_Profile>
                       {
                         'openTime': openTimes['Friday'] ?? '09:00',
                         'closeTime': closeTimes['Friday'] ?? '18:30',
-                      }
+                      },
                     ]
-                  : []
+                  : [],
             },
             'saturday': {
               'isOpen': openDays['Saturday'] ?? false,
@@ -339,9 +341,9 @@ class _My_ProfileState extends State<My_Profile>
                       {
                         'openTime': openTimes['Saturday'] ?? '09:00',
                         'closeTime': closeTimes['Saturday'] ?? '18:30',
-                      }
+                      },
                     ]
-                  : []
+                  : [],
             },
             'sunday': {
               'isOpen': openDays['Sunday'] ?? false,
@@ -350,12 +352,12 @@ class _My_ProfileState extends State<My_Profile>
                       {
                         'openTime': openTimes['Sunday'] ?? '09:00',
                         'closeTime': closeTimes['Sunday'] ?? '18:30',
-                      }
+                      },
                     ]
-                  : []
+                  : [],
             },
           },
-          'timezone': 'Asia/Kolkata'
+          'timezone': 'Asia/Kolkata',
         };
 
         await ApiService.updateWorkingHours(workingHoursPayload);
@@ -449,9 +451,9 @@ class _My_ProfileState extends State<My_Profile>
 
   Future<void> _viewMedia(String? path, String title) async {
     if (path == null || path.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Media not available')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Media not available')));
       return;
     }
 
@@ -461,7 +463,8 @@ class _My_ProfileState extends State<My_Profile>
       // For base64 PDFs, we might need a separate viewer or download it
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Viewing base64 PDFs is not supported directly yet')),
+          content: Text('Viewing base64 PDFs is not supported directly yet'),
+        ),
       );
     } else {
       // Attempt to launch other URLs
@@ -469,9 +472,9 @@ class _My_ProfileState extends State<My_Profile>
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open media')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Could not open media')));
       }
     }
   }
@@ -501,20 +504,31 @@ class _My_ProfileState extends State<My_Profile>
               ),
               clipBehavior: Clip.antiAlias,
               child: path.startsWith('data:image')
-                  ? Image.memory(base64Decode(path.split(',').last),
-                      fit: BoxFit.contain)
-                  : Image.network(path,
+                  ? Image.memory(
+                      base64Decode(path.split(',').last),
+                      fit: BoxFit.contain,
+                    )
+                  : Image.network(
+                      path,
                       fit: BoxFit.contain,
                       errorBuilder: (context, error, stackTrace) => Center(
-                          child: Icon(Icons.broken_image,
-                              size: 50.sp, color: Colors.grey))),
+                        child: Icon(
+                          Icons.broken_image,
+                          size: 50.sp,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ),
             ),
             SizedBox(height: 12.h),
-            Text(title,
-                style: GoogleFonts.inter(
-                    color: Colors.white,
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w600)),
+            Text(
+              title,
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
       ),
@@ -534,7 +548,8 @@ class _My_ProfileState extends State<My_Profile>
           builder: (context) => AlertDialog(
             title: const Text("File Too Large"),
             content: Text(
-                "The selected image is ${(size / (1024 * 1024)).toStringAsFixed(2)}MB, which exceeds the 5MB limit."),
+              "The selected image is ${(size / (1024 * 1024)).toStringAsFixed(2)}MB, which exceeds the 5MB limit.",
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
@@ -572,7 +587,8 @@ class _My_ProfileState extends State<My_Profile>
           builder: (context) => AlertDialog(
             title: const Text("File Too Large"),
             content: Text(
-                "The selected document is ${(file.size / (1024 * 1024)).toStringAsFixed(2)}MB, which exceeds the 5MB limit."),
+              "The selected document is ${(file.size / (1024 * 1024)).toStringAsFixed(2)}MB, which exceeds the 5MB limit.",
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
@@ -663,8 +679,10 @@ class _My_ProfileState extends State<My_Profile>
         ),
         title: Text(
           'Profile',
-          style:
-              GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w600),
+          style: GoogleFonts.inter(
+            fontSize: 13.sp,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
       body: Stack(
@@ -683,7 +701,9 @@ class _My_ProfileState extends State<My_Profile>
                     indicatorColor: Colors.black87,
                     indicatorWeight: 2.4,
                     labelStyle: GoogleFonts.inter(
-                        fontSize: 11.sp, fontWeight: FontWeight.w600),
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
                     unselectedLabelStyle: GoogleFonts.inter(fontSize: 11.sp),
                     tabs: const [
                       Tab(text: "Profile"),
@@ -748,20 +768,28 @@ class _My_ProfileState extends State<My_Profile>
                   children: [
                     GestureDetector(
                       onTap: () => setState(
-                          () => _showProfileOptions = !_showProfileOptions),
+                        () => _showProfileOptions = !_showProfileOptions,
+                      ),
                       child: CircleAvatar(
                         radius: 40.r,
                         backgroundColor: Colors.grey.shade200,
                         backgroundImage: _newProfileImageBase64 != null
-                            ? MemoryImage(base64Decode(
-                                _newProfileImageBase64!.split(',').last))
+                            ? MemoryImage(
+                                base64Decode(
+                                  _newProfileImageBase64!.split(',').last,
+                                ),
+                              )
                             : (_profile?.profileImage.isNotEmpty == true
-                                ? NetworkImage(_profile!.profileImage)
-                                : null),
-                        child: (_newProfileImageBase64 == null &&
+                                  ? NetworkImage(_profile!.profileImage)
+                                  : null),
+                        child:
+                            (_newProfileImageBase64 == null &&
                                 (_profile?.profileImage.isEmpty == true))
-                            ? Icon(Icons.person,
-                                size: 40.sp, color: Colors.grey)
+                            ? Icon(
+                                Icons.person,
+                                size: 40.sp,
+                                color: Colors.grey,
+                              )
                             : null,
                       ),
                     ),
@@ -780,9 +808,10 @@ class _My_ProfileState extends State<My_Profile>
                               children: [
                                 _circleButton(Icons.visibility_outlined, () {
                                   _viewMedia(
-                                      _newProfileImageBase64 ??
-                                          _profile?.profileImage,
-                                      "Profile Image");
+                                    _newProfileImageBase64 ??
+                                        _profile?.profileImage,
+                                    "Profile Image",
+                                  );
                                   setState(() => _showProfileOptions = false);
                                 }),
                                 SizedBox(width: 8.w),
@@ -803,32 +832,47 @@ class _My_ProfileState extends State<My_Profile>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(_profile?.businessName ?? "GlowVita Salon & Spa",
-                        style: GoogleFonts.inter(
-                            fontSize: 13.sp, fontWeight: FontWeight.w700),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1),
+                    Text(
+                      _profile?.businessName ?? "GlowVita Salon & Spa",
+                      style: GoogleFonts.inter(
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
                     SizedBox(height: 4.h),
                     Row(
                       children: [
-                        Icon(Icons.location_on_outlined,
-                            size: 14.sp, color: Colors.grey.shade600),
+                        Icon(
+                          Icons.location_on_outlined,
+                          size: 14.sp,
+                          color: Colors.grey.shade600,
+                        ),
                         SizedBox(width: 4.w),
                         Expanded(
-                          child: Text(_profile?.address ?? "Baner Road, Pune",
-                              style: GoogleFonts.inter(
-                                  fontSize: 9.sp, color: Colors.grey.shade600),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1),
+                          child: Text(
+                            _profile?.address ?? "Baner Road, Pune",
+                            style: GoogleFonts.inter(
+                              fontSize: 9.sp,
+                              color: Colors.grey.shade600,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
                         ),
                       ],
                     ),
                     SizedBox(height: 6.h),
-                    Text("Vendor ID • ${_profile?.id.substring(0, 8) ?? "N/A"}",
-                        style: GoogleFonts.inter(
-                            fontSize: 9.sp, color: Colors.grey.shade500),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1),
+                    Text(
+                      "Vendor ID • ${_profile?.id.substring(0, 8) ?? "N/A"}",
+                      style: GoogleFonts.inter(
+                        fontSize: 9.sp,
+                        color: Colors.grey.shade500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
                   ],
                 ),
               ),
@@ -837,9 +881,7 @@ class _My_ProfileState extends State<My_Profile>
           SizedBox(height: 16.h),
           Wrap(
             spacing: 12.w,
-            children: [
-              _smallOutlineButton(Icons.language, "Website"),
-            ],
+            children: [_smallOutlineButton(Icons.language, "Website")],
           ),
         ],
       ),
@@ -869,11 +911,15 @@ class _My_ProfileState extends State<My_Profile>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text("Error: $_errorMessage",
-                style: GoogleFonts.inter(fontSize: 11.sp, color: Colors.red)),
+            Text(
+              "Error: $_errorMessage",
+              style: GoogleFonts.inter(fontSize: 11.sp, color: Colors.red),
+            ),
             SizedBox(height: 16.h),
             ElevatedButton(
-                onPressed: _fetchProfileData, child: const Text("Retry")),
+              onPressed: _fetchProfileData,
+              child: const Text("Retry"),
+            ),
           ],
         ),
       );
@@ -884,13 +930,21 @@ class _My_ProfileState extends State<My_Profile>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Business Profile",
-              style: GoogleFonts.inter(
-                  fontSize: 12.sp, fontWeight: FontWeight.w700)),
+          Text(
+            "Business Profile",
+            style: GoogleFonts.inter(
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           SizedBox(height: 4.h),
-          Text("Update your salon's public information.",
-              style: GoogleFonts.inter(
-                  fontSize: 10.5.sp, color: Colors.grey.shade600)),
+          Text(
+            "Update your salon's public information.",
+            style: GoogleFonts.inter(
+              fontSize: 10.5.sp,
+              color: Colors.grey.shade600,
+            ),
+          ),
           SizedBox(height: 28.h),
           _label("Salon Name"),
           SizedBox(height: 6.h),
@@ -903,12 +957,16 @@ class _My_ProfileState extends State<My_Profile>
           _label("Salon Category"),
           SizedBox(height: 6.h),
           _dropdown(
-              ["unisex", "male", "female"],
-              ["unisex", "male", "female"]
-                      .contains(_selectedCategory.toLowerCase())
-                  ? _selectedCategory.toLowerCase()
-                  : "unisex",
-              (v) => setState(() => _selectedCategory = v!)),
+            ["unisex", "male", "female"],
+            [
+                  "unisex",
+                  "male",
+                  "female",
+                ].contains(_selectedCategory.toLowerCase())
+                ? _selectedCategory.toLowerCase()
+                : "unisex",
+            (v) => setState(() => _selectedCategory = v!),
+          ),
           SizedBox(height: 20.h),
           _label("Sub Categories"),
           SizedBox(height: 8.h),
@@ -917,11 +975,20 @@ class _My_ProfileState extends State<My_Profile>
             runSpacing: 12.h,
             children: [
               _checkbox(
-                  "At Salon", _atSalon, (v) => setState(() => _atSalon = v!)),
+                "At Salon",
+                _atSalon,
+                (v) => setState(() => _atSalon = v!),
+              ),
               _checkbox(
-                  "At Home", _atHome, (v) => setState(() => _atHome = v!)),
-              _checkbox("Custom Location", _customLocation,
-                  (v) => setState(() => _customLocation = v!)),
+                "At Home",
+                _atHome,
+                (v) => setState(() => _atHome = v!),
+              ),
+              _checkbox(
+                "Custom Location",
+                _customLocation,
+                (v) => setState(() => _customLocation = v!),
+              ),
             ],
           ),
           SizedBox(height: 20.h),
@@ -1011,12 +1078,13 @@ class _My_ProfileState extends State<My_Profile>
 
     final totalDays =
         (sub.endDate?.difference(sub.startDate ?? DateTime.now()).inDays ??
-                29) +
-            1;
+            29) +
+        1;
     final daysRemaining =
         (sub.endDate?.difference(DateTime.now()).inDays ?? 0) + 1;
-    final progress =
-        totalDays > 1 ? (1 - (daysRemaining / totalDays)).clamp(0.0, 1.0) : 1.0;
+    final progress = totalDays > 1
+        ? (1 - (daysRemaining / totalDays)).clamp(0.0, 1.0)
+        : 1.0;
 
     return SingleChildScrollView(
       padding: EdgeInsets.all(16.w),
@@ -1026,9 +1094,13 @@ class _My_ProfileState extends State<My_Profile>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text("My Subscription",
-                  style: GoogleFonts.inter(
-                      fontSize: 12.sp, fontWeight: FontWeight.w700)),
+              Text(
+                "My Subscription",
+                style: GoogleFonts.inter(
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                 decoration: BoxDecoration(
@@ -1065,11 +1137,17 @@ class _My_ProfileState extends State<My_Profile>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildSubDetailItem("Plan Name", sub.plan?.name ?? "N/A",
-                        isBold: true),
                     _buildSubDetailItem(
-                        "Days Remaining", "$daysRemaining days left",
-                        isBold: true, statusColor: Colors.purple.shade700),
+                      "Plan Name",
+                      sub.plan?.name ?? "N/A",
+                      isBold: true,
+                    ),
+                    _buildSubDetailItem(
+                      "Days Remaining",
+                      "$daysRemaining days left",
+                      isBold: true,
+                      statusColor: Colors.purple.shade700,
+                    ),
                   ],
                 ),
                 SizedBox(height: 16.h),
@@ -1089,16 +1167,22 @@ class _My_ProfileState extends State<My_Profile>
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text("Subscription Progress",
-                            style: GoogleFonts.inter(
-                                fontSize: 9.sp,
-                                color: Colors.grey.shade600,
-                                fontWeight: FontWeight.w600)),
-                        Text("$daysRemaining days left",
-                            style: GoogleFonts.inter(
-                                fontSize: 9.sp,
-                                color: Colors.grey.shade600,
-                                fontWeight: FontWeight.w600)),
+                        Text(
+                          "Subscription Progress",
+                          style: GoogleFonts.inter(
+                            fontSize: 9.sp,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          "$daysRemaining days left",
+                          style: GoogleFonts.inter(
+                            fontSize: 9.sp,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ],
                     ),
                     SizedBox(height: 6.h),
@@ -1108,9 +1192,11 @@ class _My_ProfileState extends State<My_Profile>
                         value: progress,
                         minHeight: 6.h,
                         backgroundColor: Colors.grey.shade200,
-                        valueColor: AlwaysStoppedAnimation<Color>(progress > 0.8
-                            ? Colors.orange
-                            : const Color(0xFF432C39)),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          progress > 0.8
+                              ? Colors.orange
+                              : const Color(0xFF432C39),
+                        ),
                       ),
                     ),
                   ],
@@ -1134,19 +1220,26 @@ class _My_ProfileState extends State<My_Profile>
                             ),
                           );
                         },
-                        icon: Icon(Icons.sync_rounded,
-                            size: 14.sp, color: Colors.white),
-                        label: Text("Change Plan",
-                            style: GoogleFonts.inter(
-                                fontSize: 10.sp,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600)),
+                        icon: Icon(
+                          Icons.sync_rounded,
+                          size: 14.sp,
+                          color: Colors.white,
+                        ),
+                        label: Text(
+                          "Change Plan",
+                          style: GoogleFonts.inter(
+                            fontSize: 10.sp,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF432C39),
                           elevation: 0,
                           padding: EdgeInsets.symmetric(vertical: 12.h),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8.r)),
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
                         ),
                       ),
                     ),
@@ -1164,18 +1257,25 @@ class _My_ProfileState extends State<My_Profile>
                             );
                           }
                         },
-                        icon: Icon(Icons.history_rounded,
-                            size: 14.sp, color: Colors.black87),
-                        label: Text("View History",
-                            style: GoogleFonts.inter(
-                                fontSize: 10.sp,
-                                color: Colors.black87,
-                                fontWeight: FontWeight.w600)),
+                        icon: Icon(
+                          Icons.history_rounded,
+                          size: 14.sp,
+                          color: Colors.black87,
+                        ),
+                        label: Text(
+                          "View History",
+                          style: GoogleFonts.inter(
+                            fontSize: 10.sp,
+                            color: Colors.black87,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                         style: OutlinedButton.styleFrom(
                           side: BorderSide(color: Colors.grey.shade300),
                           padding: EdgeInsets.symmetric(vertical: 12.h),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8.r)),
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
                         ),
                       ),
                     ),
@@ -1189,14 +1289,20 @@ class _My_ProfileState extends State<My_Profile>
     );
   }
 
-  Widget _buildSubDetailItem(String title, String value,
-      {bool isStatus = false, Color? statusColor, bool isBold = false}) {
+  Widget _buildSubDetailItem(
+    String title,
+    String value, {
+    bool isStatus = false,
+    Color? statusColor,
+    bool isBold = false,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title,
-            style:
-                GoogleFonts.inter(fontSize: 9.sp, color: Colors.grey.shade600)),
+        Text(
+          title,
+          style: GoogleFonts.inter(fontSize: 9.sp, color: Colors.grey.shade600),
+        ),
         SizedBox(height: 4.h),
         if (isStatus)
           Row(
@@ -1210,33 +1316,40 @@ class _My_ProfileState extends State<My_Profile>
                 ),
               ),
               SizedBox(width: 6.w),
-              Text(value,
-                  style: GoogleFonts.inter(
-                      fontSize: 10.sp, fontWeight: FontWeight.w700)),
+              Text(
+                value,
+                style: GoogleFonts.inter(
+                  fontSize: 10.sp,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ],
           )
         else
-          Text(value,
-              style: GoogleFonts.inter(
-                  fontSize: 10.sp,
-                  fontWeight: isBold ? FontWeight.w800 : FontWeight.w700)),
+          Text(
+            value,
+            style: GoogleFonts.inter(
+              fontSize: 10.sp,
+              fontWeight: isBold ? FontWeight.w800 : FontWeight.w700,
+            ),
+          ),
       ],
     );
   }
 
   Widget _buildLoading() => Center(
-        child: Padding(
-          padding: EdgeInsets.all(40.w),
-          child: const CircularProgressIndicator(color: Colors.black87),
-        ),
-      );
+    child: Padding(
+      padding: EdgeInsets.all(40.w),
+      child: const CircularProgressIndicator(color: Colors.black87),
+    ),
+  );
 
   Widget _buildNoData(String message) => Center(
-        child: Padding(
-          padding: EdgeInsets.all(40.w),
-          child: Text(message, style: GoogleFonts.inter(fontSize: 11.sp)),
-        ),
-      );
+    child: Padding(
+      padding: EdgeInsets.all(40.w),
+      child: Text(message, style: GoogleFonts.inter(fontSize: 11.sp)),
+    ),
+  );
 
   // ──────────────────────────────────────────────
   //  3. Travel Settings
@@ -1247,52 +1360,78 @@ class _My_ProfileState extends State<My_Profile>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Travel Settings",
-              style: GoogleFonts.inter(
-                  fontSize: 17.sp, fontWeight: FontWeight.w700)),
+          Text(
+            "Travel Settings",
+            style: GoogleFonts.inter(
+              fontSize: 17.sp,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           SizedBox(height: 4.h),
-          Text("Configure travel time calculation.",
-              style: GoogleFonts.inter(
-                  fontSize: 10.5.sp, color: Colors.grey.shade600)),
+          Text(
+            "Configure travel time calculation.",
+            style: GoogleFonts.inter(
+              fontSize: 10.5.sp,
+              color: Colors.grey.shade600,
+            ),
+          ),
           SizedBox(height: 28.h),
           _CollapsibleInfoSection(),
           SizedBox(height: 24.h),
           _labelWithInfo(
-              "Vendor Type", "Select how you provide services to customers"),
+            "Vendor Type",
+            "Select how you provide services to customers",
+          ),
           SizedBox(height: 6.h),
-          _dropdown([
-            "Shop Only (No travel)",
-            "Home Only",
-            "Onsite Only",
-            "Hybrid (Shop + Home Service)",
-            "Vendor Home Service"
-          ], _vendorType, (v) => setState(() => _vendorType = v!)),
+          _dropdown(
+            [
+              "Shop Only (No travel)",
+              "Home Only",
+              "Onsite Only",
+              "Hybrid (Shop + Home Service)",
+              "Vendor Home Service",
+            ],
+            _vendorType,
+            (v) => setState(() => _vendorType = v!),
+          ),
           SizedBox(height: 20.h),
-          _labelWithInfo("Travel Radius (km)",
-              "Maximum distance you can travel for home services"),
+          _labelWithInfo(
+            "Travel Radius (km)",
+            "Maximum distance you can travel for home services",
+          ),
           SizedBox(height: 6.h),
           _textField(
-              controller: _radiusController,
-              keyboardType: TextInputType.number),
+            controller: _radiusController,
+            keyboardType: TextInputType.number,
+          ),
           SizedBox(height: 20.h),
-          _labelWithInfo("Average Travel Speed (km/h)",
-              "Your average travel speed for time estimation (default: 30 km/h)"),
+          _labelWithInfo(
+            "Average Travel Speed (km/h)",
+            "Your average travel speed for time estimation (default: 30 km/h)",
+          ),
           SizedBox(height: 6.h),
           _textField(
-              controller: _speedController, keyboardType: TextInputType.number),
+            controller: _speedController,
+            keyboardType: TextInputType.number,
+          ),
           SizedBox(height: 20.h),
-          _labelWithInfo("Base Location (Latitude/Longitude)",
-              "Your starting location for travel calculations (shop/home address)"),
+          _labelWithInfo(
+            "Base Location (Latitude/Longitude)",
+            "Your starting location for travel calculations (shop/home address)",
+          ),
           SizedBox(height: 6.h),
           Row(
             children: [
               Expanded(
-                  child:
-                      _textField(controller: _latController, hint: "Latitude")),
+                child: _textField(controller: _latController, hint: "Latitude"),
+              ),
               SizedBox(width: 12.w),
               Expanded(
-                  child: _textField(
-                      controller: _lngController, hint: "Longitude")),
+                child: _textField(
+                  controller: _lngController,
+                  hint: "Longitude",
+                ),
+              ),
             ],
           ),
           SizedBox(height: 36.h),
@@ -1315,9 +1454,13 @@ class _My_ProfileState extends State<My_Profile>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Salon Gallery",
-              style: GoogleFonts.inter(
-                  fontSize: 15.sp, fontWeight: FontWeight.w700)),
+          Text(
+            "Salon Gallery",
+            style: GoogleFonts.inter(
+              fontSize: 15.sp,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           SizedBox(height: 12.h),
           _buildUploadRequirements(),
           SizedBox(height: 20.h),
@@ -1333,19 +1476,34 @@ class _My_ProfileState extends State<My_Profile>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.cloud_upload_outlined,
-                        size: 40.sp, color: Colors.grey.shade500),
+                    Icon(
+                      Icons.cloud_upload_outlined,
+                      size: 40.sp,
+                      color: Colors.grey.shade500,
+                    ),
                     SizedBox(height: 8.h),
-                    Text("Drag & drop images here or",
-                        style: GoogleFonts.inter(
-                            fontSize: 11.sp, color: Colors.grey.shade600)),
-                    Text("browse to upload",
-                        style: GoogleFonts.inter(
-                            fontSize: 11.sp, color: Colors.grey.shade600)),
+                    Text(
+                      "Drag & drop images here or",
+                      style: GoogleFonts.inter(
+                        fontSize: 11.sp,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    Text(
+                      "browse to upload",
+                      style: GoogleFonts.inter(
+                        fontSize: 11.sp,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
                     SizedBox(height: 8.h),
-                    Text("Max 5MB • JPG, PNG, WEBP",
-                        style: GoogleFonts.inter(
-                            fontSize: 9.5.sp, color: Colors.grey.shade500)),
+                    Text(
+                      "Max 5MB • JPG, PNG, WEBP",
+                      style: GoogleFonts.inter(
+                        fontSize: 9.5.sp,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1379,7 +1537,8 @@ class _My_ProfileState extends State<My_Profile>
                               image: DecorationImage(
                                 image: isNew
                                     ? MemoryImage(
-                                        base64Decode(imgPath.split(',').last))
+                                        base64Decode(imgPath.split(',').last),
+                                      )
                                     : NetworkImage(imgPath),
                                 fit: BoxFit.cover,
                               ),
@@ -1393,8 +1552,9 @@ class _My_ProfileState extends State<My_Profile>
                             onTap: () {
                               setState(() {
                                 if (isNew) {
-                                  _newGalleryBase64
-                                      .removeAt(index - images.length);
+                                  _newGalleryBase64.removeAt(
+                                    index - images.length,
+                                  );
                                 } else {
                                   _profile?.gallery.removeAt(index);
                                 }
@@ -1406,8 +1566,11 @@ class _My_ProfileState extends State<My_Profile>
                                 color: Colors.white,
                                 shape: BoxShape.circle,
                               ),
-                              child: Icon(Icons.delete_outline,
-                                  size: 16.sp, color: Colors.red),
+                              child: Icon(
+                                Icons.delete_outline,
+                                size: 16.sp,
+                                color: Colors.red,
+                              ),
                             ),
                           ),
                         ),
@@ -1447,13 +1610,21 @@ class _My_ProfileState extends State<My_Profile>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Bank Details",
-              style: GoogleFonts.inter(
-                  fontSize: 17.sp, fontWeight: FontWeight.w700)),
+          Text(
+            "Bank Details",
+            style: GoogleFonts.inter(
+              fontSize: 17.sp,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           SizedBox(height: 4.h),
-          Text("Manage your bank account for payouts.",
-              style: GoogleFonts.inter(
-                  fontSize: 10.5.sp, color: Colors.grey.shade600)),
+          Text(
+            "Manage your bank account for payouts.",
+            style: GoogleFonts.inter(
+              fontSize: 10.5.sp,
+              color: Colors.grey.shade600,
+            ),
+          ),
           SizedBox(height: 28.h),
           _label("Account Holder Name"),
           SizedBox(height: 6.h),
@@ -1462,8 +1633,9 @@ class _My_ProfileState extends State<My_Profile>
           _label("Account Number"),
           SizedBox(height: 6.h),
           _textField(
-              controller: _accountNumberController,
-              keyboardType: TextInputType.number),
+            controller: _accountNumberController,
+            keyboardType: TextInputType.number,
+          ),
           SizedBox(height: 16.h),
           _label("Bank Name"),
           SizedBox(height: 6.h),
@@ -1491,9 +1663,13 @@ class _My_ProfileState extends State<My_Profile>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Business Documents",
-              style: GoogleFonts.inter(
-                  fontSize: 17.sp, fontWeight: FontWeight.w700)),
+          Text(
+            "Business Documents",
+            style: GoogleFonts.inter(
+              fontSize: 17.sp,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           SizedBox(height: 12.h),
           _buildUploadRequirements(),
           SizedBox(height: 24.h),
@@ -1501,13 +1677,13 @@ class _My_ProfileState extends State<My_Profile>
             {
               "label": "Aadhar Card",
               "key": "aadharCard",
-              "url": docs?.aadharCard
+              "url": docs?.aadharCard,
             },
             {"label": "PAN Card", "key": "panCard", "url": docs?.panCard},
             {
               "label": "Udhayam Cert",
               "key": "udhayamCert",
-              "url": docs?.udhayamCert
+              "url": docs?.udhayamCert,
             },
             {"label": "Shop Act", "key": "shopAct", "url": docs?.shopAct},
           ].map((doc) {
@@ -1521,23 +1697,36 @@ class _My_ProfileState extends State<My_Profile>
               padding: EdgeInsets.only(bottom: 16.h),
               child: Row(
                 children: [
-                  Icon(Icons.description_outlined,
-                      size: 18.sp, color: Colors.grey.shade600),
+                  Icon(
+                    Icons.description_outlined,
+                    size: 18.sp,
+                    color: Colors.grey.shade600,
+                  ),
                   SizedBox(width: 8.w),
                   Expanded(
-                    child:
-                        Text(label, style: GoogleFonts.inter(fontSize: 11.sp)),
+                    child: Text(
+                      label,
+                      style: GoogleFonts.inter(fontSize: 11.sp),
+                    ),
                   ),
                   if (hasDoc) ...[
                     IconButton(
-                      icon: Icon(Icons.visibility_outlined,
-                          size: 16.sp, color: Theme.of(context).primaryColor),
+                      icon: Icon(
+                        Icons.visibility_outlined,
+                        size: 16.sp,
+                        color: Theme.of(context).primaryColor,
+                      ),
                       onPressed: () => _viewMedia(
-                          isNew ? _newDocumentsBase64[key] : url, label),
+                        isNew ? _newDocumentsBase64[key] : url,
+                        label,
+                      ),
                     ),
                     IconButton(
-                      icon: Icon(Icons.delete_outline,
-                          size: 16.sp, color: Colors.red),
+                      icon: Icon(
+                        Icons.delete_outline,
+                        size: 16.sp,
+                        color: Colors.red,
+                      ),
                       onPressed: () {
                         setState(() {
                           if (isNew) {
@@ -1564,9 +1753,12 @@ class _My_ProfileState extends State<My_Profile>
                     ),
                   ] else
                     TextButton(
-                        onPressed: () => _pickDocument(key),
-                        child: Text("Upload",
-                            style: GoogleFonts.inter(fontSize: 10.sp))),
+                      onPressed: () => _pickDocument(key),
+                      child: Text(
+                        "Upload",
+                        style: GoogleFonts.inter(fontSize: 10.sp),
+                      ),
+                    ),
                 ],
               ),
             );
@@ -1586,13 +1778,21 @@ class _My_ProfileState extends State<My_Profile>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Tax Settings",
-              style: GoogleFonts.inter(
-                  fontSize: 17.sp, fontWeight: FontWeight.w700)),
+          Text(
+            "Tax Settings",
+            style: GoogleFonts.inter(
+              fontSize: 17.sp,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           SizedBox(height: 4.h),
-          Text("Configure your tax rates and types.",
-              style: GoogleFonts.inter(
-                  fontSize: 10.5.sp, color: Colors.grey.shade600)),
+          Text(
+            "Configure your tax rates and types.",
+            style: GoogleFonts.inter(
+              fontSize: 10.5.sp,
+              color: Colors.grey.shade600,
+            ),
+          ),
           SizedBox(height: 28.h),
           _label("Tax Value"),
           SizedBox(height: 6.h),
@@ -1630,7 +1830,7 @@ class _My_ProfileState extends State<My_Profile>
       "Thursday",
       "Friday",
       "Saturday",
-      "Sunday"
+      "Sunday",
     ];
 
     return SingleChildScrollView(
@@ -1801,18 +2001,16 @@ class _My_ProfileState extends State<My_Profile>
       child: Container(
         height: 28.h,
         alignment: Alignment.center,
-        constraints:
-            BoxConstraints(minWidth: 68.w), // prevents too narrow fields
+        constraints: BoxConstraints(
+          minWidth: 68.w,
+        ), // prevents too narrow fields
         decoration: BoxDecoration(
           border: Border.all(color: Colors.grey.shade300, width: 1),
           borderRadius: BorderRadius.circular(6.r),
         ),
         child: Text(
           displayTime,
-          style: GoogleFonts.inter(
-            fontSize: 10.5.sp,
-            color: Colors.black87,
-          ),
+          style: GoogleFonts.inter(fontSize: 10.5.sp, color: Colors.black87),
         ),
       ),
     );
@@ -1859,26 +2057,36 @@ class _My_ProfileState extends State<My_Profile>
           SizedBox(height: 40.h),
           Icon(Icons.sms_outlined, size: 64.sp, color: Colors.grey.shade400),
           SizedBox(height: 16.h),
-          Text("Balance: $balance SMS",
-              style: GoogleFonts.inter(
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87)),
+          Text(
+            "Balance: $balance SMS",
+            style: GoogleFonts.inter(
+              fontSize: 14.sp,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
           SizedBox(height: 8.h),
           Text(
-              balance > 0
-                  ? "You have $balance SMS remaining."
-                  : "You haven't purchased any SMS packages yet.",
-              textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
-                  fontSize: 11.sp, color: Colors.grey.shade600)),
+            balance > 0
+                ? "You have $balance SMS remaining."
+                : "You haven't purchased any SMS packages yet.",
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 11.sp,
+              color: Colors.grey.shade600,
+            ),
+          ),
           SizedBox(height: 32.h),
           ElevatedButton(
             onPressed: () {},
             style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black87, foregroundColor: Colors.white),
-            child: Text("Buy SMS Packages",
-                style: GoogleFonts.inter(fontSize: 11.sp)),
+              backgroundColor: Colors.black87,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(
+              "Buy SMS Packages",
+              style: GoogleFonts.inter(fontSize: 11.sp),
+            ),
           ),
         ],
       ),
@@ -1955,12 +2163,19 @@ class _My_ProfileState extends State<My_Profile>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.category_outlined,
-                size: 56.sp, color: Colors.grey.shade400),
+            Icon(
+              Icons.category_outlined,
+              size: 56.sp,
+              color: Colors.grey.shade400,
+            ),
             SizedBox(height: 16.h),
-            Text("Category management functionality coming soon.",
-                style: GoogleFonts.inter(
-                    fontSize: 11.5.sp, color: Colors.grey.shade700)),
+            Text(
+              "Category management functionality coming soon.",
+              style: GoogleFonts.inter(
+                fontSize: 11.5.sp,
+                color: Colors.grey.shade700,
+              ),
+            ),
           ],
         ),
       ),
@@ -1970,11 +2185,14 @@ class _My_ProfileState extends State<My_Profile>
   // ──────────────────────────────────────────────
   //  Reusable minimalist widgets
   // ──────────────────────────────────────────────
-  Widget _label(String text) => Text(text,
-      style: GoogleFonts.inter(
-          fontSize: 10.sp,
-          fontWeight: FontWeight.w600,
-          color: Colors.grey.shade800));
+  Widget _label(String text) => Text(
+    text,
+    style: GoogleFonts.inter(
+      fontSize: 10.sp,
+      fontWeight: FontWeight.w600,
+      color: Colors.grey.shade800,
+    ),
+  );
 
   Widget _textField({
     TextEditingController? controller,
@@ -1994,24 +2212,31 @@ class _My_ProfileState extends State<My_Profile>
         isDense: true,
         contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 11.h),
         border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(6.r),
-            borderSide: BorderSide(color: Colors.grey.shade300)),
+          borderRadius: BorderRadius.circular(6.r),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
         enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(6.r),
-            borderSide: BorderSide(color: Colors.grey.shade300)),
+          borderRadius: BorderRadius.circular(6.r),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
         focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(6.r),
-            borderSide: const BorderSide(color: Colors.black54)),
+          borderRadius: BorderRadius.circular(6.r),
+          borderSide: const BorderSide(color: Colors.black54),
+        ),
       ),
     );
   }
 
   Widget _dropdown(
-      List<String> items, String value, void Function(String?) onChanged) {
+    List<String> items,
+    String value,
+    void Function(String?) onChanged,
+  ) {
     return Container(
       decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(6.r)),
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(6.r),
+      ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: (items.isNotEmpty && items.contains(value))
@@ -2020,9 +2245,12 @@ class _My_ProfileState extends State<My_Profile>
           isExpanded: true,
           padding: EdgeInsets.symmetric(horizontal: 12.w),
           items: items
-              .map((e) => DropdownMenuItem(
+              .map(
+                (e) => DropdownMenuItem(
                   value: e,
-                  child: Text(e, style: GoogleFonts.inter(fontSize: 11.sp))))
+                  child: Text(e, style: GoogleFonts.inter(fontSize: 11.sp)),
+                ),
+              )
               .toList(),
           onChanged: onChanged,
         ),
@@ -2035,15 +2263,21 @@ class _My_ProfileState extends State<My_Profile>
       mainAxisSize: MainAxisSize.min,
       children: [
         Transform.scale(
-            scale: 0.9,
-            child: Checkbox(
-                value: value,
-                onChanged: onChanged,
-                activeColor: Colors.black87)),
+          scale: 0.9,
+          child: Checkbox(
+            value: value,
+            onChanged: onChanged,
+            activeColor: Colors.black87,
+          ),
+        ),
         SizedBox(width: 6.w),
-        Text(label,
-            style: GoogleFonts.inter(
-                fontSize: 10.5.sp, color: Colors.grey.shade800)),
+        Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 10.5.sp,
+            color: Colors.grey.shade800,
+          ),
+        ),
       ],
     );
   }
@@ -2058,8 +2292,9 @@ class _My_ProfileState extends State<My_Profile>
           backgroundColor: Colors.black87,
           foregroundColor: Colors.white,
           elevation: 0,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8.r),
+          ),
         ),
         child: _isSaving
             ? SizedBox(
@@ -2070,9 +2305,13 @@ class _My_ProfileState extends State<My_Profile>
                   strokeWidth: 2,
                 ),
               )
-            : Text(text,
+            : Text(
+                text,
                 style: GoogleFonts.inter(
-                    fontSize: 11.sp, fontWeight: FontWeight.w600)),
+                  fontSize: 11.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
       ),
     );
   }
@@ -2092,27 +2331,35 @@ class _CollapsibleInfoSectionState extends State<_CollapsibleInfoSection> {
       decoration: BoxDecoration(
         color: Theme.of(context).primaryColor.withOpacity(0.05),
         borderRadius: BorderRadius.circular(8.r),
-        border:
-            Border.all(color: Theme.of(context).primaryColor.withOpacity(0.2)),
+        border: Border.all(
+          color: Theme.of(context).primaryColor.withOpacity(0.2),
+        ),
       ),
       child: Column(
         children: [
           ListTile(
             dense: true,
             contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 0),
-            leading: Icon(Icons.location_on_outlined,
-                color: Theme.of(context).primaryColor, size: 20.sp),
-            title: Text("Why are these settings important?",
-                style: GoogleFonts.inter(
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).primaryColor)),
+            leading: Icon(
+              Icons.location_on_outlined,
+              color: Theme.of(context).primaryColor,
+              size: 20.sp,
+            ),
+            title: Text(
+              "Why are these settings important?",
+              style: GoogleFonts.inter(
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).primaryColor,
+              ),
+            ),
             trailing: IconButton(
               icon: Icon(
-                  _isExpanded
-                      ? Icons.keyboard_arrow_up
-                      : Icons.keyboard_arrow_down,
-                  color: Theme.of(context).primaryColor),
+                _isExpanded
+                    ? Icons.keyboard_arrow_up
+                    : Icons.keyboard_arrow_down,
+                color: Theme.of(context).primaryColor,
+              ),
               onPressed: () => setState(() => _isExpanded = !_isExpanded),
             ),
             onTap: () => setState(() => _isExpanded = !_isExpanded),
@@ -2124,13 +2371,17 @@ class _CollapsibleInfoSectionState extends State<_CollapsibleInfoSection> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _bulletPoint(
-                      "Travel radius determines which customers you can serve"),
+                    "Travel radius determines which customers you can serve",
+                  ),
                   _bulletPoint(
-                      "Travel speed helps estimate accurate arrival times"),
+                    "Travel speed helps estimate accurate arrival times",
+                  ),
                   _bulletPoint(
-                      "Base location is used to calculate distances to customers"),
+                    "Base location is used to calculate distances to customers",
+                  ),
                   _bulletPoint(
-                      "These settings enable real-time travel time calculation via Google Maps"),
+                    "These settings enable real-time travel time calculation via Google Maps",
+                  ),
                 ],
               ),
             ),
@@ -2145,15 +2396,22 @@ class _CollapsibleInfoSectionState extends State<_CollapsibleInfoSection> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("• ",
-              style: GoogleFonts.inter(
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).primaryColor)),
+          Text(
+            "• ",
+            style: GoogleFonts.inter(
+              fontSize: 12.sp,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).primaryColor,
+            ),
+          ),
           Expanded(
-            child: Text(text,
-                style: GoogleFonts.inter(
-                    fontSize: 11.sp, color: Theme.of(context).primaryColor)),
+            child: Text(
+              text,
+              style: GoogleFonts.inter(
+                fontSize: 11.sp,
+                color: Theme.of(context).primaryColor,
+              ),
+            ),
           ),
         ],
       ),
@@ -2173,7 +2431,10 @@ class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(
-      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
     return Material(color: Colors.white, child: tabBar);
   }
 
@@ -2194,8 +2455,10 @@ class _SubscriptionHistoryDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     // Sort history to show latest first if not already sorted
     final sortedHistory = List<History>.from(history)
-      ..sort((a, b) =>
-          (b.startDate ?? DateTime(0)).compareTo(a.startDate ?? DateTime(0)));
+      ..sort(
+        (a, b) =>
+            (b.startDate ?? DateTime(0)).compareTo(a.startDate ?? DateTime(0)),
+      );
 
     return Dialog(
       backgroundColor: Colors.white,
@@ -2256,8 +2519,10 @@ class _SubscriptionHistoryDialog extends StatelessWidget {
                 children: [
                   // Table Header
                   Padding(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 12.w,
+                      vertical: 12.h,
+                    ),
                     child: Row(
                       children: [
                         Expanded(flex: 3, child: _headerCell("Date")),
@@ -2265,9 +2530,9 @@ class _SubscriptionHistoryDialog extends StatelessWidget {
                         Expanded(flex: 2, child: _headerCell("Payment Mode")),
                         Expanded(flex: 2, child: _headerCell("Duration")),
                         Expanded(
-                            flex: 2,
-                            child:
-                                _headerCell("Status", align: TextAlign.right)),
+                          flex: 2,
+                          child: _headerCell("Status", align: TextAlign.right),
+                        ),
                       ],
                     ),
                   ),
@@ -2283,13 +2548,16 @@ class _SubscriptionHistoryDialog extends StatelessWidget {
                               child: Text(
                                 "No history records found",
                                 style: GoogleFonts.inter(
-                                    fontSize: 10.sp, color: Colors.grey),
+                                  fontSize: 10.sp,
+                                  color: Colors.grey,
+                                ),
                               ),
                             ),
                           )
                         : Column(
-                            children:
-                                sortedHistory.asMap().entries.map((entry) {
+                            children: sortedHistory.asMap().entries.map((
+                              entry,
+                            ) {
                               final index = entry.key;
                               final item = entry.value;
                               final isLast = index == sortedHistory.length - 1;
@@ -2299,7 +2567,9 @@ class _SubscriptionHistoryDialog extends StatelessWidget {
                                 children: [
                                   Padding(
                                     padding: EdgeInsets.symmetric(
-                                        horizontal: 12.w, vertical: 14.h),
+                                      horizontal: 12.w,
+                                      vertical: 14.h,
+                                    ),
                                     child: Row(
                                       children: [
                                         // Date Column
@@ -2311,20 +2581,23 @@ class _SubscriptionHistoryDialog extends StatelessWidget {
                                             children: [
                                               Text(
                                                 item.startDate != null
-                                                    ? DateFormat('MMM d, yyyy')
-                                                        .format(item.startDate!)
+                                                    ? DateFormat(
+                                                        'MMM d, yyyy',
+                                                      ).format(item.startDate!)
                                                     : "N/A",
                                                 style: GoogleFonts.inter(
                                                   fontSize: 8.sp,
                                                   fontWeight: FontWeight.w700,
-                                                  color:
-                                                      const Color(0xFF2D2D2D),
+                                                  color: const Color(
+                                                    0xFF2D2D2D,
+                                                  ),
                                                 ),
                                               ),
                                               if (item.startDate != null)
                                                 Text(
-                                                  DateFormat('hh:mm a')
-                                                      .format(item.startDate!),
+                                                  DateFormat(
+                                                    'hh:mm a',
+                                                  ).format(item.startDate!),
                                                   style: GoogleFonts.inter(
                                                     fontSize: 8.sp,
                                                     color: Colors.grey.shade400,
@@ -2346,8 +2619,9 @@ class _SubscriptionHistoryDialog extends StatelessWidget {
                                                 style: GoogleFonts.inter(
                                                   fontSize: 8.sp,
                                                   fontWeight: FontWeight.w700,
-                                                  color:
-                                                      const Color(0xFF2D2D2D),
+                                                  color: const Color(
+                                                    0xFF2D2D2D,
+                                                  ),
                                                 ),
                                               ),
                                               Text(
@@ -2378,7 +2652,9 @@ class _SubscriptionHistoryDialog extends StatelessWidget {
                                           flex: 2,
                                           child: Text(
                                             _calculateDuration(
-                                                item.startDate, item.endDate),
+                                              item.startDate,
+                                              item.endDate,
+                                            ),
                                             style: GoogleFonts.inter(
                                               fontSize: 8.sp,
                                               color: const Color(0xFF4B4B4B),
@@ -2392,7 +2668,9 @@ class _SubscriptionHistoryDialog extends StatelessWidget {
                                           child: Align(
                                             alignment: Alignment.centerRight,
                                             child: _statusBadge(
-                                                item.status, isCurrent),
+                                              item.status,
+                                              isCurrent,
+                                            ),
                                           ),
                                         ),
                                       ],
@@ -2400,7 +2678,9 @@ class _SubscriptionHistoryDialog extends StatelessWidget {
                                   ),
                                   if (!isLast)
                                     const Divider(
-                                        height: 1, color: Color(0xFFF2F2F2)),
+                                      height: 1,
+                                      color: Color(0xFFF2F2F2),
+                                    ),
                                 ],
                               );
                             }).toList(),
@@ -2418,11 +2698,14 @@ class _SubscriptionHistoryDialog extends StatelessWidget {
               child: OutlinedButton(
                 onPressed: () => Navigator.pop(context),
                 style: OutlinedButton.styleFrom(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 24.w,
+                    vertical: 12.h,
+                  ),
                   side: BorderSide(color: Colors.grey.shade200),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8.r)),
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
                 ),
                 child: Text(
                   "Close",
@@ -2533,9 +2816,9 @@ class _ChangePlanDialogState extends State<ChangePlanDialog> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error fetching plans: $e")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error fetching plans: $e")));
       }
     }
   }
@@ -2544,7 +2827,8 @@ class _ChangePlanDialogState extends State<ChangePlanDialog> {
     if (_selectedPlanId == null) return;
 
     final selectedPlan = _plans.firstWhere((p) => p.id == _selectedPlanId);
-    final amount = (selectedPlan.discountedPrice > 0 &&
+    final amount =
+        (selectedPlan.discountedPrice > 0 &&
             selectedPlan.discountedPrice < selectedPlan.price)
         ? selectedPlan.discountedPrice
         : selectedPlan.price;
@@ -2554,9 +2838,9 @@ class _ChangePlanDialogState extends State<ChangePlanDialog> {
     _razorpayService.onSuccess = (PaymentSuccessResponse response) async {
       try {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Verifying payment...")),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text("Verifying payment...")));
         }
 
         final success = await ApiService.renewSubscription(
@@ -2602,9 +2886,9 @@ class _ChangePlanDialogState extends State<ChangePlanDialog> {
       );
     } catch (e) {
       setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error opening checkout: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error opening checkout: $e")));
     }
   }
 
@@ -2613,9 +2897,7 @@ class _ChangePlanDialogState extends State<ChangePlanDialog> {
     return Dialog(
       backgroundColor: Colors.white,
       insetPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 24.h),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12.r),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2670,95 +2952,105 @@ class _ChangePlanDialogState extends State<ChangePlanDialog> {
             padding: EdgeInsets.symmetric(vertical: 20.h, horizontal: 12.w),
             child: _isLoading
                 ? const Center(
-                    child: CircularProgressIndicator(color: Colors.black87))
+                    child: CircularProgressIndicator(color: Colors.black87),
+                  )
                 : _plans.isEmpty
-                    ? Center(
-                        child: Text("No plans available",
-                            style: GoogleFonts.inter(fontSize: 10.sp)))
-                    : GridView.builder(
-                        shrinkWrap: true,
-                        itemCount: _plans.length,
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          crossAxisSpacing: 8.w,
-                          mainAxisSpacing: 8.h,
-                          childAspectRatio: 0.7,
-                        ),
-                        itemBuilder: (context, index) {
-                          final plan = _plans[index];
-                          final isSelected = _selectedPlanId == plan.id;
-                          final hasDiscount = plan.discountedPrice > 0 &&
-                              plan.discountedPrice < plan.price;
+                ? Center(
+                    child: Text(
+                      "No plans available",
+                      style: GoogleFonts.inter(fontSize: 10.sp),
+                    ),
+                  )
+                : GridView.builder(
+                    shrinkWrap: true,
+                    itemCount: _plans.length,
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      crossAxisSpacing: 8.w,
+                      mainAxisSpacing: 8.h,
+                      childAspectRatio: 0.7,
+                    ),
+                    itemBuilder: (context, index) {
+                      final plan = _plans[index];
+                      final isSelected = _selectedPlanId == plan.id;
+                      final hasDiscount =
+                          plan.discountedPrice > 0 &&
+                          plan.discountedPrice < plan.price;
 
-                          return GestureDetector(
-                            onTap: () =>
-                                setState(() => _selectedPlanId = plan.id),
-                            child: Container(
-                              padding: EdgeInsets.all(8.w),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? const Color(0xFFFDF7FF)
-                                    : Colors.white,
-                                borderRadius: BorderRadius.circular(10.r),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? const Color(0xFF9E8DA5)
-                                      : Colors.grey.shade200,
-                                  width: 1.5,
+                      return GestureDetector(
+                        onTap: () => setState(() => _selectedPlanId = plan.id),
+                        child: Container(
+                          padding: EdgeInsets.all(8.w),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? const Color(0xFFFDF7FF)
+                                : Colors.white,
+                            borderRadius: BorderRadius.circular(10.r),
+                            border: Border.all(
+                              color: isSelected
+                                  ? const Color(0xFF9E8DA5)
+                                  : Colors.grey.shade200,
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                plan.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.inter(
+                                  fontSize: 10.sp,
+                                  fontWeight: FontWeight.w800,
                                 ),
                               ),
-                              child: Column(
+                              SizedBox(height: 2.h),
+                              Text(
+                                "${plan.duration} ${plan.durationType}",
+                                style: GoogleFonts.inter(
+                                  fontSize: 8.sp,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                              const Spacer(),
+                              if (hasDiscount)
+                                Text(
+                                  "₹${plan.price}",
+                                  style: GoogleFonts.inter(
+                                    fontSize: 8.sp,
+                                    color: Colors.grey.shade400,
+                                    decoration: TextDecoration.lineThrough,
+                                  ),
+                                ),
+                              Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Text(
-                                    plan.name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                                    "₹",
                                     style: GoogleFonts.inter(
-                                        fontSize: 10.sp,
-                                        fontWeight: FontWeight.w800),
-                                  ),
-                                  SizedBox(height: 2.h),
-                                  Text(
-                                    "${plan.duration} ${plan.durationType}",
-                                    style: GoogleFonts.inter(
-                                        fontSize: 8.sp,
-                                        color: Colors.grey.shade600),
-                                  ),
-                                  const Spacer(),
-                                  if (hasDiscount)
-                                    Text(
-                                      "₹${plan.price}",
-                                      style: GoogleFonts.inter(
-                                          fontSize: 8.sp,
-                                          color: Colors.grey.shade400,
-                                          decoration:
-                                              TextDecoration.lineThrough),
+                                      fontSize: 8.sp,
+                                      fontWeight: FontWeight.w700,
                                     ),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text("₹",
-                                          style: GoogleFonts.inter(
-                                              fontSize: 8.sp,
-                                              fontWeight: FontWeight.w700)),
-                                      Text(
-                                        (hasDiscount
-                                                ? plan.discountedPrice
-                                                : plan.price)
-                                            .toString(),
-                                        style: GoogleFonts.inter(
-                                            fontSize: 13.sp,
-                                            fontWeight: FontWeight.w800),
-                                      ),
-                                    ],
+                                  ),
+                                  Text(
+                                    (hasDiscount
+                                            ? plan.discountedPrice
+                                            : plan.price)
+                                        .toString(),
+                                    style: GoogleFonts.inter(
+                                      fontSize: 13.sp,
+                                      fontWeight: FontWeight.w800,
+                                    ),
                                   ),
                                 ],
                               ),
-                            ),
-                          );
-                        },
-                      ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
           ),
 
           const Divider(height: 1),
@@ -2772,18 +3064,22 @@ class _ChangePlanDialogState extends State<ChangePlanDialog> {
                 OutlinedButton(
                   onPressed: () => Navigator.pop(context),
                   style: OutlinedButton.styleFrom(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 16.w,
+                      vertical: 10.h,
+                    ),
                     side: BorderSide(color: Colors.grey.shade200),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.r)),
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
                   ),
                   child: Text(
                     "Cancel",
                     style: GoogleFonts.inter(
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black87),
+                      fontSize: 10.sp,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black87,
+                    ),
                   ),
                 ),
                 SizedBox(width: 12.w),
@@ -2795,22 +3091,29 @@ class _ChangePlanDialogState extends State<ChangePlanDialog> {
                     backgroundColor: const Color(0xFF9E8DA5),
                     foregroundColor: Colors.white,
                     elevation: 0,
-                    padding:
-                        EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 20.w,
+                      vertical: 10.h,
+                    ),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.r)),
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
                   ),
                   child: _isSaving
                       ? SizedBox(
                           width: 14.w,
                           height: 14.w,
                           child: const CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2),
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
                         )
                       : Text(
                           "Confirm & Pay",
                           style: GoogleFonts.inter(
-                              fontSize: 10.sp, fontWeight: FontWeight.w700),
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                 ),
               ],

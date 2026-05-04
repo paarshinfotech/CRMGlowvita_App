@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../services/api_service.dart';
+import '../utils/export_helper.dart';
+import '../widgets/report_filter_sheet.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Models
@@ -112,7 +114,11 @@ class _StaffCommissionSummaryState extends State<StaffCommissionSummary> {
   List<_StaffCommission> _filtered = [];
 
   String _searchText = '';
-  DateTimeRange? _dateRange;
+  Map<String, dynamic> _filters = {
+    'startDate': DateFormat('yyyy-MM-dd').format(DateTime.now().subtract(const Duration(days: 30))),
+    'endDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+    'staff': 'All',
+  };
 
   int _rowsPerPage = 10;
   int _currentPage = 0;
@@ -138,8 +144,9 @@ class _StaffCommissionSummaryState extends State<StaffCommissionSummary> {
     });
     try {
       final raw = await ApiService.getStaffCommissionReport(
-        startDate: _dateRange != null ? DateFormat('yyyy-MM-dd').format(_dateRange!.start) : null,
-        endDate: _dateRange != null ? DateFormat('yyyy-MM-dd').format(_dateRange!.end) : null,
+        startDate: _filters['startDate'],
+        endDate: _filters['endDate'],
+        staffId: _filters['staff'] == 'All' ? null : _filters['staff'],
       );
       _all = raw.map((e) => _StaffCommission.fromJson(e as Map<String, dynamic>)).toList();
       _applyFilter();
@@ -158,23 +165,6 @@ class _StaffCommissionSummaryState extends State<StaffCommissionSummary> {
     });
   }
 
-  Future<void> _pickDateRange() async {
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      initialDateRange: _dateRange ??
-          DateTimeRange(start: DateTime.now().subtract(const Duration(days: 30)), end: DateTime.now()),
-      builder: (ctx, child) => Theme(
-        data: Theme.of(ctx).copyWith(colorScheme: const ColorScheme.light(primary: _purple, onPrimary: Colors.white)),
-        child: child!,
-      ),
-    );
-    if (picked != null) {
-      _dateRange = picked;
-      _fetchData();
-    }
-  }
 
   List<_StaffCommission> get _pageItems {
     final start = _currentPage * _rowsPerPage;
@@ -232,15 +222,27 @@ class _StaffCommissionSummaryState extends State<StaffCommissionSummary> {
                           SizedBox(width: 8.w),
                           _toolbarBtn(
                             icon: Icons.filter_list_rounded,
-                            label: _dateRange != null ? 'Filtered' : 'Filter',
-                            isActive: _dateRange != null,
-                            onTap: _pickDateRange,
+                            label: 'Filter',
+                            isActive: true,
+                            onTap: _showFilterSheet,
                           ),
                           SizedBox(width: 8.w),
-                          _toolbarBtn(
-                            icon: Icons.upload_rounded,
-                            label: 'Export',
-                            onTap: () {},
+                          PopupMenuButton<String>(
+                            position: PopupMenuPosition.under,
+                            offset: Offset(0, 10.h),
+                             child: _toolbarBtn(
+                               icon: Icons.upload_rounded,
+                               label: 'Export',
+                               onTap: null,
+                             ),
+                            onSelected: (value) => _handleExport(value),
+                            itemBuilder: (context) => [
+                              _buildExportItem('copy', Icons.copy_rounded, 'Copy'),
+                              _buildExportItem('excel', Icons.grid_on_rounded, 'Excel'),
+                              _buildExportItem('csv', Icons.description_rounded, 'CSV'),
+                              _buildExportItem('pdf', Icons.picture_as_pdf_rounded, 'PDF'),
+                              _buildExportItem('print', Icons.print_rounded, 'Print'),
+                            ],
                           ),
                           SizedBox(width: 8.w),
                           _toolbarBtn(
@@ -447,7 +449,13 @@ class _StaffCommissionSummaryState extends State<StaffCommissionSummary> {
     );
   }
 
-  Widget _toolbarBtn({required IconData icon, required String label, required VoidCallback onTap, bool isActive = false, bool isIconOnly = false}) {
+  Widget _toolbarBtn({
+    required IconData icon,
+    required String label,
+    VoidCallback? onTap,
+    bool isActive = false,
+    bool isIconOnly = false,
+  }) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(6),
@@ -468,5 +476,73 @@ class _StaffCommissionSummaryState extends State<StaffCommissionSummary> {
         ),
       ),
     );
+  }
+  void _showFilterSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ReportFilterSheet(
+        initialFilters: _filters,
+        fields: [
+          FilterField(label: 'Filter by Staff', key: 'staff', options: ['All', ..._getUniqueValues('staffName')]),
+        ],
+        onApply: (newFilters) {
+          setState(() => _filters = newFilters);
+          _fetchData();
+        },
+        onClear: () {
+          setState(() {
+            _filters = {
+              'startDate': DateFormat('yyyy-MM-dd').format(DateTime.now().subtract(const Duration(days: 30))),
+              'endDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+              'staff': 'All',
+            };
+          });
+          _fetchData();
+        },
+      ),
+    );
+  }
+
+  List<String> _getUniqueValues(String key) {
+    return _all.map((e) => e.staffName).where((e) => e != '—').toSet().toList()..sort();
+  }
+
+  PopupMenuItem<String> _buildExportItem(String val, IconData icon, String label) {
+    return PopupMenuItem(
+      value: val,
+      height: 35.h,
+      child: Row(children: [Icon(icon, size: 16.sp, color: Colors.grey), SizedBox(width: 10.w), Text(label, style: GoogleFonts.poppins(fontSize: 11.sp))]),
+    );
+  }
+
+  void _handleExport(String type) async {
+    if (_filtered.isEmpty) return;
+    
+    final headers = ['Staff Name', 'Rate', 'Total Earned', 'Paid Out', 'Balance', 'Last Tx'];
+    final rows = _filtered.map((s) => [
+      s.staffName,
+      s.commissionRate,
+      s.totalCommissionEarned,
+      s.totalPaidOut,
+      s.netCommissionBalance,
+      s.lastTransactionDate,
+    ]).toList();
+
+    try {
+      await ExportHelper.executeExport(
+        type,
+        fileName: 'Staff_Commission_Report',
+        title: 'Staff Commission Summary',
+        headers: headers,
+        rows: rows,
+      );
+      if (type == 'copy') {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied to clipboard')));
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Action failed: $e')));
+    }
   }
 }

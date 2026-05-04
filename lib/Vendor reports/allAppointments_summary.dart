@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../services/api_service.dart';
+import '../utils/export_helper.dart';
+import '../widgets/report_filter_sheet.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Model
@@ -117,7 +119,14 @@ class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
   List<_Appointment> _filtered = [];
 
   String _searchText = '';
-  DateTimeRange? _dateRange;
+  Map<String, dynamic> _filters = {
+    'startDate': DateFormat('yyyy-MM-dd').format(DateTime.now().subtract(const Duration(days: 30))),
+    'endDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+    'status': 'All',
+    'staff': 'All',
+    'service': 'All',
+    'client': 'All',
+  };
 
   // pagination
   int _rowsPerPage = 10;
@@ -145,12 +154,12 @@ class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
     });
     try {
       final response = await ApiService.getAllAppointmentsReport(
-        startDate: _dateRange != null
-            ? DateFormat('yyyy-MM-dd').format(_dateRange!.start)
-            : null,
-        endDate: _dateRange != null
-            ? DateFormat('yyyy-MM-dd').format(_dateRange!.end)
-            : null,
+        startDate: _filters['startDate'],
+        endDate: _filters['endDate'],
+        status: _filters['status'] == 'All' ? null : _filters['status'],
+        staff: _filters['staff'] == 'All' ? null : _filters['staff'],
+        service: _filters['service'] == 'All' ? null : _filters['service'],
+        client: _filters['client'] == 'All' ? null : _filters['client'],
       );
 
       final allData = response['data']?['allAppointments'];
@@ -186,31 +195,6 @@ class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
   // ── Helpers ────────────────────────────────────────────────────────────────
   String _fmtCompact(num v) => '₹${NumberFormat('#,##0').format(v)}';
 
-  Future<void> _pickDateRange() async {
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      initialDateRange: _dateRange ??
-          DateTimeRange(
-            start: DateTime.now().subtract(const Duration(days: 30)),
-            end: DateTime.now(),
-          ),
-      builder: (ctx, child) => Theme(
-        data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.light(
-            primary: _purple,
-            onPrimary: Colors.white,
-          ),
-        ),
-        child: child!,
-      ),
-    );
-    if (picked != null) {
-      _dateRange = picked;
-      _fetchData();
-    }
-  }
 
   // ── Pagination ─────────────────────────────────────────────────────────────
   List<_Appointment> get _pageItems {
@@ -292,15 +276,27 @@ class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
                           SizedBox(width: 8.w),
                           _toolbarBtn(
                             icon: Icons.filter_list_rounded,
-                            label: _dateRange != null ? 'Filtered' : 'Filter',
-                            isActive: _dateRange != null,
-                            onTap: _pickDateRange,
+                            label: 'Filter',
+                            isActive: true,
+                            onTap: _showFilterSheet,
                           ),
                           SizedBox(width: 8.w),
-                          _toolbarBtn(
-                            icon: Icons.file_download_outlined,
-                            label: 'Export',
-                            onTap: () {},
+                          PopupMenuButton<String>(
+                            position: PopupMenuPosition.under,
+                            offset: Offset(0, 10.h),
+                             child: _toolbarBtn(
+                               icon: Icons.upload_rounded,
+                               label: 'Export',
+                               onTap: null,
+                             ),
+                            onSelected: (value) => _handleExport(value),
+                            itemBuilder: (context) => [
+                              _buildExportItem('copy', Icons.copy_rounded, 'Copy'),
+                              _buildExportItem('excel', Icons.grid_on_rounded, 'Excel'),
+                              _buildExportItem('csv', Icons.description_rounded, 'CSV'),
+                              _buildExportItem('pdf', Icons.picture_as_pdf_rounded, 'PDF'),
+                              _buildExportItem('print', Icons.print_rounded, 'Print'),
+                            ],
                           ),
                           SizedBox(width: 8.w),
                           _toolbarBtn(
@@ -498,7 +494,13 @@ class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
     );
   }
 
-  Widget _toolbarBtn({required IconData icon, required String label, required VoidCallback onTap, bool isActive = false, bool isIconOnly = false}) {
+  Widget _toolbarBtn({
+    required IconData icon,
+    required String label,
+    VoidCallback? onTap,
+    bool isActive = false,
+    bool isIconOnly = false,
+  }) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(6),
@@ -519,6 +521,87 @@ class _AllAppointmentsSummaryState extends State<AllAppointmentsSummary> {
         ),
       ),
     );
+  }
+  void _showFilterSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ReportFilterSheet(
+        initialFilters: _filters,
+        fields: [
+          FilterField(label: 'Booking Status', key: 'status', options: ['All', 'Scheduled', 'Completed', 'Cancelled', 'No Show']),
+          FilterField(label: 'Filter by Client', key: 'client', options: ['All', ..._getUniqueValues('clientName')]),
+          FilterField(label: 'Filter by Service', key: 'service', options: ['All', ..._getUniqueValues('serviceName')]),
+          FilterField(label: 'Filter by Staff', key: 'staff', options: ['All', ..._getUniqueValues('staffName')]),
+        ],
+        onApply: (newFilters) {
+          setState(() => _filters = newFilters);
+          _fetchData();
+        },
+        onClear: () {
+          setState(() {
+            _filters = {
+              'startDate': DateFormat('yyyy-MM-dd').format(DateTime.now().subtract(const Duration(days: 30))),
+              'endDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+              'status': 'All',
+              'staff': 'All',
+              'service': 'All',
+              'client': 'All',
+            };
+          });
+          _fetchData();
+        },
+      ),
+    );
+  }
+
+  List<String> _getUniqueValues(String key) {
+    // Note: Since _all uses _Appointment objects, we access properties directly
+    if (key == 'clientName') return _all.map((e) => e.clientName).where((e) => e != '—').toSet().toList()..sort();
+    if (key == 'serviceName') return _all.map((e) => e.serviceName).where((e) => e != '—').toSet().toList()..sort();
+    if (key == 'staffName') return _all.map((e) => e.staffName).where((e) => e != '—').toSet().toList()..sort();
+    return [];
+  }
+
+  PopupMenuItem<String> _buildExportItem(String val, IconData icon, String label) {
+    return PopupMenuItem(
+      value: val,
+      height: 35.h,
+      child: Row(children: [Icon(icon, size: 16.sp, color: Colors.grey), SizedBox(width: 10.w), Text(label, style: GoogleFonts.poppins(fontSize: 11.sp))]),
+    );
+  }
+
+  void _handleExport(String type) async {
+    if (_filtered.isEmpty) return;
+    
+    final headers = ['Client', 'Services', 'Staff', 'Scheduled On', 'Created On', 'Time', 'Duration', 'Final Amt', 'Status'];
+    final rows = _filtered.map((a) => [
+      a.clientName,
+      a.serviceName,
+      a.staffName,
+      a.formattedDate,
+      a.formattedCreatedAt,
+      a.startTime,
+      '${a.duration} min',
+      '₹${a.finalAmount.toStringAsFixed(0)}',
+      a.status.toUpperCase(),
+    ]).toList();
+
+    try {
+      await ExportHelper.executeExport(
+        type,
+        fileName: 'Appointments_Report',
+        title: 'All Appointments Report',
+        headers: headers,
+        rows: rows,
+      );
+      if (type == 'copy') {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied to clipboard')));
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Action failed: $e')));
+    }
   }
 }
 

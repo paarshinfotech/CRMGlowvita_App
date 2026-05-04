@@ -3,22 +3,19 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
-import '../services/api_service.dart';
-import '../utils/export_helper.dart';
-import '../widgets/report_filter_sheet.dart';
+import '../../services/api_service.dart';
+import '../../utils/export_helper.dart';
+import '../../widgets/report_filter_sheet.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Page
-// ─────────────────────────────────────────────────────────────────────────────
-
-class SalesByProduct extends StatefulWidget {
-  const SalesByProduct({super.key});
+class CategoryWiseProductReport extends StatefulWidget {
+  const CategoryWiseProductReport({super.key});
 
   @override
-  State<SalesByProduct> createState() => _SalesByProductState();
+  State<CategoryWiseProductReport> createState() =>
+      _CategoryWiseProductReportState();
 }
 
-class _SalesByProductState extends State<SalesByProduct> {
+class _CategoryWiseProductReportState extends State<CategoryWiseProductReport> {
   static const Color _purple = Color(0xFF6C3EB8);
 
   bool _isLoading = false;
@@ -26,17 +23,12 @@ class _SalesByProductState extends State<SalesByProduct> {
 
   List<Map<String, dynamic>> _all = [];
   List<Map<String, dynamic>> _filtered = [];
-
   String _searchText = '';
   Map<String, dynamic> _filters = {
-    'startDate': DateFormat(
-      'yyyy-MM-dd',
-    ).format(DateTime.now().subtract(const Duration(days: 30))),
+    'startDate': DateFormat('yyyy-MM-dd').format(DateTime.now().subtract(const Duration(days: 90))),
     'endDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
     'category': 'All',
-    'brand': 'All',
   };
-
   int _rowsPerPage = 10;
   int _currentPage = 0;
 
@@ -60,17 +52,14 @@ class _SalesByProductState extends State<SalesByProduct> {
       _errorMsg = null;
     });
     try {
-      final result = await ApiService.getSalesByProductReport(
+      final response = await ApiService.getCategoryWiseProductReport(
         startDate: _filters['startDate'],
         endDate: _filters['endDate'],
         category: _filters['category'] == 'All' ? null : _filters['category'],
-        brand: _filters['brand'] == 'All' ? null : _filters['brand'],
       );
-      final raw =
-          (result['data']?['salesByProduct'] as List?)
-              ?.cast<Map<String, dynamic>>() ??
-          [];
-      _all = raw;
+      final List<dynamic> raw =
+          (response['data']?['categories'] as List?) ?? [];
+      _all = raw.cast<Map<String, dynamic>>();
       _applyFilter();
     } catch (e) {
       if (mounted) setState(() => _errorMsg = e.toString());
@@ -84,11 +73,11 @@ class _SalesByProductState extends State<SalesByProduct> {
     setState(() {
       _currentPage = 0;
       _filtered = _all.where((row) {
-        return (row['productName'] ?? '').toString().toLowerCase().contains(q);
+        final name = (row['categoryName'] ?? '').toString().toLowerCase();
+        return name.contains(q);
       }).toList();
     });
   }
-
 
   List<Map<String, dynamic>> get _pageItems {
     final start = _currentPage * _rowsPerPage;
@@ -101,7 +90,7 @@ class _SalesByProductState extends State<SalesByProduct> {
       (_filtered.length / _rowsPerPage).ceil().clamp(1, 9999);
 
   double _n(dynamic v) => (v as num?)?.toDouble() ?? 0.0;
-  String _fmt(num v) => '₹${NumberFormat('#,##0').format(v)}';
+  String _fmt(num v) => '₹${NumberFormat('#,##0.00').format(v)}';
 
   @override
   Widget build(BuildContext context) {
@@ -151,7 +140,7 @@ class _SalesByProductState extends State<SalesByProduct> {
                                     color: Colors.grey.shade400,
                                     size: 16.sp,
                                   ),
-                                  hintText: 'Search product...',
+                                  hintText: 'Search category...',
                                   hintStyle: GoogleFonts.poppins(
                                     fontSize: 10.sp,
                                     color: Colors.grey.shade400,
@@ -185,31 +174,11 @@ class _SalesByProductState extends State<SalesByProduct> {
                              ),
                             onSelected: (value) => _handleExport(value),
                             itemBuilder: (context) => [
-                              _buildExportItem(
-                                'copy',
-                                Icons.copy_rounded,
-                                'Copy',
-                              ),
-                              _buildExportItem(
-                                'excel',
-                                Icons.grid_on_rounded,
-                                'Excel',
-                              ),
-                              _buildExportItem(
-                                'csv',
-                                Icons.description_rounded,
-                                'CSV',
-                              ),
-                              _buildExportItem(
-                                'pdf',
-                                Icons.picture_as_pdf_rounded,
-                                'PDF',
-                              ),
-                              _buildExportItem(
-                                'print',
-                                Icons.print_rounded,
-                                'Print',
-                              ),
+                              _buildExportItem('copy', Icons.copy_rounded, 'Copy'),
+                              _buildExportItem('excel', Icons.grid_on_rounded, 'Excel'),
+                              _buildExportItem('csv', Icons.description_rounded, 'CSV'),
+                              _buildExportItem('pdf', Icons.picture_as_pdf_rounded, 'PDF'),
+                              _buildExportItem('print', Icons.print_rounded, 'Print'),
                             ],
                           ),
                           SizedBox(width: 8.w),
@@ -254,7 +223,7 @@ class _SalesByProductState extends State<SalesByProduct> {
           ),
           Expanded(
             child: Text(
-              'Sales by Product',
+              'Category-wise Product Report',
               style: GoogleFonts.poppins(
                 fontSize: 14.sp,
                 fontWeight: FontWeight.w600,
@@ -268,8 +237,9 @@ class _SalesByProductState extends State<SalesByProduct> {
   }
 
   Widget _buildTable() {
-    if (_isLoading)
+    if (_isLoading) {
       return const Center(child: CircularProgressIndicator(color: _purple));
+    }
     if (_errorMsg != null) return _buildErrorState();
     if (_filtered.isEmpty) return _buildEmptyState();
 
@@ -288,89 +258,43 @@ class _SalesByProductState extends State<SalesByProduct> {
             color: Colors.black87,
           ),
           horizontalMargin: 12.w,
-          columnSpacing: 15.w,
+          columnSpacing: 30.w,
           columns: const [
-            DataColumn(label: Text('Product')),
-            DataColumn(label: Text('Sold')),
-            DataColumn(label: Text('Gross')),
-            DataColumn(label: Text('Net')),
-            DataColumn(label: Text('Tax')),
-            DataColumn(label: Text('Total')),
+            DataColumn(label: Text('Category Name')),
+            DataColumn(label: Text('Number of Products')),
+            DataColumn(label: Text('Active Products')),
+            DataColumn(label: Text('Average Price')),
+            DataColumn(label: Text('Average Sales Price')),
           ],
           rows: [
             ..._pageItems.map(
               (r) => DataRow(
                 cells: [
-                  DataCell(Text(r['productName']?.toString() ?? '—')),
-                  DataCell(Text(r['quantitySold']?.toString() ?? '0')),
-                  DataCell(Text(_fmt(_n(r['grossSale'])))),
-                  DataCell(Text(_fmt(_n(r['netSale'])))),
-                  DataCell(Text(_fmt(_n(r['tax'])))),
                   DataCell(
                     Text(
-                      _fmt(_n(r['totalSales'])),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      r['categoryName']?.toString() ?? '—',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  DataCell(
+                    Text(
+                      (r['numberOfProducts'] ?? r['totalProducts'] ?? '0')
+                          .toString(),
+                    ),
+                  ),
+                  DataCell(Text(r['activeProducts']?.toString() ?? '0')),
+                  DataCell(Text(_fmt(_n(r['averagePrice'])))),
+                  DataCell(
+                    Text(
+                      _fmt(_n(r['averageSalePrice'] ?? r['averageSalesPrice'])),
                     ),
                   ),
                 ],
               ),
             ),
-            _buildTotalsRow(),
           ],
         ),
       ),
-    );
-  }
-
-  DataRow _buildTotalsRow() {
-    int tSold = 0;
-    double tGross = 0;
-    double tNet = 0;
-    double tTax = 0;
-    double tTotal = 0;
-
-    for (var r in _filtered) {
-      tSold += (r['quantitySold'] as num?)?.toInt() ?? 0;
-      tGross += _n(r['grossSale']);
-      tNet += _n(r['netSale']);
-      tTax += _n(r['tax']);
-      tTotal += _n(r['totalSales']);
-    }
-
-    return DataRow(
-      color: MaterialStateProperty.all(const Color(0xFFF9F9FB)),
-      cells: [
-        DataCell(
-          Text(
-            'TOTAL',
-            style: GoogleFonts.poppins(
-              fontWeight: FontWeight.bold,
-              fontSize: 9.sp,
-            ),
-          ),
-        ),
-        DataCell(
-          Text('$tSold', style: const TextStyle(fontWeight: FontWeight.bold)),
-        ),
-        DataCell(
-          Text(
-            _fmt(tGross),
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ),
-        DataCell(
-          Text(_fmt(tNet), style: const TextStyle(fontWeight: FontWeight.bold)),
-        ),
-        DataCell(
-          Text(_fmt(tTax), style: const TextStyle(fontWeight: FontWeight.bold)),
-        ),
-        DataCell(
-          Text(
-            _fmt(tTotal),
-            style: const TextStyle(fontWeight: FontWeight.bold, color: _purple),
-          ),
-        ),
-      ],
     );
   }
 
@@ -380,13 +304,13 @@ class _SalesByProductState extends State<SalesByProduct> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            Icons.inventory_2_outlined,
+            Icons.category_outlined,
             size: 40.sp,
             color: Colors.grey.shade300,
           ),
           const SizedBox(height: 12),
           Text(
-            'No sales records found',
+            'No category data found',
             style: GoogleFonts.poppins(
               fontSize: 12.sp,
               color: Colors.grey.shade500,
@@ -485,6 +409,83 @@ class _SalesByProductState extends State<SalesByProduct> {
     );
   }
 
+  void _showFilterSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ReportFilterSheet(
+        initialFilters: _filters,
+        fields: [
+          FilterField(label: 'Filter by category', key: 'category', options: ['All', ..._getUniqueValues('categoryName')]),
+        ],
+        onApply: (newFilters) {
+          setState(() => _filters = newFilters);
+          _fetchData();
+        },
+        onClear: () {
+          setState(() {
+            _filters = {
+              'startDate': DateFormat('yyyy-MM-dd').format(DateTime.now().subtract(const Duration(days: 90))),
+              'endDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+              'category': 'All',
+            };
+          });
+          _fetchData();
+        },
+      ),
+    );
+  }
+
+  List<String> _getUniqueValues(String key) {
+    return _all.map((e) => e[key]?.toString() ?? '').where((e) => e.isNotEmpty).toSet().toList()..sort();
+  }
+
+  PopupMenuItem<String> _buildExportItem(String value, IconData icon, String label) {
+    return PopupMenuItem<String>(
+      value: value,
+      height: 35.h,
+      child: Row(
+        children: [
+          Icon(icon, size: 16.sp, color: const Color(0xFF64748B)),
+          SizedBox(width: 10.w),
+          Text(label, style: GoogleFonts.poppins(fontSize: 11.sp, color: const Color(0xFF1E293B))),
+        ],
+      ),
+    );
+  }
+
+  void _handleExport(String type) async {
+    if (_filtered.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No data to export')));
+      return;
+    }
+
+    final headers = ['Category Name', 'Number of Products', 'Active Products', 'Average Price', 'Average Sales Price'];
+    final rows = _filtered.map((r) => [
+      r['categoryName'] ?? '—',
+      r['numberOfProducts'] ?? r['totalProducts'] ?? 0,
+      r['activeProducts'] ?? 0,
+      _n(r['averagePrice']),
+      _n(r['averageSalePrice'] ?? r['averageSalesPrice']),
+    ]).toList();
+
+    try {
+      await ExportHelper.executeExport(
+        type,
+        fileName: 'Category_Report',
+        title: 'Category-wise Product Report',
+        headers: headers,
+        rows: rows,
+      );
+      if (type == 'copy') {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied to clipboard')));
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Action failed: $e')));
+    }
+  }
+
   Widget _toolbarBtn({
     required IconData icon,
     required String label,
@@ -526,125 +527,5 @@ class _SalesByProductState extends State<SalesByProduct> {
         ),
       ),
     );
-  }
-
-  void _showFilterSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => ReportFilterSheet(
-        initialFilters: _filters,
-        fields: [
-          FilterField(
-            label: 'Filter by category',
-            key: 'category',
-            options: ['All', ..._getUniqueValues('category')],
-          ),
-          FilterField(
-            label: 'Filter by brand',
-            key: 'brand',
-            options: ['All', ..._getUniqueValues('brand')],
-          ),
-        ],
-        onApply: (newFilters) {
-          setState(() => _filters = newFilters);
-          _fetchData();
-        },
-        onClear: () {
-          setState(() {
-            _filters = {
-              'startDate': DateFormat(
-                'yyyy-MM-dd',
-              ).format(DateTime.now().subtract(const Duration(days: 30))),
-              'endDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-              'category': 'All',
-              'brand': 'All',
-            };
-          });
-          _fetchData();
-        },
-      ),
-    );
-  }
-
-  List<String> _getUniqueValues(String key) {
-    return _all
-        .map((e) => e[key]?.toString() ?? '')
-        .where((e) => e.isNotEmpty)
-        .toSet()
-        .toList()
-      ..sort();
-  }
-
-  PopupMenuItem<String> _buildExportItem(
-    String val,
-    IconData icon,
-    String label,
-  ) {
-    return PopupMenuItem(
-      value: val,
-      height: 35.h,
-      child: Row(
-        children: [
-          Icon(icon, size: 16.sp, color: Colors.grey),
-          SizedBox(width: 10.w),
-          Text(label, style: GoogleFonts.poppins(fontSize: 11.sp)),
-        ],
-      ),
-    );
-  }
-
-  void _handleExport(String type) async {
-    if (_filtered.isEmpty) return;
-
-    List<List<dynamic>> rows = _filtered
-        .map(
-          (r) => [
-            r['productName'] ?? '—',
-            (r['quantitySold'] as num?)?.toInt() ?? 0,
-            _n(r['grossSale']),
-            _n(r['netSale']),
-            _n(r['tax']),
-            _n(r['totalSales']),
-          ],
-        )
-        .toList();
-
-    // Add Totals Row
-    int tSold = 0;
-    double tGross = 0;
-    double tNet = 0;
-    double tTax = 0;
-    double tTotal = 0;
-    for (var r in _filtered) {
-      tSold += (r['quantitySold'] as num?)?.toInt() ?? 0;
-      tGross += _n(r['grossSale']);
-      tNet += _n(r['netSale']);
-      tTax += _n(r['tax']);
-      tTotal += _n(r['totalSales']);
-    }
-    rows.add(['TOTAL', tSold, tGross, tNet, tTax, tTotal]);
-
-    final headers = ['Product', 'Sold', 'Gross', 'Net', 'Tax', 'Total'];
-
-    try {
-      await ExportHelper.executeExport(
-        type,
-        fileName: 'Sales_By_Product',
-        title: 'Sales by Product Report',
-        headers: headers,
-        rows: rows,
-      );
-      if (type == 'copy') {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Copied to clipboard')));
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Action failed: $e')));
-    }
   }
 }

@@ -3793,11 +3793,26 @@ class ApiService {
   }
 
   /// Fetches product summary report
-  static Future<Map<String, dynamic>> getProductSummaryReport() async {
+  static Future<Map<String, dynamic>> getProductSummaryReport({
+    String? startDate,
+    String? endDate,
+    String? product,
+    String? category,
+    String? brand,
+  }) async {
     try {
-      final response = await _get(
+      final queryParams = <String, String>{};
+      if (startDate != null) queryParams['startDate'] = startDate;
+      if (endDate != null) queryParams['endDate'] = endDate;
+      if (product != null) queryParams['product'] = product;
+      if (category != null) queryParams['category'] = category;
+      if (brand != null) queryParams['brand'] = brand;
+
+      final uri = Uri.parse(
         '$baseUrl/crm/vendor/reports/product-summary',
-      );
+      ).replace(queryParameters: queryParams.isEmpty ? null : queryParams);
+
+      final response = await _get(uri.toString());
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true && data['data'] != null) {
@@ -3818,12 +3833,26 @@ class ApiService {
     }
   }
 
-  /// Fetches inventory stock report
-  static Future<Map<String, dynamic>> getInventoryStockReport() async {
+  static Future<Map<String, dynamic>> getInventoryStockReport({
+    String? startDate,
+    String? endDate,
+    String? product,
+    String? category,
+    String? brand,
+  }) async {
     try {
-      final response = await _get(
+      final queryParams = <String, String>{};
+      if (startDate != null) queryParams['startDate'] = startDate;
+      if (endDate != null) queryParams['endDate'] = endDate;
+      if (product != null) queryParams['product'] = product;
+      if (category != null) queryParams['category'] = category;
+      if (brand != null) queryParams['brand'] = brand;
+
+      final uri = Uri.parse(
         '$baseUrl/crm/vendor/reports/inventory-stock',
-      );
+      ).replace(queryParameters: queryParams.isEmpty ? null : queryParams);
+
+      final response = await _get(uri.toString());
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true && data['data'] != null) {
@@ -3844,12 +3873,22 @@ class ApiService {
     }
   }
 
-  /// Fetches category-wise product report
-  static Future<Map<String, dynamic>> getCategoryWiseProductReport() async {
+  static Future<Map<String, dynamic>> getCategoryWiseProductReport({
+    String? startDate,
+    String? endDate,
+    String? category,
+  }) async {
     try {
-      final response = await _get(
+      final queryParams = <String, String>{};
+      if (startDate != null) queryParams['startDate'] = startDate;
+      if (endDate != null) queryParams['endDate'] = endDate;
+      if (category != null) queryParams['category'] = category;
+
+      final uri = Uri.parse(
         '$baseUrl/crm/vendor/reports/category-wise-product',
-      );
+      ).replace(queryParameters: queryParams.isEmpty ? null : queryParams);
+
+      final response = await _get(uri.toString());
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true && data['data'] != null) {
@@ -3956,16 +3995,16 @@ class ApiService {
     }
   }
 
-  /// Fetches staff commission summary report
-
   static Future<List<dynamic>> getStaffCommissionReport({
     String? startDate,
     String? endDate,
+    String? staffId,
   }) async {
     try {
       final queryParams = <String, String>{};
       if (startDate != null) queryParams['startDate'] = startDate;
       if (endDate != null) queryParams['endDate'] = endDate;
+      if (staffId != null) queryParams['staffId'] = staffId;
 
       final uri = Uri.parse(
         '$baseUrl/crm/reports/vendor/staff-commission',
@@ -3978,13 +4017,9 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final dynamic decoded = json.decode(response.body);
-        // API returns a plain JSON array
         if (decoded is List) return decoded;
-        // Or wrapped: { success: true, data: [...] }
         if (decoded is Map && decoded['data'] is List) return decoded['data'];
-        throw Exception(
-          'Unexpected response format for staff commission report',
-        );
+        throw Exception('Unexpected response format for staff commission report');
       } else {
         throw Exception(
           'Failed to load staff commission report: ${response.statusCode} - ${response.body}',
@@ -3996,6 +4031,7 @@ class ApiService {
     }
   }
 }
+
 
 class Service {
   String? id;
