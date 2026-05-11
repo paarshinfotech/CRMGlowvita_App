@@ -4,6 +4,10 @@ import 'widgets/custom_drawer.dart';
 import 'services/api_service.dart';
 import 'addon_model.dart';
 import 'widgets/subscription_wrapper.dart';
+import 'vendor_model.dart';
+import 'my_Profile.dart';
+import 'Notification.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class AddOnsPage extends StatefulWidget {
   const AddOnsPage({super.key});
@@ -17,6 +21,7 @@ class _AddOnsPageState extends State<AddOnsPage> {
   List<AddOn> _addOns = [];
   List<AddOn> _filteredAddOns = [];
   Map<String, String> _serviceNameMap = {};
+  VendorProfile? _profile;
 
   int _currentPage = 1;
   int _rowsPerPage = 10;
@@ -32,6 +37,27 @@ class _AddOnsPageState extends State<AddOnsPage> {
   void initState() {
     super.initState();
     _loadData();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final p = await ApiService.getVendorProfile();
+      if (mounted) setState(() => _profile = p);
+    } catch (e) {
+      debugPrint('fetchProfile: $e');
+    }
+  }
+
+  Widget _buildInitialAvatar() {
+    return Text(
+      (_profile?.businessName ?? 'H').substring(0, 1).toUpperCase(),
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: 12.sp,
+        fontWeight: FontWeight.bold,
+      ),
+    );
   }
 
   @override
@@ -156,36 +182,61 @@ class _AddOnsPageState extends State<AddOnsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       drawer: const CustomDrawer(currentPage: 'Add Ons'),
-      backgroundColor: const Color(0xFFF7F7F7),
+      backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        titleSpacing: 0,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: Colors.black),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
         title: Text(
           'Add-Ons',
           style: GoogleFonts.poppins(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w700,
+            color: Colors.black,
           ),
         ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black87, size: 20),
-        toolbarHeight: 48,
-        surfaceTintColor: Colors.transparent,
         actions: [
           IconButton(
-            icon: const Icon(Icons.search, size: 20),
-            onPressed: () {},
-            padding: EdgeInsets.zero,
+            icon: const Icon(Icons.notifications_outlined, color: Colors.black),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NotificationPage()),
+            ),
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, size: 20),
-            onPressed: _loadData,
-            padding: EdgeInsets.zero,
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const My_Profile()),
+            ),
+            child: Padding(
+              padding: EdgeInsets.only(right: 12.w),
+              child: CircleAvatar(
+                radius: 16,
+                backgroundColor: Theme.of(context).primaryColor,
+                child: ClipOval(
+                  child: (_profile != null && _profile!.profileImage.isNotEmpty)
+                      ? Image.network(
+                          _profile!.profileImage,
+                          width: 32,
+                          height: 32,
+                          fit: BoxFit.cover,
+                          errorBuilder: (ctx, _, __) => _buildInitialAvatar(),
+                          loadingBuilder: (ctx, child, progress) =>
+                              progress == null
+                                  ? child
+                                  : const CircularProgressIndicator(),
+                        )
+                      : _buildInitialAvatar(),
+                ),
+              ),
+            ),
           ),
-          const CircleAvatar(
-            radius: 16,
-          ),
-          const SizedBox(width: 12),
         ],
       ),
       body: SubscriptionWrapper(

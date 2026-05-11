@@ -7,6 +7,10 @@ import 'dart:convert';
 import 'dart:math';
 import 'widgets/custom_drawer.dart';
 import 'services/api_service.dart';
+import 'vendor_model.dart';
+import 'Notification.dart';
+import 'my_Profile.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class OffersCouponsPage extends StatefulWidget {
   const OffersCouponsPage({super.key});
@@ -22,11 +26,33 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
   List<Map<String, dynamic>> coupons = [];
   List<Map<String, dynamic>> services = [];
   List<Map<String, dynamic>> categories = [];
+  VendorProfile? _profile;
 
   @override
   void initState() {
     super.initState();
     _fetchData();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final p = await ApiService.getVendorProfile();
+      if (mounted) setState(() => _profile = p);
+    } catch (e) {
+      debugPrint('fetchProfile: $e');
+    }
+  }
+
+  Widget _buildInitialAvatar() {
+    return Text(
+      (_profile?.businessName ?? 'H').substring(0, 1).toUpperCase(),
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: 12.sp,
+        fontWeight: FontWeight.bold,
+      ),
+    );
   }
 
   bool _robustBool(dynamic value) {
@@ -58,17 +84,19 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
         categories = apiCategories;
         services = apiServices
             .where((s) => s.status == 'approved')
-            .map((s) => {
-                  'id': s.id,
-                  'name': s.name ?? 'Unnamed Service',
-                  'category': s.category ?? 'Uncategorized',
-                  'categoryId': s.categoryId,
-                  'price': (s.price ?? 0).toDouble(),
-                  'discounted_price': (s.discountedPrice ?? 0).toDouble(),
-                  'is_active': s.status == 'approved',
-                  'home_service': s.homeService ?? false,
-                  'event_service': s.eventService ?? false,
-                })
+            .map(
+              (s) => {
+                'id': s.id,
+                'name': s.name ?? 'Unnamed Service',
+                'category': s.category ?? 'Uncategorized',
+                'categoryId': s.categoryId,
+                'price': (s.price ?? 0).toDouble(),
+                'discounted_price': (s.discountedPrice ?? 0).toDouble(),
+                'is_active': s.status == 'approved',
+                'home_service': s.homeService ?? false,
+                'event_service': s.eventService ?? false,
+              },
+            )
             .toList();
 
         coupons = apiOffers.map((o) {
@@ -77,8 +105,10 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
           if (o.applicableServices != null &&
               o.applicableServices!.isNotEmpty) {
             final names = o.applicableServices!.map((id) {
-              final svc = apiServices.firstWhere((s) => s.id == id,
-                  orElse: () => Service(id: id));
+              final svc = apiServices.firstWhere(
+                (s) => s.id == id,
+                orElse: () => Service(id: id),
+              );
               return svc.name ?? id;
             }).toList();
             servicesDisplay = names.join(', ');
@@ -87,25 +117,29 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
           return {
             'id': o.id,
             'code': o.code ?? 'N/A',
-            'discountType':
-                o.type == 'percentage' ? 'Percentage' : 'Fixed Amount',
+            'discountType': o.type == 'percentage'
+                ? 'Percentage'
+                : 'Fixed Amount',
             'discountValue': o.value ?? 0,
             'status': o.status ?? 'Inactive',
             'startsOn': o.startDate ?? DateTime.now(),
             'expiresOn': o.expires ?? DateTime.now(),
             'services': servicesDisplay,
-            'categories': (o.applicableServiceCategories != null &&
+            'categories':
+                (o.applicableServiceCategories != null &&
                     o.applicableServiceCategories!.isNotEmpty)
-                ? o.applicableServiceCategories!
-                    .join(', ') // These are IDs but displayed as is for now
+                ? o.applicableServiceCategories!.join(
+                    ', ',
+                  ) // These are IDs but displayed as is for now
                 : 'All',
-            'genders': (o.applicableCategories != null &&
+            'genders':
+                (o.applicableCategories != null &&
                     o.applicableCategories!.isNotEmpty)
                 ? (o.applicableCategories!.contains('Unisex') ||
-                        (o.applicableCategories!.contains('Men') &&
-                            o.applicableCategories!.contains('Women')))
-                    ? 'Unisex'
-                    : o.applicableCategories!.join(', ')
+                          (o.applicableCategories!.contains('Men') &&
+                              o.applicableCategories!.contains('Women')))
+                      ? 'Unisex'
+                      : o.applicableCategories!.join(', ')
                 : 'Unisex',
             'image': o.offerImage,
             'redeemed': o.redeemed ?? 0,
@@ -121,9 +155,9 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
       print('Error fetching data: $e');
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load data: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to load data: $e')));
       }
     }
   }
@@ -192,10 +226,12 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
             ? 'fixed'
             : (couponData['discountType'] as String).toLowerCase(),
         "value": couponData['discountValue'],
-        "startDate":
-            (couponData['startsOn'] as DateTime).toUtc().toIso8601String(),
-        "expires":
-            (couponData['expiresOn'] as DateTime).toUtc().toIso8601String(),
+        "startDate": (couponData['startsOn'] as DateTime)
+            .toUtc()
+            .toIso8601String(),
+        "expires": (couponData['expiresOn'] as DateTime)
+            .toUtc()
+            .toIso8601String(),
         "applicableServices": apiData['applicableServices'] ?? [],
         "applicableServiceCategories":
             apiData['applicableServiceCategories'] ?? [],
@@ -221,9 +257,9 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
       }
     } catch (e) {
       print('Error adding coupon: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error adding coupon: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error adding coupon: $e')));
     } finally {
       setState(() => _isLoading = false);
     }
@@ -246,7 +282,9 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
   }
 
   Future<void> _updateCoupon(
-      int index, Map<String, dynamic> updatedCoupon) async {
+    int index,
+    Map<String, dynamic> updatedCoupon,
+  ) async {
     final String? id = coupons[index]['id'];
     if (id == null) return;
 
@@ -265,8 +303,8 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
           final extension = filePath.split('.').last.toLowerCase();
           final mimeType =
               (extension == 'png' || extension == 'jpg' || extension == 'jpeg')
-                  ? extension
-                  : 'jpeg';
+              ? extension
+              : 'jpeg';
           imageBase64 = 'data:image/$mimeType;base64,$base64String';
         } else {
           imageBase64 = filePath;
@@ -279,10 +317,12 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
             ? 'fixed'
             : (updatedCoupon['discountType'] as String).toLowerCase(),
         "value": updatedCoupon['discountValue'],
-        "startDate":
-            (updatedCoupon['startsOn'] as DateTime).toUtc().toIso8601String(),
-        "expires":
-            (updatedCoupon['expiresOn'] as DateTime).toUtc().toIso8601String(),
+        "startDate": (updatedCoupon['startsOn'] as DateTime)
+            .toUtc()
+            .toIso8601String(),
+        "expires": (updatedCoupon['expiresOn'] as DateTime)
+            .toUtc()
+            .toIso8601String(),
         "applicableServices": apiData['applicableServices'] ?? [],
         "applicableServiceCategories":
             apiData['applicableServiceCategories'] ?? [],
@@ -307,9 +347,9 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
     } catch (e) {
       print('Error updating coupon: $e');
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error updating coupon: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error updating coupon: $e')));
     }
   }
 
@@ -321,8 +361,10 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
     final appServices = apiData['applicableServices'] as List?;
     if (appServices != null && appServices.isNotEmpty) {
       final names = appServices.map((id) {
-        final svc = services.firstWhere((s) => s['id'] == id,
-            orElse: () => {'name': id});
+        final svc = services.firstWhere(
+          (s) => s['id'] == id,
+          orElse: () => {'name': id},
+        );
         return svc['name'] ?? id;
       }).toList();
       servicesDisplay = names.join(', ');
@@ -334,8 +376,10 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
     if (appCategories != null && appCategories.isNotEmpty) {
       final names = appCategories.map((id) {
         // Find category name from categories list
-        final cat = categories.firstWhere((c) => (c['_id'] ?? c['id']) == id,
-            orElse: () => {'name': id});
+        final cat = categories.firstWhere(
+          (c) => (c['_id'] ?? c['id']) == id,
+          orElse: () => {'name': id},
+        );
         return cat['name'] ?? id;
       }).toList();
       categoriesDisplay = names.join(', ');
@@ -346,20 +390,24 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
       'services': servicesDisplay,
       'categories': categoriesDisplay,
       'image': raw['image'] ?? raw['offerImage'], // Map offerImage to image
-      'discountType': raw['discountType'] ??
+      'discountType':
+          raw['discountType'] ??
           (raw['type'] == 'percentage' ? 'Percentage' : 'Fixed Amount'),
       'discountValue': raw['discountValue'] ?? raw['value'] ?? 0,
-      'startsOn': raw['startsOn'] ??
+      'startsOn':
+          raw['startsOn'] ??
           (raw['startDate'] != null
               ? DateTime.parse(raw['startDate'])
               : DateTime.now()),
-      'expiresOn': raw['expiresOn'] ??
+      'expiresOn':
+          raw['expiresOn'] ??
           (raw['expires'] != null
               ? DateTime.parse(raw['expires'])
               : DateTime.now()),
       'isCustomCode': _robustBool(raw['isCustomCode']),
       'minOrderAmount': raw['minOrderAmount'] ?? 0,
-      'genders': (raw['genders'] == 'All' ||
+      'genders':
+          (raw['genders'] == 'All' ||
               raw['genders'] == 'Unisex' ||
               (raw['applicableCategories'] is List &&
                   (raw['applicableCategories'].contains('Unisex') ||
@@ -414,8 +462,11 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
   Widget _errorImage() {
     return Container(
       color: Colors.grey.shade100,
-      child:
-          const Icon(Icons.broken_image_outlined, size: 32, color: Colors.grey),
+      child: const Icon(
+        Icons.broken_image_outlined,
+        size: 32,
+        color: Colors.grey,
+      ),
     );
   }
 
@@ -424,8 +475,9 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
       context: context,
       builder: (BuildContext context) {
         return Dialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 400),
             child: Padding(
@@ -459,8 +511,11 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
                       ),
                       IconButton(
                         onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.cancel_outlined,
-                            size: 18, color: Color(0xFF9CA3AF)),
+                        icon: const Icon(
+                          Icons.cancel_outlined,
+                          size: 18,
+                          color: Color(0xFF9CA3AF),
+                        ),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
                       ),
@@ -475,19 +530,20 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
                         : '● Auto-generated',
                   ),
                   _detailRow(
-                      'Discount',
-                      c['discountType'] == 'Fixed Amount'
-                          ? '₹${c['discountValue']} Off'
-                          : '${c['discountValue']}% Off'),
+                    'Discount',
+                    c['discountType'] == 'Fixed Amount'
+                        ? '₹${c['discountValue']} Off'
+                        : '${c['discountValue']}% Off',
+                  ),
                   _detailRow('Status', c['status'] as String),
                   _detailRow(
-                      'Starts',
-                      DateFormat('yyyy-MM-dd')
-                          .format(c['startsOn'] as DateTime)),
+                    'Starts',
+                    DateFormat('yyyy-MM-dd').format(c['startsOn'] as DateTime),
+                  ),
                   _detailRow(
-                      'Expires',
-                      DateFormat('yyyy-MM-dd')
-                          .format(c['expiresOn'] as DateTime)),
+                    'Expires',
+                    DateFormat('yyyy-MM-dd').format(c['expiresOn'] as DateTime),
+                  ),
                   _detailRow('Services', c['services'] as String),
                   _detailRow('Service Categories', c['categories'] as String),
                   _detailRow('Applicable Genders', c['genders'] as String),
@@ -576,8 +632,10 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title:
-              Text('Delete Coupon', style: GoogleFonts.poppins(fontSize: 14)),
+          title: Text(
+            'Delete Coupon',
+            style: GoogleFonts.poppins(fontSize: 14),
+          ),
           content: Text(
             'Are you sure you want to delete this coupon? This action cannot be undone.',
             style: GoogleFonts.poppins(fontSize: 12),
@@ -597,7 +655,8 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
                       Navigator.of(context).pop();
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                            content: Text('Coupon deleted successfully')),
+                          content: Text('Coupon deleted successfully'),
+                        ),
                       );
                     }
                   }
@@ -642,11 +701,7 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
           width: 200,
           height: 200,
           color: Colors.grey.shade200,
-          child: const Icon(
-            Icons.broken_image,
-            color: Colors.grey,
-            size: 50,
-          ),
+          child: const Icon(Icons.broken_image, color: Colors.grey, size: 50),
         );
       }
     } else {
@@ -661,11 +716,7 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
             width: 200,
             height: 200,
             color: Colors.grey.shade200,
-            child: const Icon(
-              Icons.broken_image,
-              color: Colors.grey,
-              size: 50,
-            ),
+            child: const Icon(Icons.broken_image, color: Colors.grey, size: 50),
           );
         },
       );
@@ -678,16 +729,64 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
 
     return Scaffold(
       drawer: const CustomDrawer(currentPage: 'Offers & Coupons'),
-      backgroundColor: const Color(0xFFF6F7FB),
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        elevation: 0.5,
         backgroundColor: Colors.white,
-        title: const Text(
-          'Offers & Coupons',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700),
+        elevation: 0,
+        titleSpacing: 0,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: Colors.black),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
         ),
-        iconTheme: const IconThemeData(color: Colors.black),
+        title: Text(
+          'Offers & Coupons',
+          style: GoogleFonts.poppins(
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w700,
+            color: Colors.black,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined, color: Colors.black),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NotificationPage()),
+            ),
+          ),
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const My_Profile()),
+            ),
+            child: Padding(
+              padding: EdgeInsets.only(right: 12.w),
+              child: CircleAvatar(
+                radius: 16,
+                backgroundColor: Theme.of(context).primaryColor,
+                child: ClipOval(
+                  child: (_profile != null && _profile!.profileImage.isNotEmpty)
+                      ? Image.network(
+                          _profile!.profileImage,
+                          width: 32,
+                          height: 32,
+                          fit: BoxFit.cover,
+                          errorBuilder: (ctx, _, __) => _buildInitialAvatar(),
+                          loadingBuilder: (ctx, child, progress) =>
+                              progress == null
+                              ? child
+                              : const CircularProgressIndicator(),
+                        )
+                      : _buildInitialAvatar(),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
+
       body: SafeArea(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
@@ -695,503 +794,409 @@ class _OffersCouponsPageState extends State<OffersCouponsPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Stat cards
-                  Container(
-                    height: 100,
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            _buildKpiCard(
+                              context,
+                              'Total Coupons',
+                              '$totalCoupons',
+                              'assets/icons/gift.png', // Fallback to icon if asset missing
+                              Icons.card_giftcard,
+                              const Color(0xFFFFF7ED),
+                              const Color(0xFFF97316),
+                            ),
+                            const SizedBox(width: 12),
+                            _buildKpiCard(
+                              context,
+                              'Active Coupons',
+                              '$activeCoupons',
+                              'assets/icons/ticket.png',
+                              Icons.confirmation_number_outlined,
+                              const Color(0xFFF0FDF4),
+                              const Color(0xFF22C55E),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            _buildKpiCard(
+                              context,
+                              'Total Redeemed',
+                              '$totalRedeemed',
+                              'assets/icons/check.png',
+                              Icons.check_circle_outline,
+                              const Color(0xFFF0F9FF),
+                              const Color(0xFF0EA5E9),
+                            ),
+                            const SizedBox(width: 12),
+                            _buildKpiCard(
+                              context,
+                              'Total Discount Value',
+                              currency.format(totalDiscountValue),
+                              'assets/icons/percent.png',
+                              Icons.percent,
+                              const Color(0xFFFEF2F2),
+                              const Color(0xFFEF4444),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Create New Coupon Button
+                  Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            margin: const EdgeInsets.only(right: 8),
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey.shade200),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context)
-                                        .primaryColor
-                                        .withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Icon(
-                                    Icons.local_offer,
-                                    color: Theme.of(context).primaryColor,
-                                    size: 18,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Total Coupons',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.grey.shade700,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '$totalCoupons',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.black,
-                                        ),
-                                        textAlign: TextAlign.left,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 45,
+                      child: ElevatedButton.icon(
+                        onPressed: _showCreateCouponForm,
+                        icon: const Icon(
+                          Icons.add,
+                          size: 15,
+                          color: Colors.white,
+                        ),
+                        label: Text(
+                          'Create New Coupon',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
                           ),
                         ),
-                        Expanded(
-                          child: Container(
-                            margin: const EdgeInsets.only(left: 8),
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey.shade200),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.green.shade50,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Icon(
-                                    Icons.check_circle,
-                                    color: Colors.green,
-                                    size: 18,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Active Coupons',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.grey.shade700,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '$activeCoupons',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.black,
-                                        ),
-                                        textAlign: TextAlign.left,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(
+                            0xFF3F2D3D,
+                          ), // Dark maroon
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
                           ),
+                          elevation: 0,
                         ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    height: 100,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            margin: const EdgeInsets.only(right: 8),
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey.shade200),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.orange.shade50,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Icon(
-                                    Icons.redeem,
-                                    color: Colors.orange,
-                                    size: 18,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Total Redeemed',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.grey.shade700,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '$totalRedeemed',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.black,
-                                        ),
-                                        textAlign: TextAlign.left,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: Container(
-                            margin: const EdgeInsets.only(left: 8),
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey.shade200),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.purple.shade50,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Icon(
-                                    Icons.discount,
-                                    color: Colors.purple,
-                                    size: 18,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Total Discount',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.grey.shade700,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        currency.format(totalDiscountValue),
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.black,
-                                        ),
-                                        textAlign: TextAlign.left,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Manage Coupons',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Create, edit, and manage your promotional coupons.',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Color(0xFF4B5563),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        ElevatedButton.icon(
-                          onPressed: _showCreateCouponForm,
-                          icon: const Icon(Icons.add, size: 16),
-                          label: const Text(
-                            'Create New Coupon',
-                            style: TextStyle(fontSize: 11),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).primaryColor,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            elevation: 0,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: GridView.builder(
-                        padding: const EdgeInsets.only(bottom: 20),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: isMobile ? 1 : 2,
-                          crossAxisSpacing: 16,
-                          mainAxisSpacing: 16,
-                          childAspectRatio: isMobile ? 1.6 : 1.5,
-                        ),
-                        itemCount: coupons.length,
-                        itemBuilder: (context, index) {
-                          return _buildCouponCard(coupons[index], index);
-                        },
                       ),
                     ),
                   ),
+
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: coupons.length,
+                      itemBuilder: (context, index) {
+                        return _buildCouponCard(coupons[index], index);
+                      },
+                    ),
+                  ),
+
+                  // Pagination Footer
+                  _buildPaginationFooter(),
                 ],
               ),
       ),
     );
   }
 
-  Widget _buildCouponCard(Map<String, dynamic> c, int index) {
-    Color statusColor;
-    switch (c['status']) {
-      case 'Active':
-        statusColor = const Color(0xFF059669);
-        break;
-      case 'Scheduled':
-        statusColor = const Color(0xFF2563EB);
-        break;
-      case 'Expired':
-        statusColor = const Color(0xFFDC2626);
-        break;
-      default:
-        statusColor = Colors.grey.shade600;
-    }
-
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.shade200),
-      ),
-      child: InkWell(
-        onTap: () => _showCouponDetails(c),
-        borderRadius: BorderRadius.circular(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildKpiCard(
+    BuildContext context,
+    String title,
+    String value,
+    String iconPath,
+    IconData fallbackIcon,
+    Color bgColor,
+    Color iconColor,
+  ) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade100),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
           children: [
-            // Top Section with Image and Status
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(fallbackIcon, color: iconColor, size: 24),
+            ),
+            const SizedBox(width: 12),
             Expanded(
-              flex: 4,
-              child: Stack(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(16),
-                      ),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(16),
-                      ),
-                      child: _buildImageWidgetFromData(c['image']),
+                  Text(
+                    title,
+                    style: GoogleFonts.poppins(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF6B7280),
                     ),
                   ),
-                  Positioned(
-                    top: 12,
-                    right: 12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Text(
-                        c['status'] as String,
-                        style: GoogleFonts.poppins(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: statusColor,
-                        ),
-                      ),
+                  Text(
+                    value,
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF111827),
                     ),
                   ),
                 ],
               ),
             ),
-            // Bottom Section with Details
-            Expanded(
-              flex: 5,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaginationFooter() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFE5E7EB))),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Text(
+                'Show',
+                style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            c['code'] as String,
+                    Text(
+                      '10',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: Colors.black,
+                      ),
+                    ),
+                    const Icon(Icons.arrow_drop_down, size: 16),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          Row(
+            children: [
+              const Icon(Icons.chevron_left, color: Colors.grey, size: 20),
+              const SizedBox(width: 12),
+              Text(
+                'Page 1',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCouponCard(Map<String, dynamic> c, int index) {
+    final bool isExpired = c['status'] == 'Expired';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      c['code'] as String,
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF111827),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF), // Light blue
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        (c['status'] as String).toUpperCase(),
+                        style: GoogleFonts.poppins(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF2563EB), // Blue
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  c['discountType'] == 'Fixed Amount'
+                      ? '₹${c['discountValue']} Off'
+                      : '${c['discountValue']}% Off',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF111827),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Service',
                             style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF1F2937),
+                              fontSize: 10,
+                              color: const Color(0xFF9CA3AF),
+                            ),
+                          ),
+                          Text(
+                            c['services'] as String,
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: const Color(0xFF374151),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        Text(
-                          c['discountType'] == 'Fixed Amount'
-                              ? '₹${c['discountValue']}'
-                              : '${c['discountValue']}%',
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: Theme.of(context).primaryColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      c['services'] as String,
-                      style: GoogleFonts.poppins(
-                        fontSize: 10,
-                        color: const Color(0xFF6B7280),
+                        ],
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                    const Spacer(),
-                    const Divider(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Redeemed: ${c['redeemed']}',
-                              style: GoogleFonts.poppins(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF374151),
-                              ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Redeemed',
+                            style: GoogleFonts.poppins(
+                              fontSize: 10,
+                              color: const Color(0xFF9CA3AF),
                             ),
-                            Text(
-                              'Expires: ${DateFormat('dd MMM yyyy').format(c['expiresOn'] as DateTime)}',
-                              style: GoogleFonts.poppins(
-                                fontSize: 9,
-                                color: const Color(0xFF9CA3AF),
-                              ),
+                          ),
+                          Text(
+                            '${c['redeemed']} Times',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: const Color(0xFF374151),
                             ),
-                          ],
-                        ),
-                        Row(
-                          children: [
-                            _actionIcon(
-                              Icons.edit_outlined,
-                              const Color(0xFF6B7280),
-                              () => _editCoupon(index),
-                            ),
-                            const SizedBox(width: 8),
-                            _actionIcon(
-                              Icons.delete_outline,
-                              const Color(0xFFEF4444),
-                              () => _deleteCoupon(index),
-                            ),
-                          ],
-                        ),
-                      ],
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              ),
+                const SizedBox(height: 7),
+                Text(
+                  'Validity',
+                  style: GoogleFonts.poppins(
+                    fontSize: 10,
+                    color: const Color(0xFF9CA3AF),
+                  ),
+                ),
+                Text(
+                  '${DateFormat('MMM dd').format(c['startsOn'] as DateTime)} - ${DateFormat('MMM dd, yyyy').format(c['expiresOn'] as DateTime)}',
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF374151),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          const Divider(height: 1, color: Color(0xFFF3F4F6)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                _actionIconButton(
+                  Icons.visibility_outlined,
+                  Colors.grey,
+                  () => _showCouponDetails(c),
+                ),
+                const SizedBox(width: 18),
+                _actionIconButton(
+                  Icons.edit_note_outlined,
+                  Colors.grey,
+                  () => _editCoupon(index),
+                ),
+                const SizedBox(width: 18),
+                _actionIconButton(
+                  Icons.delete_outline,
+                  const Color(0xFFEF4444),
+                  () => _deleteCoupon(index),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _actionIconButton(IconData icon, Color color, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      child: Icon(icon, size: 22, color: color.withOpacity(0.7)),
     );
   }
 
@@ -1272,8 +1277,9 @@ class _CouponDialogState extends State<CouponDialog> {
 
     final c = widget.initialCoupon;
 
-    _couponCodeController =
-        TextEditingController(text: c != null ? c['code'] as String : '');
+    _couponCodeController = TextEditingController(
+      text: c != null ? c['code'] as String : '',
+    );
     _discountValueController = TextEditingController(
       text: c != null ? (c['discountValue'] as num).toString() : '',
     );
@@ -1428,8 +1434,8 @@ class _CouponDialogState extends State<CouponDialog> {
         'code': _useCustomCode
             ? _couponCodeController.text.trim()
             : (_isEdit
-                ? (base['code'] ?? _generateUniqueCode())
-                : _generateUniqueCode()),
+                  ? (base['code'] ?? _generateUniqueCode())
+                  : _generateUniqueCode()),
         'discountType': _discountType,
         'discountValue':
             double.tryParse(_discountValueController.text.trim()) ?? 0.0,
@@ -1443,10 +1449,11 @@ class _CouponDialogState extends State<CouponDialog> {
           'applicableServices': _selectedServices,
           'applicableServiceCategories': _selectedCategories,
           'applicableCategories': [_selectedGender],
-        }
+        },
       };
-      couponData['codeType'] =
-          _useCustomCode ? 'Custom Code' : 'Auto-generated';
+      couponData['codeType'] = _useCustomCode
+          ? 'Custom Code'
+          : 'Auto-generated';
       widget.onSubmit(couponData);
       Navigator.of(context).pop();
     }
@@ -1455,8 +1462,10 @@ class _CouponDialogState extends State<CouponDialog> {
   String _generateUniqueCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     final random = Random();
-    return List.generate(8, (index) => chars[random.nextInt(chars.length)])
-        .join();
+    return List.generate(
+      8,
+      (index) => chars[random.nextInt(chars.length)],
+    ).join();
   }
 
   InputDecoration _underlineInput(String label) {
@@ -1475,8 +1484,10 @@ class _CouponDialogState extends State<CouponDialog> {
         borderSide: BorderSide(color: Color(0xFFE5E7EB)),
       ),
       focusedBorder: UnderlineInputBorder(
-        borderSide:
-            BorderSide(color: Theme.of(context).primaryColor, width: 1.3),
+        borderSide: BorderSide(
+          color: Theme.of(context).primaryColor,
+          width: 1.3,
+        ),
       ),
     );
   }
@@ -1495,10 +1506,7 @@ class _CouponDialogState extends State<CouponDialog> {
   Widget _helperText(String text) {
     return Text(
       text,
-      style: GoogleFonts.poppins(
-        fontSize: 10,
-        color: const Color(0xFF9CA3AF),
-      ),
+      style: GoogleFonts.poppins(fontSize: 10, color: const Color(0xFF9CA3AF)),
     );
   }
 
@@ -1525,10 +1533,7 @@ class _CouponDialogState extends State<CouponDialog> {
         ),
         items: items
             .map(
-              (e) => DropdownMenuItem<T>(
-                value: e,
-                child: Text(e.toString()),
-              ),
+              (e) => DropdownMenuItem<T>(value: e, child: Text(e.toString())),
             )
             .toList(),
         onChanged: onChanged,
@@ -1542,10 +1547,7 @@ class _CouponDialogState extends State<CouponDialog> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '• ',
-            style: TextStyle(fontSize: 9),
-          ),
+          const Text('• ', style: TextStyle(fontSize: 9)),
           Expanded(
             child: Text(
               text,
@@ -1578,10 +1580,7 @@ class _CouponDialogState extends State<CouponDialog> {
           final maxHeight = MediaQuery.of(context).size.height * 0.9;
 
           return ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: 520,
-              maxHeight: maxHeight,
-            ),
+            constraints: BoxConstraints(maxWidth: 520, maxHeight: maxHeight),
             child: Container(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
               decoration: BoxDecoration(
@@ -1652,7 +1651,8 @@ class _CouponDialogState extends State<CouponDialog> {
                                       });
                                     },
                                     shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(4)),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 8),
@@ -1701,16 +1701,19 @@ class _CouponDialogState extends State<CouponDialog> {
                                 prefixText: _discountType == 'Fixed Amount'
                                     ? '₹ '
                                     : null,
-                                suffixText:
-                                    _discountType == 'Percentage' ? ' %' : null,
+                                suffixText: _discountType == 'Percentage'
+                                    ? ' %'
+                                    : null,
                                 prefixStyle: GoogleFonts.poppins(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF374151)),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF374151),
+                                ),
                                 suffixStyle: GoogleFonts.poppins(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF374151)),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF374151),
+                                ),
                               ),
                               style: GoogleFonts.poppins(fontSize: 11),
                               keyboardType: TextInputType.number,
@@ -1732,8 +1735,9 @@ class _CouponDialogState extends State<CouponDialog> {
                                       _sectionLabel('Starts On'),
                                       const SizedBox(height: 6),
                                       _datePickerField(
-                                          dateFormat.format(_startDate),
-                                          _selectStartDate),
+                                        dateFormat.format(_startDate),
+                                        _selectStartDate,
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -1746,8 +1750,9 @@ class _CouponDialogState extends State<CouponDialog> {
                                       _sectionLabel('Expires On'),
                                       const SizedBox(height: 6),
                                       _datePickerField(
-                                          dateFormat.format(_endDate),
-                                          _selectEndDate),
+                                        dateFormat.format(_endDate),
+                                        _selectEndDate,
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -1755,7 +1760,8 @@ class _CouponDialogState extends State<CouponDialog> {
                             ),
                             const SizedBox(height: 16),
                             _sectionLabel(
-                                'Applicable Services (Select specific services or leave empty for all)'),
+                              'Applicable Services (Select specific services or leave empty for all)',
+                            ),
                             const SizedBox(height: 6),
                             _multiSelectContainer(
                               height: 150,
@@ -1763,7 +1769,8 @@ class _CouponDialogState extends State<CouponDialog> {
                                 final id = service['id'] as String;
                                 final name = service['name'] as String;
                                 final price = service['price'] as num;
-                                final cat = service['category'] as String? ??
+                                final cat =
+                                    service['category'] as String? ??
                                     'Uncategorized';
                                 return _selectionItem(
                                   '$name - ₹$price ($cat)',
@@ -1774,7 +1781,8 @@ class _CouponDialogState extends State<CouponDialog> {
                             ),
                             const SizedBox(height: 16),
                             _sectionLabel(
-                                'Applicable Service Categories (Auto-selected based on services + manual selection)'),
+                              'Applicable Service Categories (Auto-selected based on services + manual selection)',
+                            ),
                             const SizedBox(height: 6),
                             _multiSelectContainer(
                               height: 100,
@@ -1824,9 +1832,12 @@ class _CouponDialogState extends State<CouponDialog> {
                           foregroundColor: Colors.white,
                           elevation: 0,
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 10),
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4)),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
                         ),
                         child: Text(
                           primaryLabel,
@@ -1850,8 +1861,10 @@ class _CouponDialogState extends State<CouponDialog> {
   InputDecoration _inputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
-      hintStyle:
-          GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF9CA3AF)),
+      hintStyle: GoogleFonts.poppins(
+        fontSize: 11,
+        color: const Color(0xFF9CA3AF),
+      ),
       isDense: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       border: OutlineInputBorder(
@@ -1881,21 +1894,29 @@ class _CouponDialogState extends State<CouponDialog> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(text,
-                style: GoogleFonts.poppins(
-                    fontSize: 11, color: const Color(0xFF374151))),
-            const Icon(Icons.calendar_today,
-                size: 14, color: Color(0xFF6B7280)),
+            Text(
+              text,
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                color: const Color(0xFF374151),
+              ),
+            ),
+            const Icon(
+              Icons.calendar_today,
+              size: 14,
+              color: Color(0xFF6B7280),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _multiSelectContainer(
-      {required double height,
-      required List<Widget> children,
-      bool grid = false}) {
+  Widget _multiSelectContainer({
+    required double height,
+    required List<Widget> children,
+    bool grid = false,
+  }) {
     final scrollController = ScrollController();
     return Container(
       height: height,
@@ -1937,7 +1958,8 @@ class _CouponDialogState extends State<CouponDialog> {
                 value: isSelected,
                 onChanged: (_) => onTap(),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4)),
+                  borderRadius: BorderRadius.circular(4),
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -1977,13 +1999,17 @@ class _CouponDialogState extends State<CouponDialog> {
           ),
           const SizedBox(height: 4),
           _infoBullet(
-              'When you select specific services, their categories are automatically selected'),
+            'When you select specific services, their categories are automatically selected',
+          ),
           _infoBullet(
-              'Auto-selected categories (marked with "Auto") cannot be manually deselected'),
+            'Auto-selected categories (marked with "Auto") cannot be manually deselected',
+          ),
           _infoBullet(
-              'You can manually select additional categories beyond those auto-selected'),
+            'You can manually select additional categories beyond those auto-selected',
+          ),
           _infoBullet(
-              'If you select both services and additional categories, the offer applies to:'),
+            'If you select both services and additional categories, the offer applies to:',
+          ),
           Padding(
             padding: const EdgeInsets.only(left: 12),
             child: Column(
@@ -1995,7 +2021,8 @@ class _CouponDialogState extends State<CouponDialog> {
             ),
           ),
           _infoBullet(
-              'If you select neither services nor categories, the offer applies to all your services'),
+            'If you select neither services nor categories, the offer applies to all your services',
+          ),
         ],
       ),
     );
@@ -2019,7 +2046,8 @@ class _CouponDialogState extends State<CouponDialog> {
           Align(
             alignment: Alignment.centerLeft,
             child: _sectionLabel(
-                'Applicable Genders (for backward compatibility)'),
+              'Applicable Genders (for backward compatibility)',
+            ),
           ),
           const SizedBox(height: 12),
           Container(
@@ -2096,28 +2124,39 @@ class _CouponDialogState extends State<CouponDialog> {
 
   Widget _buildDialogImage(String path) {
     if (path.startsWith('http')) {
-      return Image.network(path,
-          fit: BoxFit.cover, errorBuilder: (_, __, ___) => _dialogErrorImage());
+      return Image.network(
+        path,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _dialogErrorImage(),
+      );
     } else if (path.startsWith('data:image')) {
       try {
         final base64Data = path.split(',').last;
-        return Image.memory(base64Decode(base64Data),
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => _dialogErrorImage());
+        return Image.memory(
+          base64Decode(base64Data),
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _dialogErrorImage(),
+        );
       } catch (e) {
         return _dialogErrorImage();
       }
     } else {
-      return Image.file(File(path),
-          fit: BoxFit.cover, errorBuilder: (_, __, ___) => _dialogErrorImage());
+      return Image.file(
+        File(path),
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _dialogErrorImage(),
+      );
     }
   }
 
   Widget _dialogErrorImage() {
     return Container(
       color: Colors.grey.shade100,
-      child:
-          const Icon(Icons.broken_image_outlined, size: 32, color: Colors.grey),
+      child: const Icon(
+        Icons.broken_image_outlined,
+        size: 32,
+        color: Colors.grey,
+      ),
     );
   }
 
@@ -2129,7 +2168,9 @@ class _CouponDialogState extends State<CouponDialog> {
         width: 120,
         decoration: BoxDecoration(
           border: Border.all(
-              color: const Color(0xFFE5E7EB), style: BorderStyle.none),
+            color: const Color(0xFFE5E7EB),
+            style: BorderStyle.none,
+          ),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Stack(
@@ -2143,8 +2184,11 @@ class _CouponDialogState extends State<CouponDialog> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.upload_outlined,
-                        size: 24, color: Color(0xFF6B7280)),
+                    const Icon(
+                      Icons.upload_outlined,
+                      size: 24,
+                      color: Color(0xFF6B7280),
+                    ),
                     const SizedBox(height: 8),
                     Text(
                       'Upload Image',
@@ -2187,11 +2231,14 @@ class _CouponDialogState extends State<CouponDialog> {
         isExpanded: true,
         underline: const SizedBox(),
         icon: const Icon(Icons.keyboard_arrow_down, size: 20),
-        style:
-            GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF374151)),
+        style: GoogleFonts.poppins(
+          fontSize: 11,
+          color: const Color(0xFF374151),
+        ),
         items: items
             .map(
-                (e) => DropdownMenuItem<T>(value: e, child: Text(e.toString())))
+              (e) => DropdownMenuItem<T>(value: e, child: Text(e.toString())),
+            )
             .toList(),
         onChanged: onChanged,
       ),

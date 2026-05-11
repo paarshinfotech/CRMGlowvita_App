@@ -4380,6 +4380,7 @@ class OfferModel {
   final DateTime? startDate;
   final DateTime? expires;
   final int? redeemed;
+  final num? totalDiscount;
   final List<dynamic>? applicableSpecialties;
   final List<dynamic>? applicableCategories;
   final List<dynamic>? applicableServices;
@@ -4411,6 +4412,7 @@ class OfferModel {
     this.startDate,
     this.expires,
     this.redeemed,
+    this.totalDiscount,
     this.applicableSpecialties,
     this.applicableCategories,
     this.applicableServices,
@@ -4435,6 +4437,7 @@ class OfferModel {
           : null,
       expires: json['expires'] != null ? DateTime.parse(json['expires']) : null,
       redeemed: json['redeemed'],
+      totalDiscount: json['totalDiscount'],
       applicableSpecialties: json['applicableSpecialties'],
       applicableCategories: json['applicableCategories'],
       applicableServices: json['applicableServices'],

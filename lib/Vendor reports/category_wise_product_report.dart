@@ -87,7 +87,7 @@ class _CategoryWiseProductReportState extends State<CategoryWiseProductReport> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
+      backgroundColor: Colors.white,
       appBar: _buildAppBar(),
       body: Padding(
         padding: EdgeInsets.all(12.w),

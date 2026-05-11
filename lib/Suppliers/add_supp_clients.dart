@@ -210,7 +210,7 @@ class _AddSuppCustomerState extends State<AddSuppCustomer> {
         elevation: 1,
         foregroundColor: Colors.black,
       ),
-      backgroundColor: const Color(0xFFF4F4F4),
+      backgroundColor: Colors.white,
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(

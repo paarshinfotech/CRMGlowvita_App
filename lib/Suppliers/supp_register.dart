@@ -29,8 +29,9 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
   final TextEditingController lastNameCtrl = TextEditingController();
   final TextEditingController shopNameCtrl = TextEditingController();
   final TextEditingController registrationNumberCtrl = TextEditingController();
-  final TextEditingController categoryCtrl =
-      TextEditingController(text: "general");
+  final TextEditingController categoryCtrl = TextEditingController(
+    text: "general",
+  );
   final TextEditingController descriptionCtrl = TextEditingController();
   final TextEditingController referralCtrl = TextEditingController();
   final TextEditingController phoneCtrl = TextEditingController();
@@ -106,9 +107,9 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
     }
 
     if (passwordCtrl.text != confirmPasswordCtrl.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Passwords do not match")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Passwords do not match")));
       return;
     }
 
@@ -121,9 +122,9 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
 
     var connectivityResult = await Connectivity().checkConnectivity();
     if (connectivityResult == ConnectivityResult.none) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("No internet connection.")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("No internet connection.")));
       return;
     }
 
@@ -143,18 +144,16 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
         "state": stateCtrl.text.trim(),
         "city": cityCtrl.text.trim(),
         "pincode": pincodeCtrl.text.trim(),
-        "location": {
-          "lat": selectedLat,
-          "lng": selectedLng,
-        },
+        "location": {"lat": selectedLat, "lng": selectedLng},
         "address": addressCtrl.text.trim(),
         "businessRegistrationNo": registrationNumberCtrl.text.trim(),
         "supplierType": categoryCtrl.text.trim(),
         "profileImage": null, // No profile image upload in current UI
         "licenseFiles": [], // No license upload in current UI
         "password": passwordCtrl.text,
-        "referredByCode":
-            referralCtrl.text.trim().isEmpty ? null : referralCtrl.text.trim(),
+        "referredByCode": referralCtrl.text.trim().isEmpty
+            ? null
+            : referralCtrl.text.trim(),
       };
 
       developer.log("FINAL PAYLOAD: ${jsonEncode(payload)}");
@@ -163,7 +162,7 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
 
       final response = await http
           .post(
-            Uri.parse("https://admin.v2winonline.com/api/admin/suppliers"),
+            Uri.parse("https://admin.glowvitasalon.com/api/admin/suppliers"),
             headers: {
               "Content-Type": "application/json",
               "Accept": "application/json",
@@ -205,8 +204,9 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
           final errorData = jsonDecode(response.body);
           errorMessage = errorData["message"] ?? errorMessage;
         } catch (_) {
-          errorMessage =
-              response.body.isNotEmpty ? response.body : errorMessage;
+          errorMessage = response.body.isNotEmpty
+              ? response.body
+              : errorMessage;
         }
 
         if (response.statusCode == 409) {
@@ -322,9 +322,9 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
                         child: GestureDetector(
                           onTap: currentStep > 0
                               ? () => _pageController.previousPage(
-                                    duration: const Duration(milliseconds: 300),
-                                    curve: Curves.ease,
-                                  )
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.ease,
+                                )
                               : null,
                           child: Container(
                             width: 32.w,
@@ -345,8 +345,10 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
                       // ── Step dots ──
                       Row(
                         mainAxisSize: MainAxisSize.min,
-                        children:
-                            List.generate(3, (index) => _buildIndicator(index)),
+                        children: List.generate(
+                          3,
+                          (index) => _buildIndicator(index),
+                        ),
                       ),
                       SizedBox(width: 12.w),
                       // ── Next button (validated) ──
@@ -360,17 +362,27 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
                                     if (!_formKey.currentState!.validate())
                                       return;
                                     if (!isEmailVerified) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(const SnackBar(
-                                              content: Text(
-                                                  "Please verify your email.")));
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            "Please verify your email.",
+                                          ),
+                                        ),
+                                      );
                                       return;
                                     }
                                     if (!isPhoneVerified) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(const SnackBar(
-                                              content: Text(
-                                                  "Please verify your phone.")));
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            "Please verify your phone.",
+                                          ),
+                                        ),
+                                      );
                                       return;
                                     }
                                   } else if (currentStep == 1) {
@@ -444,7 +456,9 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
               "Enter your personal details to get started",
               textAlign: TextAlign.center,
               style: GoogleFonts.poppins(
-                  fontSize: 10.sp, color: Colors.grey.shade600),
+                fontSize: 10.sp,
+                color: Colors.grey.shade600,
+              ),
             ),
             SizedBox(height: 16.h),
             Row(
@@ -482,8 +496,10 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
               onVerify: _handleEmailVerify,
               validator: (v) {
                 if (v?.trim().isEmpty ?? true) return 'Required';
-                if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                    .hasMatch(v!.trim())) return 'Invalid email';
+                if (!RegExp(
+                  r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                ).hasMatch(v!.trim()))
+                  return 'Invalid email';
                 return null;
               },
             ),
@@ -513,8 +529,9 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
               obscureText: _obscurePassword,
               suffixIcon: IconButton(
                 icon: Icon(
-                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                    size: 18.sp),
+                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                  size: 18.sp,
+                ),
                 onPressed: () =>
                     setState(() => _obscurePassword = !_obscurePassword),
               ),
@@ -528,12 +545,14 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
               obscureText: _obscureConfirmPassword,
               suffixIcon: IconButton(
                 icon: Icon(
-                    _obscureConfirmPassword
-                        ? Icons.visibility_off
-                        : Icons.visibility,
-                    size: 18.sp),
+                  _obscureConfirmPassword
+                      ? Icons.visibility_off
+                      : Icons.visibility,
+                  size: 18.sp,
+                ),
                 onPressed: () => setState(
-                    () => _obscureConfirmPassword = !_obscureConfirmPassword),
+                  () => _obscureConfirmPassword = !_obscureConfirmPassword,
+                ),
               ),
               validator: (v) {
                 if (v?.trim().isEmpty ?? true) return 'Required';
@@ -543,25 +562,36 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
             ),
             SizedBox(height: 10.h),
             _buildOutlinedField(
-                label: "Referral Code (Optional)", controller: referralCtrl),
+              label: "Referral Code (Optional)",
+              controller: referralCtrl,
+            ),
             SizedBox(height: 20.h),
-            _buildContinueButton(onPressed: () {
-              if (_formKey.currentState!.validate()) {
-                if (!isEmailVerified) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text("Please verify your email.")));
-                  return;
-                }
-                if (!isPhoneVerified) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text("Please verify your phone number.")));
-                  return;
-                }
-                _pageController.nextPage(
+            _buildContinueButton(
+              onPressed: () {
+                if (_formKey.currentState!.validate()) {
+                  if (!isEmailVerified) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Please verify your email."),
+                      ),
+                    );
+                    return;
+                  }
+                  if (!isPhoneVerified) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Please verify your phone number."),
+                      ),
+                    );
+                    return;
+                  }
+                  _pageController.nextPage(
                     duration: const Duration(milliseconds: 300),
-                    curve: Curves.ease);
-              }
-            }),
+                    curve: Curves.ease,
+                  );
+                }
+              },
+            ),
             SizedBox(height: 20.h),
           ],
         ),
@@ -590,7 +620,9 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
               "Provide your business information",
               textAlign: TextAlign.center,
               style: GoogleFonts.poppins(
-                  fontSize: 10.sp, color: Colors.grey.shade600),
+                fontSize: 10.sp,
+                color: Colors.grey.shade600,
+              ),
             ),
             SizedBox(height: 16.h),
             _buildOutlinedField(
@@ -622,13 +654,16 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
                   v?.trim().isEmpty ?? true ? 'Category required' : null,
             ),
             SizedBox(height: 20.h),
-            _buildContinueButton(onPressed: () {
-              if (_formKey.currentState!.validate()) {
-                _pageController.nextPage(
+            _buildContinueButton(
+              onPressed: () {
+                if (_formKey.currentState!.validate()) {
+                  _pageController.nextPage(
                     duration: const Duration(milliseconds: 300),
-                    curve: Curves.ease);
-              }
-            }),
+                    curve: Curves.ease,
+                  );
+                }
+              },
+            ),
             SizedBox(height: 20.h),
           ],
         ),
@@ -657,13 +692,16 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
               "Set your business location and address details.",
               textAlign: TextAlign.center,
               style: GoogleFonts.poppins(
-                  fontSize: 10.sp, color: Colors.grey.shade600),
+                fontSize: 10.sp,
+                color: Colors.grey.shade600,
+              ),
             ),
             SizedBox(height: 16.h),
             _buildOutlinedField(
               label: "Select location from map",
               controller: TextEditingController(
-                  text: addressCtrl.text.isEmpty ? "" : addressCtrl.text),
+                text: addressCtrl.text.isEmpty ? "" : addressCtrl.text,
+              ),
               readOnly: true,
             ),
             SizedBox(height: 10.h),
@@ -685,12 +723,15 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
                     try {
                       List<Placemark> placemarks =
                           await placemarkFromCoordinates(
-                              selectedLat!, selectedLng!);
+                            selectedLat!,
+                            selectedLng!,
+                          );
                       if (placemarks.isNotEmpty) {
                         Placemark place = placemarks[0];
                         setState(() {
                           stateCtrl.text = place.administrativeArea ?? '';
-                          cityCtrl.text = place.locality ??
+                          cityCtrl.text =
+                              place.locality ??
                               place.subLocality ??
                               place.subAdministrativeArea ??
                               '';
@@ -726,10 +767,11 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
     );
   }
 
-  Widget _buildContinueButton(
-      {required VoidCallback onPressed,
-      String label = "Continue",
-      IconData? icon}) {
+  Widget _buildContinueButton({
+    required VoidCallback onPressed,
+    String label = "Continue",
+    IconData? icon,
+  }) {
     return Container(
       width: double.infinity,
       height: 40.h,
@@ -753,15 +795,16 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10.r),
+          ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (icon != null) ...[
               Icon(icon, color: Colors.white, size: 16.sp),
-              SizedBox(width: 6.w)
+              SizedBox(width: 6.w),
             ],
             Text(
               label,
@@ -798,8 +841,10 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
       style: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.black87),
       decoration: InputDecoration(
         hintText: label,
-        hintStyle:
-            GoogleFonts.poppins(fontSize: 10.sp, color: Colors.grey.shade400),
+        hintStyle: GoogleFonts.poppins(
+          fontSize: 10.sp,
+          color: Colors.grey.shade400,
+        ),
         suffixIcon: suffixIcon != null
             ? Padding(
                 padding: EdgeInsets.only(right: 6.w),
@@ -810,7 +855,9 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
         filled: true,
         fillColor: Colors.white,
         contentPadding: EdgeInsets.symmetric(
-            horizontal: 14.w, vertical: maxLines > 1 ? 12.h : 10.h),
+          horizontal: 14.w,
+          vertical: maxLines > 1 ? 12.h : 10.h,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.r),
           borderSide: BorderSide(color: Colors.grey.shade200, width: 1),
@@ -860,40 +907,56 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
                 enabled: !isVerified,
                 keyboardType: keyboardType,
                 style: GoogleFonts.poppins(
-                    fontSize: 10.sp,
-                    color: isVerified ? Colors.grey : Colors.black87),
+                  fontSize: 10.sp,
+                  color: isVerified ? Colors.grey : Colors.black87,
+                ),
                 validator: validator,
                 decoration: InputDecoration(
                   hintText: label,
                   hintStyle: GoogleFonts.poppins(
-                      color: Colors.grey.shade400, fontSize: 10.sp),
+                    color: Colors.grey.shade400,
+                    fontSize: 10.sp,
+                  ),
                   suffixIcon: isVerified
                       ? Padding(
                           padding: EdgeInsets.only(right: 10.w),
-                          child: Icon(Icons.check_circle,
-                              color: Colors.green, size: 16.sp),
+                          child: Icon(
+                            Icons.check_circle,
+                            color: Colors.green,
+                            size: 16.sp,
+                          ),
                         )
                       : null,
-                  suffixIconConstraints:
-                      BoxConstraints(minWidth: 30.w, minHeight: 30.h),
+                  suffixIconConstraints: BoxConstraints(
+                    minWidth: 30.w,
+                    minHeight: 30.h,
+                  ),
                   filled: true,
                   fillColor: Colors.white,
-                  contentPadding:
-                      EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 14.w,
+                    vertical: 10.h,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8.r),
-                    borderSide:
-                        BorderSide(color: Colors.grey.shade200, width: 1),
+                    borderSide: BorderSide(
+                      color: Colors.grey.shade200,
+                      width: 1,
+                    ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8.r),
-                    borderSide:
-                        BorderSide(color: Colors.grey.shade200, width: 1),
+                    borderSide: BorderSide(
+                      color: Colors.grey.shade200,
+                      width: 1,
+                    ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8.r),
-                    borderSide:
-                        const BorderSide(color: Color(0xFF3B1F2B), width: 1.2),
+                    borderSide: const BorderSide(
+                      color: Color(0xFF3B1F2B),
+                      width: 1.2,
+                    ),
                   ),
                   errorBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8.r),
@@ -925,20 +988,25 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
                     shadowColor: Colors.transparent,
                     padding: EdgeInsets.symmetric(horizontal: 10.w),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.r)),
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
                   ),
                   child: isSending
                       ? SizedBox(
                           height: 16.h,
                           width: 16.w,
                           child: const CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2))
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
                       : Text(
                           isOtpSent ? "Resend" : "Send OTP",
                           style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontSize: 10.sp,
-                              fontWeight: FontWeight.bold),
+                            color: Colors.white,
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                 ),
               ),
@@ -955,31 +1023,42 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
                   keyboardType: TextInputType.number,
                   textAlign: TextAlign.center,
                   style: GoogleFonts.poppins(
-                      fontSize: 12.sp, fontWeight: FontWeight.bold),
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
                   decoration: InputDecoration(
                     hintText: "Enter OTP",
                     hintStyle: GoogleFonts.poppins(
-                        color: Colors.grey.shade400,
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.normal),
+                      color: Colors.grey.shade400,
+                      fontSize: 10.sp,
+                      fontWeight: FontWeight.normal,
+                    ),
                     filled: true,
                     fillColor: Colors.white,
-                    contentPadding:
-                        EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 14.w,
+                      vertical: 10.h,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8.r),
-                      borderSide:
-                          BorderSide(color: Colors.grey.shade200, width: 1),
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 1,
+                      ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8.r),
-                      borderSide:
-                          BorderSide(color: Colors.grey.shade200, width: 1),
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 1,
+                      ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8.r),
                       borderSide: const BorderSide(
-                          color: Color(0xFF3B1F2B), width: 1.2),
+                        color: Color(0xFF3B1F2B),
+                        width: 1.2,
+                      ),
                     ),
                   ),
                 ),
@@ -998,19 +1077,26 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
                     shadowColor: Colors.transparent,
                     padding: EdgeInsets.symmetric(horizontal: 16.w),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.r)),
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
                   ),
                   child: isVerifying
                       ? SizedBox(
                           height: 16.h,
                           width: 16.w,
                           child: const CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2))
-                      : Text("Verify",
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Text(
+                          "Verify",
                           style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontSize: 10.sp,
-                              fontWeight: FontWeight.bold)),
+                            color: Colors.white,
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
             ],
@@ -1022,9 +1108,9 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
 
   Future<void> _handleEmailOtp() async {
     if (emailCtrl.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter email first")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Please enter email first")));
       return;
     }
     if (firstNameCtrl.text.isEmpty || lastNameCtrl.text.isEmpty) {
@@ -1060,9 +1146,9 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
         throw msg;
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
       setState(() => isSendingEmailOtp = false);
     }
@@ -1073,14 +1159,17 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
     setState(() => isVerifyingEmailOtp = true);
     try {
       final response = await ApiService.verifyOtp(
-          emailCtrl.text.trim(), emailOtpCtrl.text.trim(),
-          role: 'supplier');
+        emailCtrl.text.trim(),
+        emailOtpCtrl.text.trim(),
+        role: 'supplier',
+      );
       if (response.statusCode == 200 || response.statusCode == 201) {
         setState(() => isEmailVerified = true);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text("Email verified successfully"),
-              backgroundColor: Colors.green),
+            content: Text("Email verified successfully"),
+            backgroundColor: Colors.green,
+          ),
         );
       } else {
         String msg = "Verification failed";
@@ -1091,9 +1180,9 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
         throw msg;
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
       setState(() => isVerifyingEmailOtp = false);
     }
@@ -1115,7 +1204,8 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
     });
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-          content: Text("OTP sent to your mobile number (Use 123456)")),
+        content: Text("OTP sent to your mobile number (Use 123456)"),
+      ),
     );
   }
 
@@ -1124,13 +1214,14 @@ class _SupplierRegisterPageState extends State<SupplierRegisterPage> {
       setState(() => isPhoneVerified = true);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text("Mobile number verified successfully"),
-            backgroundColor: Colors.green),
+          content: Text("Mobile number verified successfully"),
+          backgroundColor: Colors.green,
+        ),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Invalid mobile OTP")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Invalid mobile OTP")));
     }
   }
 }
@@ -1157,8 +1248,10 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
 
   Future<void> _updateAddress(LatLng point) async {
     try {
-      List<Placemark> placemarks =
-          await placemarkFromCoordinates(point.latitude, point.longitude);
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        point.latitude,
+        point.longitude,
+      );
       if (placemarks.isNotEmpty) {
         final p = placemarks.first;
         setState(() {
@@ -1170,7 +1263,7 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
             p.locality,
             p.administrativeArea,
             p.postalCode,
-            p.country
+            p.country,
           ];
 
           List<String> filteredParts = [];
@@ -1232,7 +1325,8 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
             builder: (context) => AlertDialog(
               title: const Text('Location Services Disabled'),
               content: const Text(
-                  'Please enable location services to find your current location.'),
+                'Please enable location services to find your current location.',
+              ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context, false),
@@ -1298,8 +1392,8 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
       }
 
       Position position = await Geolocator.getCurrentPosition(
-              desiredAccuracy: LocationAccuracy.high)
-          .timeout(const Duration(seconds: 15));
+        desiredAccuracy: LocationAccuracy.high,
+      ).timeout(const Duration(seconds: 15));
       final newLocation = LatLng(position.latitude, position.longitude);
 
       if (mounted) {
@@ -1314,9 +1408,9 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
     } catch (e) {
       debugPrint('Location error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error getting location: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error getting location: $e')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -1335,18 +1429,22 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Select Business Location',
-                style: GoogleFonts.poppins(
-                    fontSize: 18.sp,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).primaryColor),
-                textAlign: TextAlign.center),
+            Text(
+              'Select Business Location',
+              style: GoogleFonts.poppins(
+                fontSize: 18.sp,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).primaryColor,
+              ),
+              textAlign: TextAlign.center,
+            ),
             SizedBox(height: 20.h),
             Container(
               decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12.r),
-                  border: Border.all(color: Colors.grey.shade300)),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
               child: TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
@@ -1354,8 +1452,10 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                   prefixIcon: Icon(Icons.search, color: Colors.grey.shade600),
                   suffixIcon: _searchController.text.isNotEmpty
                       ? IconButton(
-                          icon: Icon(Icons.clear,
-                              color: Theme.of(context).primaryColor),
+                          icon: Icon(
+                            Icons.clear,
+                            color: Theme.of(context).primaryColor,
+                          ),
                           onPressed: () {
                             _searchController.clear();
                             setState(() {});
@@ -1372,16 +1472,19 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                   setState(() => _isLoading = true);
 
                   try {
-                    List<Location> locations = await locationFromAddress(value)
-                        .timeout(const Duration(seconds: 10));
+                    List<Location> locations = await locationFromAddress(
+                      value,
+                    ).timeout(const Duration(seconds: 10));
 
                     if (locations.isEmpty) {
                       throw Exception('No matching locations found');
                     }
 
                     final location = locations.first;
-                    final newLocation =
-                        LatLng(location.latitude, location.longitude);
+                    final newLocation = LatLng(
+                      location.latitude,
+                      location.longitude,
+                    );
 
                     setState(() {
                       selectedLocation = newLocation;
@@ -1398,8 +1501,10 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content: Text(
-                                'Could not find the location. Please try again.')),
+                          content: Text(
+                            'Could not find the location. Please try again.',
+                          ),
+                        ),
                       );
                     }
                   } finally {
@@ -1418,22 +1523,30 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                       width: 16.w,
                       height: 16.h,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
                   : Icon(Icons.my_location, size: 18.sp),
-              label: Text('Use My Location',
-                  style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+              label: Text(
+                'Use My Location',
+                style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+              ),
               style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).primaryColor,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8.r))),
+                backgroundColor: Theme.of(context).primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+              ),
             ),
             SizedBox(height: 16.h),
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12.r),
-                    border: Border.all(color: Colors.grey.shade300)),
+                  borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12.r),
                   child: GoogleMap(
@@ -1451,7 +1564,8 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                         markerId: const MarkerId('selectedLocation'),
                         position: selectedLocation,
                         icon: BitmapDescriptor.defaultMarkerWithHue(
-                            BitmapDescriptor.hueRed),
+                          BitmapDescriptor.hueRed,
+                        ),
                       ),
                     },
                     myLocationEnabled: true,
@@ -1465,51 +1579,69 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
             Container(
               padding: EdgeInsets.all(12.w),
               decoration: BoxDecoration(
-                  color: Theme.of(context).primaryColor.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(8.r),
-                  border: Border.all(
-                      color: Theme.of(context).primaryColor.withOpacity(0.3))),
+                color: Theme.of(context).primaryColor.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8.r),
+                border: Border.all(
+                  color: Theme.of(context).primaryColor.withOpacity(0.3),
+                ),
+              ),
               child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Selected:',
-                        style:
-                            GoogleFonts.poppins(fontWeight: FontWeight.bold)),
-                    Text(address.isEmpty ? 'Tap map to select' : address),
-                    Text(
-                        '${selectedLocation.latitude.toStringAsFixed(6)}, ${selectedLocation.longitude.toStringAsFixed(6)}',
-                        style: GoogleFonts.poppins(
-                            fontSize: 11.sp, color: Colors.grey.shade700)),
-                  ]),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Selected:',
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+                  ),
+                  Text(address.isEmpty ? 'Tap map to select' : address),
+                  Text(
+                    '${selectedLocation.latitude.toStringAsFixed(6)}, ${selectedLocation.longitude.toStringAsFixed(6)}',
+                    style: GoogleFonts.poppins(
+                      fontSize: 11.sp,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                ],
+              ),
             ),
             SizedBox(height: 20.h),
-            Row(children: [
-              Expanded(
+            Row(
+              children: [
+                Expanded(
                   child: TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text('CANCEL',
-                          style: GoogleFonts.poppins(
-                              color: Colors.grey.shade700,
-                              fontWeight: FontWeight.w600)))),
-              SizedBox(width: 12.w),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, {
-                  'lat': selectedLocation.latitude,
-                  'lng': selectedLocation.longitude,
-                  'address': address.isNotEmpty
-                      ? address
-                      : '${selectedLocation.latitude.toStringAsFixed(6)}, ${selectedLocation.longitude.toStringAsFixed(6)}',
-                }),
-                style: ElevatedButton.styleFrom(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      'CANCEL',
+                      style: GoogleFonts.poppins(
+                        color: Colors.grey.shade700,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 12.w),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, {
+                    'lat': selectedLocation.latitude,
+                    'lng': selectedLocation.longitude,
+                    'address': address.isNotEmpty
+                        ? address
+                        : '${selectedLocation.latitude.toStringAsFixed(6)}, ${selectedLocation.longitude.toStringAsFixed(6)}',
+                  }),
+                  style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).primaryColor,
                     foregroundColor: Colors.white,
                     minimumSize: Size(120.w, 44.h),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.r))),
-                child: Text('CONFIRM',
-                    style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
-              ),
-            ]),
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
+                  ),
+                  child: Text(
+                    'CONFIRM',
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),

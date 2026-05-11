@@ -668,7 +668,7 @@ class _My_ProfileState extends State<My_Profile>
         _profile?.subscription?.status.toLowerCase() == 'expired';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,

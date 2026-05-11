@@ -22,7 +22,7 @@ import 'widgets/subscription_wrapper.dart';
 // ─────────────────────────────────────────────
 const Color kPrimary = Color(0xFF4A2C3C);
 const Color kPrimaryLight = Color(0xFF6B3FA0);
-const Color kBg = Color(0xFFF7F7F8);
+const Color kBg = Colors.white;
 const Color kCard = Colors.white;
 const Color kBorder = Color(0xFFE5E7EB);
 
@@ -92,13 +92,17 @@ class _DashboardPageState extends State<DashboardPage>
   void initState() {
     super.initState();
     _kpiCtrl = AnimationController(
-        duration: const Duration(milliseconds: 500), vsync: this);
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
     _kpiFade = CurvedAnimation(parent: _kpiCtrl, curve: Curves.easeInOut);
 
     _apptCtrlList = List.generate(
       appointments.length,
       (i) => AnimationController(
-          duration: Duration(milliseconds: 300 + i * 100), vsync: this),
+        duration: Duration(milliseconds: 300 + i * 100),
+        vsync: this,
+      ),
     );
     _apptAnimList = _apptCtrlList
         .map((c) => CurvedAnimation(parent: c, curve: Curves.easeOut))
@@ -230,19 +234,23 @@ class _DashboardPageState extends State<DashboardPage>
       const Color(0xFF26A69A),
       const Color(0xFF42A5F5),
       const Color(0xFFFF7043),
-      const Color(0xFFEC407A)
+      const Color(0xFFEC407A),
     ];
 
     for (int i = 0; i < top4Services.length; i++) {
       final percent = totalTopBookings > 0
           ? (top4Services[i].value / totalTopBookings) * 100
           : 0.0;
-      _servicePieSegments.add(_PieSegment(
-          value: top4Services[i].value.toDouble(), color: pieColors[i]));
+      _servicePieSegments.add(
+        _PieSegment(
+          value: top4Services[i].value.toDouble(),
+          color: pieColors[i],
+        ),
+      );
       _topServicesLegend.add({
         'label': top4Services[i].key,
         'percent': '${percent.toStringAsFixed(0)}%',
-        'color': pieColors[i]
+        'color': pieColors[i],
       });
     }
 
@@ -253,7 +261,8 @@ class _DashboardPageState extends State<DashboardPage>
     for (var invoice in _allInvoices) {
       if (invoice.createdAt != null) {
         // Calculate difference in months
-        int monthsDiff = (now.year - invoice.createdAt.year) * 12 +
+        int monthsDiff =
+            (now.year - invoice.createdAt.year) * 12 +
             (now.month - invoice.createdAt.month);
         if (monthsDiff >= 0 && monthsDiff < 7) {
           int index = 6 - monthsDiff; // 0 is 6 months ago, 6 is current month
@@ -325,7 +334,10 @@ class _DashboardPageState extends State<DashboardPage>
     return Text(
       (_profile?.businessName ?? 'H').substring(0, 1).toUpperCase(),
       style: TextStyle(
-          color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.bold),
+        color: Colors.white,
+        fontSize: 12.sp,
+        fontWeight: FontWeight.bold,
+      ),
     );
   }
 
@@ -348,7 +360,7 @@ class _DashboardPageState extends State<DashboardPage>
       'Sep',
       'Oct',
       'Nov',
-      'Dec'
+      'Dec',
     ];
     switch (_presetPeriod) {
       case _PresetPeriod.day:
@@ -380,14 +392,17 @@ class _DashboardPageState extends State<DashboardPage>
 
     return MediaQuery(
       data: mq.copyWith(
-          textScaler:
-              mq.textScaler.clamp(minScaleFactor: 0.85, maxScaleFactor: 1.0)),
+        textScaler: mq.textScaler.clamp(
+          minScaleFactor: 0.85,
+          maxScaleFactor: 1.0,
+        ),
+      ),
       child: Theme(
         data: Theme.of(context).copyWith(
           primaryColor: kPrimary,
-          colorScheme: Theme.of(context)
-              .colorScheme
-              .copyWith(primary: kPrimary, secondary: kPrimaryLight),
+          colorScheme: Theme.of(
+            context,
+          ).colorScheme.copyWith(primary: kPrimary, secondary: kPrimaryLight),
           textTheme: GoogleFonts.poppinsTextTheme(Theme.of(context).textTheme),
         ),
         child: Scaffold(
@@ -408,7 +423,8 @@ class _DashboardPageState extends State<DashboardPage>
                         final sub = vendorProfile?.subscription;
                         final bool isActive =
                             sub != null && sub.status.toLowerCase() == 'active';
-                        final bool isExpired = sub != null &&
+                        final bool isExpired =
+                            sub != null &&
                             sub.endDate != null &&
                             sub.endDate!.isBefore(DateTime.now());
                         final bool subscriptionOk = !(!isActive || isExpired);
@@ -421,40 +437,49 @@ class _DashboardPageState extends State<DashboardPage>
                           leading: subscriptionOk
                               ? Builder(
                                   builder: (ctx) => IconButton(
-                                    icon: const Icon(Icons.menu,
-                                        color: Colors.black),
+                                    icon: const Icon(
+                                      Icons.menu,
+                                      color: Colors.black,
+                                    ),
                                     onPressed: () =>
                                         Scaffold.of(ctx).openDrawer(),
                                   ),
                                 )
                               : const SizedBox.shrink(),
-                          title: Text('Vendor Dashboard',
-                              style: TextStyle(
-                                  fontSize: 14.sp,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.black)),
+                          title: Text(
+                            'Vendor Dashboard',
+                            style: TextStyle(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black,
+                            ),
+                          ),
                           actions: [
                             IconButton(
-                              icon: const Icon(Icons.notifications_outlined,
-                                  color: Colors.black),
+                              icon: const Icon(
+                                Icons.notifications_outlined,
+                                color: Colors.black,
+                              ),
                               onPressed: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (_) =>
-                                          const NotificationPage())),
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const NotificationPage(),
+                                ),
+                              ),
                             ),
                             GestureDetector(
                               onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (_) => My_Profile())),
+                                context,
+                                MaterialPageRoute(builder: (_) => My_Profile()),
+                              ),
                               child: Padding(
                                 padding: EdgeInsets.only(right: 10.w),
                                 child: CircleAvatar(
                                   radius: 16,
                                   backgroundColor: kPrimary,
                                   child: ClipOval(
-                                    child: (_profile != null &&
+                                    child:
+                                        (_profile != null &&
                                             _profile!.profileImage.isNotEmpty)
                                         ? Image.network(
                                             _profile!.profileImage,
@@ -463,11 +488,14 @@ class _DashboardPageState extends State<DashboardPage>
                                             fit: BoxFit.cover,
                                             errorBuilder: (ctx, _, __) =>
                                                 _buildInitialAvatar(),
-                                            loadingBuilder: (ctx, child,
-                                                    progress) =>
-                                                progress == null
-                                                    ? child
-                                                    : const CircularProgressIndicator(),
+                                            loadingBuilder:
+                                                (
+                                                  ctx,
+                                                  child,
+                                                  progress,
+                                                ) => progress == null
+                                                ? child
+                                                : const CircularProgressIndicator(),
                                           )
                                         : _buildInitialAvatar(),
                                   ),
@@ -483,100 +511,124 @@ class _DashboardPageState extends State<DashboardPage>
                     SliverToBoxAdapter(
                       child: Container(
                         padding: EdgeInsets.symmetric(
-                            horizontal: 10.w, vertical: 8.h),
+                          horizontal: 10.w,
+                          vertical: 8.h,
+                        ),
                         color: kCard,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(children: [
-                              Expanded(
-                                child: Text('Filter Type',
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'Filter Type',
                                     style: TextStyle(
-                                        fontSize: 9.sp,
-                                        color: Colors.grey[600],
-                                        fontWeight: FontWeight.w500)),
-                              ),
-                              SizedBox(width: 10.w),
-                              Expanded(
-                                child: Text('Period',
-                                    style: TextStyle(
-                                        fontSize: 9.sp,
-                                        color: Colors.grey[600],
-                                        fontWeight: FontWeight.w500)),
-                              ),
-                              SizedBox(width: 10.w),
-                              const SizedBox(width: 68),
-                            ]),
-                            SizedBox(height: 4.h),
-                            Row(children: [
-                              Expanded(
-                                child: _FilterTypeDropdown(
-                                  current: _filterType,
-                                  onChanged: (v) =>
-                                      setState(() => _filterType = v!),
-                                ),
-                              ),
-                              SizedBox(width: 10.w),
-                              Expanded(
-                                child: _PeriodDropdown(
-                                  filterType: _filterType,
-                                  presetPeriod: _presetPeriod,
-                                  onChanged: (p) =>
-                                      setState(() => _presetPeriod = p!),
-                                  selectedDay: _selDay,
-                                  selectedMonth: _selMonth,
-                                  selectedYear: _selYear,
-                                  onDayChanged: (d) =>
-                                      setState(() => _selDay = d),
-                                  onMonthChanged: (m) =>
-                                      setState(() => _selMonth = m!),
-                                  onYearChanged: (y) =>
-                                      setState(() => _selYear = y!),
-                                ),
-                              ),
-                              SizedBox(width: 10.w),
-                              GestureDetector(
-                                onTap: _applyFilter,
-                                child: Container(
-                                  height: 38.h,
-                                  padding:
-                                      EdgeInsets.symmetric(horizontal: 18.w),
-                                  decoration: BoxDecoration(
-                                    color: kPrimary,
-                                    borderRadius: BorderRadius.circular(8),
+                                      fontSize: 9.sp,
+                                      color: Colors.grey[600],
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
-                                  alignment: Alignment.center,
-                                  child: Text('Apply',
-                                      style: TextStyle(
-                                          fontSize: 12.sp,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.white)),
                                 ),
-                              ),
-                            ]),
+                                SizedBox(width: 10.w),
+                                Expanded(
+                                  child: Text(
+                                    'Period',
+                                    style: TextStyle(
+                                      fontSize: 9.sp,
+                                      color: Colors.grey[600],
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 10.w),
+                                const SizedBox(width: 68),
+                              ],
+                            ),
+                            SizedBox(height: 4.h),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _FilterTypeDropdown(
+                                    current: _filterType,
+                                    onChanged: (v) =>
+                                        setState(() => _filterType = v!),
+                                  ),
+                                ),
+                                SizedBox(width: 10.w),
+                                Expanded(
+                                  child: _PeriodDropdown(
+                                    filterType: _filterType,
+                                    presetPeriod: _presetPeriod,
+                                    onChanged: (p) =>
+                                        setState(() => _presetPeriod = p!),
+                                    selectedDay: _selDay,
+                                    selectedMonth: _selMonth,
+                                    selectedYear: _selYear,
+                                    onDayChanged: (d) =>
+                                        setState(() => _selDay = d),
+                                    onMonthChanged: (m) =>
+                                        setState(() => _selMonth = m!),
+                                    onYearChanged: (y) =>
+                                        setState(() => _selYear = y!),
+                                  ),
+                                ),
+                                SizedBox(width: 10.w),
+                                GestureDetector(
+                                  onTap: _applyFilter,
+                                  child: Container(
+                                    height: 38.h,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 18.w,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: kPrimary,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      'Apply',
+                                      style: TextStyle(
+                                        fontSize: 12.sp,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                             if (_filterType == _FilterType.presetPeriod &&
                                 _presetPeriod != _PresetPeriod.allTime) ...[
                               SizedBox(height: 6.h),
                               Container(
                                 padding: EdgeInsets.symmetric(
-                                    horizontal: 10.w, vertical: 5.h),
+                                  horizontal: 10.w,
+                                  vertical: 5.h,
+                                ),
                                 decoration: BoxDecoration(
-                                    color: kPrimary.withOpacity(0.07),
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(
-                                        color: kPrimary.withOpacity(0.2))),
+                                  color: kPrimary.withOpacity(0.07),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: kPrimary.withOpacity(0.2),
+                                  ),
+                                ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.filter_alt_outlined,
-                                        size: 11.sp, color: kPrimary),
+                                    Icon(
+                                      Icons.filter_alt_outlined,
+                                      size: 11.sp,
+                                      color: kPrimary,
+                                    ),
                                     SizedBox(width: 4.w),
                                     Text(
                                       _buildPeriodLabel(),
                                       style: TextStyle(
-                                          fontSize: 10.sp,
-                                          color: kPrimary,
-                                          fontWeight: FontWeight.w600),
+                                        fontSize: 10.sp,
+                                        color: kPrimary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -599,85 +651,103 @@ class _DashboardPageState extends State<DashboardPage>
                             padding: EdgeInsets.symmetric(horizontal: 12.w),
                             child: FadeTransition(
                               opacity: _kpiFade,
-                              child: Column(children: [
-                                _kpiRow([
-                                  _KpiGridCard(
+                              child: Column(
+                                children: [
+                                  _kpiRow([
+                                    _KpiGridCard(
                                       title: 'Total Revenue',
                                       value:
                                           '₹ ${_totalRevenue.toStringAsFixed(2)}',
                                       icon: '🛒',
-                                      iconBg: const Color(0xFFFFF3E0)),
-                                  _KpiGridCard(
+                                      iconBg: const Color(0xFFFFF3E0),
+                                    ),
+                                    _KpiGridCard(
                                       title: 'Total Bookings',
                                       value: '$_totalBookings',
                                       icon: '📅',
-                                      iconBg: const Color(0xFFE3F2FD)),
-                                  _KpiGridCard(
+                                      iconBg: const Color(0xFFE3F2FD),
+                                    ),
+                                    _KpiGridCard(
                                       title: 'Booking Hours',
                                       value:
                                           '${_bookingHours.toStringAsFixed(1)}h',
                                       icon: '❤️',
-                                      iconBg: const Color(0xFFFCE4EC)),
-                                  _KpiGridCard(
+                                      iconBg: const Color(0xFFFCE4EC),
+                                    ),
+                                    _KpiGridCard(
                                       title: 'Selling Service Revenue',
                                       value:
                                           '₹ ${_serviceRevenue.toStringAsFixed(2)}',
                                       icon: '🏷️',
-                                      iconBg: const Color(0xFFF3E5F5)),
-                                ]),
-                                SizedBox(height: 8.h),
-                                _kpiRow([
-                                  _KpiGridCard(
+                                      iconBg: const Color(0xFFF3E5F5),
+                                    ),
+                                  ]),
+                                  SizedBox(height: 8.h),
+                                  _kpiRow([
+                                    _KpiGridCard(
                                       title: 'Selling Products Revenue',
                                       value:
                                           '₹ ${_productRevenue.toStringAsFixed(2)}',
                                       icon: '🧴',
-                                      iconBg: const Color(0xFFE8F5E9)),
-                                  _KpiGridCard(
+                                      iconBg: const Color(0xFFE8F5E9),
+                                    ),
+                                    _KpiGridCard(
                                       title: 'Cancelled Appointments',
                                       value: '$_cancelledAppts',
                                       icon: '❌',
-                                      iconBg: const Color(0xFFFFEBEE)),
-                                  _KpiGridCard(
+                                      iconBg: const Color(0xFFFFEBEE),
+                                    ),
+                                    _KpiGridCard(
                                       title: 'Upcoming Appointments',
                                       value: '$_upcomingAppts',
                                       icon: '📋',
-                                      iconBg: const Color(0xFFFFF8E1)),
-                                  _KpiGridCard(
+                                      iconBg: const Color(0xFFFFF8E1),
+                                    ),
+                                    _KpiGridCard(
                                       title: 'Total Business',
                                       value:
                                           '₹ ${_totalBusiness.toStringAsFixed(2)}',
                                       icon: '💰',
-                                      iconBg: const Color(0xFFFFF3E0)),
-                                ]),
-                                SizedBox(height: 8.h),
-                                Row(children: [
-                                  Expanded(
-                                      child: _KpiGridCard(
+                                      iconBg: const Color(0xFFFFF3E0),
+                                    ),
+                                  ]),
+                                  SizedBox(height: 8.h),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _KpiGridCard(
                                           title: 'Completed Appointments',
                                           value: '$_completedAppts',
                                           icon: '✅',
-                                          iconBg: const Color(0xFFE8F5E9))),
-                                  SizedBox(width: 8.w),
-                                  Expanded(
-                                      child: _KpiGridCard(
+                                          iconBg: const Color(0xFFE8F5E9),
+                                        ),
+                                      ),
+                                      SizedBox(width: 8.w),
+                                      Expanded(
+                                        child: _KpiGridCard(
                                           title: 'Total Expense',
                                           value:
                                               '₹ ${_totalExpense.toStringAsFixed(2)}',
                                           icon: '💸',
-                                          iconBg: const Color(0xFFFCE4EC))),
-                                  SizedBox(width: 8.w),
-                                  Expanded(
-                                      child: _KpiGridCard(
+                                          iconBg: const Color(0xFFFCE4EC),
+                                        ),
+                                      ),
+                                      SizedBox(width: 8.w),
+                                      Expanded(
+                                        child: _KpiGridCard(
                                           title: 'Total Counter Sale',
                                           value:
                                               '₹ ${_counterSale.toStringAsFixed(2)}',
                                           icon: '🖥️',
-                                          iconBg: const Color(0xFFE3F2FD))),
-                                  SizedBox(width: 8.w),
-                                  const Expanded(child: SizedBox()),
-                                ]),
-                              ]),
+                                          iconBg: const Color(0xFFE3F2FD),
+                                        ),
+                                      ),
+                                      SizedBox(width: 8.w),
+                                      const Expanded(child: SizedBox()),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -689,15 +759,20 @@ class _DashboardPageState extends State<DashboardPage>
                           child: Container(
                             margin: EdgeInsets.symmetric(horizontal: 12.w),
                             decoration: BoxDecoration(
-                                color: kCard,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: kBorder)),
+                              color: kCard,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: kBorder),
+                            ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Padding(
                                   padding: EdgeInsets.fromLTRB(
-                                      12.w, 12.h, 12.w, 4.h),
+                                    12.w,
+                                    12.h,
+                                    12.w,
+                                    4.h,
+                                  ),
                                   child: Row(
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceBetween,
@@ -706,35 +781,47 @@ class _DashboardPageState extends State<DashboardPage>
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          Text('Upcoming Appointments',
-                                              style: TextStyle(
-                                                  fontSize: 12.sp,
-                                                  fontWeight: FontWeight.w700)),
                                           Text(
-                                              'You have $_upcomingAppts upcoming appointments',
-                                              style: TextStyle(
-                                                  fontSize: 9.sp,
-                                                  color: Colors.grey[500])),
+                                            'Upcoming Appointments',
+                                            style: TextStyle(
+                                              fontSize: 12.sp,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          Text(
+                                            'You have $_upcomingAppts upcoming appointments',
+                                            style: TextStyle(
+                                              fontSize: 9.sp,
+                                              color: Colors.grey[500],
+                                            ),
+                                          ),
                                         ],
                                       ),
                                       GestureDetector(
                                         onTap: () => Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (_) =>
-                                                    const Appointment())),
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => const Appointment(),
+                                          ),
+                                        ),
                                         child: Container(
                                           padding: EdgeInsets.symmetric(
-                                              horizontal: 10.w, vertical: 5.h),
+                                            horizontal: 10.w,
+                                            vertical: 5.h,
+                                          ),
                                           decoration: BoxDecoration(
-                                              border:
-                                                  Border.all(color: kBorder),
-                                              borderRadius:
-                                                  BorderRadius.circular(8)),
-                                          child: Text('View All',
-                                              style: TextStyle(
-                                                  fontSize: 9.sp,
-                                                  fontWeight: FontWeight.w600)),
+                                            border: Border.all(color: kBorder),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'View All',
+                                            style: TextStyle(
+                                              fontSize: 9.sp,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -743,97 +830,126 @@ class _DashboardPageState extends State<DashboardPage>
                                 const Divider(height: 1),
                                 Padding(
                                   padding: EdgeInsets.symmetric(
-                                      horizontal: 12.w, vertical: 10.h),
+                                    horizontal: 12.w,
+                                    vertical: 10.h,
+                                  ),
                                   child: Row(
                                     children: [
                                       Expanded(
-                                          flex: 2,
-                                          child: Text('Client',
-                                              style: TextStyle(
-                                                  fontSize: 10.sp,
-                                                  color: Colors.grey[600],
-                                                  fontWeight:
-                                                      FontWeight.w500))),
+                                        flex: 2,
+                                        child: Text(
+                                          'Client',
+                                          style: TextStyle(
+                                            fontSize: 10.sp,
+                                            color: Colors.grey[600],
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
                                       Expanded(
-                                          flex: 2,
-                                          child: Text('Service',
-                                              style: TextStyle(
-                                                  fontSize: 10.sp,
-                                                  color: Colors.grey[600],
-                                                  fontWeight:
-                                                      FontWeight.w500))),
+                                        flex: 2,
+                                        child: Text(
+                                          'Service',
+                                          style: TextStyle(
+                                            fontSize: 10.sp,
+                                            color: Colors.grey[600],
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
                                       Expanded(
-                                          flex: 2,
-                                          child: Text('Date',
-                                              style: TextStyle(
-                                                  fontSize: 10.sp,
-                                                  color: Colors.grey[600],
-                                                  fontWeight:
-                                                      FontWeight.w500))),
+                                        flex: 2,
+                                        child: Text(
+                                          'Date',
+                                          style: TextStyle(
+                                            fontSize: 10.sp,
+                                            color: Colors.grey[600],
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
                                       Expanded(
-                                          flex: 1,
-                                          child: Text('Time',
-                                              style: TextStyle(
-                                                  fontSize: 10.sp,
-                                                  color: Colors.grey[600],
-                                                  fontWeight: FontWeight.w500),
-                                              textAlign: TextAlign.end)),
+                                        flex: 1,
+                                        child: Text(
+                                          'Time',
+                                          style: TextStyle(
+                                            fontSize: 10.sp,
+                                            color: Colors.grey[600],
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                          textAlign: TextAlign.end,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
                                 const Divider(height: 1),
                                 ..._allAppointments
-                                    .where((a) =>
-                                        a.date != null &&
-                                        a.date!.isAfter(DateTime.now()) &&
-                                        a.status?.toLowerCase() != 'cancelled')
+                                    .where(
+                                      (a) =>
+                                          a.date != null &&
+                                          a.date!.isAfter(DateTime.now()) &&
+                                          a.status?.toLowerCase() !=
+                                              'cancelled',
+                                    )
                                     .take(4)
-                                    .map((a) => Padding(
-                                          padding: EdgeInsets.symmetric(
-                                              horizontal: 12.w, vertical: 12.h),
-                                          child: Row(
-                                            children: [
-                                              Expanded(
-                                                  flex: 2,
-                                                  child: Text(
-                                                      a.clientName ?? 'N/A',
-                                                      style: TextStyle(
-                                                          fontSize: 10.sp,
-                                                          fontWeight: FontWeight
-                                                              .w600))),
-                                              Expanded(
-                                                  flex: 2,
-                                                  child: Text(
-                                                      a.serviceName ?? 'N/A',
-                                                      style: TextStyle(
-                                                          fontSize: 10.sp,
-                                                          color: Colors
-                                                              .grey[700]))),
-                                              Expanded(
-                                                  flex: 2,
-                                                  child: Text(
-                                                      a.date != null
-                                                          ? DateFormat(
-                                                                  'MMM d, y')
-                                                              .format(a.date!)
-                                                          : '--',
-                                                      style: TextStyle(
-                                                          fontSize: 10.sp,
-                                                          color: Colors
-                                                              .grey[700]))),
-                                              Expanded(
-                                                  flex: 1,
-                                                  child: Text(
-                                                      a.startTime ?? '--:--',
-                                                      style: TextStyle(
-                                                          fontSize: 10.sp,
-                                                          fontWeight:
-                                                              FontWeight.w600),
-                                                      textAlign:
-                                                          TextAlign.end)),
-                                            ],
-                                          ),
-                                        )),
+                                    .map(
+                                      (a) => Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 12.w,
+                                          vertical: 12.h,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              flex: 2,
+                                              child: Text(
+                                                a.clientName ?? 'N/A',
+                                                style: TextStyle(
+                                                  fontSize: 10.sp,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                            Expanded(
+                                              flex: 2,
+                                              child: Text(
+                                                a.serviceName ?? 'N/A',
+                                                style: TextStyle(
+                                                  fontSize: 10.sp,
+                                                  color: Colors.grey[700],
+                                                ),
+                                              ),
+                                            ),
+                                            Expanded(
+                                              flex: 2,
+                                              child: Text(
+                                                a.date != null
+                                                    ? DateFormat(
+                                                        'MMM d, y',
+                                                      ).format(a.date!)
+                                                    : '--',
+                                                style: TextStyle(
+                                                  fontSize: 10.sp,
+                                                  color: Colors.grey[700],
+                                                ),
+                                              ),
+                                            ),
+                                            Expanded(
+                                              flex: 1,
+                                              child: Text(
+                                                a.startTime ?? '--:--',
+                                                style: TextStyle(
+                                                  fontSize: 10.sp,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                                textAlign: TextAlign.end,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
                               ],
                             ),
                           ),
@@ -847,57 +963,76 @@ class _DashboardPageState extends State<DashboardPage>
                             margin: EdgeInsets.symmetric(horizontal: 12.w),
                             padding: EdgeInsets.all(12.w),
                             decoration: BoxDecoration(
-                                color: kCard,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: kBorder)),
+                              color: kCard,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: kBorder),
+                            ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Top Services',
-                                    style: TextStyle(
-                                        fontSize: 12.sp,
-                                        fontWeight: FontWeight.w700)),
-                                Text('Top services based on customer bookings',
-                                    style: TextStyle(
-                                        fontSize: 9.sp,
-                                        color: Colors.grey[500])),
+                                Text(
+                                  'Top Services',
+                                  style: TextStyle(
+                                    fontSize: 12.sp,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                Text(
+                                  'Top services based on customer bookings',
+                                  style: TextStyle(
+                                    fontSize: 9.sp,
+                                    color: Colors.grey[500],
+                                  ),
+                                ),
                                 SizedBox(height: 12.h),
-                                Row(children: [
-                                  SizedBox(
-                                    width: 90.w,
-                                    height: 90.w,
-                                    child: _servicePieSegments.isEmpty
-                                        ? Center(
-                                            child: Text('No data',
-                                                style:
-                                                    TextStyle(fontSize: 8.sp)))
-                                        : CustomPaint(
-                                            painter: _PieChartPainter(
-                                                segments: _servicePieSegments),
-                                          ),
-                                  ),
-                                  SizedBox(width: 16.w),
-                                  Expanded(
-                                    child: _topServicesLegend.isEmpty
-                                        ? Text('No services found',
-                                            style: TextStyle(fontSize: 9.sp))
-                                        : Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: _topServicesLegend
-                                                .map((e) => Padding(
+                                Row(
+                                  children: [
+                                    SizedBox(
+                                      width: 90.w,
+                                      height: 90.w,
+                                      child: _servicePieSegments.isEmpty
+                                          ? Center(
+                                              child: Text(
+                                                'No data',
+                                                style: TextStyle(
+                                                  fontSize: 8.sp,
+                                                ),
+                                              ),
+                                            )
+                                          : CustomPaint(
+                                              painter: _PieChartPainter(
+                                                segments: _servicePieSegments,
+                                              ),
+                                            ),
+                                    ),
+                                    SizedBox(width: 16.w),
+                                    Expanded(
+                                      child: _topServicesLegend.isEmpty
+                                          ? Text(
+                                              'No services found',
+                                              style: TextStyle(fontSize: 9.sp),
+                                            )
+                                          : Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: _topServicesLegend
+                                                  .map(
+                                                    (e) => Padding(
                                                       padding: EdgeInsets.only(
-                                                          bottom: 6.h),
+                                                        bottom: 6.h,
+                                                      ),
                                                       child: _ServiceLegendRow(
-                                                          color: e['color'],
-                                                          label: e['label'],
-                                                          percent:
-                                                              e['percent']),
-                                                    ))
-                                                .toList(),
-                                          ),
-                                  ),
-                                ]),
+                                                        color: e['color'],
+                                                        label: e['label'],
+                                                        percent: e['percent'],
+                                                      ),
+                                                    ),
+                                                  )
+                                                  .toList(),
+                                            ),
+                                    ),
+                                  ],
+                                ),
                               ],
                             ),
                           ),
@@ -911,9 +1046,10 @@ class _DashboardPageState extends State<DashboardPage>
                             margin: EdgeInsets.symmetric(horizontal: 12.w),
                             padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 8.h),
                             decoration: BoxDecoration(
-                                color: kCard,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: kBorder)),
+                              color: kCard,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: kBorder),
+                            ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -926,15 +1062,20 @@ class _DashboardPageState extends State<DashboardPage>
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          Text('Sales Overview',
-                                              style: TextStyle(
-                                                  fontSize: 12.sp,
-                                                  fontWeight: FontWeight.w700)),
                                           Text(
-                                              'A detailed summary of your sales activity for the last 7 months.',
-                                              style: TextStyle(
-                                                  fontSize: 9.sp,
-                                                  color: Colors.grey[500])),
+                                            'Sales Overview',
+                                            style: TextStyle(
+                                              fontSize: 12.sp,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          Text(
+                                            'A detailed summary of your sales activity for the last 7 months.',
+                                            style: TextStyle(
+                                              fontSize: 9.sp,
+                                              color: Colors.grey[500],
+                                            ),
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -956,24 +1097,32 @@ class _DashboardPageState extends State<DashboardPage>
                             margin: EdgeInsets.symmetric(horizontal: 12.w),
                             padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 8.h),
                             decoration: BoxDecoration(
-                                color: kCard,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: kBorder)),
+                              color: kCard,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: kBorder),
+                            ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Top Selling Products',
-                                    style: TextStyle(
-                                        fontSize: 12.sp,
-                                        fontWeight: FontWeight.w700)),
-                                Text('Products with the highest sales volume',
-                                    style: TextStyle(
-                                        fontSize: 9.sp,
-                                        color: Colors.grey[500])),
+                                Text(
+                                  'Top Selling Products',
+                                  style: TextStyle(
+                                    fontSize: 12.sp,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                Text(
+                                  'Products with the highest sales volume',
+                                  style: TextStyle(
+                                    fontSize: 9.sp,
+                                    color: Colors.grey[500],
+                                  ),
+                                ),
                                 SizedBox(height: 12.h),
                                 _TopProductsChart(
-                                    products: _topProductNames,
-                                    values: _topProductValues),
+                                  products: _topProductNames,
+                                  values: _topProductValues,
+                                ),
                               ],
                             ),
                           ),
@@ -987,37 +1136,47 @@ class _DashboardPageState extends State<DashboardPage>
                             margin: EdgeInsets.symmetric(horizontal: 12.w),
                             padding: EdgeInsets.all(12.w),
                             decoration: BoxDecoration(
-                                color: kCard,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: kBorder)),
+                              color: kCard,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: kBorder),
+                            ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Client Feedback',
-                                    style: TextStyle(
-                                        fontSize: 12.sp,
-                                        fontWeight: FontWeight.w700)),
-                                Text('Straight from your clients hearts',
-                                    style: TextStyle(
-                                        fontSize: 9.sp,
-                                        color: Colors.grey[500])),
+                                Text(
+                                  'Client Feedback',
+                                  style: TextStyle(
+                                    fontSize: 12.sp,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                Text(
+                                  'Straight from your clients hearts',
+                                  style: TextStyle(
+                                    fontSize: 9.sp,
+                                    color: Colors.grey[500],
+                                  ),
+                                ),
                                 SizedBox(height: 16.h),
                                 Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceAround,
                                   children: [
                                     _GaugeWidget(
-                                        label: '✂️ Salon',
-                                        labelBg: const Color(0xFFFFF9C4),
-                                        value: _salonFeedback),
+                                      label: '✂️ Salon',
+                                      labelBg: const Color(0xFFFFF9C4),
+                                      value: _salonFeedback,
+                                    ),
                                     _GaugeWidget(
-                                        label: '🛍️ Product',
-                                        labelBg: const Color(0xFFFFE0B2),
-                                        value: _productFeedback),
+                                      label: '🛍️ Product',
+                                      labelBg: const Color(0xFFFFE0B2),
+                                      value: _productFeedback,
+                                    ),
                                     _GaugeWidget(
-                                        label: '💆 Services',
-                                        labelBg: const Color(0xFFE8F5E9),
-                                        value: _serviceFeedback),
+                                      label: '💆 Services',
+                                      labelBg: const Color(0xFFE8F5E9),
+                                      value: _serviceFeedback,
+                                    ),
                                   ],
                                 ),
                                 SizedBox(height: 12.h),
@@ -1025,16 +1184,19 @@ class _DashboardPageState extends State<DashboardPage>
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     _LegendDot(
-                                        color: const Color(0xFFB3E5FC),
-                                        label: 'Low (0-2.5)'),
+                                      color: const Color(0xFFB3E5FC),
+                                      label: 'Low (0-2.5)',
+                                    ),
                                     SizedBox(width: 10.w),
                                     _LegendDot(
-                                        color: const Color(0xFF42A5F5),
-                                        label: 'Medium (2.5-4.0)'),
+                                      color: const Color(0xFF42A5F5),
+                                      label: 'Medium (2.5-4.0)',
+                                    ),
                                     SizedBox(width: 10.w),
                                     _LegendDot(
-                                        color: const Color(0xFF1565C0),
-                                        label: 'High (4.0-5.0)'),
+                                      color: const Color(0xFF1565C0),
+                                      label: 'High (4.0-5.0)',
+                                    ),
                                   ],
                                 ),
                               ],
@@ -1052,9 +1214,9 @@ class _DashboardPageState extends State<DashboardPage>
   }
 
   Widget _kpiRow(List<Widget> cards) => Row(
-        children: cards.expand((c) => [c, SizedBox(width: 8.w)]).toList()
-          ..removeLast(),
-      );
+    children: cards.expand((c) => [c, SizedBox(width: 8.w)]).toList()
+      ..removeLast(),
+  );
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1087,54 +1249,68 @@ class _SalesOverviewChart extends StatelessWidget {
 
     return SizedBox(
       height: chartH + xLabelH,
-      child: Row(children: [
-        // Y-axis labels
-        SizedBox(
-          width: yAxisW,
-          height: chartH,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: _yLabels
-                .map((l) => Text(l,
-                    style: TextStyle(fontSize: 7.sp, color: Colors.grey[500])))
-                .toList(),
-          ),
-        ),
-        const SizedBox(width: 4),
-        // Scrollable chart + x labels
-        Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(
-              width: slotW * _months.length,
-              child: Column(children: [
-                SizedBox(
-                  height: chartH,
-                  child: CustomPaint(
-                    painter: _SalesLinePainter(data: data),
-                    size: Size(slotW * _months.length, chartH),
-                  ),
-                ),
-                SizedBox(
-                  height: xLabelH,
-                  child: Row(
-                    children: _months
-                        .map((m) => SizedBox(
-                              width: slotW,
-                              child: Text(m,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                      fontSize: 8.sp, color: Colors.grey[500])),
-                            ))
-                        .toList(),
-                  ),
-                ),
-              ]),
+      child: Row(
+        children: [
+          // Y-axis labels
+          SizedBox(
+            width: yAxisW,
+            height: chartH,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: _yLabels
+                  .map(
+                    (l) => Text(
+                      l,
+                      style: TextStyle(fontSize: 7.sp, color: Colors.grey[500]),
+                    ),
+                  )
+                  .toList(),
             ),
           ),
-        ),
-      ]),
+          const SizedBox(width: 4),
+          // Scrollable chart + x labels
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(
+                width: slotW * _months.length,
+                child: Column(
+                  children: [
+                    SizedBox(
+                      height: chartH,
+                      child: CustomPaint(
+                        painter: _SalesLinePainter(data: data),
+                        size: Size(slotW * _months.length, chartH),
+                      ),
+                    ),
+                    SizedBox(
+                      height: xLabelH,
+                      child: Row(
+                        children: _months
+                            .map(
+                              (m) => SizedBox(
+                                width: slotW,
+                                child: Text(
+                                  m,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 8.sp,
+                                    color: Colors.grey[500],
+                                  ),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1151,11 +1327,9 @@ class _SalesLinePainter extends CustomPainter {
     final chartH = size.height - padTop;
 
     final points = List.generate(
-        n,
-        (i) => Offset(
-              slotW * i + slotW / 2,
-              padTop + chartH * (1 - data[i]),
-            ));
+      n,
+      (i) => Offset(slotW * i + slotW / 2, padTop + chartH * (1 - data[i])),
+    );
 
     // Fill under line
     final fill = Path()
@@ -1169,14 +1343,11 @@ class _SalesLinePainter extends CustomPainter {
     canvas.drawPath(
       fill,
       Paint()
-        ..shader = ui.Gradient.linear(
-          Offset(0, padTop),
-          Offset(0, size.height),
-          [
-            const Color(0xFF42A5F5).withOpacity(0.22),
-            const Color(0xFF42A5F5).withOpacity(0.01)
-          ],
-        ),
+        ..shader =
+            ui.Gradient.linear(Offset(0, padTop), Offset(0, size.height), [
+              const Color(0xFF42A5F5).withOpacity(0.22),
+              const Color(0xFF42A5F5).withOpacity(0.01),
+            ]),
     );
 
     // Grid lines (dashed)
@@ -1202,20 +1373,22 @@ class _SalesLinePainter extends CustomPainter {
     for (final p in points) {
       canvas.drawCircle(p, 3.5, Paint()..color = const Color(0xFF42A5F5));
       canvas.drawCircle(
-          p,
-          3.5,
-          Paint()
-            ..color = Colors.white
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.5);
+        p,
+        3.5,
+        Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5,
+      );
     }
 
     // Tooltip on peak
     final peakIdx = data.indexOf(data.reduce(math.max));
     final peak = points[peakIdx];
     const tw = 68.0, th = 20.0;
-    final tx =
-        peak.dx + tw / 2 + 6 > size.width ? peak.dx - tw - 4 : peak.dx + 4;
+    final tx = peak.dx + tw / 2 + 6 > size.width
+        ? peak.dx - tw - 4
+        : peak.dx + 4;
     final trect = Rect.fromLTWH(tx, peak.dy - th - 4, tw, th);
     canvas.drawRRect(
       RRect.fromRectAndRadius(trect, const Radius.circular(4)),
@@ -1223,9 +1396,13 @@ class _SalesLinePainter extends CustomPainter {
     );
     final tp = TextPainter(
       text: const TextSpan(
-          text: '64,3664.77',
-          style: TextStyle(
-              color: Colors.white, fontSize: 8, fontWeight: FontWeight.w600)),
+        text: ' ',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 8,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
       textDirection: ui.TextDirection.ltr,
     )..layout(maxWidth: tw);
     tp.paint(canvas, Offset(tx + (tw - tp.width) / 2, peak.dy - th - 2));
@@ -1278,54 +1455,67 @@ class _TopProductsChart extends StatelessWidget {
 
     return SizedBox(
       height: chartH + xLabelH,
-      child: Row(children: [
-        // Y-axis
-        SizedBox(
-          width: yAxisW,
-          height: chartH,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: _yLabels
-                .map((l) => Text(l,
-                    style: TextStyle(fontSize: 7.sp, color: Colors.grey[500])))
-                .toList(),
-          ),
-        ),
-        const SizedBox(width: 4),
-        Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(
-              width: slotW * products.length,
-              child: Column(children: [
-                SizedBox(
-                  height: chartH,
-                  child: CustomPaint(
-                    painter: _BarsPainter(values: values, colors: _colors),
-                    size: Size(slotW * products.length, chartH),
-                  ),
-                ),
-                SizedBox(
-                  height: xLabelH,
-                  child: Row(
-                    children: products
-                        .map((p) => SizedBox(
-                              width: slotW,
-                              child: Text(p,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                      fontSize: 7.5.sp,
-                                      color: Colors.grey[600])),
-                            ))
-                        .toList(),
-                  ),
-                ),
-              ]),
+      child: Row(
+        children: [
+          // Y-axis
+          SizedBox(
+            width: yAxisW,
+            height: chartH,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: _yLabels
+                  .map(
+                    (l) => Text(
+                      l,
+                      style: TextStyle(fontSize: 7.sp, color: Colors.grey[500]),
+                    ),
+                  )
+                  .toList(),
             ),
           ),
-        ),
-      ]),
+          const SizedBox(width: 4),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(
+                width: slotW * products.length,
+                child: Column(
+                  children: [
+                    SizedBox(
+                      height: chartH,
+                      child: CustomPaint(
+                        painter: _BarsPainter(values: values, colors: _colors),
+                        size: Size(slotW * products.length, chartH),
+                      ),
+                    ),
+                    SizedBox(
+                      height: xLabelH,
+                      child: Row(
+                        children: products
+                            .map(
+                              (p) => SizedBox(
+                                width: slotW,
+                                child: Text(
+                                  p,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 7.5.sp,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1398,23 +1588,29 @@ class _FilterTypeDropdown extends StatelessWidget {
       height: 38.h,
       padding: EdgeInsets.symmetric(horizontal: 8.w),
       decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: kBorder),
-          borderRadius: BorderRadius.circular(8)),
+        color: Colors.white,
+        border: Border.all(color: kBorder),
+        borderRadius: BorderRadius.circular(8),
+      ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<_FilterType>(
           value: current,
           isExpanded: true,
           icon: const Icon(Icons.keyboard_arrow_down, size: 16),
           style: TextStyle(
-              fontSize: 10.sp,
-              fontWeight: FontWeight.w500,
-              color: Colors.black),
+            fontSize: 10.sp,
+            fontWeight: FontWeight.w500,
+            color: Colors.black,
+          ),
           items: const [
             DropdownMenuItem(
-                value: _FilterType.presetPeriod, child: Text('Preset Period')),
+              value: _FilterType.presetPeriod,
+              child: Text('Preset Period'),
+            ),
             DropdownMenuItem(
-                value: _FilterType.dateRange, child: Text('Date Range')),
+              value: _FilterType.dateRange,
+              child: Text('Date Range'),
+            ),
           ],
           onChanged: onChanged,
         ),
@@ -1456,7 +1652,8 @@ class _PeriodDropdown extends StatelessWidget {
             lastDate: DateTime(2030),
             builder: (ctx, child) => Theme(
               data: Theme.of(ctx).copyWith(
-                  colorScheme: const ColorScheme.light(primary: kPrimary)),
+                colorScheme: const ColorScheme.light(primary: kPrimary),
+              ),
               child: child!,
             ),
           );
@@ -1468,16 +1665,21 @@ class _PeriodDropdown extends StatelessWidget {
           height: 38.h,
           padding: EdgeInsets.symmetric(horizontal: 8.w),
           decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: kBorder),
-              borderRadius: BorderRadius.circular(8)),
+            color: Colors.white,
+            border: Border.all(color: kBorder),
+            borderRadius: BorderRadius.circular(8),
+          ),
           alignment: Alignment.centerLeft,
           child: Row(
             children: [
               Expanded(
-                child: Text('Select Range',
-                    style: TextStyle(
-                        fontSize: 10.sp, fontWeight: FontWeight.w500)),
+                child: Text(
+                  'Select Range',
+                  style: TextStyle(
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
               const Icon(Icons.calendar_today, size: 14, color: Colors.grey),
             ],
@@ -1490,21 +1692,25 @@ class _PeriodDropdown extends StatelessWidget {
       height: 38.h,
       padding: EdgeInsets.symmetric(horizontal: 8.w),
       decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: kBorder),
-          borderRadius: BorderRadius.circular(8)),
+        color: Colors.white,
+        border: Border.all(color: kBorder),
+        borderRadius: BorderRadius.circular(8),
+      ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<_PresetPeriod>(
           value: presetPeriod,
           isExpanded: true,
           icon: const Icon(Icons.keyboard_arrow_down, size: 16),
           style: TextStyle(
-              fontSize: 10.sp,
-              fontWeight: FontWeight.w500,
-              color: Colors.black),
+            fontSize: 10.sp,
+            fontWeight: FontWeight.w500,
+            color: Colors.black,
+          ),
           items: const [
             DropdownMenuItem(
-                value: _PresetPeriod.allTime, child: Text('All Time')),
+              value: _PresetPeriod.allTime,
+              child: Text('All Time'),
+            ),
             DropdownMenuItem(value: _PresetPeriod.day, child: Text('Day')),
             DropdownMenuItem(value: _PresetPeriod.month, child: Text('Month')),
             DropdownMenuItem(value: _PresetPeriod.year, child: Text('Year')),
@@ -1519,7 +1725,8 @@ class _PeriodDropdown extends StatelessWidget {
                 lastDate: DateTime(2030),
                 builder: (ctx, child) => Theme(
                   data: Theme.of(ctx).copyWith(
-                      colorScheme: const ColorScheme.light(primary: kPrimary)),
+                    colorScheme: const ColorScheme.light(primary: kPrimary),
+                  ),
                   child: child!,
                 ),
               );
@@ -1540,10 +1747,12 @@ class _PeriodDropdown extends StatelessWidget {
                 'Sep',
                 'Oct',
                 'Nov',
-                'Dec'
+                'Dec',
               ];
-              final years =
-                  List.generate(10, (i) => DateTime.now().year - 4 + i);
+              final years = List.generate(
+                10,
+                (i) => DateTime.now().year - 4 + i,
+              );
               if (context.mounted) {
                 await showDialog(
                   context: context,
@@ -1551,91 +1760,119 @@ class _PeriodDropdown extends StatelessWidget {
                     builder: (ctx, setDlg) => AlertDialog(
                       backgroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
-                      title: Text('Select Month & Year',
-                          style: TextStyle(
-                              fontSize: 13.sp, fontWeight: FontWeight.w700)),
-                      content:
-                          Column(mainAxisSize: MainAxisSize.min, children: [
-                        // Year row
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                              horizontal: 10.w, vertical: 2.h),
-                          decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      title: Text(
+                        'Select Month & Year',
+                        style: TextStyle(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Year row
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 10.w,
+                              vertical: 2.h,
+                            ),
+                            decoration: BoxDecoration(
                               border: Border.all(color: kBorder),
-                              borderRadius: BorderRadius.circular(8)),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<int>(
-                              value: tmpYear,
-                              isExpanded: true,
-                              style: TextStyle(
-                                  fontSize: 12.sp, color: Colors.black),
-                              items: years
-                                  .map((y) => DropdownMenuItem(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<int>(
+                                value: tmpYear,
+                                isExpanded: true,
+                                style: TextStyle(
+                                  fontSize: 12.sp,
+                                  color: Colors.black,
+                                ),
+                                items: years
+                                    .map(
+                                      (y) => DropdownMenuItem(
                                         value: y,
-                                        child: Text('$y',
-                                            style: TextStyle(fontSize: 12.sp)),
-                                      ))
-                                  .toList(),
-                              onChanged: (v) {
-                                if (v != null) setDlg(() => tmpYear = v);
-                              },
+                                        child: Text(
+                                          '$y',
+                                          style: TextStyle(fontSize: 12.sp),
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (v) {
+                                  if (v != null) setDlg(() => tmpYear = v);
+                                },
+                              ),
                             ),
                           ),
-                        ),
-                        SizedBox(height: 12.h),
-                        // Month grid
-                        GridView.count(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          crossAxisCount: 4,
-                          childAspectRatio: 2.2,
-                          crossAxisSpacing: 6,
-                          mainAxisSpacing: 6,
-                          children: List.generate(12, (i) {
-                            final sel = tmpMonth == i + 1;
-                            return GestureDetector(
-                              onTap: () => setDlg(() => tmpMonth = i + 1),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: sel ? kPrimary : Colors.grey[100],
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(months[i],
+                          SizedBox(height: 12.h),
+                          // Month grid
+                          GridView.count(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            crossAxisCount: 4,
+                            childAspectRatio: 2.2,
+                            crossAxisSpacing: 6,
+                            mainAxisSpacing: 6,
+                            children: List.generate(12, (i) {
+                              final sel = tmpMonth == i + 1;
+                              return GestureDetector(
+                                onTap: () => setDlg(() => tmpMonth = i + 1),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: sel ? kPrimary : Colors.grey[100],
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    months[i],
                                     style: TextStyle(
-                                        fontSize: 10.sp,
-                                        fontWeight: FontWeight.w600,
-                                        color: sel
-                                            ? Colors.white
-                                            : Colors.black87)),
-                              ),
-                            );
-                          }),
-                        ),
-                      ]),
+                                      fontSize: 10.sp,
+                                      fontWeight: FontWeight.w600,
+                                      color: sel
+                                          ? Colors.white
+                                          : Colors.black87,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }),
+                          ),
+                        ],
+                      ),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(ctx),
-                          child: Text('Cancel',
-                              style: TextStyle(
-                                  fontSize: 12.sp, color: Colors.grey[600])),
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              color: Colors.grey[600],
+                            ),
+                          ),
                         ),
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                              backgroundColor: kPrimary,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8))),
+                            backgroundColor: kPrimary,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
                           onPressed: () {
                             onMonthChanged(tmpMonth);
                             onYearChanged(tmpYear);
                             Navigator.pop(ctx);
                           },
-                          child: Text('Apply',
-                              style: TextStyle(
-                                  fontSize: 12.sp,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600)),
+                          child: Text(
+                            'Apply',
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -1645,8 +1882,10 @@ class _PeriodDropdown extends StatelessWidget {
             } else if (p == _PresetPeriod.year) {
               // Show year picker dialog
               int tmpYear = selectedYear;
-              final years =
-                  List.generate(10, (i) => DateTime.now().year - 4 + i);
+              final years = List.generate(
+                10,
+                (i) => DateTime.now().year - 4 + i,
+              );
               if (context.mounted) {
                 await showDialog(
                   context: context,
@@ -1654,10 +1893,15 @@ class _PeriodDropdown extends StatelessWidget {
                     builder: (ctx, setDlg) => AlertDialog(
                       backgroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
-                      title: Text('Select Year',
-                          style: TextStyle(
-                              fontSize: 13.sp, fontWeight: FontWeight.w700)),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      title: Text(
+                        'Select Year',
+                        style: TextStyle(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                       content: GridView.count(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
@@ -1675,12 +1919,14 @@ class _PeriodDropdown extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               alignment: Alignment.center,
-                              child: Text('$y',
-                                  style: TextStyle(
-                                      fontSize: 11.sp,
-                                      fontWeight: FontWeight.w600,
-                                      color:
-                                          sel ? Colors.white : Colors.black87)),
+                              child: Text(
+                                '$y',
+                                style: TextStyle(
+                                  fontSize: 11.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: sel ? Colors.white : Colors.black87,
+                                ),
+                              ),
                             ),
                           );
                         }).toList(),
@@ -1688,24 +1934,33 @@ class _PeriodDropdown extends StatelessWidget {
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(ctx),
-                          child: Text('Cancel',
-                              style: TextStyle(
-                                  fontSize: 12.sp, color: Colors.grey[600])),
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              color: Colors.grey[600],
+                            ),
+                          ),
                         ),
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                              backgroundColor: kPrimary,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8))),
+                            backgroundColor: kPrimary,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
                           onPressed: () {
                             onYearChanged(tmpYear);
                             Navigator.pop(ctx);
                           },
-                          child: Text('Apply',
-                              style: TextStyle(
-                                  fontSize: 12.sp,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600)),
+                          child: Text(
+                            'Apply',
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -1723,60 +1978,74 @@ class _PeriodDropdown extends StatelessWidget {
 class _SheetHandle extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
-        padding: EdgeInsets.only(top: 10.h),
-        child: Center(
-          child: Container(
-            width: 36.w,
-            height: 4.h,
-            decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(999)),
-          ),
+    padding: EdgeInsets.only(top: 10.h),
+    child: Center(
+      child: Container(
+        width: 36.w,
+        height: 4.h,
+        decoration: BoxDecoration(
+          color: Colors.grey[300],
+          borderRadius: BorderRadius.circular(999),
         ),
-      );
+      ),
+    ),
+  );
 }
 
 class _SheetOption extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
-  const _SheetOption(
-      {required this.label, required this.selected, required this.onTap});
+  const _SheetOption({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) => ListTile(
-        onTap: onTap,
-        title: Text(label,
-            style: TextStyle(
-                fontSize: 12.sp,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                color: selected ? kPrimary : Colors.black87)),
-        trailing: selected ? const Icon(Icons.check, color: kPrimary) : null,
-      );
+    onTap: onTap,
+    title: Text(
+      label,
+      style: TextStyle(
+        fontSize: 12.sp,
+        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+        color: selected ? kPrimary : Colors.black87,
+      ),
+    ),
+    trailing: selected ? const Icon(Icons.check, color: kPrimary) : null,
+  );
 }
 
 class _PeriodChip extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
-  const _PeriodChip(
-      {required this.label, required this.selected, required this.onTap});
+  const _PeriodChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 7.h),
-          decoration: BoxDecoration(
-              color: selected ? kPrimary : const Color(0xFFF3F4F6),
-              borderRadius: BorderRadius.circular(20)),
-          child: Text(label,
-              style: TextStyle(
-                  fontSize: 10.sp,
-                  fontWeight: FontWeight.w600,
-                  color: selected ? Colors.white : Colors.black87)),
+    onTap: onTap,
+    child: Container(
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 7.h),
+      decoration: BoxDecoration(
+        color: selected ? kPrimary : const Color(0xFFF3F4F6),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10.sp,
+          fontWeight: FontWeight.w600,
+          color: selected ? Colors.white : Colors.black87,
         ),
-      );
+      ),
+    ),
+  );
 }
 
 class _SectionLabel extends StatelessWidget {
@@ -1785,13 +2054,16 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 4.h),
-        child: Text(text,
-            style: TextStyle(
-                fontSize: 10.sp,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[700])),
-      );
+    padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 4.h),
+    child: Text(
+      text,
+      style: TextStyle(
+        fontSize: 10.sp,
+        fontWeight: FontWeight.w600,
+        color: Colors.grey[700],
+      ),
+    ),
+  );
 }
 
 class _DatePickerInline extends StatelessWidget {
@@ -1801,26 +2073,32 @@ class _DatePickerInline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: EdgeInsets.symmetric(horizontal: 8.w),
-        child: Theme(
-          data: Theme.of(context).copyWith(
-              colorScheme: const ColorScheme.light(
-                  primary: kPrimary, onPrimary: Colors.white)),
-          child: CalendarDatePicker(
-            initialDate: initialDate,
-            firstDate: DateTime(2020),
-            lastDate: DateTime(2030),
-            onDateChanged: onChanged,
-          ),
+    padding: EdgeInsets.symmetric(horizontal: 8.w),
+    child: Theme(
+      data: Theme.of(context).copyWith(
+        colorScheme: const ColorScheme.light(
+          primary: kPrimary,
+          onPrimary: Colors.white,
         ),
-      );
+      ),
+      child: CalendarDatePicker(
+        initialDate: initialDate,
+        firstDate: DateTime(2020),
+        lastDate: DateTime(2030),
+        onDateChanged: onChanged,
+      ),
+    ),
+  );
 }
 
 class _MonthYearPicker extends StatelessWidget {
   final int month, year;
   final void Function(int, int) onChanged;
-  const _MonthYearPicker(
-      {required this.month, required this.year, required this.onChanged});
+  const _MonthYearPicker({
+    required this.month,
+    required this.year,
+    required this.onChanged,
+  });
 
   static const _months = [
     'January',
@@ -1839,25 +2117,27 @@ class _MonthYearPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-        child: Row(children: [
-          Expanded(
-            child: _PickerDropdown(
-              label: _months[month - 1],
-              items: List.generate(12, (i) => _months[i]),
-              onSelect: (v) => onChanged(_months.indexOf(v) + 1, year),
-            ),
+    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+    child: Row(
+      children: [
+        Expanded(
+          child: _PickerDropdown(
+            label: _months[month - 1],
+            items: List.generate(12, (i) => _months[i]),
+            onSelect: (v) => onChanged(_months.indexOf(v) + 1, year),
           ),
-          SizedBox(width: 12.w),
-          Expanded(
-            child: _PickerDropdown(
-              label: '$year',
-              items: List.generate(10, (i) => '${DateTime.now().year - 4 + i}'),
-              onSelect: (v) => onChanged(month, int.parse(v)),
-            ),
+        ),
+        SizedBox(width: 12.w),
+        Expanded(
+          child: _PickerDropdown(
+            label: '$year',
+            items: List.generate(10, (i) => '${DateTime.now().year - 4 + i}'),
+            onSelect: (v) => onChanged(month, int.parse(v)),
           ),
-        ]),
-      );
+        ),
+      ],
+    ),
+  );
 }
 
 class _YearPickerWidget extends StatelessWidget {
@@ -1867,76 +2147,98 @@ class _YearPickerWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-        child: _PickerDropdown(
-          label: '$year',
-          items: List.generate(10, (i) => '${DateTime.now().year - 4 + i}'),
-          onSelect: (v) => onChanged(int.parse(v)),
-        ),
-      );
+    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+    child: _PickerDropdown(
+      label: '$year',
+      items: List.generate(10, (i) => '${DateTime.now().year - 4 + i}'),
+      onSelect: (v) => onChanged(int.parse(v)),
+    ),
+  );
 }
 
 class _PickerDropdown extends StatelessWidget {
   final String label;
   final List<String> items;
   final ValueChanged<String> onSelect;
-  const _PickerDropdown(
-      {required this.label, required this.items, required this.onSelect});
+  const _PickerDropdown({
+    required this.label,
+    required this.items,
+    required this.onSelect,
+  });
 
   @override
   Widget build(BuildContext context) => DropdownButtonFormField<String>(
-        value: label,
-        decoration: InputDecoration(
-          contentPadding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
-          border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: kBorder)),
-          enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: kBorder)),
-        ),
-        style: TextStyle(
-            fontSize: 11.sp, color: Colors.black87, fontFamily: 'Poppins'),
-        items: items
-            .map((v) => DropdownMenuItem(value: v, child: Text(v)))
-            .toList(),
-        onChanged: (v) {
-          if (v != null) onSelect(v);
-        },
-      );
+    value: label,
+    decoration: InputDecoration(
+      contentPadding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: kBorder),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: kBorder),
+      ),
+    ),
+    style: TextStyle(
+      fontSize: 11.sp,
+      color: Colors.black87,
+      fontFamily: 'Poppins',
+    ),
+    items: items
+        .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+        .toList(),
+    onChanged: (v) {
+      if (v != null) onSelect(v);
+    },
+  );
 }
 
 class _DateTile extends StatelessWidget {
   final String label, value;
   final VoidCallback onTap;
-  const _DateTile(
-      {required this.label, required this.value, required this.onTap});
+  const _DateTile({
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: EdgeInsets.all(10.w),
-          decoration: BoxDecoration(
-              border: Border.all(color: kBorder),
-              borderRadius: BorderRadius.circular(8)),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(label,
-                style: TextStyle(fontSize: 9.sp, color: Colors.grey[500])),
-            SizedBox(height: 4.h),
-            Row(children: [
+    onTap: onTap,
+    child: Container(
+      padding: EdgeInsets.all(10.w),
+      decoration: BoxDecoration(
+        border: Border.all(color: kBorder),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(fontSize: 9.sp, color: Colors.grey[500]),
+          ),
+          SizedBox(height: 4.h),
+          Row(
+            children: [
               const Icon(Icons.calendar_today, size: 13, color: kPrimary),
               SizedBox(width: 4.w),
               Expanded(
-                child: Text(value,
-                    style: TextStyle(
-                        fontSize: 11.sp, fontWeight: FontWeight.w600)),
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
-            ]),
-          ]),
-        ),
-      );
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 // ─────────────────────────────────────────────
@@ -1945,46 +2247,58 @@ class _DateTile extends StatelessWidget {
 class _KpiGridCard extends StatelessWidget {
   final String title, value, icon;
   final Color iconBg;
-  const _KpiGridCard(
-      {required this.title,
-      required this.value,
-      required this.icon,
-      required this.iconBg});
+  const _KpiGridCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+    required this.iconBg,
+  });
 
   @override
   Widget build(BuildContext context) => Expanded(
-        child: Container(
-          padding: EdgeInsets.all(8.w),
-          decoration: BoxDecoration(
-              color: kCard,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: kBorder)),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Container(
-              width: 28.w,
-              height: 28.w,
-              decoration: BoxDecoration(
-                  color: iconBg, borderRadius: BorderRadius.circular(8)),
-              child: Center(
-                  child: Text(icon, style: const TextStyle(fontSize: 14))),
+    child: Container(
+      padding: EdgeInsets.all(8.w),
+      decoration: BoxDecoration(
+        color: kCard,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: kBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 28.w,
+            height: 28.w,
+            decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(8),
             ),
-            SizedBox(height: 6.h),
-            Text(title,
-                style: TextStyle(
-                    fontSize: 7.5.sp,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis),
-            SizedBox(height: 2.h),
-            Text(value,
-                style: TextStyle(fontSize: 9.sp, fontWeight: FontWeight.w700),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis),
-          ]),
-        ),
-      );
+            child: Center(
+              child: Text(icon, style: const TextStyle(fontSize: 14)),
+            ),
+          ),
+          SizedBox(height: 6.h),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 7.5.sp,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          SizedBox(height: 2.h),
+          Text(
+            value,
+            style: TextStyle(fontSize: 9.sp, fontWeight: FontWeight.w700),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 // ─────────────────────────────────────────────
@@ -1996,37 +2310,51 @@ class _UpcomingAppointmentRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-        child: Row(children: [
-          CircleAvatar(
-            radius: 20,
-            backgroundImage: appointment['image'] != null
-                ? AssetImage(appointment['image'] as String)
-                : null,
-            backgroundColor: Colors.grey[200],
-            child: appointment['image'] == null
-                ? Icon(Icons.person, size: 18, color: Colors.grey[400])
-                : null,
+    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+    child: Row(
+      children: [
+        CircleAvatar(
+          radius: 20,
+          backgroundImage: appointment['image'] != null
+              ? AssetImage(appointment['image'] as String)
+              : null,
+          backgroundColor: Colors.grey[200],
+          child: appointment['image'] == null
+              ? Icon(Icons.person, size: 18, color: Colors.grey[400])
+              : null,
+        ),
+        SizedBox(width: 10.w),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                appointment['name'] ?? '',
+                style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600),
+              ),
+              Text(
+                appointment['service'] ?? '',
+                style: TextStyle(fontSize: 9.sp, color: Colors.grey[500]),
+              ),
+            ],
           ),
-          SizedBox(width: 10.w),
-          Expanded(
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(appointment['name'] ?? '',
-                  style:
-                      TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600)),
-              Text(appointment['service'] ?? '',
-                  style: TextStyle(fontSize: 9.sp, color: Colors.grey[500])),
-            ]),
-          ),
-          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text(appointment['time'] ?? '',
-                style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w600)),
-            Text(appointment['date'] ?? '',
-                style: TextStyle(fontSize: 9.sp, color: Colors.grey[500])),
-          ]),
-        ]),
-      );
+        ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              appointment['time'] ?? '',
+              style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w600),
+            ),
+            Text(
+              appointment['date'] ?? '',
+              style: TextStyle(fontSize: 9.sp, color: Colors.grey[500]),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
 }
 
 // ─────────────────────────────────────────────
@@ -2035,24 +2363,34 @@ class _UpcomingAppointmentRow extends StatelessWidget {
 class _ServiceLegendRow extends StatelessWidget {
   final Color color;
   final String label, percent;
-  const _ServiceLegendRow(
-      {required this.color, required this.label, required this.percent});
+  const _ServiceLegendRow({
+    required this.color,
+    required this.label,
+    required this.percent,
+  });
 
   @override
-  Widget build(BuildContext context) => Row(children: [
-        Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-        SizedBox(width: 6.w),
-        Expanded(
-          child: Text(label,
-              style: TextStyle(fontSize: 9.sp, color: Colors.grey[700]),
-              overflow: TextOverflow.ellipsis),
+  Widget build(BuildContext context) => Row(
+    children: [
+      Container(
+        width: 10,
+        height: 10,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      ),
+      SizedBox(width: 6.w),
+      Expanded(
+        child: Text(
+          label,
+          style: TextStyle(fontSize: 9.sp, color: Colors.grey[700]),
+          overflow: TextOverflow.ellipsis,
         ),
-        Text(percent,
-            style: TextStyle(fontSize: 9.sp, fontWeight: FontWeight.w600)),
-      ]);
+      ),
+      Text(
+        percent,
+        style: TextStyle(fontSize: 9.sp, fontWeight: FontWeight.w600),
+      ),
+    ],
+  );
 }
 
 // ─────────────────────────────────────────────
@@ -2062,25 +2400,34 @@ class _GaugeWidget extends StatelessWidget {
   final String label;
   final Color labelBg;
   final double value;
-  const _GaugeWidget(
-      {required this.label, required this.labelBg, required this.value});
+  const _GaugeWidget({
+    required this.label,
+    required this.labelBg,
+    required this.value,
+  });
 
   @override
-  Widget build(BuildContext context) => Column(children: [
-        SizedBox(
-          width: 70.w,
-          height: 45.w,
-          child: CustomPaint(painter: _GaugePainter(value: value)),
+  Widget build(BuildContext context) => Column(
+    children: [
+      SizedBox(
+        width: 70.w,
+        height: 45.w,
+        child: CustomPaint(painter: _GaugePainter(value: value)),
+      ),
+      SizedBox(height: 6.h),
+      Container(
+        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+        decoration: BoxDecoration(
+          color: labelBg,
+          borderRadius: BorderRadius.circular(6),
         ),
-        SizedBox(height: 6.h),
-        Container(
-          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-          decoration: BoxDecoration(
-              color: labelBg, borderRadius: BorderRadius.circular(6)),
-          child: Text(label,
-              style: TextStyle(fontSize: 8.sp, fontWeight: FontWeight.w600)),
+        child: Text(
+          label,
+          style: TextStyle(fontSize: 8.sp, fontWeight: FontWeight.w600),
         ),
-      ]);
+      ),
+    ],
+  );
 }
 
 // ─────────────────────────────────────────────
@@ -2093,17 +2440,20 @@ class _LegendDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-          SizedBox(width: 4.w),
-          Text(label,
-              style: TextStyle(fontSize: 7.sp, color: Colors.grey[600])),
-        ],
-      );
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        width: 8,
+        height: 8,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      ),
+      SizedBox(width: 4.w),
+      Text(
+        label,
+        style: TextStyle(fontSize: 7.sp, color: Colors.grey[600]),
+      ),
+    ],
+  );
 }
 
 // ─────────────────────────────────────────────
@@ -2155,38 +2505,42 @@ class _GaugePainter extends CustomPainter {
     final radius = size.width / 2 - 4;
 
     canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        math.pi,
-        math.pi,
-        false,
-        Paint()
-          ..color = Colors.grey[200]!
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 8
-          ..strokeCap = StrokeCap.round);
+      Rect.fromCircle(center: center, radius: radius),
+      math.pi,
+      math.pi,
+      false,
+      Paint()
+        ..color = Colors.grey[200]!
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 8
+        ..strokeCap = StrokeCap.round,
+    );
 
     final valueColor = value < 0.33
         ? const Color(0xFFB3E5FC)
         : value < 0.66
-            ? const Color(0xFF42A5F5)
-            : const Color(0xFF1565C0);
+        ? const Color(0xFF42A5F5)
+        : const Color(0xFF1565C0);
 
     canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        math.pi,
-        math.pi * value,
-        false,
-        Paint()
-          ..color = valueColor
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 8
-          ..strokeCap = StrokeCap.round);
+      Rect.fromCircle(center: center, radius: radius),
+      math.pi,
+      math.pi * value,
+      false,
+      Paint()
+        ..color = valueColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 8
+        ..strokeCap = StrokeCap.round,
+    );
 
     final angle = math.pi + math.pi * value;
     canvas.drawLine(
       center,
-      Offset(center.dx + (radius - 4) * math.cos(angle),
-          center.dy + (radius - 4) * math.sin(angle)),
+      Offset(
+        center.dx + (radius - 4) * math.cos(angle),
+        center.dy + (radius - 4) * math.sin(angle),
+      ),
       Paint()
         ..color = Colors.black87
         ..strokeWidth = 1.5
@@ -2208,29 +2562,29 @@ final List<Map<String, dynamic>> upcomingAppointments = [
     'service': 'Party MakeUp',
     'time': '11:00AM',
     'date': '21 Jan',
-    'image': null
+    'image': null,
   },
   {
     'name': 'Vishakha Mishra',
     'service': 'Bridal MakeUp',
     'time': '01:00PM',
     'date': '21 Jan',
-    'image': null
+    'image': null,
   },
   {
     'name': 'Nidhi Deshmukh',
     'service': 'Nail Extension',
     'time': '03:00PM',
     'date': '21 Jan',
-    'image': null
+    'image': null,
   },
 ];
 
-final List<Map<String, dynamic>> staffList =
-    sharedDataService.getDashboardStaffList();
+final List<Map<String, dynamic>> staffList = sharedDataService
+    .getDashboardStaffList();
 
-final List<Map<String, dynamic>> appointments =
-    sharedDataService.getDashboardAppointments();
+final List<Map<String, dynamic>> appointments = sharedDataService
+    .getDashboardAppointments();
 
 String getTotal(String key) {
   double total = 0;

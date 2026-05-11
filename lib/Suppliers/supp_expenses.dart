@@ -8,8 +8,12 @@ import '../services/api_service.dart';
 import '../widgets/subscription_wrapper.dart';
 import 'package:intl/intl.dart';
 import 'dart:io';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
+import 'supp_profile.dart';
+import 'supp_notifications.dart';
+import '../supplier_model.dart';
 
 class SuppExpensesPage extends StatefulWidget {
   const SuppExpensesPage({super.key});
@@ -22,6 +26,7 @@ class _SuppExpensesPageState extends State<SuppExpensesPage> {
 
   List<Map<String, dynamic>> expenses = [];
   bool _isLoading = true;
+  SupplierProfile? _profile;
 
   String _searchQuery = '';
   String _selectedPaymentMode = 'All Payment Modes';
@@ -33,6 +38,27 @@ class _SuppExpensesPageState extends State<SuppExpensesPage> {
   void initState() {
     super.initState();
     _fetchExpenses();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final p = await ApiService.getSupplierProfile();
+      if (mounted) setState(() => _profile = p);
+    } catch (e) {
+      debugPrint('fetchProfile: $e');
+    }
+  }
+
+  Widget _buildInitialAvatar() {
+    return Text(
+      (_profile?.shopName ?? 'S').substring(0, 1).toUpperCase(),
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: 12.sp,
+        fontWeight: FontWeight.bold,
+      ),
+    );
   }
 
   Future<void> _fetchExpenses() async {
@@ -240,19 +266,62 @@ class _SuppExpensesPageState extends State<SuppExpensesPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       drawer: const SupplierDrawer(currentPage: 'Expenses'),
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text(
-          "Expenses",
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w600,
-            color: Colors.black,
-            fontSize: 18,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        titleSpacing: 0,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: Colors.black),
+            onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),
-        backgroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.black),
-        elevation: 0,
+        title: Text(
+          'Expenses',
+          style: GoogleFonts.poppins(
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w700,
+            color: Colors.black,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined, color: Colors.black),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SuppNotificationsPage()),
+            ),
+          ),
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SuppProfilePage()),
+            ),
+            child: Padding(
+              padding: EdgeInsets.only(right: 12.w),
+              child: CircleAvatar(
+                radius: 16,
+                backgroundColor: Theme.of(context).primaryColor,
+                child: ClipOval(
+                  child: (_profile != null && _profile!.profileImage.isNotEmpty)
+                      ? Image.network(
+                          _profile!.profileImage,
+                          width: 32,
+                          height: 32,
+                          fit: BoxFit.cover,
+                          errorBuilder: (ctx, _, __) => _buildInitialAvatar(),
+                          loadingBuilder: (ctx, child, progress) =>
+                              progress == null
+                              ? child
+                              : const CircularProgressIndicator(),
+                        )
+                      : _buildInitialAvatar(),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
       body: SubscriptionWrapper(
         child: Padding(
@@ -531,7 +600,7 @@ class ExpenseCard extends StatelessWidget {
     if (dateStr == null || dateStr.isEmpty) return "";
     try {
       final dt = DateTime.parse(dateStr);
-      return DateFormat('dd-MM-yyyy').format(dt);
+      return DateFormat('dd MMM yyyy').format(dt);
     } catch (_) {
       return dateStr;
     }
@@ -539,134 +608,138 @@ class ExpenseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.only(bottom: 13),
+    margin: const EdgeInsets.only(bottom: 16),
     decoration: BoxDecoration(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(13),
-      border: Border.all(color: const Color(0xFFE5E7EB)),
+      borderRadius: BorderRadius.circular(16),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.05),
+          blurRadius: 10,
+          offset: const Offset(0, 4),
+        ),
+      ],
+      border: Border.all(color: const Color(0xFFF3F4F6)),
     ),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    expense['expenseType'] ?? expense['type'] ?? "Expense",
+                    style: GoogleFonts.poppins(
+                      color: Colors.black87,
+                      fontWeight: FontWeight.w600,
+                      fontSize: fontSize + 1,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE0E7FF),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: const Color(0xFF6366F1).withOpacity(0.3),
+                      ),
+                    ),
+                    child: Text(
+                      expense['paymentMode'] ?? "Online",
+                      style: GoogleFonts.poppins(
+                        color: const Color(0xFF4338CA),
+                        fontSize: fontSize - 3,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Text(
+                    "Invoice No.: ${expense['invoiceNo'] ?? 'N/A'}",
+                    style: GoogleFonts.poppins(
+                      color: Colors.grey[600],
+                      fontSize: fontSize - 2,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text("•", style: TextStyle(color: Colors.grey[400])),
+                  const SizedBox(width: 8),
+                  Text(
+                    _formatDate(expense['date']),
+                    style: GoogleFonts.poppins(
+                      color: Colors.grey[600],
+                      fontSize: fontSize - 2,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              RichText(
+                text: TextSpan(
                   children: [
-                    Text(
-                      _formatDate(expense['date']),
+                    TextSpan(
+                      text: "Amount : ",
                       style: GoogleFonts.poppins(
                         color: Colors.grey[600],
-                        fontSize: fontSize - 3,
+                        fontSize: fontSize,
+                      ),
+                    ),
+                    TextSpan(
+                      text: "₹${expense['amount'] ?? '0'}",
+                      style: GoogleFonts.poppins(
+                        color: const Color(0xFF166534),
+                        fontWeight: FontWeight.w600,
+                        fontSize: fontSize,
                       ),
                     ),
                   ],
-                ),
-              ),
-              Text(
-                "₹${expense['amount'] ?? ''}",
-                style: GoogleFonts.poppins(
-                  color: Colors.black,
-                  fontWeight: FontWeight.w600,
-                  fontSize: fontSize,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      expense['expenseType'] ?? expense['type'] ?? "",
-                      style: GoogleFonts.poppins(
-                        color: Colors.black,
-                        fontWeight: FontWeight.w500,
-                        fontSize: fontSize - 1,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      expense['paymentMode'] ?? "",
-                      style: GoogleFonts.poppins(
-                        color: Colors.grey[600],
-                        fontSize: fontSize - 3,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    if (expense['invoiceNo'] != null &&
-                        expense['invoiceNo'].toString().isNotEmpty)
-                      Text(
-                        "Invoice: ${expense['invoiceNo'] ?? ''}",
-                        style: GoogleFonts.poppins(
-                          color: Colors.grey[700],
-                          fontSize: fontSize - 3,
-                        ),
-                      ),
-                    const SizedBox(height: 2),
-                    Text(
-                      expense['note'] ?? "",
-                      style: GoogleFonts.poppins(
-                        color: Colors.grey[600],
-                        fontSize: fontSize - 4,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 9),
-          Row(
+        ),
+        const Divider(height: 1, thickness: 1, color: Color(0xFFF3F4F6)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              TextButton(
+              IconButton(
                 onPressed: onEdit,
-                style: TextButton.styleFrom(
-                  textStyle: GoogleFonts.poppins(fontSize: fontSize - 3),
+                icon: const Icon(
+                  Icons.edit_note_outlined,
+                  color: Colors.grey,
+                  size: 22,
                 ),
-                child: Text(
-                  "Edit",
-                  style: GoogleFonts.poppins(
-                    color: Theme.of(context).primaryColor,
-                    fontSize: fontSize - 3,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                constraints: const BoxConstraints(),
+                padding: const EdgeInsets.all(8),
               ),
-              const SizedBox(width: 8),
-              TextButton(
+              IconButton(
                 onPressed: onDelete,
-                style: TextButton.styleFrom(
-                  textStyle: GoogleFonts.poppins(fontSize: fontSize - 3),
+                icon: const Icon(
+                  Icons.delete_outline,
+                  color: Color(0xFFB91C1C),
+                  size: 20,
                 ),
-                child: Text(
-                  "Delete",
-                  style: GoogleFonts.poppins(
-                    color: Colors.red,
-                    fontSize: fontSize - 3,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                constraints: const BoxConstraints(),
+                padding: const EdgeInsets.all(8),
               ),
             ],
           ),
-        ],
-      ),
+        ),
+      ],
     ),
   );
 }

@@ -8,6 +8,9 @@ import 'Supplier reports/inventory_stock_report.dart';
 import 'Supplier reports/category_wise_product_report.dart';
 import '../services/api_service.dart';
 import '../utils/export_helper.dart';
+import 'supp_profile.dart';
+import 'supp_notifications.dart';
+import '../supplier_model.dart';
 
 class SuppReportsPage extends StatefulWidget {
   const SuppReportsPage({super.key});
@@ -20,85 +23,167 @@ class _SuppReportsPageState extends State<SuppReportsPage> {
   static const Color _muted = Color(0xFF64748B);
 
   bool _isDownloading = false;
+  SupplierProfile? _profile;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final p = await ApiService.getSupplierProfile();
+      if (mounted) setState(() => _profile = p);
+    } catch (e) {
+      debugPrint('fetchProfile: $e');
+    }
+  }
+
+  Widget _buildInitialAvatar() {
+    return Text(
+      (_profile?.shopName ?? 'S').substring(0, 1).toUpperCase(),
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: 12.sp,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+  }
 
   Future<void> _downloadReport(String type) async {
     setState(() => _isDownloading = true);
     try {
       if (type == 'sales') {
         final res = await ApiService.getSalesByProductReport();
-        final data = (res['data']?['salesByProduct'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+        final data =
+            (res['data']?['salesByProduct'] as List?)
+                ?.cast<Map<String, dynamic>>() ??
+            [];
         if (data.isEmpty) throw 'No data available';
         await ExportHelper.executeExport(
           'excel',
           fileName: 'Sales_Report',
           title: 'Sales by Product Report',
-          headers: ['Product', 'Brand', 'Category', 'Quantity Sold', 'Gross', 'Net', 'Tax', 'Total'],
-          rows: data.map((r) => [
-            r['productName'] ?? '—',
-            r['brand'] ?? '—',
-            r['category'] ?? '—',
-            r['quantitySold'] ?? 0,
-            r['grossSale'] ?? 0,
-            r['netSale'] ?? 0,
-            r['tax'] ?? 0,
-            r['totalSales'] ?? 0,
-          ]).toList(),
+          headers: [
+            'Product',
+            'Brand',
+            'Category',
+            'Quantity Sold',
+            'Gross',
+            'Net',
+            'Tax',
+            'Total',
+          ],
+          rows: data
+              .map(
+                (r) => [
+                  r['productName'] ?? '—',
+                  r['brand'] ?? '—',
+                  r['category'] ?? '—',
+                  r['quantitySold'] ?? 0,
+                  r['grossSale'] ?? 0,
+                  r['netSale'] ?? 0,
+                  r['tax'] ?? 0,
+                  r['totalSales'] ?? 0,
+                ],
+              )
+              .toList(),
         );
       } else if (type == 'products') {
         final res = await ApiService.getProductSummaryReport();
-        final data = (res['data']?['products'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+        final data =
+            (res['data']?['products'] as List?)?.cast<Map<String, dynamic>>() ??
+            [];
         if (data.isEmpty) throw 'No data available';
         await ExportHelper.executeExport(
           'excel',
           fileName: 'All_Products_Report',
           title: 'All Products Report',
-          headers: ['Product', 'Brand', 'Category', 'Price', 'Sale Price', 'Stock', 'Status'],
-          rows: data.map((r) => [
-            r['productName'] ?? '—',
-            r['brand'] ?? '—',
-            r['category'] ?? '—',
-            r['price'] ?? 0,
-            r['salePrice'] ?? 0,
-            r['stock'] ?? 0,
-            r['status'] ?? '—',
-          ]).toList(),
+          headers: [
+            'Product',
+            'Brand',
+            'Category',
+            'Price',
+            'Sale Price',
+            'Stock',
+            'Status',
+          ],
+          rows: data
+              .map(
+                (r) => [
+                  r['productName'] ?? '—',
+                  r['brand'] ?? '—',
+                  r['category'] ?? '—',
+                  r['price'] ?? 0,
+                  r['salePrice'] ?? 0,
+                  r['stock'] ?? 0,
+                  r['status'] ?? '—',
+                ],
+              )
+              .toList(),
         );
       } else if (type == 'inventory') {
         final res = await ApiService.getInventoryStockReport();
-        final data = (res['data']?['products'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+        final data =
+            (res['data']?['products'] as List?)?.cast<Map<String, dynamic>>() ??
+            [];
         if (data.isEmpty) throw 'No data available';
         await ExportHelper.executeExport(
           'excel',
           fileName: 'Inventory_Report',
           title: 'Inventory / Stock Report',
           headers: ['Product', 'Stock', 'Status'],
-          rows: data.map((r) => [
-            r['productName'] ?? '—',
-            r['stockAvailable'] ?? 0,
-            r['stockStatus'] ?? '—',
-          ]).toList(),
+          rows: data
+              .map(
+                (r) => [
+                  r['productName'] ?? '—',
+                  r['stockAvailable'] ?? 0,
+                  r['stockStatus'] ?? '—',
+                ],
+              )
+              .toList(),
         );
       } else if (type == 'category') {
         final res = await ApiService.getCategoryWiseProductReport();
-        final data = (res['data']?['categories'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+        final data =
+            (res['data']?['categories'] as List?)
+                ?.cast<Map<String, dynamic>>() ??
+            [];
         if (data.isEmpty) throw 'No data available';
         await ExportHelper.executeExport(
           'excel',
           fileName: 'Category_Report',
           title: 'Category-wise Product Report',
-          headers: ['Category', 'Products', 'Active', 'Avg Price', 'Avg Sale Price'],
-          rows: data.map((r) => [
-            r['categoryName'] ?? '—',
-            r['numberOfProducts'] ?? 0,
-            r['activeProducts'] ?? 0,
-            r['averagePrice'] ?? 0,
-            r['averageSalePrice'] ?? 0,
-          ]).toList(),
+          headers: [
+            'Category',
+            'Products',
+            'Active',
+            'Avg Price',
+            'Avg Sale Price',
+          ],
+          rows: data
+              .map(
+                (r) => [
+                  r['categoryName'] ?? '—',
+                  r['numberOfProducts'] ?? 0,
+                  r['activeProducts'] ?? 0,
+                  r['averagePrice'] ?? 0,
+                  r['averageSalePrice'] ?? 0,
+                ],
+              )
+              .toList(),
         );
       }
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report downloaded successfully')));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Report downloaded successfully')),
+        );
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Download failed: $e')));
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Download failed: $e')));
     } finally {
       if (mounted) setState(() => _isDownloading = false);
     }
@@ -111,20 +196,70 @@ class _SuppReportsPageState extends State<SuppReportsPage> {
       children: [
         Scaffold(
           drawer: const SupplierDrawer(currentPage: 'Reports'),
-          backgroundColor: const Color(0xFFF8FAFC),
+          backgroundColor: Colors.white,
           appBar: AppBar(
             backgroundColor: Colors.white,
             elevation: 0,
-            surfaceTintColor: Colors.white,
-            iconTheme: const IconThemeData(color: Colors.black),
+            titleSpacing: 0,
+            leading: Builder(
+              builder: (context) => IconButton(
+                icon: const Icon(Icons.menu, color: Colors.black),
+                onPressed: () => Scaffold.of(context).openDrawer(),
+              ),
+            ),
             title: Text(
               'Reports',
               style: GoogleFonts.poppins(
-                fontSize: 13.sp,
-                fontWeight: FontWeight.w600,
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w700,
                 color: Colors.black,
               ),
             ),
+            actions: [
+              IconButton(
+                icon: const Icon(
+                  Icons.notifications_outlined,
+                  color: Colors.black,
+                ),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const SuppNotificationsPage(),
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SuppProfilePage()),
+                ),
+                child: Padding(
+                  padding: EdgeInsets.only(right: 12.w),
+                  child: CircleAvatar(
+                    radius: 16,
+                    backgroundColor: Theme.of(context).primaryColor,
+                    child: ClipOval(
+                      child:
+                          (_profile != null &&
+                              _profile!.profileImage.isNotEmpty)
+                          ? Image.network(
+                              _profile!.profileImage,
+                              width: 32,
+                              height: 32,
+                              fit: BoxFit.cover,
+                              errorBuilder: (ctx, _, __) =>
+                                  _buildInitialAvatar(),
+                              loadingBuilder: (ctx, child, progress) =>
+                                  progress == null
+                                  ? child
+                                  : const CircularProgressIndicator(),
+                            )
+                          : _buildInitialAvatar(),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
           body: SingleChildScrollView(
             padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 20.h),
@@ -178,9 +313,11 @@ class _SuppReportsPageState extends State<SuppReportsPage> {
                       'COGS, Gross Profit, Margin %',
                     ],
                     onView: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const SalesByProductReport())),
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SalesByProductReport(),
+                      ),
+                    ),
                     onDownload: () => _downloadReport('sales'),
                   ),
                 ]),
@@ -202,9 +339,11 @@ class _SuppReportsPageState extends State<SuppReportsPage> {
                       'Created Date, Active Status',
                     ],
                     onView: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const AllProductsReport())),
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AllProductsReport(),
+                      ),
+                    ),
                     onDownload: () => _downloadReport('products'),
                   ),
                   _ReportCard(
@@ -218,9 +357,11 @@ class _SuppReportsPageState extends State<SuppReportsPage> {
                       'Last Updated Date',
                     ],
                     onView: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const InventoryStockReport())),
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const InventoryStockReport(),
+                      ),
+                    ),
                     onDownload: () => _downloadReport('inventory'),
                   ),
                   _ReportCard(
@@ -234,10 +375,11 @@ class _SuppReportsPageState extends State<SuppReportsPage> {
                       'Sales Performance Metrics',
                     ],
                     onView: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) =>
-                                const CategoryWiseProductReport())),
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const CategoryWiseProductReport(),
+                      ),
+                    ),
                     onDownload: () => _downloadReport('category'),
                   ),
                 ]),
@@ -401,8 +543,9 @@ class _ReportCard extends StatelessWidget {
     final Color primaryDark = const Color(0xFF372935);
     final bgColor = isPrimary ? primaryDark : Colors.white;
     final fgColor = isPrimary ? Colors.white : const Color(0xFF1E293B);
-    final borderColor =
-        isPrimary ? Colors.transparent : const Color(0xFFE2E8F0);
+    final borderColor = isPrimary
+        ? Colors.transparent
+        : const Color(0xFFE2E8F0);
 
     return InkWell(
       onTap: onPressed,

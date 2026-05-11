@@ -187,7 +187,7 @@ class _SuppReviewsPageState extends State<SuppReviewsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       drawer: const SupplierDrawer(currentPage: 'Reviews'),
-      backgroundColor: const Color(0xFFF8F9FD),
+      backgroundColor: Colors.white,
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.white,

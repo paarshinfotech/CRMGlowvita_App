@@ -4,6 +4,9 @@ import 'widgets/custom_drawer.dart';
 import 'services/api_service.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'my_Profile.dart';
+import 'Notification.dart';
+import 'vendor_model.dart';
 
 class ReviewsPage extends StatefulWidget {
   const ReviewsPage({super.key});
@@ -15,6 +18,7 @@ class ReviewsPage extends StatefulWidget {
 class _ReviewsPageState extends State<ReviewsPage> {
   List<Map<String, dynamic>> reviews = [];
   bool _isLoading = true;
+  VendorProfile? _profile;
 
   // Search and filter variables
   final TextEditingController _searchController = TextEditingController();
@@ -35,6 +39,27 @@ class _ReviewsPageState extends State<ReviewsPage> {
   void initState() {
     super.initState();
     _fetchReviews();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final p = await ApiService.getVendorProfile();
+      if (mounted) setState(() => _profile = p);
+    } catch (e) {
+      debugPrint('fetchProfile: $e');
+    }
+  }
+
+  Widget _buildInitialAvatar() {
+    return Text(
+      (_profile?.businessName ?? 'H').substring(0, 1).toUpperCase(),
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: 12.sp,
+        fontWeight: FontWeight.bold,
+      ),
+    );
   }
 
   Future<void> _fetchReviews() async {
@@ -150,18 +175,62 @@ class _ReviewsPageState extends State<ReviewsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       drawer: const CustomDrawer(currentPage: 'Reviews'),
-      backgroundColor: const Color(0xFFF6F7FB),
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        elevation: 0.5,
         backgroundColor: Colors.white,
+        elevation: 0,
+        titleSpacing: 0,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: Colors.black),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
         title: Text(
           'Reviews',
           style: GoogleFonts.poppins(
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-              fontSize: 12.sp),
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w700,
+            color: Colors.black,
+          ),
         ),
-        iconTheme: const IconThemeData(color: Colors.black),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined, color: Colors.black),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NotificationPage()),
+            ),
+          ),
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const My_Profile()),
+            ),
+            child: Padding(
+              padding: EdgeInsets.only(right: 12.w),
+              child: CircleAvatar(
+                radius: 16,
+                backgroundColor: Theme.of(context).primaryColor,
+                child: ClipOval(
+                  child: (_profile != null && _profile!.profileImage.isNotEmpty)
+                      ? Image.network(
+                          _profile!.profileImage,
+                          width: 32,
+                          height: 32,
+                          fit: BoxFit.cover,
+                          errorBuilder: (ctx, _, __) => _buildInitialAvatar(),
+                          loadingBuilder: (ctx, child, progress) =>
+                              progress == null
+                                  ? child
+                                  : const CircularProgressIndicator(),
+                        )
+                      : _buildInitialAvatar(),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
       body: SafeArea(
         child: Column(
@@ -500,12 +569,21 @@ class _ReviewsPageState extends State<ReviewsPage> {
       statusColor = Colors.green;
     }
 
-    String entityName = review['entityDetails']?['salonName'] ??
-        review['entityDetails']?['productName'] ??
-        review['entityDetails']?['serviceName'] ??
+    final entityDetails = review['entityDetails'] as Map<String, dynamic>? ?? {};
+    String entityName = entityDetails['salonName'] ??
+        entityDetails['productName'] ??
+        entityDetails['serviceName'] ??
         (type.isNotEmpty ? type.toUpperCase() : 'General');
     String customerName = review['userName'] ?? 'Anonymous';
     String comment = review['comment'] ?? '';
+    
+    // Product/Entity Image
+    String? entityImage = entityDetails['salonImage'] ?? 
+                         entityDetails['image'] ?? 
+                         (entityDetails['productImages'] is List && (entityDetails['productImages'] as List).isNotEmpty 
+                             ? entityDetails['productImages'][0] 
+                             : null);
+
     String dateStr = '';
     if (review['createdAt'] != null) {
       try {
@@ -523,13 +601,43 @@ class _ReviewsPageState extends State<ReviewsPage> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Product Image
+              Container(
+                width: 50.w,
+                height: 50.w,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: entityImage != null && entityImage.isNotEmpty
+                      ? Image.network(
+                          entityImage.startsWith('http') 
+                              ? entityImage 
+                              : 'https://partners.glowvitasalon.com/$entityImage',
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const Icon(Icons.image, size: 20, color: Colors.grey),
+                        )
+                      : const Icon(Icons.image, size: 20, color: Colors.grey),
+                ),
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -539,89 +647,78 @@ class _ReviewsPageState extends State<ReviewsPage> {
                       style: GoogleFonts.poppins(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
+                        color: Colors.black87,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: type == 'service'
-                            ? Theme.of(context).primaryColor.withOpacity(0.1)
-                            : (type == 'product'
-                                ? Colors.purple.withOpacity(0.1)
-                                : Colors.blue.withOpacity(0.1)),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        type.toUpperCase(),
-                        style: GoogleFonts.poppins(
-                          fontSize: 9,
-                          color: type == 'service'
-                              ? Theme.of(context).primaryColor
-                              : (type == 'product'
-                                  ? Colors.purple
-                                  : Colors.blue),
-                          fontWeight: FontWeight.w500,
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: type == 'service'
+                                ? Theme.of(context).primaryColor.withOpacity(0.1)
+                                : (type == 'product'
+                                    ? Colors.purple.withOpacity(0.1)
+                                    : Colors.blue.withOpacity(0.1)),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            type.toUpperCase(),
+                            style: GoogleFonts.poppins(
+                              fontSize: 9,
+                              color: type == 'service'
+                                  ? Theme.of(context).primaryColor
+                                  : (type == 'product' ? Colors.purple : Colors.blue),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        Row(
+                          children: List.generate(5, (i) {
+                            return Icon(
+                              i < rating ? Icons.star : Icons.star_border,
+                              color: i < rating ? Colors.amber : Colors.grey.shade300,
+                              size: 14,
+                            );
+                          }),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Row(
-                    children: List.generate(5, (i) {
-                      return Icon(
-                        i < rating ? Icons.star : Icons.star_border,
-                        color: i < rating ? Colors.amber : Colors.grey,
-                        size: 16,
-                      );
-                    }),
-                  ),
-                  const SizedBox(height: 4),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      statusStr,
-                      style: GoogleFonts.poppins(
-                        fontSize: 9,
-                        color: statusColor,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
+              // Approval Toggle Button
+              IconButton(
+                onPressed: () => _updateStatus(reviewId, !(isApproved == true)),
+                icon: Icon(
+                  isApproved == true ? Icons.check_circle : Icons.check_circle_outline,
+                  color: isApproved == true ? Colors.green : Colors.grey,
+                  size: 24,
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          Text(
-            'by $customerName',
-            style: GoogleFonts.poppins(
-              fontSize: 11,
-              color: Colors.grey.shade700,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            comment,
-            style: GoogleFonts.poppins(
-              fontSize: 11,
-              color: Colors.grey.shade800,
-            ),
-          ),
-          const SizedBox(height: 14),
+          // Customer Name with Icon
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              Icon(Icons.person_outline, size: 14, color: Colors.grey.shade600),
+              const SizedBox(width: 4),
+              Text(
+                customerName,
+                style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+              const Spacer(),
               Text(
                 dateStr,
                 style: GoogleFonts.poppins(
@@ -629,48 +726,63 @@ class _ReviewsPageState extends State<ReviewsPage> {
                   color: Colors.grey.shade500,
                 ),
               ),
-              Row(
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        isApproved == true ? 'Approved' : 'Pending',
-                        style: GoogleFonts.poppins(
-                          fontSize: 10,
-                          color:
-                              isApproved == true ? Colors.green : Colors.orange,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Transform.scale(
-                        scale: 0.7,
-                        child: Switch(
-                          value: isApproved == true,
-                          activeColor: Colors.green,
-                          activeTrackColor: Colors.green.withOpacity(0.3),
-                          inactiveThumbColor: Colors.grey.shade400,
-                          inactiveTrackColor: Colors.grey.shade200,
-                          onChanged: (value) => _updateStatus(reviewId, value),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () => _deleteReview(reviewId),
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Review Comment
+          Text(
+            comment,
+            style: GoogleFonts.poppins(
+              fontSize: 11.5,
+              color: Colors.black87,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Divider after review
+          Divider(height: 1, color: Colors.grey.shade200),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        border: Border.all(color: Colors.grey.shade200),
-                        borderRadius: BorderRadius.circular(6),
+                        color: statusColor,
+                        shape: BoxShape.circle,
                       ),
-                      child: Icon(Icons.delete_outline,
-                          size: 16, color: Colors.grey.shade600),
                     ),
+                    const SizedBox(width: 6),
+                    Text(
+                      statusStr,
+                      style: GoogleFonts.poppins(
+                        fontSize: 9,
+                        color: statusColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              GestureDetector(
+                onTap: () => _deleteReview(reviewId),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(6),
                   ),
-                ],
+                  child: const Icon(Icons.delete_outline, size: 16, color: Colors.redAccent),
+                ),
               ),
             ],
           ),

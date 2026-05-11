@@ -439,197 +439,193 @@ class _CalendarState extends State<Calendar> {
         .length;
 
     return Scaffold(
-      drawer: const CustomDrawer(currentPage: 'Calendar'),
       backgroundColor: Colors.white,
-
-      // ── Minimal top bar (no AppBar widget) ──────────
-      body: SafeArea(
-        child: Column(children: [
-          // ── Header: Title + date + controls ───────────
-          Container(
-            color: Colors.white,
-            padding: EdgeInsets.fromLTRB(12.w, 10.h, 12.w, 8.h),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Top row: drawer icon + title + refresh + notifications + avatar
-                Row(children: [
-                  Builder(
-                    builder: (ctx) => GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.arrow_back_ios,
-                            size: 12.sp,
-                            color: Colors.black45,
-                          ),
-                          Text(
-                            'Calendar',
-                            style: TextStyle(
-                              fontSize: 9.sp,
-                              color: Colors.black45,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Column(children: [
-                      Text(
-                        'Staff Schedule',
-                        style: GoogleFonts.poppins(
-                            fontSize: 11.sp,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.black),
-                      ),
-                      Text(
-                        DateFormat('EEEE, dd MMM yyyy').format(_selectedDate),
-                        style: TextStyle(
-                            fontSize: 7.sp,
-                            color: Colors.grey[500],
-                            fontWeight: FontWeight.w400),
-                      ),
-                    ]),
-                  ),
-                  // Action icons compact
-                  GestureDetector(
-                    onTap: () {
-                      _loadStaff();
-                      _loadAppointments();
-                    },
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 4.w),
-                      child: Icon(Icons.refresh,
-                          size: 16.sp, color: Colors.black54),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () => Navigator.push(context,
-                        MaterialPageRoute(builder: (_) => NotificationPage())),
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 4.w),
-                      child: Icon(Icons.notifications_outlined,
-                          size: 16.sp, color: Colors.black54),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () => Navigator.push(context,
-                        MaterialPageRoute(builder: (_) => My_Profile())),
-                    child: CircleAvatar(
-                      radius: 13.r,
-                      backgroundColor: Theme.of(context).primaryColor,
-                      child: ClipOval(
-                        child: (_profile != null &&
-                                _profile!.profileImage.isNotEmpty)
-                            ? Image.network(
-                                _profile!.profileImage,
-                                width: 26.r,
-                                height: 26.r,
-                                fit: BoxFit.cover,
-                                errorBuilder: (ctx, _, __) =>
-                                    _buildInitialAvatar(),
-                                loadingBuilder: (ctx, child, progress) =>
-                                    progress == null
-                                        ? child
-                                        : _buildInitialAvatar(),
-                              )
-                            : _buildInitialAvatar(),
-                      ),
-                    ),
-                  ),
-                ]),
-
-                SizedBox(height: 8.h),
-
-                // Staff dropdown + Date navigator row
-                Row(children: [
-                  // Staff dropdown
-                  Container(
-                    height: 28.h,
-                    padding: EdgeInsets.symmetric(horizontal: 8.w),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey[300]!),
-                      borderRadius: BorderRadius.circular(6.r),
-                      color: Colors.white,
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String?>(
-                        value: _selectedStaffId,
-                        isDense: true,
-                        icon: Icon(Icons.keyboard_arrow_down,
-                            size: 14.sp, color: Colors.grey),
-                        style: TextStyle(
-                            fontSize: 9.sp,
-                            color: Colors.black87,
-                            fontFamily: GoogleFonts.poppins().fontFamily),
-                        items: [
-                          DropdownMenuItem<String?>(
-                            value: null,
-                            child: Text('All Staff',
-                                style: TextStyle(fontSize: 9.sp)),
-                          ),
-                          ...staffList.map((s) => DropdownMenuItem<String?>(
-                                value: s.id,
-                                child: Text(s.fullName ?? 'Staff',
-                                    style: TextStyle(fontSize: 9.sp)),
-                              )),
-                        ],
-                        onChanged: (v) => setState(() => _selectedStaffId = v),
-                      ),
-                    ),
-                  ),
-
-                  SizedBox(width: 8.w),
-
-                  // Date navigator
-                  Expanded(
-                    child: Container(
-                      height: 28.h,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey[300]!),
-                        borderRadius: BorderRadius.circular(6.r),
-                      ),
-                      child: Row(children: [
-                        GestureDetector(
-                          onTap: () => _setSelectedDate(
-                              _selectedDate.subtract(const Duration(days: 1))),
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 6.w),
-                            child: Icon(Icons.chevron_left,
-                                size: 14.sp, color: Colors.black87),
-                          ),
-                        ),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: _showMonthYearPicker,
-                            child: Text(
-                              DateFormat('EEE, dd MMM yyyy')
-                                  .format(_selectedDate),
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  fontSize: 8.sp, fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => _setSelectedDate(
-                              _selectedDate.add(const Duration(days: 1))),
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 6.w),
-                            child: Icon(Icons.chevron_right,
-                                size: 14.sp, color: Colors.black87),
-                          ),
-                        ),
-                      ]),
-                    ),
-                  ),
-                ]),
-              ],
+      drawer: const CustomDrawer(currentPage: 'Calendar'),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        titleSpacing: 0,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: Colors.black),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
+        title: Text(
+          'Calendar',
+          style: GoogleFonts.poppins(
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w700,
+            color: Colors.black,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined, color: Colors.black),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NotificationPage()),
             ),
           ),
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const My_Profile()),
+            ),
+            child: Padding(
+              padding: EdgeInsets.only(right: 12.w),
+              child: CircleAvatar(
+                radius: 16,
+                backgroundColor: Theme.of(context).primaryColor,
+                child: ClipOval(
+                  child: (_profile != null && _profile!.profileImage.isNotEmpty)
+                      ? Image.network(
+                          _profile!.profileImage,
+                          width: 32,
+                          height: 32,
+                          fit: BoxFit.cover,
+                          errorBuilder: (ctx, _, __) => _buildInitialAvatar(),
+                          loadingBuilder: (ctx, child, progress) =>
+                              progress == null
+                                  ? child
+                                  : const CircularProgressIndicator(),
+                        )
+                      : _buildInitialAvatar(),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // ── Header: Subtitle + date + controls ───────────
+            Container(
+              color: Colors.white,
+              padding: EdgeInsets.fromLTRB(12.w, 4.h, 12.w, 8.h),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Staff Schedule',
+                            style: GoogleFonts.poppins(
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.black),
+                          ),
+                          Text(
+                            DateFormat('EEEE, dd MMM yyyy').format(_selectedDate),
+                            style: TextStyle(
+                                fontSize: 7.sp,
+                                color: Colors.grey[500],
+                                fontWeight: FontWeight.w400),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        onPressed: () {
+                          _loadStaff();
+                          _loadAppointments();
+                        },
+                        icon: Icon(Icons.refresh, size: 18.sp, color: Colors.black54),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 4.h),
+                  // Staff dropdown + Date navigator row
+                  Row(
+                    children: [
+                      // Staff dropdown
+                      Container(
+                        height: 28.h,
+                        padding: EdgeInsets.symmetric(horizontal: 8.w),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey[300]!),
+                          borderRadius: BorderRadius.circular(6.r),
+                          color: Colors.white,
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String?>(
+                            value: _selectedStaffId,
+                            isDense: true,
+                            icon: Icon(Icons.keyboard_arrow_down,
+                                size: 14.sp, color: Colors.grey),
+                            style: TextStyle(
+                                fontSize: 9.sp,
+                                color: Colors.black87,
+                                fontFamily: GoogleFonts.poppins().fontFamily),
+                            items: [
+                              DropdownMenuItem<String?>(
+                                value: null,
+                                child: Text('All Staff',
+                                    style: TextStyle(fontSize: 9.sp)),
+                              ),
+                              ...staffList.map((s) => DropdownMenuItem<String?>(
+                                    value: s.id,
+                                    child: Text(s.fullName ?? 'Staff',
+                                        style: TextStyle(fontSize: 9.sp)),
+                                  )),
+                            ],
+                            onChanged: (v) => setState(() => _selectedStaffId = v),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 8.w),
+                      // Date navigator
+                      Expanded(
+                        child: Container(
+                          height: 28.h,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey[300]!),
+                            borderRadius: BorderRadius.circular(6.r),
+                          ),
+                          child: Row(
+                            children: [
+                              GestureDetector(
+                                onTap: () => _setSelectedDate(
+                                    _selectedDate.subtract(const Duration(days: 1))),
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 6.w),
+                                  child: Icon(Icons.chevron_left,
+                                      size: 14.sp, color: Colors.black87),
+                                ),
+                              ),
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: _showMonthYearPicker,
+                                  child: Text(
+                                    DateFormat('EEE, dd MMM yyyy').format(_selectedDate),
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                        fontSize: 8.sp, fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => _setSelectedDate(
+                                    _selectedDate.add(const Duration(days: 1))),
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 6.w),
+                                  child: Icon(Icons.chevron_right,
+                                      size: 14.sp, color: Colors.black87),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
 
           Divider(height: 1, thickness: 1, color: Colors.grey[200]),
 

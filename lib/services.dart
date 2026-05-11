@@ -8,6 +8,7 @@ import 'vendor_model.dart';
 import 'my_Profile.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'widgets/subscription_wrapper.dart';
+import 'Notification.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
@@ -72,6 +73,17 @@ class _ServicesState extends State<Services> {
     } catch (e) {
       debugPrint('fetchProfile: $e');
     }
+  }
+
+  Widget _buildInitialAvatar() {
+    return Text(
+      (_profile?.businessName ?? 'H').substring(0, 1).toUpperCase(),
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: 12.sp,
+        fontWeight: FontWeight.bold,
+      ),
+    );
   }
 
   // ══════════════════════════════════════════════════
@@ -795,51 +807,59 @@ class _ServicesState extends State<Services> {
         .length;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F7FB),
+      backgroundColor: Colors.white,
       drawer: const CustomDrawer(currentPage: 'Services'),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        toolbarHeight: 44.h,
+        titleSpacing: 0,
         leading: Builder(
-          builder: (ctx) => IconButton(
-            icon: Icon(Icons.menu, color: Colors.black87, size: 18.sp),
-            onPressed: () => Scaffold.of(ctx).openDrawer(),
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: Colors.black),
+            onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),
-        title: Text('Services',
-            style: GoogleFonts.poppins(
-                fontSize: 12.sp,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87)),
+        title: Text(
+          'Services',
+          style: GoogleFonts.poppins(
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w700,
+            color: Colors.black,
+          ),
+        ),
         actions: [
           IconButton(
-            icon: Icon(Icons.notifications_outlined,
-                size: 18.sp, color: Colors.black54),
-            onPressed: () {},
+            icon: const Icon(Icons.notifications_outlined, color: Colors.black),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NotificationPage()),
+            ),
           ),
           GestureDetector(
             onTap: () => Navigator.push(
-                context, MaterialPageRoute(builder: (_) => My_Profile())),
+              context,
+              MaterialPageRoute(builder: (_) => const My_Profile()),
+            ),
             child: Padding(
-              padding: EdgeInsets.only(right: 10.w),
+              padding: EdgeInsets.only(right: 12.w),
               child: CircleAvatar(
-                radius: 14.r,
+                radius: 16,
                 backgroundColor: Theme.of(context).primaryColor,
-                backgroundImage:
-                    (_profile != null && _profile!.profileImage.isNotEmpty)
-                        ? NetworkImage(_profile!.profileImage)
-                        : null,
-                child: (_profile == null || _profile!.profileImage.isEmpty)
-                    ? Text(
-                        (_profile?.businessName ?? 'H')
-                            .substring(0, 1)
-                            .toUpperCase(),
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 7.5.sp,
-                            fontWeight: FontWeight.bold))
-                    : null,
+                child: ClipOval(
+                  child: (_profile != null && _profile!.profileImage.isNotEmpty)
+                      ? Image.network(
+                          _profile!.profileImage,
+                          width: 32,
+                          height: 32,
+                          fit: BoxFit.cover,
+                          errorBuilder: (ctx, _, __) => _buildInitialAvatar(),
+                          loadingBuilder: (ctx, child, progress) =>
+                              progress == null
+                                  ? child
+                                  : const CircularProgressIndicator(),
+                        )
+                      : _buildInitialAvatar(),
+                ),
               ),
             ),
           ),

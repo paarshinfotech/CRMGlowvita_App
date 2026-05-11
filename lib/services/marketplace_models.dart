@@ -24,6 +24,7 @@ class MarketplaceProduct {
   final String supplierCity;
   final String supplierState;
   final String supplierCountry;
+  final String supplierImage;
 
   MarketplaceProduct({
     required this.id,
@@ -51,6 +52,7 @@ class MarketplaceProduct {
     required this.supplierCity,
     required this.supplierState,
     required this.supplierCountry,
+    required this.supplierImage,
   });
 
   factory MarketplaceProduct.fromJson(Map<String, dynamic> json) {
@@ -87,6 +89,7 @@ class MarketplaceProduct {
       supplierCity: json['supplierCity'] ?? '',
       supplierState: json['supplierState'] ?? '',
       supplierCountry: json['supplierCountry'] ?? '',
+      supplierImage: json['supplierImage'] ?? json['vendorImage'] ?? '',
     );
   }
 }
@@ -99,6 +102,7 @@ class MarketplaceSupplier {
   final String state;
   final String country;
   final String businessRegistrationNo;
+  final String image;
 
   MarketplaceSupplier({
     required this.id,
@@ -108,6 +112,7 @@ class MarketplaceSupplier {
     required this.state,
     required this.country,
     required this.businessRegistrationNo,
+    required this.image,
   });
 
   factory MarketplaceSupplier.fromJson(Map<String, dynamic> json) {
@@ -119,6 +124,7 @@ class MarketplaceSupplier {
       state: json['state'] ?? '',
       country: json['country'] ?? '',
       businessRegistrationNo: json['businessRegistrationNo'] ?? '',
+      image: json['image'] ?? json['vendorImage'] ?? '',
     );
   }
 

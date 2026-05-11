@@ -68,6 +68,7 @@ class CartManager extends ChangeNotifier {
               supplierCity: '',
               supplierState: '',
               supplierCountry: '',
+              supplierImage: '',
             ),
           );
           return CartItem(product: product, quantity: apiItem.quantity);

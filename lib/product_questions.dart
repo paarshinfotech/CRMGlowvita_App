@@ -3,6 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'widgets/custom_drawer.dart';
 import 'services/api_service.dart';
 import 'widgets/subscription_wrapper.dart';
+import 'my_Profile.dart';
+import 'Notification.dart';
+import 'vendor_model.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class ProductQuestionsPage extends StatefulWidget {
@@ -16,6 +19,7 @@ class _ProductQuestionsPageState extends State<ProductQuestionsPage> {
   List<Map<String, dynamic>> _allQuestions = [];
   bool _isLoading = true;
   String? _errorMessage;
+  VendorProfile? _profile;
 
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
@@ -31,6 +35,27 @@ class _ProductQuestionsPageState extends State<ProductQuestionsPage> {
   void initState() {
     super.initState();
     _fetchQuestions();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final p = await ApiService.getVendorProfile();
+      if (mounted) setState(() => _profile = p);
+    } catch (e) {
+      debugPrint('fetchProfile: $e');
+    }
+  }
+
+  Widget _buildInitialAvatar() {
+    return Text(
+      (_profile?.businessName ?? 'H').substring(0, 1).toUpperCase(),
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: 12.sp,
+        fontWeight: FontWeight.bold,
+      ),
+    );
   }
 
   @override
@@ -146,36 +171,59 @@ class _ProductQuestionsPageState extends State<ProductQuestionsPage> {
 
     return Scaffold(
       drawer: const CustomDrawer(currentPage: 'Product Questions'),
-      backgroundColor: const Color(0xFFF6F7FB),
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        elevation: 0,
         backgroundColor: Colors.white,
+        elevation: 0,
+        titleSpacing: 0,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: Colors.black),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
         title: Text(
           'Product Questions',
           style: GoogleFonts.poppins(
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-              fontSize: 12.sp),
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w700,
+            color: Colors.black,
+          ),
         ),
-        iconTheme: const IconThemeData(color: Colors.black),
         actions: [
           IconButton(
-              icon: const Icon(Icons.search, color: Colors.black87, size: 20),
-              onPressed: () {}),
-          IconButton(
-              icon: const Icon(Icons.notifications_none,
-                  color: Colors.black87, size: 20),
-              onPressed: () {}),
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: CircleAvatar(
-              radius: 14,
-              backgroundColor: accent.withOpacity(0.12),
-              child: Text('A',
-                  style: TextStyle(
-                      color: accent,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600)),
+            icon: const Icon(Icons.notifications_outlined, color: Colors.black),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NotificationPage()),
+            ),
+          ),
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const My_Profile()),
+            ),
+            child: Padding(
+              padding: EdgeInsets.only(right: 12.w),
+              child: CircleAvatar(
+                radius: 16,
+                backgroundColor: Theme.of(context).primaryColor,
+                child: ClipOval(
+                  child: (_profile != null && _profile!.profileImage.isNotEmpty)
+                      ? Image.network(
+                          _profile!.profileImage,
+                          width: 32,
+                          height: 32,
+                          fit: BoxFit.cover,
+                          errorBuilder: (ctx, _, __) => _buildInitialAvatar(),
+                          loadingBuilder: (ctx, child, progress) =>
+                              progress == null
+                                  ? child
+                                  : const CircularProgressIndicator(),
+                        )
+                      : _buildInitialAvatar(),
+                ),
+              ),
             ),
           ),
         ],

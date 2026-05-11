@@ -9,7 +9,7 @@ class AppColors {
   // Backgrounds
   static const Color scaffoldBackground = Colors.white;
   static const Color cardBackground = Colors.white;
-  static const Color surfaceBackground = Color(0xFFF7F7F8);
+  static const Color surfaceBackground = Colors.white;
 
   // Text Colors
   static const Color textPrimary = Color(0xFF1F2937);

@@ -8,6 +8,9 @@ import '../services/api_service.dart';
 import '../billing_invoice_model.dart';
 import '../widgets/invoice_view.dart';
 import '../widgets/subscription_wrapper.dart';
+import 'supp_profile.dart';
+import 'supp_notifications.dart';
+import '../supplier_model.dart';
 
 class SuppInvoiceManagementPage extends StatefulWidget {
   const SuppInvoiceManagementPage({super.key});
@@ -24,6 +27,7 @@ class _SuppInvoiceManagementPageState extends State<SuppInvoiceManagementPage> {
   List<BillingInvoice> invoices = [];
   bool _isLoading = true;
   String? _errorMessage;
+  SupplierProfile? _profile;
 
   String _searchQuery = '';
   String _selectedPaymentMethod = 'All Payment Methods';
@@ -37,6 +41,27 @@ class _SuppInvoiceManagementPageState extends State<SuppInvoiceManagementPage> {
   void initState() {
     super.initState();
     _fetchInvoices();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final p = await ApiService.getSupplierProfile();
+      if (mounted) setState(() => _profile = p);
+    } catch (e) {
+      debugPrint('fetchProfile: $e');
+    }
+  }
+
+  Widget _buildInitialAvatar() {
+    return Text(
+      (_profile?.shopName ?? 'S').substring(0, 1).toUpperCase(),
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: 12.sp,
+        fontWeight: FontWeight.bold,
+      ),
+    );
   }
 
   Future<void> _fetchInvoices() async {
@@ -144,25 +169,91 @@ class _SuppInvoiceManagementPageState extends State<SuppInvoiceManagementPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       drawer: const SupplierDrawer(currentPage: 'Invoice Management'),
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text(
-          "Invoice Management",
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-            fontSize: 12.sp,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        titleSpacing: 0,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: Colors.black),
+            onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),
-        backgroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.black),
-        elevation: 0,
+        title: Text(
+          'Invoice Management',
+          style: GoogleFonts.poppins(
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w700,
+            color: Colors.black,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined, color: Colors.black),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SuppNotificationsPage()),
+            ),
+          ),
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SuppProfilePage()),
+            ),
+            child: Padding(
+              padding: EdgeInsets.only(right: 12.w),
+              child: CircleAvatar(
+                radius: 16,
+                backgroundColor: Theme.of(context).primaryColor,
+                child: ClipOval(
+                  child: (_profile != null && _profile!.profileImage.isNotEmpty)
+                      ? Image.network(
+                          _profile!.profileImage,
+                          width: 32,
+                          height: 32,
+                          fit: BoxFit.cover,
+                          errorBuilder: (ctx, _, __) => _buildInitialAvatar(),
+                          loadingBuilder: (ctx, child, progress) =>
+                              progress == null
+                              ? child
+                              : const CircularProgressIndicator(),
+                        )
+                      : _buildInitialAvatar(),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
       body: SubscriptionWrapper(
         child: Padding(
           padding: const EdgeInsets.all(_gap),
           child: Column(
             children: [
+              /// 🔹 SEARCH (MATCHED)
+              TextField(
+                controller: _searchController,
+                onChanged: (v) => setState(() => _searchQuery = v),
+                decoration: InputDecoration(
+                  hintText: 'Search Invoices...',
+                  hintStyle: GoogleFonts.poppins(fontSize: 13),
+                  prefixIcon: const Icon(Icons.search, size: 20),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(_radius),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
               /// 🔹 STATS (EXACT MATCH)
               Row(
                 children: [
@@ -248,28 +339,11 @@ class _SuppInvoiceManagementPageState extends State<SuppInvoiceManagementPage> {
 
               const SizedBox(height: 10),
 
-              /// 🔹 SEARCH (MATCHED)
-              TextField(
-                controller: _searchController,
-                onChanged: (v) => setState(() => _searchQuery = v),
-                decoration: InputDecoration(
-                  hintText: 'Search Invoices...',
-                  hintStyle: GoogleFonts.poppins(fontSize: 13),
-                  prefixIcon: const Icon(Icons.search, size: 20),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(_radius),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-
               const SizedBox(height: 10),
 
               /// 🔹 FILTER ROW (EXACT SAME)
               SizedBox(
-                height: 44,
+                height: 38,
                 child: Row(
                   children: [
                     Expanded(
@@ -329,7 +403,7 @@ class _SuppInvoiceManagementPageState extends State<SuppInvoiceManagementPage> {
                       )
                     : ListView.builder(
                         itemCount: filteredInvoices.length,
-                        itemBuilder: (_, i) => InvoiceCard(
+                        itemBuilder: (_, i) => SuppInvoiceCard(
                           invoice: filteredInvoices[i],
                           onView: () => _showInvoiceDialog(filteredInvoices[i]),
                         ),
@@ -358,10 +432,13 @@ class _SuppInvoiceManagementPageState extends State<SuppInvoiceManagementPage> {
         child: DropdownButton<String>(
           isExpanded: true,
           value: value,
+          style: GoogleFonts.poppins(fontSize: 11, color: Colors.black),
           items: items
               .map<DropdownMenuItem<String>>(
-                (String e) =>
-                    DropdownMenuItem<String>(value: e, child: Text(e)),
+                (String e) => DropdownMenuItem<String>(
+                  value: e,
+                  child: Text(e, style: GoogleFonts.poppins(fontSize: 11)),
+                ),
               )
               .toList(),
           onChanged: onChanged,
@@ -372,7 +449,7 @@ class _SuppInvoiceManagementPageState extends State<SuppInvoiceManagementPage> {
 
   Widget _dateChip(DateTime? date, String hint) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
@@ -380,9 +457,224 @@ class _SuppInvoiceManagementPageState extends State<SuppInvoiceManagementPage> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.calendar_today, size: 16),
+          const Icon(Icons.calendar_today, size: 14, color: Colors.grey),
           const SizedBox(width: 8),
-          Text(date == null ? hint : '${date.day}/${date.month}/${date.year}'),
+          Text(
+            date == null ? hint : DateFormat('dd/MM/yyyy').format(date),
+            style: GoogleFonts.poppins(
+              fontSize: 11,
+              color: date == null ? Colors.grey : Colors.black,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class SuppInvoiceCard extends StatelessWidget {
+  final BillingInvoice invoice;
+  final VoidCallback onView;
+
+  const SuppInvoiceCard({
+    super.key,
+    required this.invoice,
+    required this.onView,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final firstItem = invoice.items.isNotEmpty ? invoice.items.first : null;
+    final hasServices = invoice.items.any((i) => i.itemType == 'Service');
+    final hasProducts = invoice.items.any(
+      (i) => i.itemType == 'Product' || i.itemType == 'Item',
+    );
+
+    final itemType = hasServices
+        ? "Services"
+        : (hasProducts ? "Products" : "Items");
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top Row: ID and Date
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Text(
+                  invoice.invoiceNumber,
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.circle, size: 4, color: Colors.grey),
+                const SizedBox(width: 8),
+                Text(
+                  DateFormat('MMM d, yyyy').format(invoice.createdAt),
+                  style: GoogleFonts.poppins(
+                    fontSize: 10,
+                    color: Colors.grey.shade500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Name Row
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                const Icon(Icons.person, size: 13, color: Color(0xFF3B82F6)),
+                const SizedBox(width: 8),
+                Text(
+                  invoice.clientInfo.fullName,
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 8),
+          Divider(height: 1, color: Colors.grey.shade400),
+
+          // Content Grid
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    // Phone
+                    Expanded(
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.phone,
+                            size: 14,
+                            color: Colors.green,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            invoice.clientInfo.phone,
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: Colors.grey.shade800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Services
+                    Expanded(
+                      child: Row(
+                        children: [
+                          const Icon(Icons.circle, size: 6, color: Colors.blue),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '$itemType : ${firstItem?.name ?? '-'} (x${firstItem?.quantity ?? 1})',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                color: const Color(0xFF6B7280),
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    // Amount
+                    Expanded(
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.account_balance_wallet,
+                            size: 14,
+                            color: Colors.green,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '₹${invoice.totalAmount.toStringAsFixed(0)}',
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Paid By
+                    Expanded(
+                      child: Text(
+                        'Paid By : ${invoice.paymentMethod}',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                // Billing Type and Icon
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Billing Type : ${invoice.billingType}',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: Colors.black,
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(
+                            Icons.visibility_outlined,
+                            size: 20,
+                            color: Color(0xFF374151),
+                          ),
+                          onPressed: onView,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

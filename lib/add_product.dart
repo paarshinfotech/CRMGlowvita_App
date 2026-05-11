@@ -364,7 +364,7 @@ class _AddProductPageState extends State<AddProductPage> {
         elevation: 0,
         foregroundColor: Colors.black,
       ),
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
           SingleChildScrollView(

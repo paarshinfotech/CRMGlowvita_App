@@ -1,46 +1,46 @@
 import 'package:flutter/material.dart';
+import 'package:glowvita/Notification.dart';
+import 'package:glowvita/my_Profile.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'supp_drawer.dart';
-import '../widgets/subscription_wrapper.dart';
-import 'supp_notifications.dart';
-import 'supp_profile.dart';
-import '../services/api_service.dart';
-import '../supplier_model.dart';
+import 'widgets/custom_drawer.dart';
+import 'widgets/subscription_wrapper.dart';
+import 'vendor_model.dart';
+import 'services/api_service.dart';
 
-class SuppMarketingPage extends StatefulWidget {
-  const SuppMarketingPage({super.key});
+class MarketingPage extends StatefulWidget {
+  const MarketingPage({super.key});
 
   @override
-  State<SuppMarketingPage> createState() => _SuppMarketingPageState();
+  State<MarketingPage> createState() => _MarketingPageState();
 }
 
-class _SuppMarketingPageState extends State<SuppMarketingPage> {
-  SupplierProfile? _profile;
+class _MarketingPageState extends State<MarketingPage> {
+  VendorProfile? _profile;
 
   @override
   void initState() {
     super.initState();
-    _loadProfile();
+    _fetchProfile();
   }
 
-  Future<void> _loadProfile() async {
+  Future<void> _fetchProfile() async {
     try {
-      final profile = await ApiService.getSupplierProfile();
+      final profile = await ApiService.getVendorProfile();
       if (mounted) {
         setState(() {
           _profile = profile;
         });
       }
     } catch (e) {
-      debugPrint('Error loading supplier profile: $e');
+      debugPrint('Error fetching profile: $e');
     }
   }
 
   Widget _buildInitialAvatar() {
-    final displayName = _profile?.shopName ?? 'S';
+    final displayName = _profile?.businessName ?? 'G';
     return Text(
-      displayName.isNotEmpty ? displayName[0].toUpperCase() : 'S',
+      displayName.isNotEmpty ? displayName[0].toUpperCase() : 'G',
       style: GoogleFonts.poppins(
         color: Colors.white,
         fontWeight: FontWeight.bold,
@@ -54,7 +54,7 @@ class _SuppMarketingPageState extends State<SuppMarketingPage> {
     ScreenUtil.init(context, designSize: const Size(375, 812));
     return Scaffold(
       backgroundColor: Colors.white,
-      drawer: const SupplierDrawer(currentPage: 'Marketing'),
+      drawer: const CustomDrawer(currentPage: 'Marketing'),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -78,13 +78,13 @@ class _SuppMarketingPageState extends State<SuppMarketingPage> {
             icon: const Icon(Icons.notifications_outlined, color: Colors.black),
             onPressed: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const SuppNotificationsPage()),
+              MaterialPageRoute(builder: (_) => const NotificationPage()),
             ),
           ),
           GestureDetector(
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const SuppProfilePage()),
+              MaterialPageRoute(builder: (_) => const My_Profile()),
             ),
             child: Padding(
               padding: EdgeInsets.only(right: 12.w),

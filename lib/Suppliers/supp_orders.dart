@@ -100,7 +100,7 @@ class _SuppOrdersPageState extends State<SuppOrdersPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       drawer: const SupplierDrawer(currentPage: 'Orders'),
-      backgroundColor: const Color(0xFFF6F7FB),
+      backgroundColor: Colors.white,
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.white,

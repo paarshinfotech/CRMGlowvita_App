@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'widgets/custom_drawer.dart';
+import 'services/api_service.dart';
+import 'my_Profile.dart';
+import 'Notification.dart';
+import 'vendor_model.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class ShippingPage extends StatefulWidget {
   const ShippingPage({super.key});
@@ -14,6 +20,33 @@ class _ShippingConfigPageState extends State<ShippingPage> {
   bool enableShipping = true;
   ChargeType chargeType = ChargeType.fixed;
   final TextEditingController amountCtrl = TextEditingController(text: '80');
+  VendorProfile? _profile;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final p = await ApiService.getVendorProfile();
+      if (mounted) setState(() => _profile = p);
+    } catch (e) {
+      debugPrint('fetchProfile: $e');
+    }
+  }
+
+  Widget _buildInitialAvatar() {
+    return Text(
+      (_profile?.businessName ?? 'H').substring(0, 1).toUpperCase(),
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: 12.sp,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -23,9 +56,9 @@ class _ShippingConfigPageState extends State<ShippingPage> {
 
   void _save() {
     // TODO: persist settings or call API
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Shipping settings saved')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Shipping settings saved')));
   }
 
   @override
@@ -34,249 +67,246 @@ class _ShippingConfigPageState extends State<ShippingPage> {
       backgroundColor: Colors.white,
       drawer: const CustomDrawer(currentPage: 'Shipping'),
       appBar: AppBar(
-        elevation: 0.5,
         backgroundColor: Colors.white,
-        title: const Text('Shipping Configuration',
-            style: TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.w600,
-                fontSize: 16)),
-        iconTheme: const IconThemeData(color: Colors.black),
+        elevation: 0,
+        titleSpacing: 0,
         leading: Builder(
           builder: (context) => IconButton(
-            icon: const Icon(Icons.menu),
+            icon: const Icon(Icons.menu, color: Colors.black),
             onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),
-      ),
-      body: LayoutBuilder(
-        builder: (context, c) {
-          final isMobile = c.maxWidth < 600;
-          final cardPadding = EdgeInsets.all(isMobile ? 10 : 16);
-          final fieldPadding = EdgeInsets.symmetric(
-            horizontal: isMobile ? 12 : 16,
-            vertical: isMobile ? 8 : 10,
-          );
-
-          return SingleChildScrollView(
-            padding: EdgeInsets.all(isMobile ? 10 : 20),
-            child: Card(
-              margin: EdgeInsets.zero,
-              elevation: 0.8,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-                side: BorderSide(color: Colors.grey.shade200),
+        title: Text(
+          'Shipping Configuration',
+          style: TextStyle(
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w700,
+            color: Colors.black,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined, color: Colors.black),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NotificationPage()),
+            ),
+          ),
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const My_Profile()),
+            ),
+            child: Padding(
+              padding: EdgeInsets.only(right: 12.w),
+              child: CircleAvatar(
+                radius: 16,
+                backgroundColor: Theme.of(context).primaryColor,
+                child: ClipOval(
+                  child: (_profile != null && _profile!.profileImage.isNotEmpty)
+                      ? Image.network(
+                          _profile!.profileImage,
+                          width: 32,
+                          height: 32,
+                          fit: BoxFit.cover,
+                          errorBuilder: (ctx, _, __) => _buildInitialAvatar(),
+                          loadingBuilder: (ctx, child, progress) =>
+                              progress == null
+                              ? child
+                              : const CircularProgressIndicator(),
+                        )
+                      : _buildInitialAvatar(),
+                ),
               ),
-              child: Padding(
-                padding: cardPadding,
+            ),
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        child: Container(
+          width: double.infinity,
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE8F0FE),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Shipping Charges',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Set up how you want to charge for shipping on product orders.',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: Colors.black.withOpacity(0.7),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Enable Shipping Charges',
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Switch.adaptive(
+                      value: enableShipping,
+                      activeColor: const Color(0xFF4A2C3C),
+                      onChanged: (v) => setState(() => enableShipping = v),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Title + subtitle
-                    Text('Shipping Charges',
-                        style: TextStyle(
-                          fontSize: isMobile ? 16 : 18,
-                          fontWeight: FontWeight.w600,
-                        )),
-                    const SizedBox(height: 6),
                     Text(
-                      'Set up how you want to charge for shipping on product orders.',
-                      style: TextStyle(
-                        color: Colors.grey.shade700,
-                        fontSize: isMobile ? 10 : 11,
-                        fontWeight: FontWeight.w400,
+                      'Charge Type',
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
                       ),
                     ),
-                    const SizedBox(height: 16),
-
-                    // Enable toggle (adaptive)
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: SwitchListTile.adaptive(
-                        contentPadding: fieldPadding,
-                        title: const Text('Enable Shipping Charges',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                            )),
-                        value: enableShipping,
-                        onChanged: (v) => setState(() => enableShipping = v),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Charge Type
-                    Text('Charge Type',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w500,
-                          fontSize: isMobile ? 12 : 13,
-                        )),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 16,
-                      runSpacing: 8,
+                    const SizedBox(height: 12),
+                    Row(
                       children: [
-                        _RadioPill<ChargeType>(
-                          title: 'Fixed Amount (₹)',
-                          value: ChargeType.fixed,
-                          groupValue: chargeType,
-                          onChanged: enableShipping
-                              ? (v) => setState(() => chargeType = v!)
-                              : null,
-                        ),
-                        _RadioPill<ChargeType>(
-                          title: 'Percentage (%)',
-                          value: ChargeType.percent,
-                          groupValue: chargeType,
-                          onChanged: enableShipping
-                              ? (v) => setState(() => chargeType = v!)
-                              : null,
-                        ),
+                        _buildRadioOption('Fixed Amount', ChargeType.fixed),
+                        const SizedBox(width: 24),
+                        _buildRadioOption('Percentage (%)', ChargeType.percent),
                       ],
                     ),
-                    const SizedBox(height: 16),
-
-                    // Amount
-                    Text('Amount',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w500,
-                          fontSize: isMobile ? 12 : 13,
-                        )),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Amount',
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     TextField(
                       controller: amountCtrl,
                       enabled: enableShipping,
-                      keyboardType: const TextInputType.numberWithOptions(
-                          signed: false, decimal: true),
+                      keyboardType: TextInputType.number,
                       decoration: InputDecoration(
-                        prefixIcon: Padding(
-                          padding: const EdgeInsets.only(left: 12, right: 8),
-                          child: Text(
-                            chargeType == ChargeType.fixed ? '₹' : '%',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: Colors.grey.shade800,
-                            ),
-                          ),
-                        ),
-                        prefixIconConstraints:
-                            const BoxConstraints(minWidth: 0, minHeight: 0),
-                        hintText: chargeType == ChargeType.fixed ? '80' : '5',
                         filled: true,
-                        fillColor:
-                            enableShipping ? Colors.white : Colors.grey[100],
+                        fillColor: Colors.white,
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide:
-                              BorderSide(color: Colors.grey.shade300, width: 1),
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide:
-                              BorderSide(color: Colors.grey.shade300, width: 1),
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
                         ),
-                        contentPadding: fieldPadding,
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF4A2C3C),
+                          ),
+                        ),
                       ),
                     ),
-
-                    const SizedBox(height: 20),
-
-                    // Save button aligned right on wide, full width on mobile
-                    Align(
-                      alignment:
-                          isMobile ? Alignment.center : Alignment.centerRight,
+                    const SizedBox(height: 32),
+                    Center(
                       child: SizedBox(
-                        width: isMobile ? double.infinity : null,
+                        width: 160,
                         child: ElevatedButton(
-                          onPressed: _save,
+                          onPressed: enableShipping ? _save : null,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).primaryColor,
+                            backgroundColor: const Color(0xFF4A2C3C),
                             foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(
-                                horizontal: isMobile ? 16 : 20,
-                                vertical: isMobile ? 14 : 12),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            textStyle: const TextStyle(
-                              fontWeight: FontWeight.w700,
+                            elevation: 0,
+                          ),
+                          child: Text(
+                            'Save Changes',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
                             ),
                           ),
-                          child: const Text('Save Changes',
-                              style: TextStyle(
-                                fontSize: 14,
-                              )),
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
-          );
-        },
+            ],
+          ),
+        ),
       ),
     );
   }
-}
 
-class _RadioPill<T> extends StatelessWidget {
-  final String title;
-  final T value;
-  final T? groupValue;
-  final ValueChanged<T?>? onChanged;
-
-  const _RadioPill({
-    required this.title,
-    required this.value,
-    required this.groupValue,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final selected = value == groupValue;
+  Widget _buildRadioOption(String title, ChargeType value) {
     return InkWell(
-      borderRadius: BorderRadius.circular(24),
-      onTap: onChanged == null ? null : () => onChanged!(value),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected
-              ? Theme.of(context).primaryColor.withOpacity(0.12)
-              : Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: selected
-                ? Theme.of(context).primaryColor
-                : Colors.grey.shade300,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Radio<T>(
+      onTap: enableShipping ? () => setState(() => chargeType = value) : null,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 20,
+            height: 20,
+            child: Radio<ChargeType>(
               value: value,
-              activeColor: Theme.of(context).primaryColor,
-              groupValue: groupValue,
-              onChanged: onChanged,
-              toggleable: false,
-              visualDensity: VisualDensity.compact,
+              groupValue: chargeType,
+              onChanged: enableShipping
+                  ? (v) => setState(() => chargeType = v!)
+                  : null,
+              activeColor: const Color(0xFF4A2C3C),
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
-            Text(
-              title,
-              style: TextStyle(
-                fontWeight: FontWeight.w500,
-                fontSize: 12,
-                color: Colors.grey.shade900,
-              ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              color: Colors.black.withOpacity(0.8),
+              fontWeight: FontWeight.w500,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

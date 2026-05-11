@@ -8,6 +8,10 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'controllers/notification_controller.dart';
 import 'models/notification_model.dart';
 import 'package:intl/intl.dart';
+import 'package:csv/csv.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
+import 'dart:io';
 
 class NotificationPage extends StatefulWidget {
   const NotificationPage({super.key});
@@ -16,19 +20,19 @@ class NotificationPage extends StatefulWidget {
   State<NotificationPage> createState() => _NotificationPageState();
 }
 
-class _NotificationPageState extends State<NotificationPage>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _NotificationPageState extends State<NotificationPage> {
   final NotificationController _controller = NotificationController();
   VendorProfile? _profile;
+  String _searchQuery = '';
+  String _selectedStatus = 'All Statuses';
+
+  final List<String> _statuses = ['All Statuses', 'Sent', 'Scheduled'];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
     _fetchProfile();
     _controller.addListener(_onControllerUpdate);
-    _controller.fetchNotifications();
     _controller.fetchBroadcastLogs(); // Fetch CRM Broadcasts
   }
 
@@ -39,7 +43,6 @@ class _NotificationPageState extends State<NotificationPage>
   @override
   void dispose() {
     _controller.removeListener(_onControllerUpdate);
-    _tabController.dispose();
     super.dispose();
   }
 
@@ -55,20 +58,26 @@ class _NotificationPageState extends State<NotificationPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       drawer: const CustomDrawer(currentPage: 'Notifications'),
       appBar: AppBar(
-        title: Text('Notifications',
-            style: GoogleFonts.poppins(
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-                fontSize: 12.sp)),
+        title: Text(
+          'Notifications',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w700,
+            color: Colors.black,
+            fontSize: 14.sp,
+          ),
+        ),
         backgroundColor: Colors.white,
         iconTheme: const IconThemeData(color: Colors.black),
-        elevation: 0.4,
+        elevation: 0,
         actions: [
           GestureDetector(
             onTap: () => Navigator.push(
-                context, MaterialPageRoute(builder: (_) => My_Profile())),
+              context,
+              MaterialPageRoute(builder: (_) => My_Profile()),
+            ),
             child: Padding(
               padding: EdgeInsets.only(right: 12.w),
               child: CircleAvatar(
@@ -76,17 +85,18 @@ class _NotificationPageState extends State<NotificationPage>
                 backgroundColor: Theme.of(context).primaryColor,
                 backgroundImage:
                     (_profile != null && _profile!.profileImage.isNotEmpty)
-                        ? NetworkImage(_profile!.profileImage)
-                        : null,
+                    ? NetworkImage(_profile!.profileImage)
+                    : null,
                 child: (_profile == null || _profile!.profileImage.isEmpty)
                     ? Text(
                         (_profile?.businessName ?? 'H')
                             .substring(0, 1)
                             .toUpperCase(),
                         style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12.sp,
-                            fontWeight: FontWeight.bold),
+                          color: Colors.white,
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
                       )
                     : null,
               ),
@@ -96,23 +106,229 @@ class _NotificationPageState extends State<NotificationPage>
       ),
       body: Column(
         children: [
-          _buildStatsSection(),
-          TabBar(
-            controller: _tabController,
-            tabs: const [
-              Tab(text: 'Inbox'),
-              Tab(text: 'Sent Broadcasts'),
-            ],
-            labelColor: Theme.of(context).primaryColor,
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: Theme.of(context).primaryColor,
+          _buildHeaderSection(),
+          Expanded(child: _buildNotificationHistory()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderSection() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        children: [
+          // Search Bar
+          Container(
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: TextField(
+              onChanged: (v) => setState(() => _searchQuery = v),
+              decoration: InputDecoration(
+                hintText: 'Search by title or content...',
+                hintStyle: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: Colors.grey,
+                ),
+                prefixIcon: const Icon(
+                  Icons.search,
+                  size: 18,
+                  color: Colors.grey,
+                ),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+              style: GoogleFonts.poppins(fontSize: 12),
+            ),
           ),
+          const SizedBox(height: 12),
+          // Filters & Export
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  height: 40,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _selectedStatus,
+                      isExpanded: true,
+                      icon: const Icon(Icons.keyboard_arrow_down, size: 20),
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: Colors.black87,
+                      ),
+                      items: _statuses.map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
+                      onChanged: (v) => setState(() => _selectedStatus = v!),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: InkWell(
+                  onTap: _exportToCSV,
+                  child: Container(
+                    height: 40,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Export',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const Icon(
+                          Icons.download,
+                          size: 18,
+                          color: Colors.grey,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildStatsGrid(),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _showCreateNotificationDialog(context),
+              icon: const Icon(Icons.add, size: 18),
+              label: Text(
+                'Create New',
+                style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                elevation: 0,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatsGrid() {
+    final stats = _controller.broadcastStats;
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisSpacing: 8,
+      mainAxisSpacing: 8,
+      childAspectRatio: 2.2,
+      children: [
+        _buildStatCard(
+          'Total Sent',
+          '${stats['total'] ?? 0}',
+          Icons.mark_email_read_outlined,
+          Colors.blue,
+        ),
+        _buildStatCard(
+          'Push Sent',
+          '${stats['pushSent'] ?? 0}',
+          Icons.notifications_active_outlined,
+          Colors.orange,
+        ),
+        _buildStatCard(
+          'SMS Sent',
+          '${stats['smsSent'] ?? 0}',
+          Icons.send_outlined,
+          Colors.indigo,
+        ),
+        _buildStatCard(
+          'Most Targeted',
+          stats['mostTargeted'] ?? 'All Offline Clients',
+          Icons.track_changes,
+          Colors.pink,
+          isTarget: true,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color, {
+    bool isTarget = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 16),
+          ),
+          const SizedBox(width: 8),
           Expanded(
-            child: TabBarView(
-              controller: _tabController,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildInboxSection(),
-                _buildSentSection(),
+                Text(
+                  title,
+                  style: GoogleFonts.poppins(
+                    fontSize: 9,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  value,
+                  style: GoogleFonts.poppins(
+                    fontSize: isTarget ? 9 : 14,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ),
           ),
@@ -121,105 +337,72 @@ class _NotificationPageState extends State<NotificationPage>
     );
   }
 
-  Widget _buildInboxSection() {
-    if (_controller.isLoading && _controller.notifications.isEmpty) {
+  Widget _buildNotificationHistory() {
+    if (_controller.isLoading && _controller.broadcastLogs.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
-    if (_controller.notifications.isEmpty) {
+
+    final filteredLogs = _controller.broadcastLogs.where((log) {
+      final l = log as Map<String, dynamic>;
+      final title = (l['title'] ?? '').toString().toLowerCase();
+      final body = (l['body'] ?? '').toString().toLowerCase();
+      final status = (l['status'] ?? 'Sent').toString();
+
+      final matchesSearch =
+          title.contains(_searchQuery.toLowerCase()) ||
+          body.contains(_searchQuery.toLowerCase());
+      final matchesStatus =
+          _selectedStatus == 'All Statuses' || status == _selectedStatus;
+
+      return matchesSearch && matchesStatus;
+    }).toList();
+
+    if (filteredLogs.isEmpty) {
       return Center(
         child: Text(
-          'No received notifications yet.',
+          'No notifications found',
           style: GoogleFonts.poppins(color: Colors.grey),
         ),
       );
     }
+
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _controller.notifications.length,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: filteredLogs.length,
       itemBuilder: (context, index) {
-        final notification = _controller.notifications[index];
-        return _buildInboxCard(notification);
+        return _buildNotificationCard(
+          filteredLogs[index] as Map<String, dynamic>,
+        );
       },
     );
   }
 
-  Widget _buildSentSection() {
-    return SingleChildScrollView(
+  Widget _buildNotificationCard(Map<String, dynamic> notification) {
+    final status = notification['status'] ?? 'Sent';
+    final channels = List<String>.from(notification['channels'] ?? ['Push']);
+    final date = notification['createdAt'] != null
+        ? DateTime.parse(notification['createdAt'])
+        : DateTime.now();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 16),
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => _showCreateNotificationDialog(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).primaryColor,
-                foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                elevation: 0,
-              ),
-              child: Text(
-                'Create New Notification',
-                style: GoogleFonts.poppins(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              'Broadcast History',
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          _buildNotificationHistory(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInboxCard(NotificationModel notification) {
-    final Color typeColor = _controller.getColorForType(notification.type);
-    final IconData typeIcon = _controller.getIconForType(notification.type);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: notification.isRead ? Colors.white : typeColor.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: notification.isRead
-              ? Colors.grey.shade200
-              : typeColor.withOpacity(0.2),
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: typeColor.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(typeIcon, color: typeColor, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
+          Padding(
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -227,295 +410,111 @@ class _NotificationPageState extends State<NotificationPage>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      notification.title,
+                      notification['title'] ?? 'Weekend Offer',
                       style: GoogleFonts.poppins(
                         fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    Text(
-                      DateFormat('MMM d, hh:mm a')
-                          .format(notification.createdAt),
-                      style: GoogleFonts.poppins(
-                        fontSize: 10,
-                        color: Colors.grey,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            (status == 'Scheduled' ? Colors.blue : Colors.green)
+                                .withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color:
+                              (status == 'Scheduled'
+                                      ? Colors.blue
+                                      : Colors.green)
+                                  .withOpacity(0.2),
+                        ),
+                      ),
+                      child: Text(
+                        status,
+                        style: GoogleFonts.poppins(
+                          fontSize: 10,
+                          color: status == 'Scheduled'
+                              ? Colors.blue
+                              : Colors.green,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  notification.body,
+                  'Channel : ${channels.join(', ')}',
                   style: GoogleFonts.poppins(
                     fontSize: 12,
-                    color: Colors.grey.shade800,
+                    color: Colors.grey.shade600,
                   ),
                 ),
-              ],
-            ),
-          ),
-          if (!notification.isRead)
-            Padding(
-              padding: const EdgeInsets.only(left: 8.0, top: 2),
-              child: CircleAvatar(
-                radius: 4,
-                backgroundColor: typeColor,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  // ---------- Stats section (Using Dynamic Data) ----------
-
-  Widget _buildStatsSection() {
-    final stats = _controller.broadcastStats;
-    final totalSent = stats['total'] ?? 0;
-    final pushSent = stats['pushSent'] ?? 0;
-    final smsSent = stats['smsSent'] ?? 0;
-    final mostTargeted = stats['mostTargeted'] ?? 'None';
-
-    return Container(
-      margin: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          // first row – Total + Push
-          SizedBox(
-            height: 120,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                _buildStatCard('Total Sent', '$totalSent', Icons.send),
-                const SizedBox(width: 10),
-                _buildStatCard(
-                  'Push Sent',
-                  '$pushSent',
-                  Icons.notifications_active,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          // second row – SMS + Most Targeted side‑by‑side
-          SizedBox(
-            height: 120,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                _buildStatCard('SMS Sent', '$smsSent', Icons.sms),
-                const SizedBox(width: 10),
-                _buildStatCard(
-                  'Most Targeted',
-                  mostTargeted,
-                  Icons.group,
-                  isMostTargeted: true,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard(
-    String title,
-    String value,
-    IconData icon, {
-    bool isMostTargeted = false,
-  }) {
-    return Container(
-      width: 150,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: Theme.of(context).primaryColor, size: 20),
-          const SizedBox(height: 6),
-          Text(
-            title,
-            style: GoogleFonts.poppins(
-              fontSize: 11,
-              color: Colors.grey.shade600,
-              fontWeight: FontWeight.w500,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: GoogleFonts.poppins(
-              fontSize: isMostTargeted ? 11 : 13,
-              fontWeight: FontWeight.w700,
-              color: Colors.black,
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ---------- Notification history ----------
-
-  Widget _buildNotificationHistory() {
-    if (_controller.isLoading && _controller.broadcastLogs.isEmpty) {
-      return const Center(
-          child: Padding(
-        padding: EdgeInsets.all(20.0),
-        child: CircularProgressIndicator(),
-      ));
-    }
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        children: _controller.broadcastLogs
-            .map((notification) =>
-                _buildNotificationCard(notification as Map<String, dynamic>))
-            .toList(),
-      ),
-    );
-  }
-
-  Widget _buildNotificationCard(Map<String, dynamic> notification) {
-    // Determine status color based on presence or fields
-    final status = notification['status'] ?? 'Sent';
-    final channels = List<String>.from(notification['channels'] ?? ['Push']);
-
-    Color statusColor;
-    switch (status) {
-      case 'Sent':
-        statusColor = Theme.of(context).primaryColor;
-        break;
-      case 'Scheduled':
-        statusColor = Colors.orange;
-        break;
-      default:
-        statusColor = Colors.grey;
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // header
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade200,
-                  width: 1,
-                ),
-              ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    notification['title'] as String,
-                    style: GoogleFonts.poppins(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.calendar_today_outlined,
+                      size: 14,
+                      color: Colors.redAccent,
                     ),
-                  ),
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    status,
-                    style: GoogleFonts.poppins(
-                      fontSize: 10,
-                      color: statusColor,
-                      fontWeight: FontWeight.w500,
+                    const SizedBox(width: 6),
+                    Text(
+                      DateFormat('d MMM yyyy').format(date),
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: Colors.black87,
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 20),
+                    const Icon(
+                      Icons.person_outline,
+                      size: 16,
+                      color: Colors.blue,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        notification['targetType'] ?? 'All Offline Clients',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: Colors.black87,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-          // content
-          Container(
-            padding: const EdgeInsets.all(10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildInfoRow('Channel', channels.join(', ')),
-                const SizedBox(height: 6),
-                _buildInfoRow(
-                    'Target',
-                    notification['targetType'] ??
-                        notification['target'] ??
-                        'All'),
-                const SizedBox(height: 6),
-                _buildInfoRow(
-                    'Date',
-                    notification['createdAt'] != null
-                        ? DateFormat('yyyy-MM-dd HH:mm')
-                            .format(DateTime.parse(notification['createdAt']))
-                        : (notification['date'] ?? 'N/A')),
-              ],
-            ),
-          ),
-          // actions
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(
-                  color: Colors.grey.shade200,
-                  width: 1,
-                ),
-              ),
-            ),
+          const Divider(height: 0.5),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                TextButton(
+                IconButton(
+                  icon: const Icon(
+                    Icons.visibility_outlined,
+                    size: 20,
+                    color: Colors.grey,
+                  ),
                   onPressed: () => _editNotification(notification),
-                  child: Text(
-                    'Edit',
-                    style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      color: Theme.of(context).primaryColor,
-                    ),
-                  ),
                 ),
-                TextButton(
-                  onPressed: () => _deleteNotification(notification),
-                  child: Text(
-                    'Delete',
-                    style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      color: Colors.red,
-                    ),
+                IconButton(
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    size: 20,
+                    color: Colors.redAccent,
                   ),
+                  onPressed: () => _deleteNotification(notification),
                 ),
               ],
             ),
@@ -525,40 +524,50 @@ class _NotificationPageState extends State<NotificationPage>
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 80,
-          child: Text(
-            '$label:',
-            style: GoogleFonts.poppins(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey.shade700,
-            ),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: GoogleFonts.poppins(
-              fontSize: 11,
-              color: Colors.grey.shade900,
-            ),
-          ),
-        ),
-      ],
-    );
+  Future<void> _exportToCSV() async {
+    try {
+      final List<List<dynamic>> rows = [];
+      // Header
+      rows.add(["ID", "Title", "Channels", "Target", "Status", "Created At"]);
+
+      // Data
+      for (var log in _controller.broadcastLogs) {
+        final l = log as Map<String, dynamic>;
+        rows.add([
+          l['_id'] ?? "",
+          l['title'] ?? "",
+          (l['channels'] as List?)?.join(', ') ?? "",
+          l['targetType'] ?? "",
+          l['status'] ?? "Sent",
+          l['createdAt'] ?? "",
+        ]);
+      }
+
+      String csvData = const ListToCsvConverter().convert(rows);
+      final directory = await getApplicationDocumentsDirectory();
+      final path =
+          "${directory.path}/notifications_export_${DateTime.now().millisecondsSinceEpoch}.csv";
+      final file = File(path);
+      await file.writeAsString(csvData);
+
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('CSV exported to $path')));
+        OpenFile.open(path);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
+      }
+    }
   }
 
-  // ---------- Broadcast CRUD Operations ----------
-
   void _editNotification(Map<String, dynamic> notification) {
-    // Optional: Implement broadcast editing if API supports it
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Edit broadcast is coming soon.')),
+      const SnackBar(content: Text('View/Edit detail feature coming soon.')),
     );
   }
 
@@ -571,31 +580,28 @@ class _NotificationPageState extends State<NotificationPage>
       builder: (ctx) {
         return AlertDialog(
           title: Text(
-            'Delete Broadcast Log',
-            style: GoogleFonts.poppins(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-            ),
+            'Delete Notification',
+            style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
           ),
           content: Text(
-            'Are you sure you want to delete this broadcast log?',
-            style: GoogleFonts.poppins(fontSize: 12),
+            'Are you sure you want to delete this notification log?',
+            style: GoogleFonts.poppins(fontSize: 13),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text('Cancel', style: GoogleFonts.poppins(fontSize: 11)),
+              child: const Text('Cancel'),
             ),
             ElevatedButton(
               onPressed: () async {
                 await _controller.deleteBroadcast(id);
                 if (mounted) Navigator.pop(ctx);
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFDC2626),
-                foregroundColor: Colors.white,
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text(
+                'Delete',
+                style: TextStyle(color: Colors.white),
               ),
-              child: Text('Delete', style: GoogleFonts.poppins(fontSize: 11)),
             ),
           ],
         );
@@ -658,11 +664,13 @@ class _NotificationDialogState extends State<NotificationDialog> {
     super.initState();
     final n = widget.initialNotification;
 
-    _titleController =
-        TextEditingController(text: n?['title'] as String? ?? '');
+    _titleController = TextEditingController(
+      text: n?['title'] as String? ?? '',
+    );
     _contentController = TextEditingController();
-    _targetsController =
-        TextEditingController(text: (n?['targets'] as List? ?? []).join(', '));
+    _targetsController = TextEditingController(
+      text: (n?['targets'] as List? ?? []).join(', '),
+    );
     final channels = (n?['channels'] as List<dynamic>? ?? []);
     _pushSelected = channels.isEmpty || channels.contains('Push');
     _smsSelected = channels.contains('SMS');
@@ -679,8 +687,9 @@ class _NotificationDialogState extends State<NotificationDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final dialogTitle =
-        _isEdit ? 'Edit Notification' : 'Create New Notification';
+    final dialogTitle = _isEdit
+        ? 'Edit Notification'
+        : 'Create New Notification';
     final primaryLabel = _isEdit ? 'Save Changes' : 'Send Notification';
     final subtitle = _isEdit
         ? 'Update and resend this notification.'
@@ -792,7 +801,9 @@ class _NotificationDialogState extends State<NotificationDialog> {
                   ),
                   focusedBorder: UnderlineInputBorder(
                     borderSide: BorderSide(
-                        color: Theme.of(context).primaryColor, width: 1.4),
+                      color: Theme.of(context).primaryColor,
+                      width: 1.4,
+                    ),
                   ),
                 ),
                 style: GoogleFonts.poppins(fontSize: 12),
@@ -827,7 +838,9 @@ class _NotificationDialogState extends State<NotificationDialog> {
                   ),
                   focusedBorder: UnderlineInputBorder(
                     borderSide: BorderSide(
-                        color: Theme.of(context).primaryColor, width: 1.4),
+                      color: Theme.of(context).primaryColor,
+                      width: 1.4,
+                    ),
                   ),
                 ),
                 style: GoogleFonts.poppins(fontSize: 12),
@@ -904,7 +917,9 @@ class _NotificationDialogState extends State<NotificationDialog> {
                     ),
                     focusedBorder: UnderlineInputBorder(
                       borderSide: BorderSide(
-                          color: Theme.of(context).primaryColor, width: 1.4),
+                        color: Theme.of(context).primaryColor,
+                        width: 1.4,
+                      ),
                     ),
                   ),
                   style: GoogleFonts.poppins(fontSize: 11),
@@ -974,10 +989,10 @@ class _NotificationDialogState extends State<NotificationDialog> {
 
     final List<String> targetList = _target == 'specific_clients'
         ? _targetsController.text
-            .split(',')
-            .map((e) => e.trim())
-            .where((e) => e.isNotEmpty)
-            .toList()
+              .split(',')
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
+              .toList()
         : [];
 
     final data = {
@@ -1005,10 +1020,7 @@ class _NotificationDialogState extends State<NotificationDialog> {
           onChanged: onChanged,
           visualDensity: VisualDensity.compact,
         ),
-        Text(
-          label,
-          style: GoogleFonts.poppins(fontSize: 12),
-        ),
+        Text(label, style: GoogleFonts.poppins(fontSize: 12)),
       ],
     );
   }
@@ -1028,10 +1040,7 @@ class _NotificationDialogState extends State<NotificationDialog> {
           onChanged: onChanged,
           visualDensity: VisualDensity.compact,
         ),
-        Text(
-          label,
-          style: GoogleFonts.poppins(fontSize: 12),
-        ),
+        Text(label, style: GoogleFonts.poppins(fontSize: 12)),
       ],
     );
   }

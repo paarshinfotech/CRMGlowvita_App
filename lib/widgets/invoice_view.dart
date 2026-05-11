@@ -10,6 +10,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:open_file/open_file.dart';
 import '../billing_invoice_model.dart';
+import '../services/api_service.dart';
 
 class InvoiceView extends StatelessWidget {
   final BillingInvoice invoice;
@@ -83,7 +84,8 @@ class InvoiceView extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "GlowVita Salon & Spa",
+                        ApiService.vendorProfileNotifier.value?.businessName ??
+                            "GlowVita Salon & Spa",
                         style: TextStyle(
                           fontFamily: "Georgia",
                           fontWeight: FontWeight.bold,
@@ -92,10 +94,16 @@ class InvoiceView extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text("Baner Road, Pune, Pune, Maharashtra, 411045",
-                          style: GoogleFonts.poppins(fontSize: 10)),
-                      Text("Phone: 9876543210",
-                          style: GoogleFonts.poppins(fontSize: 10)),
+                      Text(
+                        ApiService.vendorProfileNotifier.value != null
+                            ? "${ApiService.vendorProfileNotifier.value!.address}, ${ApiService.vendorProfileNotifier.value!.city}, ${ApiService.vendorProfileNotifier.value!.state}, ${ApiService.vendorProfileNotifier.value!.pincode}"
+                            : "Baner Road, Pune, Pune, Maharashtra, 411045",
+                        style: GoogleFonts.poppins(fontSize: 10),
+                      ),
+                      Text(
+                        "Phone: ${ApiService.vendorProfileNotifier.value?.phone ?? '9876543210'}",
+                        style: GoogleFonts.poppins(fontSize: 10),
+                      ),
                     ],
                   ),
                 ),
@@ -599,7 +607,8 @@ class InvoiceView extends StatelessWidget {
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
                       pw.Text(
-                        "GlowVita Salon & Spa",
+                        ApiService.vendorProfileNotifier.value?.businessName ??
+                            "GlowVita Salon & Spa",
                         style: pw.TextStyle(
                           fontSize: 14,
                           fontWeight: pw.FontWeight.bold,
@@ -608,11 +617,13 @@ class InvoiceView extends StatelessWidget {
                       ),
                       pw.SizedBox(height: 4),
                       pw.Text(
-                        "Baner Road, Pune, Maharashtra, 411045",
+                        ApiService.vendorProfileNotifier.value != null
+                            ? "${ApiService.vendorProfileNotifier.value!.address}, ${ApiService.vendorProfileNotifier.value!.city}, ${ApiService.vendorProfileNotifier.value!.state}, ${ApiService.vendorProfileNotifier.value!.pincode}"
+                            : "Baner Road, Pune, Maharashtra, 411045",
                         style: pw.TextStyle(fontSize: 10, font: font),
                       ),
                       pw.Text(
-                        "Phone: 9876543210",
+                        "Phone: ${ApiService.vendorProfileNotifier.value?.phone ?? '9876543210'}",
                         style: pw.TextStyle(fontSize: 10, font: font),
                       ),
                     ],

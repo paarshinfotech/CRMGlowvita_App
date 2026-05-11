@@ -1,23 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'widgets/custom_drawer.dart';
-import 'services/api_service.dart';
+import 'services/api_service.dart' hide CartItem;
 import 'services/marketplace_models.dart';
+import 'Suppliers/supplier_products_page.dart';
 import 'cart_manager.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'services/razorpay_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COLOR CONSTANTS  (matches the purple-based design)
 // ─────────────────────────────────────────────────────────────────────────────
-const _kPrimary = Color(0xFF4A2C3C);
-const _kPrimaryLight = Color(0xFFF6F0F2);
-const _kPrimaryMid = Color(0xFF633D50);
-const _kAccent = Color(0xFFD4AF37);
-const _kBg = Color(0xFFF5F6FA);
-const _kBorder = Color(0xFFE8E8F0);
-const _kSuccess = Color(0xFF10B981);
-const _kDanger = Color(0xFFEF4444);
-const _kMuted = Color(0xFF6B7280);
+const kMarketPrimary = Color(0xFF4A2C3C);
+const kMarketPrimaryLight = Color(0xFFF6F0F2);
+const kMarketPrimaryMid = Color(0xFF633D50);
+const kMarketAccent = Color(0xFFD4AF37);
+const kMarketBg = Color(0xFFF5F6FA);
+const kMarketBorder = Color(0xFFE8E8F0);
+const kMarketSuccess = Color(0xFF10B981);
+const kMarketDanger = Color(0xFFEF4444);
+const kMarketMuted = Color(0xFF6B7280);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MARKETPLACE PAGE
@@ -74,6 +78,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
             state: p.supplierState,
             country: p.supplierCountry,
             businessRegistrationNo: '',
+            image: p.supplierImage,
           );
         }
       }
@@ -88,8 +93,9 @@ class _MarketplacePageState extends State<MarketplacePage> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -98,10 +104,12 @@ class _MarketplacePageState extends State<MarketplacePage> {
     setState(() {
       _filteredProductsList = _allProducts.where((p) {
         final q = _searchQuery.toLowerCase();
-        final matchesSearch = q.isEmpty ||
+        final matchesSearch =
+            q.isEmpty ||
             p.productName.toLowerCase().contains(q) ||
             p.supplierName.toLowerCase().contains(q);
-        final matchesSupplier = _selectedSupplierId == null ||
+        final matchesSupplier =
+            _selectedSupplierId == null ||
             p.vendorId == _selectedSupplierId ||
             p.supplierEmail == _selectedSupplierId;
         return matchesSearch && matchesSupplier;
@@ -123,17 +131,18 @@ class _MarketplacePageState extends State<MarketplacePage> {
     return Scaffold(
       key: _scaffoldKey,
       drawer: const CustomDrawer(currentPage: 'Marketplace'),
-      endDrawer: const _CartSidebar(),
-      backgroundColor: _kBg,
+      endDrawer: const MarketCartSidebar(),
+      backgroundColor: Colors.white,
       appBar: AppBar(
         elevation: 0.5,
         backgroundColor: Colors.white,
         title: Text(
           'Marketplace',
           style: GoogleFonts.poppins(
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-              fontSize: 12.sp),
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+            fontSize: 12.sp,
+          ),
         ),
         iconTheme: const IconThemeData(color: Colors.black),
         actions: [
@@ -154,16 +163,17 @@ class _MarketplacePageState extends State<MarketplacePage> {
                       width: 16,
                       height: 16,
                       decoration: const BoxDecoration(
-                        color: _kPrimary,
+                        color: kMarketPrimary,
                         shape: BoxShape.circle,
                       ),
                       child: Center(
                         child: Text(
                           '${cartManager.itemCount}',
                           style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800),
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
                     ),
@@ -176,9 +186,11 @@ class _MarketplacePageState extends State<MarketplacePage> {
       ),
       body: SafeArea(
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator(color: _kPrimary))
+            ? const Center(
+                child: CircularProgressIndicator(color: kMarketPrimary),
+              )
             : RefreshIndicator(
-                color: _kPrimary,
+                color: kMarketPrimary,
                 onRefresh: _fetchProducts,
                 child: CustomScrollView(
                   slivers: [
@@ -189,7 +201,9 @@ class _MarketplacePageState extends State<MarketplacePage> {
                         child: Text(
                           'Discover and order premium products from verified suppliers worldwide.',
                           style: GoogleFonts.poppins(
-                              fontSize: 12.5, color: _kMuted),
+                            fontSize: 12.5,
+                            color: kMarketMuted,
+                          ),
                         ),
                       ),
                     ),
@@ -197,17 +211,20 @@ class _MarketplacePageState extends State<MarketplacePage> {
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                         child: Container(
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: _kBorder),
+                            border: Border.all(color: kMarketBorder),
                             boxShadow: [
                               BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.04),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 1))
+                                color: Colors.black.withValues(alpha: 0.04),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
                             ],
                           ),
                           child: TextField(
@@ -221,9 +238,14 @@ class _MarketplacePageState extends State<MarketplacePage> {
                             decoration: InputDecoration(
                               hintText: 'Search products or suppliers...',
                               hintStyle: GoogleFonts.poppins(
-                                  fontSize: 13, color: _kMuted),
-                              prefixIcon: const Icon(Icons.search,
-                                  color: _kMuted, size: 20),
+                                fontSize: 13,
+                                color: kMarketMuted,
+                              ),
+                              prefixIcon: const Icon(
+                                Icons.search,
+                                color: kMarketMuted,
+                                size: 20,
+                              ),
                               suffixIcon: _searchQuery.isEmpty
                                   ? null
                                   : IconButton(
@@ -236,68 +258,15 @@ class _MarketplacePageState extends State<MarketplacePage> {
                                     ),
                               border: InputBorder.none,
                               contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 12),
+                                horizontal: 12,
+                                vertical: 12,
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
-                    // ── Suppliers ──
                     SliverToBoxAdapter(child: _buildSuppliersSection()),
-                    // ── Products header ──
-                    if (_selectedSupplierId != null) ...[
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
-                          child: Text(
-                            'Products from ${_selectedSupplier?.name ?? ''}',
-                            style: GoogleFonts.poppins(
-                                fontSize: 16, fontWeight: FontWeight.w800),
-                          ),
-                        ),
-                      ),
-                      // ── Products Grid ──
-                      SliverPadding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        sliver: SliverGrid(
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                            childAspectRatio: 0.60,
-                          ),
-                          delegate: SliverChildBuilderDelegate(
-                            (context, i) =>
-                                _buildProductCard(_filteredProductsList[i]),
-                            childCount: _filteredProductsList.length,
-                          ),
-                        ),
-                      ),
-                    ] else ...[
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.all(40),
-                          child: Center(
-                            child: Column(
-                              children: [
-                                const Icon(Icons.shopping_bag_outlined,
-                                    size: 48, color: _kBorder),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'Select a supplier to view products',
-                                  textAlign: TextAlign.center,
-                                  style: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      color: _kMuted,
-                                      fontWeight: FontWeight.w600),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
                     const SliverToBoxAdapter(child: SizedBox(height: 40)),
                   ],
                 ),
@@ -316,19 +285,26 @@ class _MarketplacePageState extends State<MarketplacePage> {
         children: [
           Row(
             children: [
-              _statItem('Products', '${_allProducts.length}',
-                  Icons.inventory_2_outlined),
               _statItem(
-                  'Suppliers', '${_suppliers.length}', Icons.business_outlined),
+                'Products',
+                '${_allProducts.length}',
+                Icons.inventory_2_outlined,
+              ),
+              _statItem(
+                'Suppliers',
+                '${_suppliers.length}',
+                Icons.business_outlined,
+              ),
             ],
           ),
           const SizedBox(height: 16),
           Row(
             children: [
               _statItem(
-                  'Market Value',
-                  '₹${(totalValue / 1000).toStringAsFixed(1)}k',
-                  Icons.account_balance_wallet_outlined),
+                'Market Value',
+                '₹${(totalValue / 1000).toStringAsFixed(1)}k',
+                Icons.account_balance_wallet_outlined,
+              ),
               _statItem('Rating', '4.5', Icons.star_outline),
             ],
           ),
@@ -340,21 +316,51 @@ class _MarketplacePageState extends State<MarketplacePage> {
   Widget _statItem(String label, String value, IconData icon) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
         decoration: BoxDecoration(
-          color: _kBg,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: kMarketBorder.withOpacity(0.5)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         margin: const EdgeInsets.symmetric(horizontal: 4),
-        child: Column(
+        child: Row(
           children: [
-            Icon(icon, size: 20, color: _kPrimary),
-            const SizedBox(height: 6),
-            Text(value,
-                style: GoogleFonts.poppins(
-                    fontSize: 15, fontWeight: FontWeight.w800)),
-            Text(label,
-                style: GoogleFonts.dmSans(fontSize: 11, color: _kMuted)),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: const BoxDecoration(
+                color: Color(0xFFE3F2FD), // Light Blue
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 18, color: Colors.blueAccent),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    value,
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      height: 1.2,
+                    ),
+                  ),
+                  Text(
+                    label,
+                    style: GoogleFonts.dmSans(fontSize: 9, color: kMarketMuted),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -368,22 +374,21 @@ class _MarketplacePageState extends State<MarketplacePage> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
-          child: Text('Suppliers',
-              style: GoogleFonts.poppins(
-                  fontSize: 16, fontWeight: FontWeight.w800)),
+          child: Text(
+            'Suppliers',
+            style: GoogleFonts.poppins(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: GridView.builder(
+          child: ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              mainAxisExtent: 110,
-            ),
             itemCount: _suppliers.length,
+            separatorBuilder: (context, i) => const SizedBox(height: 12),
             itemBuilder: (context, i) {
               final s = _suppliers[i];
               final isSelected =
@@ -400,21 +405,24 @@ class _MarketplacePageState extends State<MarketplacePage> {
   Widget _buildSupplierCard(MarketplaceSupplier supplier, bool isSelected) {
     return GestureDetector(
       onTap: () {
-        setState(() {
-          _selectedSupplierId = isSelected
-              ? null
-              : (supplier.id.isEmpty ? supplier.email : supplier.id);
-          _applyFilters();
-        });
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => SupplierProductsPage(
+              supplier: supplier,
+              products: _allProducts,
+            ),
+          ),
+        );
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? _kPrimaryLight : Colors.white,
+          color: isSelected ? kMarketPrimaryLight : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? _kPrimary : _kBorder,
+            color: isSelected ? kMarketPrimary : kMarketBorder,
             width: 1.5,
           ),
           boxShadow: [
@@ -432,18 +440,32 @@ class _MarketplacePageState extends State<MarketplacePage> {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: isSelected ? _kPrimary : const Color(0xFFEDE9F6),
+                color: isSelected ? kMarketPrimary : const Color(0xFFEDE9F6),
                 borderRadius: BorderRadius.circular(12),
+                image: supplier.image.isNotEmpty
+                    ? DecorationImage(
+                        image: NetworkImage(
+                          supplier.image.startsWith('http')
+                              ? supplier.image
+                              : 'https://partners.glowvitasalon.com/${supplier.image}',
+                        ),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
               ),
               alignment: Alignment.center,
-              child: Text(
-                supplier.name.isNotEmpty ? supplier.name[0].toUpperCase() : '?',
-                style: TextStyle(
-                  color: isSelected ? Colors.white : _kPrimary,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 18,
-                ),
-              ),
+              child: supplier.image.isEmpty
+                  ? Text(
+                      supplier.name.isNotEmpty
+                          ? supplier.name[0].toUpperCase()
+                          : '?',
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : kMarketPrimary,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 18,
+                      ),
+                    )
+                  : null,
             ),
             const SizedBox(width: 10),
             // Info
@@ -455,23 +477,29 @@ class _MarketplacePageState extends State<MarketplacePage> {
                   Text(
                     supplier.name,
                     style: GoogleFonts.poppins(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF1A1A2E)),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF1A1A2E),
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   Row(
                     children: [
-                      const Icon(Icons.location_on_outlined,
-                          size: 11, color: _kMuted),
+                      const Icon(
+                        Icons.location_on_outlined,
+                        size: 11,
+                        color: kMarketMuted,
+                      ),
                       const SizedBox(width: 2),
                       Expanded(
                         child: Text(
                           '${supplier.city}, ${supplier.country}',
-                          style:
-                              GoogleFonts.dmSans(fontSize: 10, color: _kMuted),
+                          style: GoogleFonts.dmSans(
+                            fontSize: 10,
+                            color: kMarketMuted,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -481,15 +509,19 @@ class _MarketplacePageState extends State<MarketplacePage> {
                   const SizedBox(height: 2),
                   Row(
                     children: [
-                      const Icon(Icons.inventory_2_outlined,
-                          size: 11, color: _kPrimary),
+                      const Icon(
+                        Icons.inventory_2_outlined,
+                        size: 11,
+                        color: kMarketPrimary,
+                      ),
                       const SizedBox(width: 2),
                       Text(
                         '${_allProducts.where((p) => p.vendorId == supplier.id || p.supplierEmail == supplier.email).length} Products',
                         style: GoogleFonts.poppins(
-                            fontSize: 10,
-                            color: _kPrimary,
-                            fontWeight: FontWeight.w600),
+                          fontSize: 10,
+                          color: kMarketPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
@@ -497,14 +529,19 @@ class _MarketplacePageState extends State<MarketplacePage> {
                     const SizedBox(height: 1),
                     Row(
                       children: [
-                        const Icon(Icons.badge_outlined,
-                            size: 10, color: _kMuted),
+                        const Icon(
+                          Icons.badge_outlined,
+                          size: 10,
+                          color: kMarketMuted,
+                        ),
                         const SizedBox(width: 2),
                         Expanded(
                           child: Text(
                             supplier.businessRegistrationNo,
-                            style:
-                                GoogleFonts.dmSans(fontSize: 9, color: _kMuted),
+                            style: GoogleFonts.dmSans(
+                              fontSize: 9,
+                              color: kMarketMuted,
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -520,13 +557,13 @@ class _MarketplacePageState extends State<MarketplacePage> {
               width: 26,
               height: 26,
               decoration: BoxDecoration(
-                color: isSelected ? _kPrimary : _kBg,
+                color: isSelected ? kMarketPrimary : kMarketBg,
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.chevron_right_rounded,
                 size: 14,
-                color: isSelected ? Colors.white : _kMuted,
+                color: isSelected ? Colors.white : kMarketMuted,
               ),
             ),
           ],
@@ -548,12 +585,13 @@ class _MarketplacePageState extends State<MarketplacePage> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _kBorder),
+          border: Border.all(color: kMarketBorder),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 6,
-                offset: const Offset(0, 2))
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
           ],
         ),
         child: Column(
@@ -567,23 +605,32 @@ class _MarketplacePageState extends State<MarketplacePage> {
                   width: double.infinity,
                   decoration: const BoxDecoration(
                     color: Color(0xFFF0EEFA),
-                    borderRadius:
-                        BorderRadius.vertical(top: Radius.circular(14)),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(14),
+                    ),
                   ),
                   child: product.productImages.isNotEmpty
                       ? ClipRRect(
                           borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(14)),
-                          child: Image.network(product.productImages[0],
-                              fit: BoxFit.cover,
-                              errorBuilder: (c, e, s) => const Icon(
-                                  Icons.inventory_2_outlined,
-                                  size: 40,
-                                  color: Color(0xFFC4B5F0))),
+                            top: Radius.circular(14),
+                          ),
+                          child: Image.network(
+                            product.productImages[0],
+                            fit: BoxFit.cover,
+                            errorBuilder: (c, e, s) => const Icon(
+                              Icons.inventory_2_outlined,
+                              size: 40,
+                              color: Color(0xFFC4B5F0),
+                            ),
+                          ),
                         )
                       : const Center(
-                          child: Icon(Icons.inventory_2_outlined,
-                              size: 40, color: Color(0xFFC4B5F0))),
+                          child: Icon(
+                            Icons.inventory_2_outlined,
+                            size: 40,
+                            color: Color(0xFFC4B5F0),
+                          ),
+                        ),
                 ),
                 // Stock badge
                 Positioned(
@@ -592,11 +639,13 @@ class _MarketplacePageState extends State<MarketplacePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _badge(inStock ? 'In Stock' : 'Out of Stock',
-                          inStock ? _kSuccess : _kDanger),
+                      _badge(
+                        inStock ? 'In Stock' : 'Out of Stock',
+                        inStock ? kMarketSuccess : kMarketDanger,
+                      ),
                       if (discount > 0) ...[
                         const SizedBox(height: 4),
-                        _badge('$discount% OFF', _kAccent),
+                        _badge('$discount% OFF', kMarketAccent),
                       ],
                     ],
                   ),
@@ -606,8 +655,10 @@ class _MarketplacePageState extends State<MarketplacePage> {
                   top: 8,
                   right: 8,
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.92),
                       borderRadius: BorderRadius.circular(20),
@@ -615,12 +666,19 @@ class _MarketplacePageState extends State<MarketplacePage> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.star_rounded,
-                            color: _kAccent, size: 12),
+                        const Icon(
+                          Icons.star_rounded,
+                          color: kMarketAccent,
+                          size: 12,
+                        ),
                         const SizedBox(width: 2),
-                        Text('4.5',
-                            style: GoogleFonts.poppins(
-                                fontSize: 9, fontWeight: FontWeight.w700)),
+                        Text(
+                          '4.5',
+                          style: GoogleFonts.poppins(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -633,30 +691,45 @@ class _MarketplacePageState extends State<MarketplacePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(product.productName,
-                      style: GoogleFonts.poppins(
-                          fontSize: 12, fontWeight: FontWeight.w700),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis),
+                  Text(
+                    product.productName,
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   const SizedBox(height: 2),
-                  Text(product.supplierName,
-                      style: GoogleFonts.dmSans(fontSize: 10, color: _kMuted),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
+                  Text(
+                    product.supplierName,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 10,
+                      color: kMarketMuted,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      Text('₹${product.salePrice.toStringAsFixed(0)}',
-                          style: GoogleFonts.poppins(
-                              fontSize: 14, fontWeight: FontWeight.w800)),
+                      Text(
+                        '₹${product.salePrice.toStringAsFixed(0)}',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                       const SizedBox(width: 5),
                       if (product.salePrice < product.price)
-                        Text('₹${product.price.toStringAsFixed(0)}',
-                            style: GoogleFonts.poppins(
-                              fontSize: 10,
-                              color: _kMuted,
-                              decoration: TextDecoration.lineThrough,
-                            )),
+                        Text(
+                          '₹${product.price.toStringAsFixed(0)}',
+                          style: GoogleFonts.poppins(
+                            fontSize: 10,
+                            color: kMarketMuted,
+                            decoration: TextDecoration.lineThrough,
+                          ),
+                        ),
                     ],
                   ),
                   const SizedBox(height: 10),
@@ -675,7 +748,8 @@ class _MarketplacePageState extends State<MarketplacePage> {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(
-                                        '${product.productName} added to cart'),
+                                      '${product.productName} added to cart',
+                                    ),
                                     duration: const Duration(seconds: 1),
                                     action: SnackBarAction(
                                       label: 'VIEW',
@@ -717,7 +791,8 @@ class _MarketplacePageState extends State<MarketplacePage> {
       if (mounted) {
         showDialog(
           context: context,
-          builder: (_) => _QuickCheckoutDialog(product: product, quantity: 1),
+          builder: (_) =>
+              MarketQuickCheckoutDialog(product: product, quantity: 1),
         );
       }
     } catch (_) {
@@ -730,13 +805,20 @@ class _MarketplacePageState extends State<MarketplacePage> {
   }
 
   Widget _badge(String text, Color color) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-        decoration: BoxDecoration(
-            color: color, borderRadius: BorderRadius.circular(20)),
-        child: Text(text,
-            style: GoogleFonts.poppins(
-                fontSize: 8, color: Colors.white, fontWeight: FontWeight.w600)),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+    decoration: BoxDecoration(
+      color: color,
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Text(
+      text,
+      style: GoogleFonts.poppins(
+        fontSize: 8,
+        color: Colors.white,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  );
 
   Widget _cardButton({
     required String label,
@@ -752,24 +834,25 @@ class _MarketplacePageState extends State<MarketplacePage> {
           backgroundColor: !enabled
               ? Colors.grey[200]
               : filled
-                  ? _kPrimary
-                  : Colors.white,
+              ? kMarketPrimary
+              : Colors.white,
           foregroundColor: !enabled
               ? Colors.grey[500]
               : filled
-                  ? Colors.white
-                  : _kPrimary,
+              ? Colors.white
+              : kMarketPrimary,
           side: enabled && !filled
-              ? const BorderSide(color: _kPrimary, width: 1.5)
+              ? const BorderSide(color: kMarketPrimary, width: 1.5)
               : BorderSide.none,
           padding: EdgeInsets.zero,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           elevation: 0,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
-        child: Text(label,
-            style:
-                GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w600)),
+        child: Text(
+          label,
+          style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }
@@ -778,7 +861,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
   void _showProductDetails(MarketplaceProduct product) {
     showDialog(
       context: context,
-      builder: (_) => _ProductDetailsDialog(
+      builder: (_) => MarketProductDetailsDialog(
         product: product,
         scaffoldKey: _scaffoldKey,
       ),
@@ -789,20 +872,22 @@ class _MarketplacePageState extends State<MarketplacePage> {
 // ─────────────────────────────────────────────────────────────────────────────
 // PRODUCT DETAILS DIALOG
 // ─────────────────────────────────────────────────────────────────────────────
-class _ProductDetailsDialog extends StatefulWidget {
+class MarketProductDetailsDialog extends StatefulWidget {
   final MarketplaceProduct product;
   final GlobalKey<ScaffoldState> scaffoldKey;
 
-  const _ProductDetailsDialog({
+  const MarketProductDetailsDialog({
     required this.product,
     required this.scaffoldKey,
   });
 
   @override
-  State<_ProductDetailsDialog> createState() => _ProductDetailsDialogState();
+  State<MarketProductDetailsDialog> createState() =>
+      MarketProductDetailsDialogState();
 }
 
-class _ProductDetailsDialogState extends State<_ProductDetailsDialog> {
+class MarketProductDetailsDialogState
+    extends State<MarketProductDetailsDialog> {
   int _qty = 1;
 
   @override
@@ -840,9 +925,9 @@ class _ProductDetailsDialogState extends State<_ProductDetailsDialog> {
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to add to cart')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Failed to add to cart')));
       }
     }
   }
@@ -854,14 +939,14 @@ class _ProductDetailsDialogState extends State<_ProductDetailsDialog> {
         Navigator.pop(context);
         showDialog(
           context: context,
-          builder: (_) => _QuickCheckoutDialog(product: p, quantity: _qty),
+          builder: (_) => MarketQuickCheckoutDialog(product: p, quantity: _qty),
         );
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to proceed')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Failed to proceed')));
       }
     }
   }
@@ -884,16 +969,19 @@ class _ProductDetailsDialogState extends State<_ProductDetailsDialog> {
             Stack(
               children: [
                 ClipRRect(
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(20)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(20),
+                  ),
                   child: SizedBox(
                     height: 220,
                     width: double.infinity,
                     child: p.productImages.isNotEmpty
-                        ? Image.network(p.productImages[0],
+                        ? Image.network(
+                            p.productImages[0],
                             fit: BoxFit.cover,
-                            errorBuilder: (c, e, s) => const _NoImage())
-                        : const _NoImage(),
+                            errorBuilder: (c, e, s) => const MarketNoImage(),
+                          )
+                        : const MarketNoImage(),
                   ),
                 ),
                 // Close
@@ -906,9 +994,14 @@ class _ProductDetailsDialogState extends State<_ProductDetailsDialog> {
                       width: 32,
                       height: 32,
                       decoration: const BoxDecoration(
-                          color: Colors.white, shape: BoxShape.circle),
-                      child: const Icon(Icons.close,
-                          size: 18, color: Colors.black87),
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.close,
+                        size: 18,
+                        color: Colors.black87,
+                      ),
                     ),
                   ),
                 ),
@@ -917,8 +1010,10 @@ class _ProductDetailsDialogState extends State<_ProductDetailsDialog> {
                   top: 12,
                   left: 12,
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.55),
                       borderRadius: BorderRadius.circular(20),
@@ -929,16 +1024,19 @@ class _ProductDetailsDialogState extends State<_ProductDetailsDialog> {
                           width: 6,
                           height: 6,
                           decoration: BoxDecoration(
-                            color: inStock ? _kSuccess : _kDanger,
+                            color: inStock ? kMarketSuccess : kMarketDanger,
                             shape: BoxShape.circle,
                           ),
                         ),
                         const SizedBox(width: 5),
-                        Text('${p.stock} in stock',
-                            style: GoogleFonts.poppins(
-                                fontSize: 11,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600)),
+                        Text(
+                          '${p.stock} in stock',
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -950,17 +1048,21 @@ class _ProductDetailsDialogState extends State<_ProductDetailsDialog> {
                     right: 52,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: _kPrimary,
+                        color: kMarketPrimary,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                          'Save ₹${(p.price - p.salePrice).toStringAsFixed(0)}',
-                          style: GoogleFonts.poppins(
-                              fontSize: 11,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700)),
+                        'Save ₹${(p.price - p.salePrice).toStringAsFixed(0)}',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ),
               ],
@@ -976,41 +1078,58 @@ class _ProductDetailsDialogState extends State<_ProductDetailsDialog> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        child: Text(p.productName,
-                            style: GoogleFonts.poppins(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                color: const Color(0xFF1A1A2E))),
+                        child: Text(
+                          p.productName,
+                          style: GoogleFonts.poppins(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF1A1A2E),
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text('₹${p.salePrice.toStringAsFixed(0)}',
-                              style: GoogleFonts.poppins(
-                                  fontSize: 22, fontWeight: FontWeight.w800)),
+                          Text(
+                            '₹${p.salePrice.toStringAsFixed(0)}',
+                            style: GoogleFonts.poppins(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
                           if (p.salePrice < p.price)
-                            Text('₹${p.price.toStringAsFixed(0)}',
-                                style: GoogleFonts.poppins(
-                                    fontSize: 13,
-                                    color: _kMuted,
-                                    decoration: TextDecoration.lineThrough)),
+                            Text(
+                              '₹${p.price.toStringAsFixed(0)}',
+                              style: GoogleFonts.poppins(
+                                fontSize: 13,
+                                color: kMarketMuted,
+                                decoration: TextDecoration.lineThrough,
+                              ),
+                            ),
                         ],
                       ),
                     ],
                   ),
                   const SizedBox(height: 2),
-                  Text('${p.stock} units available',
-                      style: GoogleFonts.dmSans(fontSize: 12, color: _kMuted)),
+                  Text(
+                    '${p.stock} units available',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      color: kMarketMuted,
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   // Supplier row
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       border: Border(
-                        bottom: BorderSide(color: _kBorder),
-                        top: BorderSide(color: _kBorder),
+                        bottom: BorderSide(color: kMarketBorder),
+                        top: BorderSide(color: kMarketBorder),
                       ),
                     ),
                     child: Row(
@@ -1019,16 +1138,23 @@ class _ProductDetailsDialogState extends State<_ProductDetailsDialog> {
                           width: 30,
                           height: 30,
                           decoration: BoxDecoration(
-                            color: _kBg,
+                            color: kMarketBg,
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Icon(Icons.business_outlined,
-                              size: 16, color: _kPrimary),
+                          child: const Icon(
+                            Icons.business_outlined,
+                            size: 16,
+                            color: kMarketPrimary,
+                          ),
                         ),
                         const SizedBox(width: 10),
-                        Text(p.supplierName,
-                            style: GoogleFonts.poppins(
-                                fontSize: 13, fontWeight: FontWeight.w600)),
+                        Text(
+                          p.supplierName,
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -1040,13 +1166,21 @@ class _ProductDetailsDialogState extends State<_ProductDetailsDialog> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Category',
-                                style: GoogleFonts.poppins(
-                                    fontSize: 11, color: _kMuted)),
+                            Text(
+                              'Category',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                color: kMarketMuted,
+                              ),
+                            ),
                             const SizedBox(height: 3),
-                            Text(p.category.isNotEmpty ? p.category : '—',
-                                style: GoogleFonts.poppins(
-                                    fontSize: 13, fontWeight: FontWeight.w600)),
+                            Text(
+                              p.category.isNotEmpty ? p.category : '—',
+                              style: GoogleFonts.poppins(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -1054,22 +1188,32 @@ class _ProductDetailsDialogState extends State<_ProductDetailsDialog> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Rating',
-                                style: GoogleFonts.poppins(
-                                    fontSize: 11, color: _kMuted)),
+                            Text(
+                              'Rating',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                color: kMarketMuted,
+                              ),
+                            ),
                             const SizedBox(height: 3),
                             Row(
                               children: [
                                 ...List.generate(
                                   5,
-                                  (i) => const Icon(Icons.star_rounded,
-                                      color: _kAccent, size: 15),
+                                  (i) => const Icon(
+                                    Icons.star_rounded,
+                                    color: kMarketAccent,
+                                    size: 15,
+                                  ),
                                 ),
                                 const SizedBox(width: 4),
-                                Text('4.5',
-                                    style: GoogleFonts.poppins(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w700)),
+                                Text(
+                                  '4.5',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
                               ],
                             ),
                           ],
@@ -1081,39 +1225,55 @@ class _ProductDetailsDialogState extends State<_ProductDetailsDialog> {
                   // Qty row
                   Row(
                     children: [
-                      Text('Quantity',
-                          style: GoogleFonts.poppins(
-                              fontSize: 14, fontWeight: FontWeight.w700)),
+                      Text(
+                        'Quantity',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                       const Spacer(),
                       // Total
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text('Total',
-                              style: GoogleFonts.poppins(
-                                  fontSize: 10, color: _kMuted)),
-                          Text('₹${total.toStringAsFixed(0)}',
-                              style: GoogleFonts.poppins(
-                                  fontSize: 15, fontWeight: FontWeight.w800)),
+                          Text(
+                            'Total',
+                            style: GoogleFonts.poppins(
+                              fontSize: 10,
+                              color: kMarketMuted,
+                            ),
+                          ),
+                          Text(
+                            '₹${total.toStringAsFixed(0)}',
+                            style: GoogleFonts.poppins(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(width: 14),
                       // Controls
                       Container(
                         decoration: BoxDecoration(
-                          border: Border.all(color: _kBorder, width: 1.5),
+                          border: Border.all(color: kMarketBorder, width: 1.5),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Row(
                           children: [
                             _qtyBtn(Icons.remove, () => _changeQty(-1)),
                             Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 14),
-                              child: Text('$_qty',
-                                  style: GoogleFonts.poppins(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w800)),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                              ),
+                              child: Text(
+                                '$_qty',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
                             ),
                             _qtyBtn(Icons.add, () => _changeQty(1)),
                           ],
@@ -1128,19 +1288,29 @@ class _ProductDetailsDialogState extends State<_ProductDetailsDialog> {
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: inStock ? _addToCart : null,
-                          icon:
-                              const Icon(Icons.shopping_bag_outlined, size: 16),
-                          label: Text(inStock ? 'Add to Cart' : 'Out of Stock',
-                              style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.w700, fontSize: 13)),
+                          icon: const Icon(
+                            Icons.shopping_bag_outlined,
+                            size: 16,
+                          ),
+                          label: Text(
+                            inStock ? 'Add to Cart' : 'Out of Stock',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                          ),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: inStock ? _kPrimary : _kMuted,
+                            foregroundColor: inStock
+                                ? kMarketPrimary
+                                : kMarketMuted,
                             side: BorderSide(
-                                color: inStock ? _kPrimary : _kMuted,
-                                width: 1.5),
+                              color: inStock ? kMarketPrimary : kMarketMuted,
+                              width: 1.5,
+                            ),
                             padding: const EdgeInsets.symmetric(vertical: 13),
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
                       ),
@@ -1149,17 +1319,24 @@ class _ProductDetailsDialogState extends State<_ProductDetailsDialog> {
                         child: ElevatedButton.icon(
                           onPressed: inStock ? _buyNow : null,
                           icon: const Icon(Icons.bolt_rounded, size: 16),
-                          label: Text('Buy Now',
-                              style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.w700, fontSize: 13)),
+                          label: Text(
+                            'Buy Now',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                          ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                inStock ? _kPrimary : Colors.grey[300],
-                            foregroundColor:
-                                inStock ? Colors.white : Colors.grey[600],
+                            backgroundColor: inStock
+                                ? kMarketPrimary
+                                : Colors.grey[300],
+                            foregroundColor: inStock
+                                ? Colors.white
+                                : Colors.grey[600],
                             padding: const EdgeInsets.symmetric(vertical: 13),
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             elevation: 0,
                           ),
                         ),
@@ -1176,28 +1353,32 @@ class _ProductDetailsDialogState extends State<_ProductDetailsDialog> {
   }
 
   Widget _qtyBtn(IconData icon, VoidCallback onPressed) => InkWell(
-        onTap: onPressed,
-        child: SizedBox(
-          width: 34,
-          height: 34,
-          child: Icon(icon, size: 17, color: const Color(0xFF1A1A2E)),
-        ),
-      );
+    onTap: onPressed,
+    child: SizedBox(
+      width: 34,
+      height: 34,
+      child: Icon(icon, size: 17, color: const Color(0xFF1A1A2E)),
+    ),
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // QUICK CHECKOUT DIALOG  (matches screenshot 3)
 // ─────────────────────────────────────────────────────────────────────────────
-class _QuickCheckoutDialog extends StatefulWidget {
+class MarketQuickCheckoutDialog extends StatefulWidget {
   final MarketplaceProduct product;
   final int quantity;
-  const _QuickCheckoutDialog({required this.product, required this.quantity});
+  const MarketQuickCheckoutDialog({
+    required this.product,
+    required this.quantity,
+  });
 
   @override
-  State<_QuickCheckoutDialog> createState() => _QuickCheckoutDialogState();
+  State<MarketQuickCheckoutDialog> createState() =>
+      MarketQuickCheckoutDialogState();
 }
 
-class _QuickCheckoutDialogState extends State<_QuickCheckoutDialog> {
+class MarketQuickCheckoutDialogState extends State<MarketQuickCheckoutDialog> {
   // Address controllers
   final _nameCtrl = TextEditingController();
   final _mobileCtrl = TextEditingController();
@@ -1210,11 +1391,71 @@ class _QuickCheckoutDialogState extends State<_QuickCheckoutDialog> {
   bool _addressSaved = false;
   bool _isSubmitting = false;
   int _qty = 1;
+  late RazorpayService _razorpayService;
 
   @override
   void initState() {
     super.initState();
-    _qty = widget.quantity;
+    // Initialize _qty from the current cart state if available, else use widget.quantity
+    final cartItem = cartManager.items.cast<CartItem?>().firstWhere(
+      (item) => item?.product.id == widget.product.id,
+      orElse: () => null,
+    );
+    _qty = cartItem?.quantity ?? widget.quantity;
+
+    _razorpayService = RazorpayService();
+    _razorpayService.onSuccess = _handlePaymentSuccess;
+    _razorpayService.onFailure = _handlePaymentError;
+    _razorpayService.onExternalWallet = _handleExternalWallet;
+
+    // Listen to cart changes to ensure summary and quantities stay in sync
+    cartManager.addListener(_onCartChanged);
+  }
+
+  void _onCartChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _handlePaymentSuccess(PaymentSuccessResponse response) {
+    if (response.paymentId != null) {
+      _createOrderOnBackend(response.paymentId!);
+    } else {
+      setState(() => _isSubmitting = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Payment ID not received')));
+    }
+  }
+
+  void _handlePaymentError(PaymentFailureResponse response) {
+    setState(() => _isSubmitting = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Payment Failed: ${response.message}'),
+        backgroundColor: kMarketDanger,
+      ),
+    );
+  }
+
+  void _handleExternalWallet(ExternalWalletResponse response) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('External Wallet Selected: ${response.walletName}'),
+        backgroundColor: kMarketPrimary,
+      ),
+    );
+  }
+
+  void _changeQty(int delta) async {
+    final newQty = (_qty + delta).clamp(1, p.stock);
+    if (newQty != _qty) {
+      setState(() => _qty = newQty);
+      try {
+        await cartManager.updateQuantity(p.id, _qty);
+      } catch (e) {
+        debugPrint("Error updating cart quantity: $e");
+      }
+    }
   }
 
   @override
@@ -1226,11 +1467,56 @@ class _QuickCheckoutDialogState extends State<_QuickCheckoutDialog> {
       _flatCtrl,
       _streetCtrl,
       _cityCtrl,
-      _stateCtrl
+      _stateCtrl,
     ]) {
       c.dispose();
     }
+    cartManager.removeListener(_onCartChanged);
+    _razorpayService.dispose();
     super.dispose();
+  }
+
+  Future<void> _createOrderOnBackend(String paymentId) async {
+    setState(() => _isSubmitting = true);
+    try {
+      final items = cartManager.items
+          .map(
+            (item) => {
+              "productId": item.product.id,
+              "productName": item.product.productName,
+              "quantity": item.quantity,
+              "price": item.product.salePrice,
+            },
+          )
+          .toList();
+
+      final orderData = {
+        "supplierId": cartManager.items.first.product.vendorId,
+        "items": items,
+        "totalAmount": cartManager.totalAmount,
+        "shippingAddress": fullAddress,
+        "paymentId": paymentId,
+      };
+
+      final response = await ApiService.createOrder(orderData);
+
+      if (mounted) {
+        Navigator.pop(context); // Close checkout dialog
+        cartManager.clearCart();
+        _showSuccess(context, response);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to place order: $e'),
+            backgroundColor: kMarketDanger,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 
   MarketplaceProduct get p => widget.product;
@@ -1244,14 +1530,17 @@ class _QuickCheckoutDialogState extends State<_QuickCheckoutDialog> {
         _pinCtrl.text.trim().length != 6) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Please fill in name, mobile, and 6-digit PIN')),
+          content: Text('Please fill in name, mobile, and 6-digit PIN'),
+        ),
       );
       return;
     }
     setState(() => _addressSaved = true);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-          content: Text('Address saved!'), duration: Duration(seconds: 1)),
+        content: Text('Address saved!'),
+        duration: Duration(seconds: 1),
+      ),
     );
   }
 
@@ -1263,85 +1552,88 @@ class _QuickCheckoutDialogState extends State<_QuickCheckoutDialog> {
       return;
     }
     if (cartManager.items.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Your cart is empty')));
+      return;
+    }
+
+    if (cartManager.totalAmount < 1000) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Your cart is empty')),
+        const SnackBar(
+          content: Text('Minimum order value is ₹1000'),
+          backgroundColor: kMarketDanger,
+        ),
       );
       return;
     }
 
     setState(() => _isSubmitting = true);
     try {
-      final items = cartManager.items
-          .map((item) => {
-                "productId": item.product.id,
-                "productName": item.product.productName,
-                "quantity": item.quantity,
-                "price": item.product.salePrice,
-              })
-          .toList();
-
-      final orderData = {
-        "supplierId": cartManager.items.first.product.vendorId,
-        "items": items,
-        "totalAmount": cartManager.totalAmount,
-        "shippingAddress": fullAddress,
-      };
-
-      final response = await ApiService.createOrder(orderData);
-
-      if (mounted) {
-        Navigator.pop(context);
-        cartManager.clearCart();
-        _showSuccess(context, response);
-      }
+      _razorpayService.openCheckout(
+        amount: cartManager.totalAmount.toDouble(),
+        contact: _mobileCtrl.text,
+        email: '', // Can be added if available
+        description: 'Order from GlowVita Marketplace',
+      );
     } catch (e) {
       if (mounted) {
+        setState(() => _isSubmitting = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Failed to place order: $e'),
-              backgroundColor: _kDanger),
+            content: Text('Failed to initiate payment: $e'),
+            backgroundColor: kMarketDanger,
+          ),
         );
       }
-    } finally {
-      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
   void _showSuccess(BuildContext ctx, dynamic response) {
     showDialog(
       context: ctx,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
+      barrierDismissible: true,
+      builder: (dialogCtx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(children: [
-          const Icon(Icons.check_circle_rounded, color: _kSuccess),
-          const SizedBox(width: 10),
-          Text('Order Placed!',
-              style: GoogleFonts.dmSans(fontWeight: FontWeight.w800)),
-        ]),
+        title: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: kMarketSuccess),
+            const SizedBox(width: 10),
+            Text(
+              'Order Placed!',
+              style: GoogleFonts.dmSans(fontWeight: FontWeight.w800),
+            ),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-                'Order ID: ${(response['data']?['orderId'] ?? response['orderId']) ?? 'N/A'}',
-                style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+              'Order ID: ${(response['data']?['orderId'] ?? response['orderId']) ?? 'N/A'}',
+              style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
+            ),
             const SizedBox(height: 10),
             Text(
-                'Your order has been sent to the supplier. You will be notified once confirmed.',
-                style: GoogleFonts.dmSans(fontSize: 13, color: _kMuted)),
+              'Your order has been sent to the supplier. You will be notified once confirmed.',
+              style: GoogleFonts.dmSans(fontSize: 13, color: kMarketMuted),
+            ),
           ],
         ),
         actions: [
           ElevatedButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => Navigator.pop(dialogCtx),
             style: ElevatedButton.styleFrom(
-                backgroundColor: _kPrimary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10))),
-            child: Text('GREAT!',
-                style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+              backgroundColor: kMarketPrimary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: Text(
+              'GREAT!',
+              style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
+            ),
           ),
         ],
       ),
@@ -1373,18 +1665,26 @@ class _QuickCheckoutDialogState extends State<_QuickCheckoutDialog> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Quick Checkout',
-                            style: GoogleFonts.poppins(
-                                fontSize: 20, fontWeight: FontWeight.w800)),
-                        Text('Complete your purchase securely',
-                            style: GoogleFonts.poppins(
-                                fontSize: 12, color: _kMuted)),
+                        Text(
+                          'Quick Checkout',
+                          style: GoogleFonts.poppins(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          'Complete your purchase securely',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: kMarketMuted,
+                          ),
+                        ),
                       ],
                     ),
                   ),
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close, color: _kMuted),
+                    icon: const Icon(Icons.close, color: kMarketMuted),
                   ),
                 ],
               ),
@@ -1397,7 +1697,7 @@ class _QuickCheckoutDialogState extends State<_QuickCheckoutDialog> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Expanded(child: _buildLeftPanel()),
-                        Container(width: 1, color: _kBorder),
+                        Container(width: 1, color: kMarketBorder),
                         Expanded(child: _buildRightPanel()),
                       ],
                     ),
@@ -1409,7 +1709,7 @@ class _QuickCheckoutDialogState extends State<_QuickCheckoutDialog> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           _buildLeftPanel(),
-                          Container(height: 1, color: _kBorder),
+                          Container(height: 1, color: kMarketBorder),
                           _buildRightPanel(),
                         ],
                       ),
@@ -1424,15 +1724,19 @@ class _QuickCheckoutDialogState extends State<_QuickCheckoutDialog> {
                     child: OutlinedButton(
                       onPressed: () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: _kBorder),
+                        side: const BorderSide(color: kMarketBorder),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                      child: Text('Cancel',
-                          style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF1A1A2E))),
+                      child: Text(
+                        'Cancel',
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF1A1A2E),
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -1447,18 +1751,27 @@ class _QuickCheckoutDialogState extends State<_QuickCheckoutDialog> {
                               width: 16,
                               height: 16,
                               child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white))
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
                           : const Icon(Icons.shopping_bag_outlined, size: 16),
-                      label: Text('Place Order',
-                          style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.w700, fontSize: 14)),
+                      label: Text(
+                        'Place Order',
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            _addressSaved ? _kPrimary : Colors.grey[400],
+                        backgroundColor: _addressSaved
+                            ? kMarketPrimary
+                            : Colors.grey[400],
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         elevation: 0,
                       ),
                     ),
@@ -1480,44 +1793,67 @@ class _QuickCheckoutDialogState extends State<_QuickCheckoutDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _sectionLabel(
-              Icons.location_on_outlined, 'Shipping & Contact Details'),
+            Icons.location_on_outlined,
+            'Shipping & Contact Details',
+          ),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              border: Border.all(color: _kBorder, width: 1.5),
+              border: Border.all(color: kMarketBorder, width: 1.5),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('New Address',
-                    style: GoogleFonts.poppins(
-                        fontSize: 13, fontWeight: FontWeight.w700)),
+                Text(
+                  'New Address',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const SizedBox(height: 14),
-                Row(children: [
-                  Expanded(child: _field('FULL NAME', _nameCtrl, '')),
-                  const SizedBox(width: 10),
-                  Expanded(
-                      child: _field('MOBILE NO', _mobileCtrl, '',
-                          type: TextInputType.phone)),
-                ]),
+                Row(
+                  children: [
+                    Expanded(child: _field('FULL NAME', _nameCtrl, '')),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _field(
+                        'MOBILE NO',
+                        _mobileCtrl,
+                        '',
+                        type: TextInputType.phone,
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 10),
-                Row(children: [
-                  Expanded(
-                      child: _field('PINCODE', _pinCtrl, '6-digit PIN',
-                          maxLen: 6, type: TextInputType.number)),
-                  const SizedBox(width: 10),
-                  Expanded(child: _field('FLAT/HOUSE NO', _flatCtrl, '')),
-                ]),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _field(
+                        'PINCODE',
+                        _pinCtrl,
+                        '6-digit PIN',
+                        maxLen: 6,
+                        type: TextInputType.number,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(child: _field('FLAT/HOUSE NO', _flatCtrl, '')),
+                  ],
+                ),
                 const SizedBox(height: 10),
                 _field('AREA/STREET', _streetCtrl, ''),
                 const SizedBox(height: 10),
-                Row(children: [
-                  Expanded(child: _field('CITY', _cityCtrl, '')),
-                  const SizedBox(width: 10),
-                  Expanded(child: _field('STATE', _stateCtrl, '')),
-                ]),
+                Row(
+                  children: [
+                    Expanded(child: _field('CITY', _cityCtrl, '')),
+                    const SizedBox(width: 10),
+                    Expanded(child: _field('STATE', _stateCtrl, '')),
+                  ],
+                ),
                 const SizedBox(height: 10),
                 GestureDetector(
                   onTap: () => setState(() => _defaultAddr = !_defaultAddr),
@@ -1530,15 +1866,20 @@ class _QuickCheckoutDialogState extends State<_QuickCheckoutDialog> {
                           value: _defaultAddr,
                           onChanged: (v) =>
                               setState(() => _defaultAddr = v ?? false),
-                          activeColor: _kPrimary,
+                          activeColor: kMarketPrimary,
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4)),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Text('Default address',
-                          style:
-                              GoogleFonts.dmSans(fontSize: 12, color: _kMuted)),
+                      Text(
+                        'Default address',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          color: kMarketMuted,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -1548,16 +1889,21 @@ class _QuickCheckoutDialogState extends State<_QuickCheckoutDialog> {
                   child: ElevatedButton(
                     onPressed: _saveAddress,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _kPrimary,
+                      backgroundColor: kMarketPrimary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                       elevation: 0,
                     ),
-                    child: Text('Save and Use This Address',
-                        style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w700, fontSize: 13)),
+                    child: Text(
+                      'Save and Use This Address',
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -1581,7 +1927,7 @@ class _QuickCheckoutDialogState extends State<_QuickCheckoutDialog> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Colors.white,
-              border: Border.all(color: _kBorder),
+              border: Border.all(color: kMarketBorder),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -1590,34 +1936,47 @@ class _QuickCheckoutDialogState extends State<_QuickCheckoutDialog> {
                   width: 56,
                   height: 56,
                   decoration: BoxDecoration(
-                    color: _kBg,
+                    color: kMarketBg,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: p.productImages.isNotEmpty
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(10),
-                          child: Image.network(p.productImages[0],
-                              fit: BoxFit.cover,
-                              errorBuilder: (c, e, s) => const Icon(
-                                  Icons.inventory_2_outlined,
-                                  color: Color(0xFFC4B5F0))),
+                          child: Image.network(
+                            p.productImages[0],
+                            fit: BoxFit.cover,
+                            errorBuilder: (c, e, s) => const Icon(
+                              Icons.inventory_2_outlined,
+                              color: Color(0xFFC4B5F0),
+                            ),
+                          ),
                         )
-                      : const Icon(Icons.inventory_2_outlined,
-                          color: Color(0xFFC4B5F0)),
+                      : const Icon(
+                          Icons.inventory_2_outlined,
+                          color: Color(0xFFC4B5F0),
+                        ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(p.productName,
-                          style: GoogleFonts.poppins(
-                              fontSize: 13, fontWeight: FontWeight.w700),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis),
-                      Text(p.supplierName,
-                          style:
-                              GoogleFonts.dmSans(fontSize: 11, color: _kMuted)),
+                      Text(
+                        p.productName,
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        p.supplierName,
+                        style: GoogleFonts.dmSans(
+                          fontSize: 11,
+                          color: kMarketMuted,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -1625,15 +1984,22 @@ class _QuickCheckoutDialogState extends State<_QuickCheckoutDialog> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text('₹${p.salePrice.toStringAsFixed(0)}',
-                        style: GoogleFonts.poppins(
-                            fontSize: 13, fontWeight: FontWeight.w800)),
+                    Text(
+                      '₹${p.salePrice.toStringAsFixed(0)}',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                     if (p.salePrice < p.price)
-                      Text('₹${p.price.toStringAsFixed(0)}',
-                          style: GoogleFonts.poppins(
-                              fontSize: 11,
-                              color: _kMuted,
-                              decoration: TextDecoration.lineThrough)),
+                      Text(
+                        '₹${p.price.toStringAsFixed(0)}',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          color: kMarketMuted,
+                          decoration: TextDecoration.lineThrough,
+                        ),
+                      ),
                   ],
                 ),
               ],
@@ -1643,42 +2009,53 @@ class _QuickCheckoutDialogState extends State<_QuickCheckoutDialog> {
           // Qty row
           Row(
             children: [
-              Text('Quantity',
-                  style: GoogleFonts.poppins(
-                      fontSize: 13, fontWeight: FontWeight.w700)),
+              Text(
+                'Quantity',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
               const Spacer(),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('Subtotal',
-                      style: GoogleFonts.dmSans(fontSize: 10, color: _kMuted)),
-                  Text('₹${subtotal.toStringAsFixed(0)}',
-                      style: GoogleFonts.poppins(
-                          fontSize: 15, fontWeight: FontWeight.w800)),
+                  Text(
+                    'Subtotal',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 10,
+                      color: kMarketMuted,
+                    ),
+                  ),
+                  Text(
+                    '₹${subtotal.toStringAsFixed(0)}',
+                    style: GoogleFonts.poppins(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(width: 12),
               Container(
                 decoration: BoxDecoration(
-                  border: Border.all(color: _kBorder, width: 1.5),
+                  border: Border.all(color: kMarketBorder, width: 1.5),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
                   children: [
-                    _miniQtyBtn(
-                        Icons.remove,
-                        () => setState(
-                            () => _qty = (_qty - 1).clamp(1, p.stock))),
+                    _miniQtyBtn(Icons.remove, () => _changeQty(-1)),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Text('$_qty',
-                          style: GoogleFonts.poppins(
-                              fontSize: 14, fontWeight: FontWeight.w800)),
+                      child: Text(
+                        '$_qty',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                     ),
-                    _miniQtyBtn(
-                        Icons.add,
-                        () => setState(
-                            () => _qty = (_qty + 1).clamp(1, p.stock))),
+                    _miniQtyBtn(Icons.add, () => _changeQty(1)),
                   ],
                 ),
               ),
@@ -1687,10 +2064,12 @@ class _QuickCheckoutDialogState extends State<_QuickCheckoutDialog> {
           const SizedBox(height: 6),
           Row(
             children: [
-              const Icon(Icons.info_outline, size: 13, color: _kMuted),
+              const Icon(Icons.info_outline, size: 13, color: kMarketMuted),
               const SizedBox(width: 4),
-              Text('${p.stock} items available',
-                  style: GoogleFonts.dmSans(fontSize: 11, color: _kMuted)),
+              Text(
+                '${p.stock} items available',
+                style: GoogleFonts.dmSans(fontSize: 11, color: kMarketMuted),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -1698,23 +2077,34 @@ class _QuickCheckoutDialogState extends State<_QuickCheckoutDialog> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              border: Border.all(color: _kBorder),
+              border: Border.all(color: kMarketBorder),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               children: [
-                const Icon(Icons.local_shipping_outlined,
-                    color: _kPrimary, size: 20),
+                const Icon(
+                  Icons.local_shipping_outlined,
+                  color: kMarketPrimary,
+                  size: 20,
+                ),
                 const SizedBox(width: 10),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Fast & Reliable Delivery',
-                        style: GoogleFonts.poppins(
-                            fontSize: 12, fontWeight: FontWeight.w700)),
-                    Text('Estimated: 3-5 business days',
-                        style:
-                            GoogleFonts.dmSans(fontSize: 11, color: _kMuted)),
+                    Text(
+                      'Fast & Reliable Delivery',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      'Estimated: 3-5 business days',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 11,
+                        color: kMarketMuted,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -1725,7 +2115,7 @@ class _QuickCheckoutDialogState extends State<_QuickCheckoutDialog> {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              border: Border.all(color: _kBorder),
+              border: Border.all(color: kMarketBorder),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -1733,24 +2123,49 @@ class _QuickCheckoutDialogState extends State<_QuickCheckoutDialog> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.receipt_long_outlined,
-                        size: 15, color: _kPrimary),
+                    const Icon(
+                      Icons.receipt_long_outlined,
+                      size: 15,
+                      color: kMarketPrimary,
+                    ),
                     const SizedBox(width: 6),
-                    Text('Order Summary',
-                        style: GoogleFonts.poppins(
-                            fontSize: 13, fontWeight: FontWeight.w700)),
+                    Text(
+                      'Order Summary',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 10),
-                _summaryRow('Item ($_qty)', '₹${subtotal.toStringAsFixed(0)}',
-                    muted: true),
+                _summaryRow(
+                  'Cart Quantity',
+                  '${cartManager.itemCount}',
+                  muted: true,
+                ),
                 const SizedBox(height: 4),
                 _summaryRow('Shipping Fee', 'FREE', green: true),
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 8),
-                  child: Divider(height: 1, color: _kBorder),
+                  child: Divider(height: 1, color: kMarketBorder),
                 ),
-                _summaryRow('Total Amount', '₹${subtotal.toStringAsFixed(0)}'),
+                _summaryRow(
+                  'Total Amount',
+                  '₹${cartManager.totalAmount.toStringAsFixed(0)}',
+                ),
+                if (cartManager.totalAmount < 1000)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      'Min. order value ₹1000 required',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 11,
+                        color: kMarketDanger,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -1760,14 +2175,15 @@ class _QuickCheckoutDialogState extends State<_QuickCheckoutDialog> {
   }
 
   Widget _sectionLabel(IconData icon, String text) => Row(
-        children: [
-          Icon(icon, size: 16, color: _kPrimary),
-          const SizedBox(width: 8),
-          Text(text,
-              style: GoogleFonts.poppins(
-                  fontSize: 14, fontWeight: FontWeight.w700)),
-        ],
-      );
+    children: [
+      Icon(icon, size: 16, color: kMarketPrimary),
+      const SizedBox(width: 8),
+      Text(
+        text,
+        style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w700),
+      ),
+    ],
+  );
 
   Widget _field(
     String label,
@@ -1775,86 +2191,98 @@ class _QuickCheckoutDialogState extends State<_QuickCheckoutDialog> {
     String hint, {
     TextInputType type = TextInputType.text,
     int? maxLen,
-  }) =>
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label,
-              style: GoogleFonts.poppins(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: _kMuted,
-                  letterSpacing: 0.4)),
-          const SizedBox(height: 4),
-          TextField(
-            controller: ctrl,
-            keyboardType: type,
-            maxLength: maxLen,
-            style: GoogleFonts.dmSans(fontSize: 13),
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle:
-                  GoogleFonts.dmSans(fontSize: 13, color: Colors.grey[400]),
-              counterText: '',
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: _kBorder, width: 1.5),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: _kBorder, width: 1.5),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: _kPrimary, width: 1.5),
-              ),
-            ),
+  }) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        label,
+        style: GoogleFonts.poppins(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: kMarketMuted,
+          letterSpacing: 0.4,
+        ),
+      ),
+      const SizedBox(height: 4),
+      TextField(
+        controller: ctrl,
+        keyboardType: type,
+        maxLength: maxLen,
+        style: GoogleFonts.dmSans(fontSize: 13),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: GoogleFonts.dmSans(fontSize: 13, color: Colors.grey[400]),
+          counterText: '',
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
           ),
-        ],
-      );
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: kMarketBorder, width: 1.5),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: kMarketBorder, width: 1.5),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: kMarketPrimary, width: 1.5),
+          ),
+        ),
+      ),
+    ],
+  );
 
-  Widget _summaryRow(String label, String value,
-          {bool muted = false, bool green = false}) =>
-      Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label,
-              style: GoogleFonts.poppins(
-                  fontSize: 13,
-                  color: muted ? _kMuted : const Color(0xFF1A1A2E),
-                  fontWeight: muted ? FontWeight.w400 : FontWeight.w800)),
-          Text(value,
-              style: GoogleFonts.poppins(
-                  fontSize: muted ? 13 : 15,
-                  color: green
-                      ? _kSuccess
-                      : muted
-                          ? _kMuted
-                          : const Color(0xFF1A1A2E),
-                  fontWeight: muted ? FontWeight.w400 : FontWeight.w800)),
-        ],
-      );
+  Widget _summaryRow(
+    String label,
+    String value, {
+    bool muted = false,
+    bool green = false,
+  }) => Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: [
+      Text(
+        label,
+        style: GoogleFonts.poppins(
+          fontSize: 13,
+          color: muted ? kMarketMuted : const Color(0xFF1A1A2E),
+          fontWeight: muted ? FontWeight.w400 : FontWeight.w800,
+        ),
+      ),
+      Text(
+        value,
+        style: GoogleFonts.poppins(
+          fontSize: muted ? 13 : 15,
+          color: green
+              ? kMarketSuccess
+              : muted
+              ? kMarketMuted
+              : const Color(0xFF1A1A2E),
+          fontWeight: muted ? FontWeight.w400 : FontWeight.w800,
+        ),
+      ),
+    ],
+  );
 
   Widget _miniQtyBtn(IconData icon, VoidCallback onPressed) => InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(8),
-        child: SizedBox(
-          width: 32,
-          height: 32,
-          child: Icon(icon, size: 16, color: const Color(0xFF1A1A2E)),
-        ),
-      );
+    onTap: onPressed,
+    borderRadius: BorderRadius.circular(8),
+    child: SizedBox(
+      width: 32,
+      height: 32,
+      child: Icon(icon, size: 16, color: const Color(0xFF1A1A2E)),
+    ),
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CART SIDEBAR
 // ─────────────────────────────────────────────────────────────────────────────
-class _CartSidebar extends StatelessWidget {
-  const _CartSidebar();
+class MarketCartSidebar extends StatelessWidget {
+  const MarketCartSidebar();
 
   @override
   Widget build(BuildContext context) {
@@ -1871,37 +2299,50 @@ class _CartSidebar extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(20, 18, 12, 14),
                   child: Row(
                     children: [
-                      const Icon(Icons.shopping_bag_outlined, color: _kPrimary),
+                      const Icon(
+                        Icons.shopping_bag_outlined,
+                        color: kMarketPrimary,
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           'Your Cart (${cartManager.itemCount} items)',
                           style: GoogleFonts.poppins(
-                              fontSize: 17, fontWeight: FontWeight.w800),
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
                       IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () => Navigator.pop(context)),
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
                     ],
                   ),
                 ),
-                const Divider(height: 1, color: _kBorder),
+                const Divider(height: 1, color: kMarketBorder),
                 // Items
                 if (cartManager.isLoading)
                   const Expanded(
-                      child: Center(
-                          child: CircularProgressIndicator(color: _kPrimary)))
+                    child: Center(
+                      child: CircularProgressIndicator(color: kMarketPrimary),
+                    ),
+                  )
                 else if (cartManager.items.isEmpty)
                   Expanded(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.shopping_bag_outlined,
-                            size: 64, color: Colors.grey[300]),
+                        Icon(
+                          Icons.shopping_bag_outlined,
+                          size: 64,
+                          color: Colors.grey[300],
+                        ),
                         const SizedBox(height: 14),
-                        Text('Your cart is empty',
-                            style: GoogleFonts.dmSans(color: _kMuted)),
+                        Text(
+                          'Your cart is empty',
+                          style: GoogleFonts.dmSans(color: kMarketMuted),
+                        ),
                       ],
                     ),
                   )
@@ -1909,10 +2350,12 @@ class _CartSidebar extends StatelessWidget {
                   Expanded(
                     child: ListView.separated(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 8),
+                        horizontal: 20,
+                        vertical: 8,
+                      ),
                       itemCount: cartManager.items.length,
                       separatorBuilder: (_, __) =>
-                          const Divider(height: 1, color: _kBorder),
+                          const Divider(height: 1, color: kMarketBorder),
                       itemBuilder: (context, i) {
                         final item = cartManager.items[i];
                         return Padding(
@@ -1923,35 +2366,44 @@ class _CartSidebar extends StatelessWidget {
                                 width: 52,
                                 height: 52,
                                 decoration: BoxDecoration(
-                                  color: _kBg,
+                                  color: kMarketBg,
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: item.product.productImages.isNotEmpty
                                     ? ClipRRect(
                                         borderRadius: BorderRadius.circular(10),
                                         child: Image.network(
-                                            item.product.productImages[0],
-                                            fit: BoxFit.cover))
-                                    : const Icon(Icons.inventory_2_outlined,
-                                        color: Color(0xFFC4B5F0)),
+                                          item.product.productImages[0],
+                                          fit: BoxFit.cover,
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.inventory_2_outlined,
+                                        color: Color(0xFFC4B5F0),
+                                      ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(item.product.productName,
-                                        style: GoogleFonts.poppins(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w700),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis),
                                     Text(
-                                        '₹${item.product.salePrice.toStringAsFixed(0)}',
-                                        style: GoogleFonts.poppins(
-                                            fontSize: 13,
-                                            color: _kPrimary,
-                                            fontWeight: FontWeight.w700)),
+                                      item.product.productName,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Text(
+                                      '₹${item.product.salePrice.toStringAsFixed(0)}',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 13,
+                                        color: kMarketPrimary,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -1961,42 +2413,53 @@ class _CartSidebar extends StatelessWidget {
                                   _cqBtn(Icons.remove, () async {
                                     try {
                                       await cartManager.updateQuantity(
-                                          item.product.id, item.quantity - 1);
+                                        item.product.id,
+                                        item.quantity - 1,
+                                      );
                                     } catch (_) {}
                                   }),
                                   Padding(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 8),
-                                    child: Text('${item.quantity}',
-                                        style: GoogleFonts.poppins(
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 13)),
+                                      horizontal: 8,
+                                    ),
+                                    child: Text(
+                                      '${item.quantity}',
+                                      style: GoogleFonts.poppins(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 13,
+                                      ),
+                                    ),
                                   ),
                                   _cqBtn(
-                                      Icons.add,
-                                      item.product.stock > item.quantity
-                                          ? () async {
-                                              try {
-                                                await cartManager
-                                                    .updateQuantity(
-                                                        item.product.id,
-                                                        item.quantity + 1);
-                                              } catch (_) {}
-                                            }
-                                          : () {}),
+                                    Icons.add,
+                                    item.product.stock > item.quantity
+                                        ? () async {
+                                            try {
+                                              await cartManager.updateQuantity(
+                                                item.product.id,
+                                                item.quantity + 1,
+                                              );
+                                            } catch (_) {}
+                                          }
+                                        : () {},
+                                  ),
                                   const SizedBox(width: 4),
                                   InkWell(
                                     onTap: () async {
                                       try {
-                                        await cartManager
-                                            .removeFromCart(item.product.id);
+                                        await cartManager.removeFromCart(
+                                          item.product.id,
+                                        );
                                       } catch (_) {}
                                     },
                                     borderRadius: BorderRadius.circular(6),
                                     child: Padding(
                                       padding: const EdgeInsets.all(4),
-                                      child: Icon(Icons.delete_outline_rounded,
-                                          color: _kDanger, size: 18),
+                                      child: Icon(
+                                        Icons.delete_outline_rounded,
+                                        color: kMarketDanger,
+                                        size: 18,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -2014,9 +2477,10 @@ class _CartSidebar extends StatelessWidget {
                       color: Colors.white,
                       boxShadow: [
                         BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 12,
-                            offset: const Offset(0, -4))
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 12,
+                          offset: const Offset(0, -4),
+                        ),
                       ],
                     ),
                     child: Column(
@@ -2024,15 +2488,21 @@ class _CartSidebar extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('Total Amount',
-                                style: GoogleFonts.poppins(
-                                    fontSize: 14, fontWeight: FontWeight.w700)),
                             Text(
-                                '₹${cartManager.totalAmount.toStringAsFixed(0)}',
-                                style: GoogleFonts.poppins(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w800,
-                                    color: _kPrimary)),
+                              'Total Amount',
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              '₹${cartManager.totalAmount.toStringAsFixed(0)}',
+                              style: GoogleFonts.poppins(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                                color: kMarketPrimary,
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 14),
@@ -2044,18 +2514,22 @@ class _CartSidebar extends StatelessWidget {
                               _showCheckout(context);
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: _kPrimary,
+                              backgroundColor: kMarketPrimary,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                               elevation: 0,
                             ),
-                            child: Text('PROCEED TO CHECKOUT',
-                                style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 13,
-                                    letterSpacing: 0.3)),
+                            child: Text(
+                              'PROCEED TO CHECKOUT',
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -2071,25 +2545,25 @@ class _CartSidebar extends StatelessWidget {
   }
 
   Widget _cqBtn(IconData icon, VoidCallback onTap) => InkWell(
-        onTap: onTap,
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(6),
+    child: Container(
+      width: 26,
+      height: 26,
+      decoration: BoxDecoration(
+        border: Border.all(color: kMarketBorder),
         borderRadius: BorderRadius.circular(6),
-        child: Container(
-          width: 26,
-          height: 26,
-          decoration: BoxDecoration(
-            border: Border.all(color: _kBorder),
-            borderRadius: BorderRadius.circular(6),
-            color: _kBg,
-          ),
-          child: Icon(icon, size: 14, color: const Color(0xFF1A1A2E)),
-        ),
-      );
+        color: kMarketBg,
+      ),
+      child: Icon(icon, size: 14, color: const Color(0xFF1A1A2E)),
+    ),
+  );
 
   void _showCheckout(BuildContext context) {
     if (cartManager.items.isEmpty) return;
     showDialog(
       context: context,
-      builder: (_) => _QuickCheckoutDialog(
+      builder: (_) => MarketQuickCheckoutDialog(
         product: cartManager.items.first.product,
         quantity: cartManager.items.first.quantity,
       ),
@@ -2100,14 +2574,17 @@ class _CartSidebar extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPER WIDGETS
 // ─────────────────────────────────────────────────────────────────────────────
-class _NoImage extends StatelessWidget {
-  const _NoImage();
+class MarketNoImage extends StatelessWidget {
+  const MarketNoImage();
   @override
   Widget build(BuildContext context) => Container(
-        color: const Color(0xFFF0EEFA),
-        child: const Center(
-          child: Icon(Icons.inventory_2_outlined,
-              size: 60, color: Color(0xFFC4B5F0)),
-        ),
-      );
+    color: const Color(0xFFF0EEFA),
+    child: const Center(
+      child: Icon(
+        Icons.inventory_2_outlined,
+        size: 60,
+        color: Color(0xFFC4B5F0),
+      ),
+    ),
+  );
 }

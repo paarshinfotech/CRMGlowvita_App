@@ -91,7 +91,7 @@ class _ImportCustomersState extends State<ImportCustomers> {
         elevation: 1,
         foregroundColor: Colors.black,
       ),
-      backgroundColor: const Color(0xFFF4F4F4),
+      backgroundColor: Colors.white,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(

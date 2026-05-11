@@ -9,6 +9,10 @@ import 'package:intl/intl.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
+import 'my_Profile.dart';
+import 'Notification.dart';
+import 'vendor_model.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class ExpensesPage extends StatefulWidget {
   const ExpensesPage({super.key});
@@ -21,6 +25,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
 
   List<Map<String, dynamic>> expenses = [];
   bool _isLoading = true;
+  VendorProfile? _profile;
 
   String _searchQuery = '';
   String _selectedPaymentMode = 'All Payment Modes';
@@ -32,6 +37,27 @@ class _ExpensesPageState extends State<ExpensesPage> {
   void initState() {
     super.initState();
     _fetchExpenses();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final p = await ApiService.getVendorProfile();
+      if (mounted) setState(() => _profile = p);
+    } catch (e) {
+      debugPrint('fetchProfile: $e');
+    }
+  }
+
+  Widget _buildInitialAvatar() {
+    return Text(
+      (_profile?.businessName ?? 'H').substring(0, 1).toUpperCase(),
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: 12.sp,
+        fontWeight: FontWeight.bold,
+      ),
+    );
   }
 
   Future<void> _fetchExpenses() async {
@@ -45,9 +71,9 @@ class _ExpensesPageState extends State<ExpensesPage> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -57,52 +83,51 @@ class _ExpensesPageState extends State<ExpensesPage> {
       expenses.fold(0.0, (sum, e) => sum + (e['amount'] as num? ?? 0));
   int get currentMonthExpenses {
     final now = DateTime.now();
-    return expenses.where((expense) {
-      try {
-        final dt = DateTime.parse(expense['date'] ?? "");
-        return dt.month == now.month && dt.year == now.year;
-      } catch (_) {
-        return false;
-      }
-    }).fold(0, (sum, e) => sum + (e['amount'] as num? ?? 0).toInt());
+    return expenses
+        .where((expense) {
+          try {
+            final dt = DateTime.parse(expense['date'] ?? "");
+            return dt.month == now.month && dt.year == now.year;
+          } catch (_) {
+            return false;
+          }
+        })
+        .fold(0, (sum, e) => sum + (e['amount'] as num? ?? 0).toInt());
   }
 
   List<Map<String, dynamic>> get filteredExpenses => expenses.where((expense) {
-        final matchesSearch = _searchQuery.isEmpty ||
-            (expense['_id']
-                    ?.toLowerCase()
-                    .contains(_searchQuery.toLowerCase()) ??
-                false) ||
-            ((expense['expenseType'] ?? expense['type'])
-                    ?.toLowerCase()
-                    .contains(_searchQuery.toLowerCase()) ??
-                false) ||
-            (expense['note']
-                    ?.toLowerCase()
-                    .contains(_searchQuery.toLowerCase()) ??
-                false);
-        final matchesPaymentMode =
-            _selectedPaymentMode == 'All Payment Modes' ||
-                expense['paymentMode'] == _selectedPaymentMode;
-        bool matchesDateRange = true;
-        if (_startDate != null || _endDate != null) {
-          try {
-            final dt = DateTime.parse(expense['date']);
-            if (_startDate != null && dt.isBefore(_startDate!))
-              matchesDateRange = false;
-            if (_endDate != null && dt.isAfter(_endDate!))
-              matchesDateRange = false;
-          } catch (_) {}
-        }
-        final minAmt = _minAmount ?? 0;
-        final maxAmt = _maxAmount ?? double.infinity;
-        final matchesAmount = (expense['amount'] as num? ?? 0) >= minAmt &&
-            (expense['amount'] as num? ?? 0) <= maxAmt;
-        return matchesSearch &&
-            matchesPaymentMode &&
-            matchesDateRange &&
-            matchesAmount;
-      }).toList();
+    final matchesSearch =
+        _searchQuery.isEmpty ||
+        (expense['_id']?.toLowerCase().contains(_searchQuery.toLowerCase()) ??
+            false) ||
+        ((expense['expenseType'] ?? expense['type'])?.toLowerCase().contains(
+              _searchQuery.toLowerCase(),
+            ) ??
+            false) ||
+        (expense['note']?.toLowerCase().contains(_searchQuery.toLowerCase()) ??
+            false);
+    final matchesPaymentMode =
+        _selectedPaymentMode == 'All Payment Modes' ||
+        expense['paymentMode'] == _selectedPaymentMode;
+    bool matchesDateRange = true;
+    if (_startDate != null || _endDate != null) {
+      try {
+        final dt = DateTime.parse(expense['date']);
+        if (_startDate != null && dt.isBefore(_startDate!))
+          matchesDateRange = false;
+        if (_endDate != null && dt.isAfter(_endDate!)) matchesDateRange = false;
+      } catch (_) {}
+    }
+    final minAmt = _minAmount ?? 0;
+    final maxAmt = _maxAmount ?? double.infinity;
+    final matchesAmount =
+        (expense['amount'] as num? ?? 0) >= minAmt &&
+        (expense['amount'] as num? ?? 0) <= maxAmt;
+    return matchesSearch &&
+        matchesPaymentMode &&
+        matchesDateRange &&
+        matchesAmount;
+  }).toList();
 
   void _openFilterDialog() async {
     final result = await showDialog(
@@ -139,10 +164,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
   void _openEditExpenseDialog(Map<String, dynamic> expense) async {
     final result = await showDialog(
       context: context,
-      builder: (_) => AddExpenseDialog(
-        expense: expense,
-        isEdit: true,
-      ),
+      builder: (_) => AddExpenseDialog(expense: expense, isEdit: true),
     );
     if (result == true) {
       _fetchExpenses();
@@ -157,8 +179,9 @@ class _ExpensesPageState extends State<ExpensesPage> {
         content: const Text('Are you sure you want to delete this expense?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
@@ -175,9 +198,9 @@ class _ExpensesPageState extends State<ExpensesPage> {
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to delete: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Failed to delete: $e')));
         }
       }
     }
@@ -195,7 +218,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
         "Payment Mode",
         "Invoice No",
         "Note",
-        "Status"
+        "Status",
       ]);
 
       // Data
@@ -220,16 +243,16 @@ class _ExpensesPageState extends State<ExpensesPage> {
       await file.writeAsString(csvData);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('CSV exported to $path')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('CSV exported to $path')));
         OpenFile.open(path);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Export failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
       }
     }
   }
@@ -244,19 +267,62 @@ class _ExpensesPageState extends State<ExpensesPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       drawer: const CustomDrawer(currentPage: 'Expenses'),
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text(
-          "Expenses",
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w600,
-            color: Colors.black,
-            fontSize: 18,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        titleSpacing: 0,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: Colors.black),
+            onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),
-        backgroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.black),
-        elevation: 0,
+        title: Text(
+          'Expenses',
+          style: GoogleFonts.poppins(
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w700,
+            color: Colors.black,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined, color: Colors.black),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NotificationPage()),
+            ),
+          ),
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const My_Profile()),
+            ),
+            child: Padding(
+              padding: EdgeInsets.only(right: 12.w),
+              child: CircleAvatar(
+                radius: 16,
+                backgroundColor: Theme.of(context).primaryColor,
+                child: ClipOval(
+                  child: (_profile != null && _profile!.profileImage.isNotEmpty)
+                      ? Image.network(
+                          _profile!.profileImage,
+                          width: 32,
+                          height: 32,
+                          fit: BoxFit.cover,
+                          errorBuilder: (ctx, _, __) => _buildInitialAvatar(),
+                          loadingBuilder: (ctx, child, progress) =>
+                              progress == null
+                              ? child
+                              : const CircularProgressIndicator(),
+                        )
+                      : _buildInitialAvatar(),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(_gap),
@@ -264,33 +330,43 @@ class _ExpensesPageState extends State<ExpensesPage> {
           children: [
             Align(
               alignment: Alignment.centerLeft,
-              child: Text("Track and manage all your expenses in one place",
-                  style: GoogleFonts.poppins(
-                      fontSize: 13, color: Colors.grey[600])),
+              child: Text(
+                "Track and manage all your expenses in one place",
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  color: Colors.grey[600],
+                ),
+              ),
             ),
             const SizedBox(height: 13),
             Row(
               children: [
                 Expanded(
-                    child: _InfoCard(
-                        title: 'Total Expenses',
-                        value: '₹${totalExpenses.toStringAsFixed(0)}',
-                        subtitle: 'All-time expenses',
-                        fontSize: 12)),
+                  child: _InfoCard(
+                    title: 'Total Expenses',
+                    value: '₹${totalExpenses.toStringAsFixed(0)}',
+                    subtitle: 'All-time expenses',
+                    fontSize: 12,
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
-                    child: _InfoCard(
-                        title: 'This Month',
-                        value: '₹$currentMonthExpenses',
-                        subtitle: 'Current month expenses',
-                        fontSize: 12)),
+                  child: _InfoCard(
+                    title: 'This Month',
+                    value: '₹$currentMonthExpenses',
+                    subtitle: 'Current month expenses',
+                    fontSize: 12,
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
-                    child: _InfoCard(
-                        title: 'Total Records',
-                        value: '$totalRecords',
-                        subtitle: 'Total expense entries',
-                        fontSize: 12)),
+                  child: _InfoCard(
+                    title: 'Total Records',
+                    value: '$totalRecords',
+                    subtitle: 'Total expense entries',
+                    fontSize: 12,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 14),
@@ -310,35 +386,51 @@ class _ExpensesPageState extends State<ExpensesPage> {
                       color: Theme.of(context).primaryColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(Icons.account_balance_wallet,
-                        color: Theme.of(context).primaryColor, size: 22),
+                    child: Icon(
+                      Icons.account_balance_wallet,
+                      color: Theme.of(context).primaryColor,
+                      size: 22,
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('All Expenses',
-                            style: GoogleFonts.poppins(
-                                fontSize: 13, fontWeight: FontWeight.w600)),
-                        Text('View, add, and manage your personal expenses',
-                            style: GoogleFonts.poppins(
-                                fontSize: 10.5, color: Colors.grey.shade600)),
+                        Text(
+                          'All Expenses',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          'View, add, and manage your personal expenses',
+                          style: GoogleFonts.poppins(
+                            fontSize: 10.5,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
                       ],
                     ),
                   ),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 11,
+                      vertical: 7,
+                    ),
                     decoration: BoxDecoration(
                       color: Theme.of(context).primaryColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Text('$totalRecords',
-                        style: GoogleFonts.poppins(
-                            color: Theme.of(context).primaryColor,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 11)),
+                    child: Text(
+                      '$totalRecords',
+                      style: GoogleFonts.poppins(
+                        color: Theme.of(context).primaryColor,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 11,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -356,8 +448,11 @@ class _ExpensesPageState extends State<ExpensesPage> {
                     decoration: InputDecoration(
                       hintText: 'Search Expenses...',
                       hintStyle: GoogleFonts.poppins(fontSize: 13),
-                      prefixIcon: const Icon(Icons.search,
-                          color: Colors.grey, size: 20),
+                      prefixIcon: const Icon(
+                        Icons.search,
+                        color: Colors.grey,
+                        size: 20,
+                      ),
                       suffixIcon: _searchQuery.isEmpty
                           ? null
                           : IconButton(
@@ -365,14 +460,18 @@ class _ExpensesPageState extends State<ExpensesPage> {
                               onPressed: () {
                                 _searchController.clear();
                                 setState(() => _searchQuery = '');
-                              }),
+                              },
+                            ),
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(_radius),
-                          borderSide: BorderSide.none),
+                        borderRadius: BorderRadius.circular(_radius),
+                        borderSide: BorderSide.none,
+                      ),
                       contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 13, vertical: 11),
+                        horizontal: 13,
+                        vertical: 11,
+                      ),
                     ),
                   ),
                 ),
@@ -387,8 +486,11 @@ class _ExpensesPageState extends State<ExpensesPage> {
                       border: Border.all(color: Colors.grey.shade300),
                     ),
                     child: IconButton(
-                      icon: const Icon(Icons.filter_list,
-                          color: Colors.black87, size: 18),
+                      icon: const Icon(
+                        Icons.filter_list,
+                        color: Colors.black87,
+                        size: 18,
+                      ),
                       onPressed: _openFilterDialog,
                     ),
                   ),
@@ -402,13 +504,17 @@ class _ExpensesPageState extends State<ExpensesPage> {
                 OutlinedButton.icon(
                   onPressed: () {},
                   icon: const Icon(Icons.download, size: 16),
-                  label:
-                      Text("Export", style: GoogleFonts.poppins(fontSize: 13)),
+                  label: Text(
+                    "Export",
+                    style: GoogleFonts.poppins(fontSize: 13),
+                  ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Theme.of(context).primaryColor,
                     side: BorderSide(color: Theme.of(context).primaryColor),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 10),
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                     minimumSize: const Size(0, 33),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -419,16 +525,21 @@ class _ExpensesPageState extends State<ExpensesPage> {
                 ElevatedButton.icon(
                   onPressed: _openAddExpenseDialog,
                   icon: const Icon(Icons.add, size: 17),
-                  label: Text("Add Expense",
-                      style: GoogleFonts.poppins(fontSize: 13)),
+                  label: Text(
+                    "Add Expense",
+                    style: GoogleFonts.poppins(fontSize: 13),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).primaryColor,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                     minimumSize: const Size(0, 33),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8)),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                 ),
               ],
@@ -438,21 +549,24 @@ class _ExpensesPageState extends State<ExpensesPage> {
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : filteredExpenses.isEmpty
-                      ? Center(
-                          child: Text('No expenses found',
-                              style: GoogleFonts.poppins(fontSize: 13)))
-                      : ListView.builder(
-                          padding: const EdgeInsets.only(bottom: 11, top: 3),
-                          itemCount: filteredExpenses.length,
-                          itemBuilder: (ctx, idx) => ExpenseCard(
-                            expense: filteredExpenses[idx],
-                            onEdit: () =>
-                                _openEditExpenseDialog(filteredExpenses[idx]),
-                            onDelete: () => _deleteExpense(
-                                filteredExpenses[idx]['_id'] ?? ''),
-                            fontSize: 13,
-                          ),
-                        ),
+                  ? Center(
+                      child: Text(
+                        'No expenses found',
+                        style: GoogleFonts.poppins(fontSize: 13),
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.only(bottom: 11, top: 3),
+                      itemCount: filteredExpenses.length,
+                      itemBuilder: (ctx, idx) => ExpenseCard(
+                        expense: filteredExpenses[idx],
+                        onEdit: () =>
+                            _openEditExpenseDialog(filteredExpenses[idx]),
+                        onDelete: () =>
+                            _deleteExpense(filteredExpenses[idx]['_id'] ?? ''),
+                        fontSize: 13,
+                      ),
+                    ),
             ),
           ],
         ),
@@ -466,18 +580,19 @@ class ExpenseCard extends StatelessWidget {
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final double fontSize;
-  const ExpenseCard(
-      {super.key,
-      required this.expense,
-      this.onEdit,
-      this.onDelete,
-      this.fontSize = 13});
+  const ExpenseCard({
+    super.key,
+    required this.expense,
+    this.onEdit,
+    this.onDelete,
+    this.fontSize = 13,
+  });
 
   String _formatDate(String? dateStr) {
     if (dateStr == null || dateStr.isEmpty) return "";
     try {
       final dt = DateTime.parse(dateStr);
-      return DateFormat('dd-MM-yyyy').format(dt);
+      return DateFormat('dd MMM yyyy').format(dt);
     } catch (_) {
       return dateStr;
     }
@@ -485,173 +600,204 @@ class ExpenseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.only(bottom: 13),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(13),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
+    margin: const EdgeInsets.only(bottom: 16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.05),
+          blurRadius: 10,
+          offset: const Offset(0, 4),
         ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      ],
+      border: Border.all(color: const Color(0xFFF3F4F6)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _formatDate(expense['date']),
-                          style: GoogleFonts.poppins(
-                              color: Colors.grey[600], fontSize: fontSize - 3),
-                        ),
-                      ],
-                    ),
-                  ),
                   Text(
-                    "₹${expense['amount'] ?? ''}",
+                    expense['expenseType'] ?? expense['type'] ?? "Expense",
                     style: GoogleFonts.poppins(
-                      color: Colors.black,
+                      color: Colors.black87,
                       fontWeight: FontWeight.w600,
-                      fontSize: fontSize,
+                      fontSize: fontSize + 1,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE0E7FF),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: const Color(0xFF6366F1).withOpacity(0.3),
+                      ),
+                    ),
+                    child: Text(
+                      expense['paymentMode'] ?? "Online",
+                      style: GoogleFonts.poppins(
+                        color: const Color(0xFF4338CA),
+                        fontSize: fontSize - 3,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Row(
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          expense['expenseType'] ?? expense['type'] ?? "",
-                          style: GoogleFonts.poppins(
-                              color: Colors.black,
-                              fontWeight: FontWeight.w500,
-                              fontSize: fontSize - 1),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          expense['paymentMode'] ?? "",
-                          style: GoogleFonts.poppins(
-                              color: Colors.grey[600], fontSize: fontSize - 3),
-                        ),
-                      ],
+                  Text(
+                    "Invoice No.: ${expense['invoiceNo'] ?? 'N/A'}",
+                    style: GoogleFonts.poppins(
+                      color: Colors.grey[600],
+                      fontSize: fontSize - 2,
                     ),
-                  ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        if (expense['invoiceNo'] != null &&
-                            expense['invoiceNo'].toString().isNotEmpty)
-                          Text(
-                            "Invoice: ${expense['invoiceNo'] ?? ''}",
-                            style: GoogleFonts.poppins(
-                                color: Colors.grey[700],
-                                fontSize: fontSize - 3),
-                          ),
-                        const SizedBox(height: 2),
-                        Text(
-                          expense['note'] ?? "",
-                          style: GoogleFonts.poppins(
-                              color: Colors.grey[600], fontSize: fontSize - 4),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 9),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: onEdit,
-                    style: TextButton.styleFrom(
-                        textStyle: GoogleFonts.poppins(fontSize: fontSize - 3)),
-                    child: Text("Edit",
-                        style: GoogleFonts.poppins(
-                            color: Theme.of(context).primaryColor,
-                            fontSize: fontSize - 3,
-                            fontWeight: FontWeight.w500)),
                   ),
                   const SizedBox(width: 8),
-                  TextButton(
-                    onPressed: onDelete,
-                    style: TextButton.styleFrom(
-                        textStyle: GoogleFonts.poppins(fontSize: fontSize - 3)),
-                    child: Text("Delete",
-                        style: GoogleFonts.poppins(
-                            color: Colors.red,
-                            fontSize: fontSize - 3,
-                            fontWeight: FontWeight.w500)),
+                  Text("•", style: TextStyle(color: Colors.grey[400])),
+                  const SizedBox(width: 8),
+                  Text(
+                    _formatDate(expense['date']),
+                    style: GoogleFonts.poppins(
+                      color: Colors.grey[600],
+                      fontSize: fontSize - 2,
+                    ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 10),
+              RichText(
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: "Amount : ",
+                      style: GoogleFonts.poppins(
+                        color: Colors.grey[600],
+                        fontSize: fontSize,
+                      ),
+                    ),
+                    TextSpan(
+                      text: "₹${expense['amount'] ?? '0'}",
+                      style: GoogleFonts.poppins(
+                        color: const Color(0xFF166534),
+                        fontWeight: FontWeight.w600,
+                        fontSize: fontSize,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
         ),
-      );
+        const Divider(height: 1, thickness: 1, color: Color(0xFFF3F4F6)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              IconButton(
+                onPressed: onEdit,
+                icon: const Icon(
+                  Icons.edit_note_outlined,
+                  color: Colors.grey,
+                  size: 22,
+                ),
+                constraints: const BoxConstraints(),
+                padding: const EdgeInsets.all(8),
+              ),
+              IconButton(
+                onPressed: onDelete,
+                icon: const Icon(
+                  Icons.delete_outline,
+                  color: Color(0xFFB91C1C),
+                  size: 20,
+                ),
+                constraints: const BoxConstraints(),
+                padding: const EdgeInsets.all(8),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _InfoCard extends StatelessWidget {
   final String title, value, subtitle;
   final double fontSize;
-  const _InfoCard(
-      {required this.title,
-      required this.value,
-      required this.subtitle,
-      this.fontSize = 12});
+  const _InfoCard({
+    required this.title,
+    required this.value,
+    required this.subtitle,
+    this.fontSize = 12,
+  });
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(13),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.shade200),
+    padding: const EdgeInsets.all(13),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: Colors.grey.shade200),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.poppins(
+            fontSize: fontSize - 3,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey[600],
+          ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title,
-                style: GoogleFonts.poppins(
-                    fontSize: fontSize - 3,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey[600])),
-            const SizedBox(height: 2),
-            Text(value,
-                style: GoogleFonts.poppins(
-                    fontSize: fontSize + 3,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black)),
-            const SizedBox(height: 1),
-            Text(subtitle,
-                style: GoogleFonts.poppins(
-                    fontSize: fontSize - 4, color: Colors.grey[500])),
-          ],
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: GoogleFonts.poppins(
+            fontSize: fontSize + 3,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
         ),
-      );
+        const SizedBox(height: 1),
+        Text(
+          subtitle,
+          style: GoogleFonts.poppins(
+            fontSize: fontSize - 4,
+            color: Colors.grey[500],
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class FilterOptionsDialog extends StatefulWidget {
   final String paymentMode;
   final DateTime? fromDate, toDate;
   final double? minAmount, maxAmount;
-  const FilterOptionsDialog(
-      {Key? key,
-      this.paymentMode = 'All Payment Modes',
-      this.fromDate,
-      this.toDate,
-      this.minAmount,
-      this.maxAmount})
-      : super(key: key);
+  const FilterOptionsDialog({
+    Key? key,
+    this.paymentMode = 'All Payment Modes',
+    this.fromDate,
+    this.toDate,
+    this.minAmount,
+    this.maxAmount,
+  }) : super(key: key);
   @override
   State<FilterOptionsDialog> createState() => _FilterOptionsDialogState();
 }
@@ -666,10 +812,12 @@ class _FilterOptionsDialogState extends State<FilterOptionsDialog> {
     _selectedPaymentMode = widget.paymentMode;
     _fromDate = widget.fromDate;
     _toDate = widget.toDate;
-    _minAmountCtrl =
-        TextEditingController(text: widget.minAmount?.toString() ?? "0");
-    _maxAmountCtrl =
-        TextEditingController(text: widget.maxAmount?.toString() ?? "");
+    _minAmountCtrl = TextEditingController(
+      text: widget.minAmount?.toString() ?? "0",
+    );
+    _maxAmountCtrl = TextEditingController(
+      text: widget.maxAmount?.toString() ?? "",
+    );
   }
 
   @override
@@ -695,11 +843,13 @@ class _FilterOptionsDialogState extends State<FilterOptionsDialog> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Filter Options",
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.w600,
-                    fontSize: fontSize,
-                  )),
+              Text(
+                "Filter Options",
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w600,
+                  fontSize: fontSize,
+                ),
+              ),
               const SizedBox(height: 5),
               Container(
                 padding: const EdgeInsets.all(11),
@@ -716,47 +866,64 @@ class _FilterOptionsDialogState extends State<FilterOptionsDialog> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text("Payment Mode",
-                                  style: GoogleFonts.poppins(
-                                      fontSize: fontSize - 2,
-                                      fontWeight: FontWeight.w500)),
+                              Text(
+                                "Payment Mode",
+                                style: GoogleFonts.poppins(
+                                  fontSize: fontSize - 2,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                               const SizedBox(height: 4),
                               SizedBox(
                                 height: 38,
                                 child: DropdownButtonFormField<String>(
                                   isExpanded: true,
                                   value: _selectedPaymentMode,
-                                  icon: const Icon(Icons.arrow_drop_down,
-                                      size: 18),
+                                  icon: const Icon(
+                                    Icons.arrow_drop_down,
+                                    size: 18,
+                                  ),
                                   style: GoogleFonts.poppins(
-                                      fontSize: fontSize - 1,
-                                      color: Colors.black87),
+                                    fontSize: fontSize - 1,
+                                    color: Colors.black87,
+                                  ),
                                   decoration: InputDecoration(
                                     contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 9, vertical: 0),
+                                      horizontal: 9,
+                                      vertical: 0,
+                                    ),
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(6),
                                       borderSide: const BorderSide(
-                                          color: Color(0xFFDEDEDE)),
+                                        color: Color(0xFFDEDEDE),
+                                      ),
                                     ),
                                     filled: true,
                                     fillColor: Colors.white,
                                   ),
-                                  items: [
-                                    'All Payment Modes',
-                                    'Cash',
-                                    'Debit Card',
-                                    'Net Banking'
-                                  ]
-                                      .map((e) => DropdownMenuItem(
-                                          value: e,
-                                          child: Text(e,
-                                              style: GoogleFonts.poppins(
-                                                  fontSize: fontSize - 1))))
-                                      .toList(),
-                                  onChanged: (v) => setState(() =>
-                                      _selectedPaymentMode =
-                                          v ?? "All Payment Modes"),
+                                  items:
+                                      [
+                                            'All Payment Modes',
+                                            'Cash',
+                                            'Debit Card',
+                                            'Net Banking',
+                                          ]
+                                          .map(
+                                            (e) => DropdownMenuItem(
+                                              value: e,
+                                              child: Text(
+                                                e,
+                                                style: GoogleFonts.poppins(
+                                                  fontSize: fontSize - 1,
+                                                ),
+                                              ),
+                                            ),
+                                          )
+                                          .toList(),
+                                  onChanged: (v) => setState(
+                                    () => _selectedPaymentMode =
+                                        v ?? "All Payment Modes",
+                                  ),
                                 ),
                               ),
                             ],
@@ -767,10 +934,13 @@ class _FilterOptionsDialogState extends State<FilterOptionsDialog> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text("From Date",
-                                  style: GoogleFonts.poppins(
-                                      fontSize: fontSize - 2,
-                                      fontWeight: FontWeight.w500)),
+                              Text(
+                                "From Date",
+                                style: GoogleFonts.poppins(
+                                  fontSize: fontSize - 2,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                               const SizedBox(height: 4),
                               InkWell(
                                 onTap: () async {
@@ -789,23 +959,31 @@ class _FilterOptionsDialogState extends State<FilterOptionsDialog> {
                                     color: Colors.white,
                                     borderRadius: BorderRadius.circular(6),
                                     border: Border.all(
-                                        color: const Color(0xFFDEDEDE)),
+                                      color: const Color(0xFFDEDEDE),
+                                    ),
                                   ),
                                   alignment: Alignment.centerLeft,
-                                  padding:
-                                      const EdgeInsets.symmetric(horizontal: 9),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 9,
+                                  ),
                                   child: Row(
                                     children: [
                                       Expanded(
-                                        child: Text(_formatDate(_fromDate),
-                                            style: GoogleFonts.poppins(
-                                                fontSize: fontSize - 1,
-                                                color: _fromDate == null
-                                                    ? Colors.grey[500]
-                                                    : Colors.black)),
+                                        child: Text(
+                                          _formatDate(_fromDate),
+                                          style: GoogleFonts.poppins(
+                                            fontSize: fontSize - 1,
+                                            color: _fromDate == null
+                                                ? Colors.grey[500]
+                                                : Colors.black,
+                                          ),
+                                        ),
                                       ),
-                                      Icon(Icons.calendar_today_outlined,
-                                          size: 16, color: Colors.grey[500]),
+                                      Icon(
+                                        Icons.calendar_today_outlined,
+                                        size: 16,
+                                        color: Colors.grey[500],
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -822,10 +1000,13 @@ class _FilterOptionsDialogState extends State<FilterOptionsDialog> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text("To Date",
-                                  style: GoogleFonts.poppins(
-                                      fontSize: fontSize - 2,
-                                      fontWeight: FontWeight.w500)),
+                              Text(
+                                "To Date",
+                                style: GoogleFonts.poppins(
+                                  fontSize: fontSize - 2,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                               const SizedBox(height: 4),
                               InkWell(
                                 onTap: () async {
@@ -844,23 +1025,31 @@ class _FilterOptionsDialogState extends State<FilterOptionsDialog> {
                                     color: Colors.white,
                                     borderRadius: BorderRadius.circular(6),
                                     border: Border.all(
-                                        color: const Color(0xFFDEDEDE)),
+                                      color: const Color(0xFFDEDEDE),
+                                    ),
                                   ),
                                   alignment: Alignment.centerLeft,
-                                  padding:
-                                      const EdgeInsets.symmetric(horizontal: 9),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 9,
+                                  ),
                                   child: Row(
                                     children: [
                                       Expanded(
-                                        child: Text(_formatDate(_toDate),
-                                            style: GoogleFonts.poppins(
-                                                fontSize: fontSize - 1,
-                                                color: _toDate == null
-                                                    ? Colors.grey[500]
-                                                    : Colors.black)),
+                                        child: Text(
+                                          _formatDate(_toDate),
+                                          style: GoogleFonts.poppins(
+                                            fontSize: fontSize - 1,
+                                            color: _toDate == null
+                                                ? Colors.grey[500]
+                                                : Colors.black,
+                                          ),
+                                        ),
                                       ),
-                                      Icon(Icons.calendar_today_outlined,
-                                          size: 16, color: Colors.grey[500]),
+                                      Icon(
+                                        Icons.calendar_today_outlined,
+                                        size: 16,
+                                        color: Colors.grey[500],
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -873,10 +1062,13 @@ class _FilterOptionsDialogState extends State<FilterOptionsDialog> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text("Min Amount (₹)",
-                                  style: GoogleFonts.poppins(
-                                      fontSize: fontSize - 2,
-                                      fontWeight: FontWeight.w500)),
+                              Text(
+                                "Min Amount (₹)",
+                                style: GoogleFonts.poppins(
+                                  fontSize: fontSize - 2,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                               const SizedBox(height: 4),
                               SizedBox(
                                 height: 38,
@@ -886,20 +1078,25 @@ class _FilterOptionsDialogState extends State<FilterOptionsDialog> {
                                   decoration: InputDecoration(
                                     hintText: "0",
                                     hintStyle: GoogleFonts.poppins(
-                                        fontSize: fontSize - 3,
-                                        color: Colors.grey[500]),
+                                      fontSize: fontSize - 3,
+                                      color: Colors.grey[500],
+                                    ),
                                     filled: true,
                                     fillColor: Colors.white,
                                     contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 9, vertical: 8),
+                                      horizontal: 9,
+                                      vertical: 8,
+                                    ),
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(6),
                                       borderSide: const BorderSide(
-                                          color: Color(0xFFDEDEDE)),
+                                        color: Color(0xFFDEDEDE),
+                                      ),
                                     ),
                                   ),
                                   style: GoogleFonts.poppins(
-                                      fontSize: fontSize - 1),
+                                    fontSize: fontSize - 1,
+                                  ),
                                 ),
                               ),
                             ],
@@ -914,10 +1111,13 @@ class _FilterOptionsDialogState extends State<FilterOptionsDialog> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text("Max Amount (₹)",
-                                  style: GoogleFonts.poppins(
-                                      fontSize: fontSize - 2,
-                                      fontWeight: FontWeight.w500)),
+                              Text(
+                                "Max Amount (₹)",
+                                style: GoogleFonts.poppins(
+                                  fontSize: fontSize - 2,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                               const SizedBox(height: 4),
                               SizedBox(
                                 height: 38,
@@ -927,20 +1127,25 @@ class _FilterOptionsDialogState extends State<FilterOptionsDialog> {
                                   decoration: InputDecoration(
                                     hintText: "No limit",
                                     hintStyle: GoogleFonts.poppins(
-                                        fontSize: fontSize - 3,
-                                        color: Colors.grey[500]),
+                                      fontSize: fontSize - 3,
+                                      color: Colors.grey[500],
+                                    ),
                                     filled: true,
                                     fillColor: Colors.white,
                                     contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 9, vertical: 8),
+                                      horizontal: 9,
+                                      vertical: 8,
+                                    ),
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(6),
                                       borderSide: const BorderSide(
-                                          color: Color(0xFFDEDEDE)),
+                                        color: Color(0xFFDEDEDE),
+                                      ),
                                     ),
                                   ),
                                   style: GoogleFonts.poppins(
-                                      fontSize: fontSize - 1),
+                                    fontSize: fontSize - 1,
+                                  ),
                                 ),
                               ),
                             ],
@@ -957,8 +1162,10 @@ class _FilterOptionsDialogState extends State<FilterOptionsDialog> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton(
-                    child: Text("Reset",
-                        style: GoogleFonts.poppins(fontSize: fontSize - 1)),
+                    child: Text(
+                      "Reset",
+                      style: GoogleFonts.poppins(fontSize: fontSize - 1),
+                    ),
                     onPressed: () {
                       setState(() {
                         _selectedPaymentMode = 'All Payment Modes';
@@ -975,11 +1182,16 @@ class _FilterOptionsDialogState extends State<FilterOptionsDialog> {
                       foregroundColor: Colors.white,
                       backgroundColor: Theme.of(context).primaryColor,
                       textStyle: GoogleFonts.poppins(
-                          fontSize: fontSize, fontWeight: FontWeight.w500),
+                        fontSize: fontSize,
+                        fontWeight: FontWeight.w500,
+                      ),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(7)),
+                        borderRadius: BorderRadius.circular(7),
+                      ),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 10),
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
                     ),
                     child: const Text('Apply'),
                     onPressed: () {
@@ -995,7 +1207,7 @@ class _FilterOptionsDialogState extends State<FilterOptionsDialog> {
                     },
                   ),
                 ],
-              )
+              ),
             ],
           ),
         ),
@@ -1028,7 +1240,7 @@ class AddExpenseDialog extends StatefulWidget {
       "Raw Material Purchase",
       "Repair Charges",
       "Salaries & Wages",
-      "Stock Purchase"
+      "Stock Purchase",
     ],
     this.paymentModes = const ["Cash On Delivery", "Pay at Shop", "Pay online"],
     this.invoiceNumber,
@@ -1095,9 +1307,9 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error picking file: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error picking file: $e')));
     }
   }
 
@@ -1130,8 +1342,10 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
     try {
       bool success;
       if (widget.isEdit && widget.expense != null) {
-        success =
-            await ApiService.updateExpense(widget.expense!['_id'], payload);
+        success = await ApiService.updateExpense(
+          widget.expense!['_id'],
+          payload,
+        );
       } else {
         success = await ApiService.addExpense(payload);
       }
@@ -1143,9 +1357,9 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
@@ -1165,17 +1379,24 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(widget.isEdit ? "Edit Expense" : "Add New Expense",
-                      style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.w700, fontSize: 13.5)),
+                  Text(
+                    widget.isEdit ? "Edit Expense" : "Add New Expense",
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13.5,
+                    ),
+                  ),
                   Padding(
                     padding: const EdgeInsets.only(bottom: 6, top: 2),
                     child: Text(
-                        widget.isEdit
-                            ? "Update expense details below"
-                            : "Fill in the details to add a new expense",
-                        style: GoogleFonts.poppins(
-                            fontSize: minFont, color: Colors.grey[600])),
+                      widget.isEdit
+                          ? "Update expense details below"
+                          : "Fill in the details to add a new expense",
+                      style: GoogleFonts.poppins(
+                        fontSize: minFont,
+                        color: Colors.grey[600],
+                      ),
+                    ),
                   ),
                   Padding(
                     padding: const EdgeInsets.only(top: 4, bottom: 2),
@@ -1183,14 +1404,18 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                       text: TextSpan(
                         text: "Expense Type ",
                         style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w500,
-                            fontSize: minFont,
-                            color: Colors.black),
+                          fontWeight: FontWeight.w500,
+                          fontSize: minFont,
+                          color: Colors.black,
+                        ),
                         children: [
                           TextSpan(
-                              text: "*",
-                              style: TextStyle(
-                                  color: Colors.red, fontSize: minFont)),
+                            text: "*",
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontSize: minFont,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -1199,24 +1424,36 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                     value: _expenseType,
                     onChanged: (v) => setState(() => _expenseType = v),
                     items: widget.expenseTypes
-                        .map((e) => DropdownMenuItem(
+                        .map(
+                          (e) => DropdownMenuItem(
                             value: e,
-                            child: Text(e,
-                                style: GoogleFonts.poppins(fontSize: minFont))))
+                            child: Text(
+                              e,
+                              style: GoogleFonts.poppins(fontSize: minFont),
+                            ),
+                          ),
+                        )
                         .toList(),
                     decoration: InputDecoration(
                       isDense: true,
                       hintText: "Select expense type",
                       hintStyle: GoogleFonts.poppins(
-                          fontSize: minFont, color: Colors.grey),
+                        fontSize: minFont,
+                        color: Colors.grey,
+                      ),
                       contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 7, vertical: 10),
+                        horizontal: 7,
+                        vertical: 10,
+                      ),
                       border: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.grey.shade400),
-                          borderRadius: BorderRadius.circular(6)),
+                        borderSide: BorderSide(color: Colors.grey.shade400),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
                     ),
                     style: GoogleFonts.poppins(
-                        fontSize: minFont, color: Colors.black),
+                      fontSize: minFont,
+                      color: Colors.black,
+                    ),
                     dropdownColor: Colors.white,
                     icon: const Icon(Icons.keyboard_arrow_down_rounded),
                   ),
@@ -1230,18 +1467,22 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                             children: [
                               RichText(
                                 text: TextSpan(
-                                    text: "Date ",
-                                    style: GoogleFonts.poppins(
-                                        fontWeight: FontWeight.w500,
+                                  text: "Date ",
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: minFont,
+                                    color: Colors.black,
+                                  ),
+                                  children: [
+                                    TextSpan(
+                                      text: "*",
+                                      style: TextStyle(
+                                        color: Colors.red,
                                         fontSize: minFont,
-                                        color: Colors.black),
-                                    children: [
-                                      TextSpan(
-                                          text: "*",
-                                          style: TextStyle(
-                                              color: Colors.red,
-                                              fontSize: minFont))
-                                    ]),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                               const SizedBox(height: 2),
                               InkWell(
@@ -1258,21 +1499,30 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                                 child: Container(
                                   height: 32,
                                   decoration: BoxDecoration(
-                                      border: Border.all(
-                                          color: Colors.grey.shade400),
-                                      borderRadius: BorderRadius.circular(6)),
-                                  padding:
-                                      const EdgeInsets.symmetric(horizontal: 7),
+                                    border: Border.all(
+                                      color: Colors.grey.shade400,
+                                    ),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                  ),
                                   alignment: Alignment.centerLeft,
                                   child: Row(
                                     children: [
                                       Expanded(
-                                          child: Text(
-                                              "${_selectedDate.day.toString().padLeft(2, '0')}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.year}",
-                                              style: GoogleFonts.poppins(
-                                                  fontSize: minFont))),
-                                      Icon(Icons.calendar_today_outlined,
-                                          color: Colors.grey[600], size: 14),
+                                        child: Text(
+                                          "${_selectedDate.day.toString().padLeft(2, '0')}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.year}",
+                                          style: GoogleFonts.poppins(
+                                            fontSize: minFont,
+                                          ),
+                                        ),
+                                      ),
+                                      Icon(
+                                        Icons.calendar_today_outlined,
+                                        color: Colors.grey[600],
+                                        size: 14,
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -1287,18 +1537,22 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                             children: [
                               RichText(
                                 text: TextSpan(
-                                    text: "Amount (₹) ",
-                                    style: GoogleFonts.poppins(
-                                        fontWeight: FontWeight.w500,
+                                  text: "Amount (₹) ",
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: minFont,
+                                    color: Colors.black,
+                                  ),
+                                  children: [
+                                    TextSpan(
+                                      text: "*",
+                                      style: TextStyle(
+                                        color: Colors.red,
                                         fontSize: minFont,
-                                        color: Colors.black),
-                                    children: [
-                                      TextSpan(
-                                          text: "*",
-                                          style: TextStyle(
-                                              color: Colors.red,
-                                              fontSize: minFont))
-                                    ]),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                               const SizedBox(height: 2),
                               SizedBox(
@@ -1306,18 +1560,25 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                                 child: TextFormField(
                                   controller: _amountCtrl,
                                   keyboardType: TextInputType.numberWithOptions(
-                                      decimal: true),
+                                    decimal: true,
+                                  ),
                                   decoration: InputDecoration(
                                     hintText: '0.00',
                                     hintStyle: GoogleFonts.poppins(
-                                        fontSize: minFont, color: Colors.grey),
+                                      fontSize: minFont,
+                                      color: Colors.grey,
+                                    ),
                                     isDense: true,
                                     contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 7),
+                                      horizontal: 10,
+                                      vertical: 7,
+                                    ),
                                     border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(6),
-                                        borderSide: BorderSide(
-                                            color: Colors.grey.shade400)),
+                                      borderRadius: BorderRadius.circular(6),
+                                      borderSide: BorderSide(
+                                        color: Colors.grey.shade400,
+                                      ),
+                                    ),
                                   ),
                                   style: GoogleFonts.poppins(fontSize: minFont),
                                 ),
@@ -1334,14 +1595,18 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                       text: TextSpan(
                         text: "Payment Mode ",
                         style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w500,
-                            fontSize: minFont,
-                            color: Colors.black),
+                          fontWeight: FontWeight.w500,
+                          fontSize: minFont,
+                          color: Colors.black,
+                        ),
                         children: [
                           TextSpan(
-                              text: "*",
-                              style: TextStyle(
-                                  color: Colors.red, fontSize: minFont))
+                            text: "*",
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontSize: minFont,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -1350,34 +1615,48 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                     value: _paymentMode,
                     onChanged: (v) => setState(() => _paymentMode = v),
                     items: widget.paymentModes
-                        .map((e) => DropdownMenuItem(
-                              value: e,
-                              child: Text(e,
-                                  style:
-                                      GoogleFonts.poppins(fontSize: minFont)),
-                            ))
+                        .map(
+                          (e) => DropdownMenuItem(
+                            value: e,
+                            child: Text(
+                              e,
+                              style: GoogleFonts.poppins(fontSize: minFont),
+                            ),
+                          ),
+                        )
                         .toList(),
                     decoration: InputDecoration(
                       isDense: true,
                       hintText: "Select payment mode",
                       hintStyle: GoogleFonts.poppins(
-                          fontSize: minFont, color: Colors.grey),
+                        fontSize: minFont,
+                        color: Colors.grey,
+                      ),
                       contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 9, vertical: 10),
+                        horizontal: 9,
+                        vertical: 10,
+                      ),
                       border: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.grey.shade400),
-                          borderRadius: BorderRadius.circular(6)),
+                        borderSide: BorderSide(color: Colors.grey.shade400),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
                     ),
                     style: GoogleFonts.poppins(
-                        fontSize: minFont, color: Colors.black),
+                      fontSize: minFont,
+                      color: Colors.black,
+                    ),
                     dropdownColor: Colors.white,
                     icon: const Icon(Icons.keyboard_arrow_down_rounded),
                   ),
                   Padding(
                     padding: const EdgeInsets.only(top: 9),
-                    child: Text("Invoice Number (Optional)",
-                        style: GoogleFonts.poppins(
-                            fontSize: minFont, fontWeight: FontWeight.w500)),
+                    child: Text(
+                      "Invoice Number (Optional)",
+                      style: GoogleFonts.poppins(
+                        fontSize: minFont,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
                   Padding(
                     padding: const EdgeInsets.only(top: 3),
@@ -1386,25 +1665,33 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                       decoration: InputDecoration(
                         hintText: 'INV-001',
                         hintStyle: GoogleFonts.poppins(
-                            fontSize: minFont, color: Colors.grey),
+                          fontSize: minFont,
+                          color: Colors.grey,
+                        ),
                         filled: true,
                         fillColor: Colors.white,
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 9, vertical: 7),
+                          horizontal: 9,
+                          vertical: 7,
+                        ),
                         border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(6),
-                            borderSide:
-                                BorderSide(color: Colors.grey.shade400)),
+                          borderRadius: BorderRadius.circular(6),
+                          borderSide: BorderSide(color: Colors.grey.shade400),
+                        ),
                       ),
                       style: GoogleFonts.poppins(fontSize: minFont),
                     ),
                   ),
                   Padding(
                     padding: const EdgeInsets.only(top: 9, bottom: 3),
-                    child: Text("Expense Invoice (Optional)",
-                        style: GoogleFonts.poppins(
-                            fontSize: minFont, fontWeight: FontWeight.w500)),
+                    child: Text(
+                      "Expense Invoice (Optional)",
+                      style: GoogleFonts.poppins(
+                        fontSize: minFont,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
                   Row(
                     children: [
@@ -1416,32 +1703,44 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                           elevation: 0,
                           minimumSize: const Size(0, 26),
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(5),
-                              side: BorderSide(color: Colors.grey.shade400)),
+                            borderRadius: BorderRadius.circular(5),
+                            side: BorderSide(color: Colors.grey.shade400),
+                          ),
                         ),
-                        child: Text("Choose File",
-                            style: GoogleFonts.poppins(
-                                fontSize: minFont,
-                                fontWeight: FontWeight.w500)),
+                        child: Text(
+                          "Choose File",
+                          style: GoogleFonts.poppins(
+                            fontSize: minFont,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 7),
                       Flexible(
                         child: Row(
                           children: [
                             Expanded(
-                              child: Text(_fileName ?? "No file chosen",
-                                  style: GoogleFonts.poppins(
-                                      fontSize: minFont - 1,
-                                      color: Colors.grey[700]),
-                                  overflow: TextOverflow.ellipsis),
+                              child: Text(
+                                _fileName ?? "No file chosen",
+                                style: GoogleFonts.poppins(
+                                  fontSize: minFont - 1,
+                                  color: Colors.grey[700],
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                             if (_fileName != null &&
                                 _fileName != "No file chosen")
                               IconButton(
-                                icon: const Icon(Icons.close,
-                                    size: 14, color: Colors.red),
+                                icon: const Icon(
+                                  Icons.close,
+                                  size: 14,
+                                  color: Colors.red,
+                                ),
                                 onPressed: () {
                                   setState(() {
                                     _invoiceBase64 = null;
@@ -1458,15 +1757,23 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                   ),
                   Padding(
                     padding: const EdgeInsets.only(left: 2, top: 2, bottom: 2),
-                    child: Text("Accepted formats: Images, PDF (Max 5MB)",
-                        style: GoogleFonts.poppins(
-                            fontSize: minFont - 2, color: Colors.grey[600])),
+                    child: Text(
+                      "Accepted formats: Images, PDF (Max 5MB)",
+                      style: GoogleFonts.poppins(
+                        fontSize: minFont - 2,
+                        color: Colors.grey[600],
+                      ),
+                    ),
                   ),
                   Padding(
                     padding: const EdgeInsets.only(top: 7, bottom: 2),
-                    child: Text("Note (Optional)",
-                        style: GoogleFonts.poppins(
-                            fontSize: minFont, fontWeight: FontWeight.w500)),
+                    child: Text(
+                      "Note (Optional)",
+                      style: GoogleFonts.poppins(
+                        fontSize: minFont,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
                   TextFormField(
                     controller: _noteCtrl,
@@ -1476,14 +1783,19 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                       hintText:
                           "Add any additional notes about this expense...",
                       hintStyle: GoogleFonts.poppins(
-                          fontSize: minFont - 1, color: Colors.grey),
+                        fontSize: minFont - 1,
+                        color: Colors.grey,
+                      ),
                       filled: true,
                       fillColor: Colors.white,
                       contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 9, vertical: 9),
+                        horizontal: 9,
+                        vertical: 9,
+                      ),
                       border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(6),
-                          borderSide: BorderSide(color: Colors.grey.shade400)),
+                        borderRadius: BorderRadius.circular(6),
+                        borderSide: BorderSide(color: Colors.grey.shade400),
+                      ),
                     ),
                     style: GoogleFonts.poppins(fontSize: minFont),
                   ),
@@ -1497,9 +1809,12 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                           style: TextButton.styleFrom(
                             minimumSize: const Size(68, 29),
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 7),
-                            textStyle:
-                                GoogleFonts.poppins(fontSize: minFont - 1),
+                              horizontal: 8,
+                              vertical: 7,
+                            ),
+                            textStyle: GoogleFonts.poppins(
+                              fontSize: minFont - 1,
+                            ),
                           ),
                           child: const Text("Cancel"),
                         ),
@@ -1510,12 +1825,16 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                             backgroundColor: Theme.of(context).primaryColor,
                             minimumSize: const Size(74, 29),
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 9, vertical: 7),
+                              horizontal: 9,
+                              vertical: 7,
+                            ),
                             textStyle: GoogleFonts.poppins(
-                                fontSize: minFont - 1,
-                                fontWeight: FontWeight.w500),
+                              fontSize: minFont - 1,
+                              fontWeight: FontWeight.w500,
+                            ),
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(5)),
+                              borderRadius: BorderRadius.circular(5),
+                            ),
                           ),
                           child: Text(widget.isEdit ? "Update" : "Add Expense"),
                         ),

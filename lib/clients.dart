@@ -113,10 +113,12 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
           return sum;
         });
 
-        updatedCustomers.add(customer.copyWith(
-          totalBookings: totalBookings,
-          totalSpent: totalSpent,
-        ));
+        updatedCustomers.add(
+          customer.copyWith(
+            totalBookings: totalBookings,
+            totalSpent: totalSpent,
+          ),
+        );
       }
 
       setState(() {
@@ -209,17 +211,19 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Delete customer',
-            style:
-                GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600)),
+        title: Text(
+          'Delete customer',
+          style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600),
+        ),
         content: Text(
           'Are you sure you want to delete ${customer.fullName}?',
           style: GoogleFonts.poppins(fontSize: 10),
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text('Cancel', style: GoogleFonts.poppins(fontSize: 10))),
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel', style: GoogleFonts.poppins(fontSize: 10)),
+          ),
           TextButton(
             onPressed: () async {
               try {
@@ -233,8 +237,10 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                 debugPrint('Error deleting customer: ${e.toString()}');
               }
             },
-            child: Text('Delete',
-                style: GoogleFonts.poppins(color: Colors.red, fontSize: 10)),
+            child: Text(
+              'Delete',
+              style: GoogleFonts.poppins(color: Colors.red, fontSize: 10),
+            ),
           ),
         ],
       ),
@@ -293,21 +299,26 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
     try {
       StringBuffer buffer = StringBuffer();
       buffer.writeln(
-          'Name\tEmail\tMobile\tBirth Day\tLast Visit\tTotal Bookings\tTotal Spent\tStatus');
+        'Name\tEmail\tMobile\tBirth Day\tLast Visit\tTotal Bookings\tTotal Spent\tStatus',
+      );
       for (var customer in _filteredCustomers) {
         buffer.writeln(
-            '${customer.fullName}\t${customer.email ?? ''}\t${customer.mobile}\t${customer.dateOfBirth ?? ''}\t${customer.lastVisit ?? 'Never'}\t${customer.totalBookings}\t₹${customer.totalSpent.toStringAsFixed(2)}\t${customer.status}');
+          '${customer.fullName}\t${customer.email ?? ''}\t${customer.mobile}\t${customer.dateOfBirth ?? ''}\t${customer.lastVisit ?? 'Never'}\t${customer.totalBookings}\t₹${customer.totalSpent.toStringAsFixed(2)}\t${customer.status}',
+        );
       }
       await Clipboard.setData(ClipboardData(text: buffer.toString()));
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
               '${_filteredCustomers.length} customers copied to clipboard!',
-              style: GoogleFonts.poppins(fontSize: 10)),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-        ));
+              style: GoogleFonts.poppins(fontSize: 10),
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
       }
     } catch (e) {
       debugPrint('Error copying to clipboard: $e');
@@ -325,7 +336,7 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
         'Last Visit',
         'Total Bookings',
         'Total Spent (₹)',
-        'Status'
+        'Status',
       ]);
       for (var customer in _filteredCustomers) {
         rows.add([
@@ -346,17 +357,22 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
       final file = File(path);
       await file.writeAsString(csv);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('CSV exported successfully!',
-              style: GoogleFonts.poppins(fontSize: 10)),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-          action: SnackBarAction(
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'CSV exported successfully!',
+              style: GoogleFonts.poppins(fontSize: 10),
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
               label: 'OPEN',
               textColor: Colors.white,
-              onPressed: () => OpenFile.open(file.path)),
-          duration: const Duration(seconds: 5),
-        ));
+              onPressed: () => OpenFile.open(file.path),
+            ),
+            duration: const Duration(seconds: 5),
+          ),
+        );
       }
       await OpenFile.open(file.path);
     } catch (e) {
@@ -382,11 +398,12 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
         'Last Visit',
         'Total Bookings',
         'Total Spent (₹)',
-        'Status'
+        'Status',
       ];
       for (int i = 0; i < headers.length; i++) {
-        var cell = sheetObject
-            .cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0));
+        var cell = sheetObject.cell(
+          CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0),
+        );
         cell.value = TextCellValue(headers[i]);
         cell.cellStyle = headerStyle;
       }
@@ -395,36 +412,60 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
         int rowIndex = i + 1;
         sheetObject
             .cell(
-                CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
-            .value = TextCellValue(customer.fullName);
+              CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex),
+            )
+            .value = TextCellValue(
+          customer.fullName,
+        );
         sheetObject
             .cell(
-                CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex))
-            .value = TextCellValue(customer.email ?? '');
+              CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex),
+            )
+            .value = TextCellValue(
+          customer.email ?? '',
+        );
         sheetObject
             .cell(
-                CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex))
-            .value = TextCellValue(customer.mobile);
+              CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex),
+            )
+            .value = TextCellValue(
+          customer.mobile,
+        );
         sheetObject
             .cell(
-                CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex))
-            .value = TextCellValue(customer.dateOfBirth ?? '');
+              CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex),
+            )
+            .value = TextCellValue(
+          customer.dateOfBirth ?? '',
+        );
         sheetObject
             .cell(
-                CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex))
-            .value = TextCellValue(customer.lastVisit ?? 'Never');
+              CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex),
+            )
+            .value = TextCellValue(
+          customer.lastVisit ?? 'Never',
+        );
         sheetObject
             .cell(
-                CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex))
-            .value = TextCellValue(customer.totalBookings.toString());
+              CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex),
+            )
+            .value = TextCellValue(
+          customer.totalBookings.toString(),
+        );
         sheetObject
             .cell(
-                CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: rowIndex))
-            .value = TextCellValue(customer.totalSpent.toStringAsFixed(2));
+              CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: rowIndex),
+            )
+            .value = TextCellValue(
+          customer.totalSpent.toStringAsFixed(2),
+        );
         sheetObject
             .cell(
-                CellIndex.indexByColumnRow(columnIndex: 7, rowIndex: rowIndex))
-            .value = TextCellValue(customer.status);
+              CellIndex.indexByColumnRow(columnIndex: 7, rowIndex: rowIndex),
+            )
+            .value = TextCellValue(
+          customer.status,
+        );
       }
       var directory = await getApplicationDocumentsDirectory();
       var filePath =
@@ -435,17 +476,22 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
           ..createSync(recursive: true)
           ..writeAsBytesSync(fileBytes);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Excel exported successfully!',
-                style: GoogleFonts.poppins(fontSize: 10)),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            action: SnackBarAction(
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Excel exported successfully!',
+                style: GoogleFonts.poppins(fontSize: 10),
+              ),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              action: SnackBarAction(
                 label: 'OPEN',
                 textColor: Colors.white,
-                onPressed: () => OpenFile.open(filePath)),
-            duration: const Duration(seconds: 5),
-          ));
+                onPressed: () => OpenFile.open(filePath),
+              ),
+              duration: const Duration(seconds: 5),
+            ),
+          );
         }
         await OpenFile.open(filePath);
       }
@@ -457,44 +503,56 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
   Future<void> _exportToPDF() async {
     try {
       final pdf = pw.Document();
-      pdf.addPage(pw.MultiPage(
-        pageFormat: PdfPageFormat.a4.landscape,
-        margin: const pw.EdgeInsets.all(32),
-        build: (pw.Context context) => [
-          pw.Header(
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4.landscape,
+          margin: const pw.EdgeInsets.all(32),
+          build: (pw.Context context) => [
+            pw.Header(
               level: 0,
-              child: pw.Text('Customers Report',
-                  style: pw.TextStyle(
-                      fontSize: 24, fontWeight: pw.FontWeight.bold))),
-          pw.SizedBox(height: 10),
-          pw.Text('Generated on: ${DateTime.now().toString().split('.')[0]}',
-              style:
-                  const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
-          pw.Text('Total Customers: ${_filteredCustomers.length}',
-              style:
-                  const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
-          pw.SizedBox(height: 20),
-          pw.TableHelper.fromTextArray(
-            border: pw.TableBorder.all(color: PdfColors.grey300),
-            headerStyle: pw.TextStyle(
+              child: pw.Text(
+                'Customers Report',
+                style: pw.TextStyle(
+                  fontSize: 24,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+            ),
+            pw.SizedBox(height: 10),
+            pw.Text(
+              'Generated on: ${DateTime.now().toString().split('.')[0]}',
+              style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
+            ),
+            pw.Text(
+              'Total Customers: ${_filteredCustomers.length}',
+              style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
+            ),
+            pw.SizedBox(height: 20),
+            pw.TableHelper.fromTextArray(
+              border: pw.TableBorder.all(color: PdfColors.grey300),
+              headerStyle: pw.TextStyle(
                 fontWeight: pw.FontWeight.bold,
                 fontSize: 9,
-                color: PdfColors.white),
-            headerDecoration: const pw.BoxDecoration(color: PdfColors.blue700),
-            cellStyle: const pw.TextStyle(fontSize: 8),
-            cellHeight: 25,
-            headers: [
-              'Name',
-              'Email',
-              'Mobile',
-              'Birth Day',
-              'Last Visit',
-              'Bookings',
-              'Spent',
-              'Status'
-            ],
-            data: _filteredCustomers
-                .map((customer) => [
+                color: PdfColors.white,
+              ),
+              headerDecoration: const pw.BoxDecoration(
+                color: PdfColors.blue700,
+              ),
+              cellStyle: const pw.TextStyle(fontSize: 8),
+              cellHeight: 25,
+              headers: [
+                'Name',
+                'Email',
+                'Mobile',
+                'Birth Day',
+                'Last Visit',
+                'Bookings',
+                'Spent',
+                'Status',
+              ],
+              data: _filteredCustomers
+                  .map(
+                    (customer) => [
                       customer.fullName,
                       customer.email ?? '',
                       customer.mobile,
@@ -503,28 +561,35 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                       customer.totalBookings.toString(),
                       '₹${customer.totalSpent.toStringAsFixed(2)}',
                       customer.status,
-                    ])
-                .toList(),
-          ),
-        ],
-      ));
+                    ],
+                  )
+                  .toList(),
+            ),
+          ],
+        ),
+      );
       final directory = await getApplicationDocumentsDirectory();
       final filePath =
           '${directory.path}/customers_report_${DateTime.now().millisecondsSinceEpoch}.pdf';
       final file = File(filePath);
       await file.writeAsBytes(await pdf.save());
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('PDF exported successfully!',
-              style: GoogleFonts.poppins(fontSize: 10)),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-          action: SnackBarAction(
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'PDF exported successfully!',
+              style: GoogleFonts.poppins(fontSize: 10),
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
               label: 'OPEN',
               textColor: Colors.white,
-              onPressed: () => OpenFile.open(filePath)),
-          duration: const Duration(seconds: 5),
-        ));
+              onPressed: () => OpenFile.open(filePath),
+            ),
+            duration: const Duration(seconds: 5),
+          ),
+        );
       }
       await OpenFile.open(filePath);
     } catch (e) {
@@ -537,46 +602,62 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
       await Printing.layoutPdf(
         onLayout: (PdfPageFormat format) async {
           final pdf = pw.Document();
-          pdf.addPage(pw.MultiPage(
-            pageFormat: format,
-            margin: const pw.EdgeInsets.all(32),
-            build: (pw.Context context) => [
-              pw.Header(
+          pdf.addPage(
+            pw.MultiPage(
+              pageFormat: format,
+              margin: const pw.EdgeInsets.all(32),
+              build: (pw.Context context) => [
+                pw.Header(
                   level: 0,
-                  child: pw.Text('Customers Report',
-                      style: pw.TextStyle(
-                          fontSize: 24, fontWeight: pw.FontWeight.bold))),
-              pw.SizedBox(height: 10),
-              pw.Text(
+                  child: pw.Text(
+                    'Customers Report',
+                    style: pw.TextStyle(
+                      fontSize: 24,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                ),
+                pw.SizedBox(height: 10),
+                pw.Text(
                   'Generated on: ${DateTime.now().toString().split('.')[0]}',
                   style: const pw.TextStyle(
-                      fontSize: 10, color: PdfColors.grey700)),
-              pw.Text('Total Customers: ${_filteredCustomers.length}',
+                    fontSize: 10,
+                    color: PdfColors.grey700,
+                  ),
+                ),
+                pw.Text(
+                  'Total Customers: ${_filteredCustomers.length}',
                   style: const pw.TextStyle(
-                      fontSize: 10, color: PdfColors.grey700)),
-              pw.SizedBox(height: 20),
-              pw.TableHelper.fromTextArray(
-                border: pw.TableBorder.all(color: PdfColors.grey300),
-                headerStyle: pw.TextStyle(
+                    fontSize: 10,
+                    color: PdfColors.grey700,
+                  ),
+                ),
+                pw.SizedBox(height: 20),
+                pw.TableHelper.fromTextArray(
+                  border: pw.TableBorder.all(color: PdfColors.grey300),
+                  headerStyle: pw.TextStyle(
                     fontWeight: pw.FontWeight.bold,
                     fontSize: 9,
-                    color: PdfColors.white),
-                headerDecoration:
-                    const pw.BoxDecoration(color: PdfColors.blue700),
-                cellStyle: const pw.TextStyle(fontSize: 8),
-                cellHeight: 25,
-                headers: [
-                  'Name',
-                  'Email',
-                  'Mobile',
-                  'Birth Day',
-                  'Last Visit',
-                  'Bookings',
-                  'Spent',
-                  'Status'
-                ],
-                data: _filteredCustomers
-                    .map((customer) => [
+                    color: PdfColors.white,
+                  ),
+                  headerDecoration: const pw.BoxDecoration(
+                    color: PdfColors.blue700,
+                  ),
+                  cellStyle: const pw.TextStyle(fontSize: 8),
+                  cellHeight: 25,
+                  headers: [
+                    'Name',
+                    'Email',
+                    'Mobile',
+                    'Birth Day',
+                    'Last Visit',
+                    'Bookings',
+                    'Spent',
+                    'Status',
+                  ],
+                  data: _filteredCustomers
+                      .map(
+                        (customer) => [
                           customer.fullName,
                           customer.email ?? '',
                           customer.mobile,
@@ -585,11 +666,13 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                           customer.totalBookings.toString(),
                           '₹${customer.totalSpent.toStringAsFixed(2)}',
                           customer.status,
-                        ])
-                    .toList(),
-              ),
-            ],
-          ));
+                        ],
+                      )
+                      .toList(),
+                ),
+              ],
+            ),
+          );
           return pdf.save();
         },
       );
@@ -602,73 +685,95 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
   // ▲▲▲  END OF ORIGINAL BACKEND CODE  ▲▲▲
   // ══════════════════════════════════════════════════
 
+  Widget _buildInitialAvatar() {
+    return Text(
+      ((_profile?.businessName ?? '').isNotEmpty
+              ? _profile!.businessName![0]
+              : 'H')
+          .toUpperCase(),
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: 12.sp,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final total = customers.length;
     final activeClients = customers.where((c) => c.status == 'Active').length;
-    final totalBookings =
-        customers.fold<int>(0, (sum, c) => sum + c.totalBookings);
-    final totalRevenue =
-        customers.fold<double>(0.0, (sum, c) => sum + c.totalSpent);
+    final totalBookings = customers.fold<int>(
+      0,
+      (sum, c) => sum + c.totalBookings,
+    );
+    final totalRevenue = customers.fold<double>(
+      0.0,
+      (sum, c) => sum + c.totalSpent,
+    );
     final rows = _filteredCustomers;
 
     return Theme(
       data: Theme.of(context).copyWith(
-        scaffoldBackgroundColor: const Color(0xFFF8F9FA),
-        textTheme: GoogleFonts.poppinsTextTheme(Theme.of(context).textTheme)
-            .apply(fontSizeFactor: 0.75),
+        scaffoldBackgroundColor: Colors.white,
+        textTheme: GoogleFonts.poppinsTextTheme(
+          Theme.of(context).textTheme,
+        ).apply(fontSizeFactor: 0.75),
       ),
       child: Scaffold(
         drawer: const CustomDrawer(currentPage: 'Clients'),
         // No FAB — button is inline now
         appBar: AppBar(
           backgroundColor: Colors.white,
-          elevation: 0.5,
+          elevation: 0,
           titleSpacing: 0,
           leading: Builder(
             builder: (context) => IconButton(
-              icon: Icon(Icons.menu, color: Colors.black, size: 20.sp),
+              icon: const Icon(Icons.menu, color: Colors.black),
               onPressed: () => Scaffold.of(context).openDrawer(),
             ),
           ),
           title: Text(
             'Client Management',
             style: GoogleFonts.poppins(
-              fontSize: 12.sp,
-              fontWeight: FontWeight.w600,
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w700,
               color: Colors.black,
             ),
           ),
           actions: [
             IconButton(
-              icon:
-                  Icon(Icons.notifications, size: 20.sp, color: Colors.black54),
-              onPressed: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const NotificationPage())),
+              icon: const Icon(Icons.notifications_outlined, color: Colors.black),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NotificationPage()),
+              ),
             ),
             GestureDetector(
-              onTap: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const My_Profile())),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const My_Profile()),
+              ),
               child: Padding(
                 padding: EdgeInsets.only(right: 12.w),
                 child: CircleAvatar(
-                  radius: 14.r,
+                  radius: 16,
                   backgroundColor: Theme.of(context).primaryColor,
-                  backgroundImage:
-                      (_profile != null && _profile!.profileImage.isNotEmpty)
-                          ? NetworkImage(_profile!.profileImage)
-                          : null,
-                  child: (_profile == null || _profile!.profileImage.isEmpty)
-                      ? Text(
-                          ((_profile?.businessName ?? '').isNotEmpty
-                                  ? _profile!.businessName![0]
-                                  : ' ')
-                              .toUpperCase(),
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10.sp,
-                              fontWeight: FontWeight.bold))
-                      : null,
+                  child: ClipOval(
+                    child: (_profile != null && _profile!.profileImage.isNotEmpty)
+                        ? Image.network(
+                            _profile!.profileImage,
+                            width: 32,
+                            height: 32,
+                            fit: BoxFit.cover,
+                            errorBuilder: (ctx, _, __) => _buildInitialAvatar(),
+                            loadingBuilder: (ctx, child, progress) =>
+                                progress == null
+                                    ? child
+                                    : const CircularProgressIndicator(),
+                          )
+                        : _buildInitialAvatar(),
+                  ),
                 ),
               ),
             ),
@@ -691,14 +796,21 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                   child: TextField(
                     decoration: InputDecoration(
                       isDense: true,
-                      prefixIcon: Icon(Icons.search,
-                          size: 16.sp, color: Colors.grey[400]),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        size: 16.sp,
+                        color: Colors.grey[400],
+                      ),
                       hintText: 'Search by name, email or phone...',
                       hintStyle: GoogleFonts.poppins(
-                          fontSize: 10.sp, color: Colors.grey[400]),
+                        fontSize: 10.sp,
+                        color: Colors.grey[400],
+                      ),
                       border: InputBorder.none,
                       contentPadding: EdgeInsets.symmetric(
-                          vertical: 10.h, horizontal: 12.w),
+                        vertical: 10.h,
+                        horizontal: 12.w,
+                      ),
                     ),
                     style: GoogleFonts.poppins(fontSize: 10.sp),
                     onChanged: (v) => setState(() => _searchQuery = v),
@@ -707,91 +819,100 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                 SizedBox(height: 10.h),
 
                 // ── Tabs ────────────────────────
-                Row(children: [
-                  Expanded(
-                    child: Container(
-                      height: 36.h,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(6.r),
-                        border: Border.all(color: Colors.grey[300]!),
-                      ),
-                      child: Theme(
-                        data: Theme.of(context).copyWith(
-                          tabBarTheme: const TabBarThemeData(
-                            dividerColor: Colors.transparent,
-                            dividerHeight: 0,
-                          ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        height: 36.h,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(6.r),
+                          border: Border.all(color: Colors.grey[300]!),
                         ),
-                        child: TabBar(
-                          controller: _tabController,
-                          dividerColor: Colors.transparent,
-                          indicator: BoxDecoration(
-                            color: Theme.of(context).primaryColor,
-                            borderRadius: BorderRadius.circular(6.r),
+                        child: Theme(
+                          data: Theme.of(context).copyWith(
+                            tabBarTheme: const TabBarThemeData(
+                              dividerColor: Colors.transparent,
+                              dividerHeight: 0,
+                            ),
                           ),
-                          indicatorSize: TabBarIndicatorSize.tab,
-                          labelColor: Colors.white,
-                          unselectedLabelColor: Colors.black54,
-                          labelStyle: GoogleFonts.poppins(
-                              fontSize: 10.sp, fontWeight: FontWeight.w600),
-                          unselectedLabelStyle:
-                              GoogleFonts.poppins(fontSize: 10.sp),
-                          tabs: const [
-                            Tab(text: 'Offline Client'),
-                            Tab(text: 'Online Client'),
-                          ],
+                          child: TabBar(
+                            controller: _tabController,
+                            dividerColor: Colors.transparent,
+                            indicator: BoxDecoration(
+                              color: Theme.of(context).primaryColor,
+                              borderRadius: BorderRadius.circular(6.r),
+                            ),
+                            indicatorSize: TabBarIndicatorSize.tab,
+                            labelColor: Colors.white,
+                            unselectedLabelColor: Colors.black54,
+                            labelStyle: GoogleFonts.poppins(
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            unselectedLabelStyle: GoogleFonts.poppins(
+                              fontSize: 10.sp,
+                            ),
+                            tabs: const [
+                              Tab(text: 'Offline Client'),
+                              Tab(text: 'Online Client'),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ]),
+                  ],
+                ),
                 SizedBox(height: 10.h),
 
                 // ── 2×2 Stat Cards ───────────────────────
-                Row(children: [
-                  Expanded(
-                    child: _StatCard(
-                      icon: Icons.group_outlined,
-                      iconColor: Colors.purple,
-                      iconBg: Colors.purple[50]!,
-                      title: 'Total Clients',
-                      value: '$total',
+                Row(
+                  children: [
+                    Expanded(
+                      child: _StatCard(
+                        icon: Icons.group_outlined,
+                        iconColor: Colors.purple,
+                        iconBg: Colors.purple[50]!,
+                        title: 'Total Clients',
+                        value: '$total',
+                      ),
                     ),
-                  ),
-                  SizedBox(width: 8.w),
-                  Expanded(
-                    child: _StatCard(
-                      icon: Icons.person_outline,
-                      iconColor: Colors.blue,
-                      iconBg: Colors.blue[50]!,
-                      title: 'Currently Active Clients',
-                      value: '$activeClients',
+                    SizedBox(width: 8.w),
+                    Expanded(
+                      child: _StatCard(
+                        icon: Icons.person_outline,
+                        iconColor: Colors.blue,
+                        iconBg: Colors.blue[50]!,
+                        title: 'Currently Active Clients',
+                        value: '$activeClients',
+                      ),
                     ),
-                  ),
-                ]),
+                  ],
+                ),
                 SizedBox(height: 8.h),
-                Row(children: [
-                  Expanded(
-                    child: _StatCard(
-                      icon: Icons.calendar_today_outlined,
-                      iconColor: Colors.pink,
-                      iconBg: Colors.pink[50]!,
-                      title: 'Total Bookings',
-                      value: '$totalBookings',
+                Row(
+                  children: [
+                    Expanded(
+                      child: _StatCard(
+                        icon: Icons.calendar_today_outlined,
+                        iconColor: Colors.pink,
+                        iconBg: Colors.pink[50]!,
+                        title: 'Total Bookings',
+                        value: '$totalBookings',
+                      ),
                     ),
-                  ),
-                  SizedBox(width: 8.w),
-                  Expanded(
-                    child: _StatCard(
-                      icon: Icons.account_balance_wallet_outlined,
-                      iconColor: Colors.orange,
-                      iconBg: Colors.orange[50]!,
-                      title: 'Total Revenue',
-                      value: '₹ ${totalRevenue.toStringAsFixed(2)}',
+                    SizedBox(width: 8.w),
+                    Expanded(
+                      child: _StatCard(
+                        icon: Icons.account_balance_wallet_outlined,
+                        iconColor: Colors.orange,
+                        iconBg: Colors.orange[50]!,
+                        title: 'Total Revenue',
+                        value: '₹ ${totalRevenue.toStringAsFixed(2)}',
+                      ),
                     ),
-                  ),
-                ]),
+                  ],
+                ),
                 SizedBox(height: 8.h),
 
                 // ── Export + Add Customer (right-aligned, after stats) ──
@@ -803,53 +924,88 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                       itemBuilder: (context) => [
                         PopupMenuItem(
                           value: 'copy',
-                          child: Row(children: [
-                            Icon(Icons.copy,
-                                size: 13.sp, color: Colors.grey[700]),
-                            SizedBox(width: 8.w),
-                            Text('Copy',
-                                style: GoogleFonts.poppins(fontSize: 10.sp)),
-                          ]),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.copy,
+                                size: 13.sp,
+                                color: Colors.grey[700],
+                              ),
+                              SizedBox(width: 8.w),
+                              Text(
+                                'Copy',
+                                style: GoogleFonts.poppins(fontSize: 10.sp),
+                              ),
+                            ],
+                          ),
                         ),
                         PopupMenuItem(
                           value: 'csv',
-                          child: Row(children: [
-                            Icon(Icons.table_chart,
-                                size: 13.sp, color: Colors.grey[700]),
-                            SizedBox(width: 8.w),
-                            Text('CSV',
-                                style: GoogleFonts.poppins(fontSize: 10.sp)),
-                          ]),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.table_chart,
+                                size: 13.sp,
+                                color: Colors.grey[700],
+                              ),
+                              SizedBox(width: 8.w),
+                              Text(
+                                'CSV',
+                                style: GoogleFonts.poppins(fontSize: 10.sp),
+                              ),
+                            ],
+                          ),
                         ),
                         PopupMenuItem(
                           value: 'excel',
-                          child: Row(children: [
-                            Icon(Icons.grid_on,
-                                size: 13.sp, color: Colors.green[700]),
-                            SizedBox(width: 8.w),
-                            Text('Excel',
-                                style: GoogleFonts.poppins(fontSize: 10.sp)),
-                          ]),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.grid_on,
+                                size: 13.sp,
+                                color: Colors.green[700],
+                              ),
+                              SizedBox(width: 8.w),
+                              Text(
+                                'Excel',
+                                style: GoogleFonts.poppins(fontSize: 10.sp),
+                              ),
+                            ],
+                          ),
                         ),
                         PopupMenuItem(
                           value: 'pdf',
-                          child: Row(children: [
-                            Icon(Icons.picture_as_pdf,
-                                size: 13.sp, color: Colors.red[700]),
-                            SizedBox(width: 8.w),
-                            Text('PDF',
-                                style: GoogleFonts.poppins(fontSize: 10.sp)),
-                          ]),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.picture_as_pdf,
+                                size: 13.sp,
+                                color: Colors.red[700],
+                              ),
+                              SizedBox(width: 8.w),
+                              Text(
+                                'PDF',
+                                style: GoogleFonts.poppins(fontSize: 10.sp),
+                              ),
+                            ],
+                          ),
                         ),
                         PopupMenuItem(
                           value: 'print',
-                          child: Row(children: [
-                            Icon(Icons.print,
-                                size: 13.sp, color: Colors.grey[700]),
-                            SizedBox(width: 8.w),
-                            Text('Print',
-                                style: GoogleFonts.poppins(fontSize: 10.sp)),
-                          ]),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.print,
+                                size: 13.sp,
+                                color: Colors.grey[700],
+                              ),
+                              SizedBox(width: 8.w),
+                              Text(
+                                'Print',
+                                style: GoogleFonts.poppins(fontSize: 10.sp),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                       child: Container(
@@ -860,19 +1016,31 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                           borderRadius: BorderRadius.circular(7.r),
                           border: Border.all(color: Colors.grey[300]!),
                         ),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          Icon(Icons.upload_outlined,
-                              size: 13.sp, color: Colors.black54),
-                          SizedBox(width: 5.w),
-                          Text('Export',
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.upload_outlined,
+                              size: 13.sp,
+                              color: Colors.black54,
+                            ),
+                            SizedBox(width: 5.w),
+                            Text(
+                              'Export',
                               style: GoogleFonts.poppins(
-                                  fontSize: 10.sp,
-                                  color: Colors.black87,
-                                  fontWeight: FontWeight.w500)),
-                          SizedBox(width: 3.w),
-                          Icon(Icons.keyboard_arrow_down,
-                              size: 13.sp, color: Colors.black38),
-                        ]),
+                                fontSize: 10.sp,
+                                color: Colors.black87,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            SizedBox(width: 3.w),
+                            Icon(
+                              Icons.keyboard_arrow_down,
+                              size: 13.sp,
+                              color: Colors.black38,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     SizedBox(width: 8.w),
@@ -886,15 +1054,21 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                             color: Theme.of(context).primaryColor,
                             borderRadius: BorderRadius.circular(7.r),
                           ),
-                          child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            Icon(Icons.add, size: 14.sp, color: Colors.white),
-                            SizedBox(width: 5.w),
-                            Text('Add Customer',
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.add, size: 14.sp, color: Colors.white),
+                              SizedBox(width: 5.w),
+                              Text(
+                                'Add Customer',
                                 style: GoogleFonts.poppins(
-                                    fontSize: 10.sp,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600)),
-                          ]),
+                                  fontSize: 10.sp,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                   ],
@@ -906,26 +1080,28 @@ class _ClientState extends State<Client> with SingleTickerProviderStateMixin {
                   child: _isLoading
                       ? const Center(child: CircularProgressIndicator())
                       : rows.isEmpty
-                          ? Center(
-                              child: Text('No customers found.',
-                                  style: GoogleFonts.poppins(
-                                      color: Colors.grey[600],
-                                      fontSize: 10.sp)))
-                          : ListView.separated(
-                              itemCount: rows.length,
-                              separatorBuilder: (_, __) =>
-                                  SizedBox(height: 10.h),
-                              itemBuilder: (context, idx) {
-                                final c = rows[idx];
-                                return _CustomerCard(
-                                  customer: c,
-                                  onEdit: () => _editCustomer(c),
-                                  onDelete: () => _deleteCustomer(c),
-                                  onView: () =>
-                                      _showCustomerDetails(context, c),
-                                );
-                              },
+                      ? Center(
+                          child: Text(
+                            'No customers found.',
+                            style: GoogleFonts.poppins(
+                              color: Colors.grey[600],
+                              fontSize: 10.sp,
                             ),
+                          ),
+                        )
+                      : ListView.separated(
+                          itemCount: rows.length,
+                          separatorBuilder: (_, __) => SizedBox(height: 10.h),
+                          itemBuilder: (context, idx) {
+                            final c = rows[idx];
+                            return _CustomerCard(
+                              customer: c,
+                              onEdit: () => _editCustomer(c),
+                              onDelete: () => _deleteCustomer(c),
+                              onView: () => _showCustomerDetails(context, c),
+                            );
+                          },
+                        ),
                 ),
               ],
             ),
@@ -962,40 +1138,51 @@ class _StatCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-              color: Colors.grey.withValues(alpha: 0.1),
-              spreadRadius: 1,
-              blurRadius: 3),
+            color: Colors.grey.withValues(alpha: 0.1),
+            spreadRadius: 1,
+            blurRadius: 3,
+          ),
         ],
       ),
-      child: Row(children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-              color: iconBg, borderRadius: BorderRadius.circular(8)),
-          child: Icon(icon, color: iconColor, size: 18),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title,
-                  style: GoogleFonts.poppins(
-                      fontSize: 8,
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.w500),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 2),
-              Text(value,
-                  style: GoogleFonts.poppins(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black87)),
-            ],
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: iconColor, size: 18),
           ),
-        ),
-      ]),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.poppins(
+                    fontSize: 8,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: GoogleFonts.poppins(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1027,10 +1214,11 @@ class _CustomerCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-              color: Colors.grey.withValues(alpha: 0.08),
-              spreadRadius: 1,
-              blurRadius: 6,
-              offset: const Offset(0, 2)),
+            color: Colors.grey.withValues(alpha: 0.08),
+            spreadRadius: 1,
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: Column(
@@ -1056,9 +1244,10 @@ class _CustomerCard extends StatelessWidget {
                             ? customer.fullName[0].toUpperCase()
                             : '?',
                         style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                            color: Colors.grey[700]),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                          color: Colors.grey[700],
+                        ),
                       ),
                     ),
               const SizedBox(width: 12),
@@ -1071,31 +1260,46 @@ class _CustomerCard extends StatelessWidget {
                     Text(
                       customer.fullName,
                       style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                          color: Colors.black87),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        color: Colors.black87,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 3),
-                    Row(children: [
-                      if (customer.email != null &&
-                          customer.email!.isNotEmpty) ...[
-                        Text(customer.email!,
+                    Row(
+                      children: [
+                        if (customer.email != null &&
+                            customer.email!.isNotEmpty) ...[
+                          Text(
+                            customer.email!,
                             style: GoogleFonts.poppins(
-                                fontSize: 9, color: Colors.grey[500]),
-                            overflow: TextOverflow.ellipsis),
-                        Text(' • ',
+                              fontSize: 9,
+                              color: Colors.grey[500],
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            ' • ',
                             style: GoogleFonts.poppins(
-                                fontSize: 9, color: Colors.grey[400])),
+                              fontSize: 9,
+                              color: Colors.grey[400],
+                            ),
+                          ),
+                        ],
+                        Flexible(
+                          child: Text(
+                            customer.mobile,
+                            style: GoogleFonts.poppins(
+                              fontSize: 9,
+                              color: Colors.grey[500],
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ],
-                      Flexible(
-                        child: Text(customer.mobile,
-                            style: GoogleFonts.poppins(
-                                fontSize: 9, color: Colors.grey[500]),
-                            overflow: TextOverflow.ellipsis),
-                      ),
-                    ]),
+                    ),
                   ],
                 ),
               ),
@@ -1103,34 +1307,37 @@ class _CustomerCard extends StatelessWidget {
 
               // Status badge — green outlined pill like the screenshot
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: isActive
                       ? Colors.green[50]
                       : isNew
-                          ? Colors.pink[50]
-                          : Colors.grey[100],
+                      ? Colors.pink[50]
+                      : Colors.grey[100],
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                     color: isActive
                         ? Colors.green[400]!
                         : isNew
-                            ? Colors.pink[300]!
-                            : Colors.grey[300]!,
+                        ? Colors.pink[300]!
+                        : Colors.grey[300]!,
                     width: 1.2,
                   ),
                 ),
                 child: Text(
                   customer.status,
                   style: GoogleFonts.poppins(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      color: isActive
-                          ? Colors.green[700]
-                          : isNew
-                              ? Colors.pink[700]
-                              : Colors.grey[600]),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: isActive
+                        ? Colors.green[700]
+                        : isNew
+                        ? Colors.pink[700]
+                        : Colors.grey[600],
+                  ),
                 ),
               ),
             ],
@@ -1141,21 +1348,36 @@ class _CustomerCard extends StatelessWidget {
           const SizedBox(height: 12),
 
           // ── Info grid: 2×2 ───────────────────────────
-          Row(children: [
-            Expanded(
-                child:
-                    _infoCell('Birth Day', customer.dateOfBirth ?? 'Not set')),
-            Expanded(
+          Row(
+            children: [
+              Expanded(
                 child: _infoCell(
-                    'Last Visit', customer.lastVisit ?? 'Not Visited')),
-          ]),
+                  'Birth Day',
+                  customer.dateOfBirth ?? 'Not set',
+                ),
+              ),
+              Expanded(
+                child: _infoCell(
+                  'Last Visit',
+                  customer.lastVisit ?? 'Not Visited',
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 10),
-          Row(children: [
-            Expanded(child: _infoCell('Bookings', '${customer.totalBookings}')),
-            Expanded(
-                child: _infoCell('Total Spent',
-                    '₹ ${customer.totalSpent.toStringAsFixed(2)}')),
-          ]),
+          Row(
+            children: [
+              Expanded(
+                child: _infoCell('Bookings', '${customer.totalBookings}'),
+              ),
+              Expanded(
+                child: _infoCell(
+                  'Total Spent',
+                  '₹ ${customer.totalSpent.toStringAsFixed(2)}',
+                ),
+              ),
+            ],
+          ),
 
           const SizedBox(height: 10),
 
@@ -1165,11 +1387,19 @@ class _CustomerCard extends StatelessWidget {
             children: [
               _iconBtn(Icons.visibility_outlined, Colors.grey[700]!, onView),
               const SizedBox(width: 8),
-              _iconBtn(Icons.edit_outlined, Colors.blue[700]!, onEdit,
-                  borderColor: Colors.blue.withValues(alpha: 0.25)),
+              _iconBtn(
+                Icons.edit_outlined,
+                Colors.blue[700]!,
+                onEdit,
+                borderColor: Colors.blue.withValues(alpha: 0.25),
+              ),
               const SizedBox(width: 8),
-              _iconBtn(Icons.delete_outline, Colors.red[700]!, onDelete,
-                  borderColor: Colors.red.withValues(alpha: 0.25)),
+              _iconBtn(
+                Icons.delete_outline,
+                Colors.red[700]!,
+                onDelete,
+                borderColor: Colors.red.withValues(alpha: 0.25),
+              ),
             ],
           ),
         ],
@@ -1178,34 +1408,43 @@ class _CustomerCard extends StatelessWidget {
   }
 
   Widget _infoCell(String label, String value) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label,
-              style: GoogleFonts.poppins(
-                  fontSize: 8,
-                  color: Colors.grey[500],
-                  fontWeight: FontWeight.w500)),
-          const SizedBox(height: 3),
-          Text(value,
-              style: GoogleFonts.poppins(
-                  fontSize: 11,
-                  color: Colors.black87,
-                  fontWeight: FontWeight.w600)),
-        ],
-      );
-
-  Widget _iconBtn(IconData icon, Color color, VoidCallback onTap,
-          {Color? borderColor}) =>
-      InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(6),
-        child: Container(
-          padding: const EdgeInsets.all(7),
-          decoration: BoxDecoration(
-            border: Border.all(color: borderColor ?? Colors.grey[300]!),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Icon(icon, size: 16, color: color),
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        label,
+        style: GoogleFonts.poppins(
+          fontSize: 8,
+          color: Colors.grey[500],
+          fontWeight: FontWeight.w500,
         ),
-      );
+      ),
+      const SizedBox(height: 3),
+      Text(
+        value,
+        style: GoogleFonts.poppins(
+          fontSize: 11,
+          color: Colors.black87,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    ],
+  );
+
+  Widget _iconBtn(
+    IconData icon,
+    Color color,
+    VoidCallback onTap, {
+    Color? borderColor,
+  }) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(6),
+    child: Container(
+      padding: const EdgeInsets.all(7),
+      decoration: BoxDecoration(
+        border: Border.all(color: borderColor ?? Colors.grey[300]!),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Icon(icon, size: 16, color: color),
+    ),
+  );
 }

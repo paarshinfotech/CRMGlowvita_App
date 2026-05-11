@@ -9,6 +9,8 @@ import 'add_customer.dart';
 import 'services/api_service.dart';
 import 'addon_model.dart';
 import 'dart:async';
+import 'Notification.dart';
+import 'my_Profile.dart';
 
 class SalesPage extends StatefulWidget {
   const SalesPage({super.key});
@@ -22,7 +24,7 @@ class _SalesPageState extends State<SalesPage>
   late TabController _tabController;
 
   // ── Exact colors from screenshot ──
-  static const Color _bg = Color(0xFFF6F7FB);
+  static const Color _bg = Colors.white;
   static const Color _surface = Colors.white;
   static const Color _border = Color(0xFFE2E8F0);
   static const Color _muted = Color(0xFF64748B);
@@ -164,6 +166,17 @@ class _SalesPageState extends State<SalesPage>
   bool _showClientDropdown = false;
   Timer? _clientSearchTimer;
 
+  Widget _buildInitialAvatar() {
+    return Text(
+      (vendorProfile?.businessName ?? 'H').substring(0, 1).toUpperCase(),
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: 12.sp,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -223,30 +236,30 @@ class _SalesPageState extends State<SalesPage>
   }
 
   List<Service> get filteredServices => services.where((s) {
-        final q = serviceProductSearchQuery.toLowerCase();
-        return (q.isEmpty ||
-                (s.name?.toLowerCase().contains(q) ?? false) ||
-                (s.category?.toLowerCase().contains(q) ?? false)) &&
-            (selectedServiceCategory == 'All' ||
-                s.category == selectedServiceCategory);
-      }).toList();
+    final q = serviceProductSearchQuery.toLowerCase();
+    return (q.isEmpty ||
+            (s.name?.toLowerCase().contains(q) ?? false) ||
+            (s.category?.toLowerCase().contains(q) ?? false)) &&
+        (selectedServiceCategory == 'All' ||
+            s.category == selectedServiceCategory);
+  }).toList();
 
   List<Product> get filteredProducts => products.where((p) {
-        final q = serviceProductSearchQuery.toLowerCase();
-        return (q.isEmpty ||
-                (p.productName?.toLowerCase().contains(q) ?? false) ||
-                (p.category?.toLowerCase().contains(q) ?? false)) &&
-            (selectedProductCategory == 'All' ||
-                p.category == selectedProductCategory);
-      }).toList();
+    final q = serviceProductSearchQuery.toLowerCase();
+    return (q.isEmpty ||
+            (p.productName?.toLowerCase().contains(q) ?? false) ||
+            (p.category?.toLowerCase().contains(q) ?? false)) &&
+        (selectedProductCategory == 'All' ||
+            p.category == selectedProductCategory);
+  }).toList();
 
   List<Customer> get filteredClients => clients.where((c) {
-        final q = clientSearchQuery.toLowerCase();
-        return q.isEmpty ||
-            c.fullName.toLowerCase().contains(q) ||
-            (c.email?.toLowerCase().contains(q) ?? false) ||
-            c.mobile.toLowerCase().contains(q);
-      }).toList();
+    final q = clientSearchQuery.toLowerCase();
+    return q.isEmpty ||
+        c.fullName.toLowerCase().contains(q) ||
+        (c.email?.toLowerCase().contains(q) ?? false) ||
+        c.mobile.toLowerCase().contains(q);
+  }).toList();
 
   List<String> get serviceCategories {
     final cats = <String>{'All'};
@@ -264,33 +277,48 @@ class _SalesPageState extends State<SalesPage>
     return cats.toList()..sort();
   }
 
-  void _addItemToBilling(dynamic item,
-      {bool isService = false, List<AddOn>? selectedAddOns}) {
+  void _addItemToBilling(
+    dynamic item, {
+    bool isService = false,
+    List<AddOn>? selectedAddOns,
+  }) {
     // Check for mixed billing (services vs products)
     if (isService && selectedItems.any((i) => i['isService'] == false)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
           content: Text(
-              'Cannot add service to a product bill. Please clear products first.'),
-          backgroundColor: Colors.red));
+            'Cannot add service to a product bill. Please clear products first.',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
       return;
     }
     if (!isService && selectedItems.any((i) => i['isService'] == true)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
           content: Text(
-              'Cannot add product to a service bill. Please clear services first.'),
-          backgroundColor: Colors.red));
+            'Cannot add product to a service bill. Please clear services first.',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
       return;
     }
 
-    final String itemId =
-        isService ? (item as Service).id ?? '' : (item as Product).id ?? '';
+    final String itemId = isService
+        ? (item as Service).id ?? ''
+        : (item as Product).id ?? '';
     if (selectedItems.any((i) => i['sourceId'] == itemId)) return;
 
     if (!isService && (item as Product).stock == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
           content: Text('This product is out of stock'),
           backgroundColor: Colors.red,
-          duration: Duration(seconds: 2)));
+          duration: Duration(seconds: 2),
+        ),
+      );
       return;
     }
     if (isService && selectedAddOns == null) {
@@ -312,19 +340,21 @@ class _SalesPageState extends State<SalesPage>
         final s = item as Service;
         name = s.name ?? '';
         category = s.category ?? 'Uncategorized';
-        price = ((s.discountedPrice != null && s.discountedPrice! > 0)
-                ? s.discountedPrice!
-                : (s.price ?? 0))
-            .toDouble();
+        price =
+            ((s.discountedPrice != null && s.discountedPrice! > 0)
+                    ? s.discountedPrice!
+                    : (s.price ?? 0))
+                .toDouble();
         duration = '${s.duration} min';
       } else {
         final p = item as Product;
         name = p.productName ?? '';
         category = p.category ?? 'Uncategorized';
-        price = ((p.salePrice != null && p.salePrice! > 0)
-                ? p.salePrice!
-                : (p.price ?? 0))
-            .toDouble();
+        price =
+            ((p.salePrice != null && p.salePrice! > 0)
+                    ? p.salePrice!
+                    : (p.price ?? 0))
+                .toDouble();
         duration = null;
       }
       selectedItems.add({
@@ -337,13 +367,16 @@ class _SalesPageState extends State<SalesPage>
         'quantity': 1,
         'isService': isService,
         'staffIds': isService ? (item as Service).staff : null,
-        'addons': selectedAddOns
-                ?.map((a) => {
-                      'id': a.id,
-                      'name': a.name,
-                      'price': a.price,
-                      'duration': a.duration
-                    })
+        'addons':
+            selectedAddOns
+                ?.map(
+                  (a) => {
+                    'id': a.id,
+                    'name': a.name,
+                    'price': a.price,
+                    'duration': a.duration,
+                  },
+                )
                 .toList() ??
             [],
       });
@@ -353,111 +386,150 @@ class _SalesPageState extends State<SalesPage>
   void _showAddOnsDialog(Service service, List<AddOn> relevantAddOns) {
     List<AddOn> selected = [];
     showDialog(
-        context: context,
-        builder: (context) {
-          return StatefulBuilder(builder: (context, setDialogState) {
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
             return Dialog(
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
+                borderRadius: BorderRadius.circular(16),
+              ),
               child: Container(
                 padding: const EdgeInsets.all(20),
                 width: 400,
                 child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('Select Add-Ons',
-                                style: GoogleFonts.poppins(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: _text)),
-                            IconButton(
-                                icon: const Icon(Icons.close),
-                                onPressed: () => Navigator.pop(context)),
-                          ]),
-                      Text('Select add-ons for ${service.name}',
-                          style:
-                              GoogleFonts.poppins(fontSize: 13, color: _muted)),
-                      const SizedBox(height: 16),
-                      Flexible(
-                          child: Container(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Select Add-Ons',
+                          style: GoogleFonts.poppins(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: _text,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      'Select add-ons for ${service.name}',
+                      style: GoogleFonts.poppins(fontSize: 13, color: _muted),
+                    ),
+                    const SizedBox(height: 16),
+                    Flexible(
+                      child: Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: _border)),
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: _border),
+                        ),
                         child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: relevantAddOns.map((addon) {
-                              final isSelected = selected.contains(addon);
-                              return CheckboxListTile(
-                                contentPadding: EdgeInsets.zero,
-                                title: Text(addon.name ?? '',
-                                    style: GoogleFonts.poppins(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: _text)),
-                                subtitle: Text(
-                                    'Time: ${addon.duration} min • Price: ₹${addon.price}',
-                                    style: GoogleFonts.poppins(
-                                        fontSize: 12, color: _muted)),
-                                value: isSelected,
-                                onChanged: (val) => setDialogState(() {
-                                  if (val == true)
-                                    selected.add(addon);
-                                  else
-                                    selected.remove(addon);
-                                }),
-                                activeColor: _primaryDark,
-                                controlAffinity:
-                                    ListTileControlAffinity.leading,
-                              );
-                            }).toList()),
-                      )),
-                      const SizedBox(height: 20),
-                      Row(children: [
+                          mainAxisSize: MainAxisSize.min,
+                          children: relevantAddOns.map((addon) {
+                            final isSelected = selected.contains(addon);
+                            return CheckboxListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: Text(
+                                addon.name ?? '',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: _text,
+                                ),
+                              ),
+                              subtitle: Text(
+                                'Time: ${addon.duration} min • Price: ₹${addon.price}',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  color: _muted,
+                                ),
+                              ),
+                              value: isSelected,
+                              onChanged: (val) => setDialogState(() {
+                                if (val == true)
+                                  selected.add(addon);
+                                else
+                                  selected.remove(addon);
+                              }),
+                              activeColor: _primaryDark,
+                              controlAffinity: ListTileControlAffinity.leading,
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
                         Expanded(
-                            child: OutlinedButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            _addItemToBilling(service,
-                                isService: true, selectedAddOns: []);
-                          },
-                          style: OutlinedButton.styleFrom(
+                          child: OutlinedButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              _addItemToBilling(
+                                service,
+                                isService: true,
+                                selectedAddOns: [],
+                              );
+                            },
+                            style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8))),
-                          child: Text('Cancel',
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: Text(
+                              'Cancel',
                               style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.w600)),
-                        )),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
                         const SizedBox(width: 12),
                         Expanded(
-                            child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            _addItemToBilling(service,
-                                isService: true, selectedAddOns: selected);
-                          },
-                          style: ElevatedButton.styleFrom(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              _addItemToBilling(
+                                service,
+                                isService: true,
+                                selectedAddOns: selected,
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
                               backgroundColor: _primaryDark,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8))),
-                          child: Text('Add to Cart',
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: Text(
+                              'Add to Cart',
                               style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.w600)),
-                        )),
-                      ]),
-                    ]),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             );
-          });
-        });
+          },
+        );
+      },
+    );
   }
 
   void _removeItemFromBilling(int id) =>
@@ -476,63 +548,76 @@ class _SalesPageState extends State<SalesPage>
     return selectedItems
         .where((item) => item['isService'] == showingServices)
         .fold(0.0, (sum, item) {
-      final double price = item['price'] as double;
-      final int qty = item['quantity'] as int;
-      final List addons = item['addons'] as List? ?? [];
-      double addonsPrice = addons.fold(
-          0.0, (s, a) => s + ((a['price'] as num?)?.toDouble() ?? 0.0));
-      return sum + (price + addonsPrice) * qty;
-    });
+          final double price = item['price'] as double;
+          final int qty = item['quantity'] as int;
+          final List addons = item['addons'] as List? ?? [];
+          double addonsPrice = addons.fold(
+            0.0,
+            (s, a) => s + ((a['price'] as num?)?.toDouble() ?? 0.0),
+          );
+          return sum + (price + addonsPrice) * qty;
+        });
   }
 
   double get tax => applyTax ? (subtotal * (profileTaxRate / 100)) : 0.0;
   double get total => subtotal + tax;
 
   void _clearBilling() => setState(() {
-        final bool showingServices = _tabController.index == 0;
-        selectedItems
-            .removeWhere((item) => item['isService'] == showingServices);
-        // Only clear client if no items are left in either category,
-        // or keep it shared? Usually client is shared. Let's keep it shared.
-        if (selectedItems.isEmpty) selectedClient = null;
-      });
+    final bool showingServices = _tabController.index == 0;
+    selectedItems.removeWhere((item) => item['isService'] == showingServices);
+    // Only clear client if no items are left in either category,
+    // or keep it shared? Usually client is shared. Let's keep it shared.
+    if (selectedItems.isEmpty) selectedClient = null;
+  });
 
   void _showPaymentOptionsDialog() {
     String? selectedMethod;
     bool isProcessing = false;
     showDialog(
-        context: context,
-        barrierDismissible: !isProcessing,
-        builder: (context) {
-          return StatefulBuilder(builder: (context, setDialogState) {
+      context: context,
+      barrierDismissible: !isProcessing,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
             return Dialog(
               backgroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
+                borderRadius: BorderRadius.circular(16),
+              ),
               child: Container(
                 width: 450,
                 padding: const EdgeInsets.all(24),
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  Row(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Payment Options',
-                            style: GoogleFonts.poppins(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: _text)),
+                        Text(
+                          'Payment Options',
+                          style: GoogleFonts.poppins(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: _text,
+                          ),
+                        ),
                         IconButton(
-                            icon: const Icon(Icons.close, size: 20),
-                            onPressed: () => Navigator.pop(context)),
-                      ]),
-                  const SizedBox(height: 10),
-                  Text('Total Amount: ₹${total.toStringAsFixed(2)}',
+                          icon: const Icon(Icons.close, size: 20),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Total Amount: ₹${total.toStringAsFixed(2)}',
                       style: GoogleFonts.poppins(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF635B63))),
-                  const SizedBox(height: 24),
-                  SizedBox(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF635B63),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () async {
@@ -543,7 +628,7 @@ class _SalesPageState extends State<SalesPage>
                               "clientId": selectedClient!.id,
                               "clientInfo": {
                                 "fullName": selectedClient!.fullName,
-                                "phone": selectedClient!.mobile
+                                "phone": selectedClient!.mobile,
                               },
                               "paymentMethod": selectedMethod ?? paymentMethod,
                               "subtotal": subtotal,
@@ -552,118 +637,169 @@ class _SalesPageState extends State<SalesPage>
                               "platformFee": 0,
                               "totalAmount": total,
                               "items": selectedItems
-                                  .where((item) =>
-                                      item['isService'] ==
-                                      (_tabController.index == 0))
-                                  .map((item) => {
-                                        "itemId": item['sourceId'],
-                                        "itemType": (item['isService'] ?? true)
-                                            ? "Service"
-                                            : "Product",
-                                        "name": item['name'],
-                                        "price": item['price'],
-                                        "quantity": item['quantity'],
-                                        "totalPrice": (item['price'] as num) *
-                                            (item['quantity'] as num),
-                                        "staffMember": {
-                                          "id": selectedStaff?.id ?? "",
-                                          "name": selectedStaff?.fullName ??
-                                              "No Staff"
-                                        },
-                                        "addOns": (item['addons'] as List)
-                                            .map((a) => {
-                                                  "id": a['id'],
-                                                  "name": a['name'],
-                                                  "price": a['price']
-                                                })
-                                            .toList(),
-                                      })
+                                  .where(
+                                    (item) =>
+                                        item['isService'] ==
+                                        (_tabController.index == 0),
+                                  )
+                                  .map(
+                                    (item) => {
+                                      "itemId": item['sourceId'],
+                                      "itemType": (item['isService'] ?? true)
+                                          ? "Service"
+                                          : "Product",
+                                      "name": item['name'],
+                                      "price": item['price'],
+                                      "quantity": item['quantity'],
+                                      "totalPrice":
+                                          (item['price'] as num) *
+                                          (item['quantity'] as num),
+                                      "staffMember": {
+                                        "id": selectedStaff?.id ?? "",
+                                        "name":
+                                            selectedStaff?.fullName ??
+                                            "No Staff",
+                                      },
+                                      "addOns": (item['addons'] as List)
+                                          .map(
+                                            (a) => {
+                                              "id": a['id'],
+                                              "name": a['name'],
+                                              "price": a['price'],
+                                            },
+                                          )
+                                          .toList(),
+                                    },
+                                  )
                                   .toList(),
                               "status": "Paid",
                               "billingDate": DateTime.now().toIso8601String(),
                             };
-                            final result =
-                                await ApiService.createBilling(payload);
+                            final result = await ApiService.createBilling(
+                              payload,
+                            );
                             if (result['success'] == true && context.mounted) {
                               Navigator.pop(context);
                               _showInvoiceSummaryDialog(
-                                  context, result['data']);
+                                context,
+                                result['data'],
+                              );
                               _clearBilling();
                             }
                           } catch (e) {
                             if (context.mounted)
                               ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                      content: Text('Error saving order: $e')));
+                                SnackBar(
+                                  content: Text('Error saving order: $e'),
+                                ),
+                              );
                           } finally {
                             if (context.mounted)
                               setDialogState(() => isProcessing = false);
                           }
                         },
                         style: ElevatedButton.styleFrom(
-                            backgroundColor: _primaryDark,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8))),
-                        child: Text('Save Order',
+                          backgroundColor: _primaryDark,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Text(
+                          'Save Order',
+                          style: GoogleFonts.poppins(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        const Expanded(child: Divider()),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            'PAYMENT METHODS',
                             style: GoogleFonts.poppins(
-                                fontSize: 15, fontWeight: FontWeight.w600)),
-                      )),
-                  const SizedBox(height: 24),
-                  Row(children: [
-                    const Expanded(child: Divider()),
-                    Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text('PAYMENT METHODS',
-                            style: GoogleFonts.poppins(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF7C8BA1),
-                                letterSpacing: 0.5))),
-                    const Expanded(child: Divider()),
-                  ]),
-                  const SizedBox(height: 24),
-                  Wrap(spacing: 12, runSpacing: 12, children: [
-                    _paymentMethodButton('Cash', Icons.money, setDialogState,
-                        selectedMethod, (m) => selectedMethod = m),
-                    _paymentMethodButton(
-                        'QR Code',
-                        Icons.qr_code,
-                        setDialogState,
-                        selectedMethod,
-                        (m) => selectedMethod = m),
-                    _paymentMethodButton(
-                        'Debit Card',
-                        Icons.credit_card,
-                        setDialogState,
-                        selectedMethod,
-                        (m) => selectedMethod = m),
-                    _paymentMethodButton(
-                        'Credit Card',
-                        Icons.credit_card,
-                        setDialogState,
-                        selectedMethod,
-                        (m) => selectedMethod = m),
-                    _paymentMethodButton('Net Banking', Icons.account_balance,
-                        setDialogState, selectedMethod, (m) {
-                      selectedMethod = m;
-                      setState(() => paymentMethod = m);
-                    }),
-                  ]),
-                  if (isProcessing) ...[
-                    const SizedBox(height: 20),
-                    const CircularProgressIndicator()
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF7C8BA1),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                        const Expanded(child: Divider()),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        _paymentMethodButton(
+                          'Cash',
+                          Icons.money,
+                          setDialogState,
+                          selectedMethod,
+                          (m) => selectedMethod = m,
+                        ),
+                        _paymentMethodButton(
+                          'QR Code',
+                          Icons.qr_code,
+                          setDialogState,
+                          selectedMethod,
+                          (m) => selectedMethod = m,
+                        ),
+                        _paymentMethodButton(
+                          'Debit Card',
+                          Icons.credit_card,
+                          setDialogState,
+                          selectedMethod,
+                          (m) => selectedMethod = m,
+                        ),
+                        _paymentMethodButton(
+                          'Credit Card',
+                          Icons.credit_card,
+                          setDialogState,
+                          selectedMethod,
+                          (m) => selectedMethod = m,
+                        ),
+                        _paymentMethodButton(
+                          'Net Banking',
+                          Icons.account_balance,
+                          setDialogState,
+                          selectedMethod,
+                          (m) {
+                            selectedMethod = m;
+                            setState(() => paymentMethod = m);
+                          },
+                        ),
+                      ],
+                    ),
+                    if (isProcessing) ...[
+                      const SizedBox(height: 20),
+                      const CircularProgressIndicator(),
+                    ],
                   ],
-                ]),
+                ),
               ),
             );
-          });
-        });
+          },
+        );
+      },
+    );
   }
 
-  Widget _paymentMethodButton(String label, IconData icon, Function setState,
-      String? selected, Function(String) onSelect) {
+  Widget _paymentMethodButton(
+    String label,
+    IconData icon,
+    Function setState,
+    String? selected,
+    Function(String) onSelect,
+  ) {
     bool isSelected = selected == label;
     return InkWell(
       onTap: () {
@@ -675,16 +811,26 @@ class _SalesPageState extends State<SalesPage>
         width: 125,
         height: 80,
         decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-                color: isSelected ? _primaryDark : const Color(0xFFE2E8F0),
-                width: isSelected ? 2 : 1)),
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Text(label,
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? _primaryDark : const Color(0xFFE2E8F0),
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              label,
               style: GoogleFonts.poppins(
-                  fontSize: 13, fontWeight: FontWeight.w500, color: _text)),
-        ]),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: _text,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -692,12 +838,14 @@ class _SalesPageState extends State<SalesPage>
   Future<void> _processDirectSale(String method) async {
     if (selectedClient == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select a client first')));
+        const SnackBar(content: Text('Please select a client first')),
+      );
       return;
     }
     if (vendorId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Vendor details not loaded yet')));
+        const SnackBar(content: Text('Vendor details not loaded yet')),
+      );
       return;
     }
     try {
@@ -706,14 +854,16 @@ class _SalesPageState extends State<SalesPage>
           .toList();
 
       if (currentTabItems.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('No items in the current billing tab')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No items in the current billing tab')),
+        );
         return;
       }
 
       final firstItem = currentTabItems.firstWhere(
-          (i) => i['isService'] == true,
-          orElse: () => currentTabItems[0]);
+        (i) => i['isService'] == true,
+        orElse: () => currentTabItems[0],
+      );
       final defaultStaff = staffList.isNotEmpty ? staffList[0] : null;
       final Map<String, dynamic> appointmentData = {
         "client": selectedClient!.id,
@@ -724,8 +874,10 @@ class _SalesPageState extends State<SalesPage>
         "staff": defaultStaff?.id ?? vendorId ?? "",
         "staffName": defaultStaff?.fullName ?? "Staff Member",
         "date": DateTime.now().toIso8601String().split('T')[0],
-        "startTime":
-            DateTime.now().toIso8601String().split('T')[1].substring(0, 5),
+        "startTime": DateTime.now()
+            .toIso8601String()
+            .split('T')[1]
+            .substring(0, 5),
         "endTime": DateTime.now()
             .add(const Duration(minutes: 30))
             .toIso8601String()
@@ -737,20 +889,25 @@ class _SalesPageState extends State<SalesPage>
         "status": "Paid",
         "services": currentTabItems
             .where((i) => i['isService'] == true)
-            .map((i) => {
-                  "serviceId": i['sourceId'],
-                  "price": i['price'],
-                  "addons":
-                      (i['addons'] as List? ?? []).map((a) => a['id']).toList()
-                })
+            .map(
+              (i) => {
+                "serviceId": i['sourceId'],
+                "price": i['price'],
+                "addons": (i['addons'] as List? ?? [])
+                    .map((a) => a['id'])
+                    .toList(),
+              },
+            )
             .toList(),
         "products": currentTabItems
             .where((i) => i['isService'] == false)
-            .map((i) => {
-                  "productId": i['sourceId'],
-                  "price": i['price'],
-                  "quantity": i['quantity']
-                })
+            .map(
+              (i) => {
+                "productId": i['sourceId'],
+                "price": i['price'],
+                "quantity": i['quantity'],
+              },
+            )
             .toList(),
       };
       final response = await ApiService.createAppointment(appointmentData);
@@ -767,17 +924,23 @@ class _SalesPageState extends State<SalesPage>
         });
         if (mounted) {
           Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
               content: Text('Sale processed successfully!'),
-              backgroundColor: Colors.green));
+              backgroundColor: Colors.green,
+            ),
+          );
           _clearBilling();
         }
       }
     } catch (e) {
       if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
             content: Text('Error processing sale: $e'),
-            backgroundColor: Colors.red));
+            backgroundColor: Colors.red,
+          ),
+        );
     }
   }
 
@@ -787,85 +950,113 @@ class _SalesPageState extends State<SalesPage>
   // ─── BUILD ────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    final items =
-        _tabController.index == 0 ? filteredServices : filteredProducts;
+    final items = _tabController.index == 0
+        ? filteredServices
+        : filteredProducts;
 
     return Scaffold(
       drawer: const CustomDrawer(currentPage: 'Sales'),
-      backgroundColor: _bg,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text('Sales Overview',
-            style: GoogleFonts.poppins(
-                fontWeight: FontWeight.w600, color: _text, fontSize: 12.sp)),
-        backgroundColor: _surface,
-        surfaceTintColor: _surface,
-        elevation: 0.5,
-        iconTheme: const IconThemeData(color: _text),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        titleSpacing: 0,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: Colors.black),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
+        title: Text(
+          'Sales',
+          style: GoogleFonts.poppins(
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w700,
+            color: Colors.black,
+          ),
+        ),
         actions: [
           IconButton(
-              icon: const Icon(Icons.search, size: 20, color: _muted),
-              onPressed: () {}),
-          IconButton(
-              icon: const Icon(Icons.refresh, size: 20, color: _muted),
-              onPressed: _fetchData),
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: CircleAvatar(
-              radius: 14,
-              backgroundColor: const Color(0xFFD1C4C9),
-              backgroundImage: (vendorProfile != null &&
-                      vendorProfile!.profileImage.isNotEmpty)
-                  ? NetworkImage(vendorProfile!.profileImage)
-                  : null,
-              child:
-                  (vendorProfile == null || vendorProfile!.profileImage.isEmpty)
-                      ? Text(
-                          (vendorProfile?.businessName ?? 'A')
-                              .substring(0, 1)
-                              .toUpperCase(),
-                          style: GoogleFonts.poppins(
-                              fontSize: 10.sp,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold))
-                      : null,
+            icon: const Icon(Icons.notifications_outlined, color: Colors.black),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NotificationPage()),
+            ),
+          ),
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const My_Profile()),
+            ),
+            child: Padding(
+              padding: EdgeInsets.only(right: 12.w),
+              child: CircleAvatar(
+                radius: 16,
+                backgroundColor: Theme.of(context).primaryColor,
+                child: ClipOval(
+                  child:
+                      (vendorProfile != null &&
+                          vendorProfile!.profileImage.isNotEmpty)
+                      ? Image.network(
+                          vendorProfile!.profileImage,
+                          width: 32,
+                          height: 32,
+                          fit: BoxFit.cover,
+                          errorBuilder: (ctx, _, __) => _buildInitialAvatar(),
+                          loadingBuilder: (ctx, child, progress) =>
+                              progress == null
+                              ? child
+                              : const CircularProgressIndicator(),
+                        )
+                      : _buildInitialAvatar(),
+                ),
+              ),
             ),
           ),
         ],
       ),
       body: SafeArea(
-        child: LayoutBuilder(builder: (context, constraints) {
-          final isWide = constraints.maxWidth >= 980;
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth >= 980;
 
-          // ── LEFT: Catalog ────────────────────────────────────────────────────
-          final catalogWidget = Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Tab bar — white bg, maroon underline indicator
-              Container(
-                color: _surface,
-                child: TabBar(
-                  controller: _tabController,
-                  labelColor: _primary,
-                  unselectedLabelColor: _muted,
-                  labelStyle: GoogleFonts.poppins(
-                      fontSize: 13, fontWeight: FontWeight.w600),
-                  unselectedLabelStyle: GoogleFonts.poppins(
-                      fontSize: 13, fontWeight: FontWeight.w500),
-                  indicator: UnderlineTabIndicator(
-                    borderSide: const BorderSide(color: _primary, width: 2.5),
-                    insets: const EdgeInsets.symmetric(horizontal: 16),
+            // ── LEFT: Catalog ────────────────────────────────────────────────────
+            final catalogWidget = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Tab bar — white bg, maroon underline indicator
+                Container(
+                  color: _surface,
+                  child: TabBar(
+                    controller: _tabController,
+                    labelColor: _primary,
+                    unselectedLabelColor: _muted,
+                    labelStyle: GoogleFonts.poppins(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    unselectedLabelStyle: GoogleFonts.poppins(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    indicator: UnderlineTabIndicator(
+                      borderSide: const BorderSide(color: _primary, width: 2.5),
+                      insets: const EdgeInsets.symmetric(horizontal: 16),
+                    ),
+                    dividerColor: _border,
+                    tabs: const [
+                      Tab(text: 'Services'),
+                      Tab(text: 'Products'),
+                    ],
+                    onTap: (_) => setState(() {}),
                   ),
-                  dividerColor: _border,
-                  tabs: const [Tab(text: 'Services'), Tab(text: 'Products')],
-                  onTap: (_) => setState(() {}),
                 ),
-              ),
 
-              // Content area
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
+                // Content area
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Heading
@@ -874,9 +1065,10 @@ class _SalesPageState extends State<SalesPage>
                               ? 'Service Catalog'
                               : 'Product Catalog',
                           style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: _text),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: _text,
+                          ),
                         ),
                         const SizedBox(height: 10),
 
@@ -905,113 +1097,131 @@ class _SalesPageState extends State<SalesPage>
                             ? const Padding(
                                 padding: EdgeInsets.only(top: 40),
                                 child: Center(
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2)))
-                            : items.isEmpty
-                                ? Padding(
-                                    padding: const EdgeInsets.only(top: 40),
-                                    child: Center(
-                                        child: Text('No items found',
-                                            style: GoogleFonts.poppins(
-                                                fontSize: 13, color: _muted))))
-                                : _catalogList(items),
-                      ]),
-                ),
-              ),
-            ],
-          );
-
-          return isWide
-              ? Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  Expanded(flex: 6, child: catalogWidget),
-                  Container(
-                    width: 380,
-                    decoration: const BoxDecoration(
-                      color: _surface,
-                      border: Border(left: BorderSide(color: _border)),
-                    ),
-                    child: _buildBillingPanel(),
-                  ),
-                ])
-              : Stack(
-                  children: [
-                    Positioned.fill(
-                      bottom:
-                          80, // Space for the collapsed bottom sheet handle area
-                      child: catalogWidget,
-                    ),
-                    DraggableScrollableSheet(
-                      initialChildSize: 0.12,
-                      minChildSize: 0.12,
-                      maxChildSize: 0.9,
-                      builder: (context, scrollController) {
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: _surface,
-                            borderRadius: const BorderRadius.vertical(
-                                top: Radius.circular(20)),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 10,
-                                offset: const Offset(0, -5),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            children: [
-                              // Handle
-                              Container(
-                                margin:
-                                    const EdgeInsets.symmetric(vertical: 12),
-                                width: 40,
-                                height: 4,
-                                decoration: BoxDecoration(
-                                  color: _border,
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                              // Summary bar when collapsed
-                              if (selectedItems.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 20),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        '${selectedItems.length} Items Selected',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: _primary,
-                                        ),
-                                      ),
-                                      Text(
-                                        'Total: ₹${total.toStringAsFixed(2)}',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w700,
-                                          color: _text,
-                                        ),
-                                      ),
-                                    ],
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
                                   ),
                                 ),
-                              const SizedBox(height: 10),
-                              Expanded(
-                                child: _buildBillingPanel(
-                                    scrollController: scrollController),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
+                              )
+                            : items.isEmpty
+                            ? Padding(
+                                padding: const EdgeInsets.only(top: 40),
+                                child: Center(
+                                  child: Text(
+                                    'No items found',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 13,
+                                      color: _muted,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : _catalogList(items),
+                      ],
                     ),
-                  ],
-                );
-        }),
+                  ),
+                ),
+              ],
+            );
+
+            return isWide
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(flex: 6, child: catalogWidget),
+                      Container(
+                        width: 380,
+                        decoration: const BoxDecoration(
+                          color: _surface,
+                          border: Border(left: BorderSide(color: _border)),
+                        ),
+                        child: _buildBillingPanel(),
+                      ),
+                    ],
+                  )
+                : Stack(
+                    children: [
+                      Positioned.fill(
+                        bottom:
+                            80, // Space for the collapsed bottom sheet handle area
+                        child: catalogWidget,
+                      ),
+                      DraggableScrollableSheet(
+                        initialChildSize: 0.12,
+                        minChildSize: 0.12,
+                        maxChildSize: 0.9,
+                        builder: (context, scrollController) {
+                          return Container(
+                            decoration: BoxDecoration(
+                              color: _surface,
+                              borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(20),
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, -5),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              children: [
+                                // Handle
+                                Container(
+                                  margin: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                  width: 40,
+                                  height: 4,
+                                  decoration: BoxDecoration(
+                                    color: _border,
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                ),
+                                // Summary bar when collapsed
+                                if (selectedItems.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          '${selectedItems.length} Items Selected',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: _primary,
+                                          ),
+                                        ),
+                                        Text(
+                                          'Total: ₹${total.toStringAsFixed(2)}',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w700,
+                                            color: _text,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                const SizedBox(height: 10),
+                                Expanded(
+                                  child: _buildBillingPanel(
+                                    scrollController: scrollController,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  );
+          },
+        ),
       ),
     );
   }
@@ -1031,26 +1241,39 @@ class _SalesPageState extends State<SalesPage>
       style: GoogleFonts.poppins(fontSize: 13, color: _text),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle:
-            GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF94A3B8)),
-        prefixIcon:
-            const Icon(Icons.search, color: Color(0xFF94A3B8), size: 19),
+        hintStyle: GoogleFonts.poppins(
+          fontSize: 13,
+          color: const Color(0xFF94A3B8),
+        ),
+        prefixIcon: const Icon(
+          Icons.search,
+          color: Color(0xFF94A3B8),
+          size: 19,
+        ),
         suffixIcon: showClear
             ? IconButton(
-                icon:
-                    const Icon(Icons.close, size: 16, color: Color(0xFF94A3B8)),
-                onPressed: onClear)
+                icon: const Icon(
+                  Icons.close,
+                  size: 16,
+                  color: Color(0xFF94A3B8),
+                ),
+                onPressed: onClear,
+              )
             : null,
         filled: true,
         fillColor: Colors.white,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 11,
+        ),
         enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: _border)),
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: _border),
+        ),
         focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1.5)),
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1.5),
+        ),
         isDense: true,
       ),
     );
@@ -1061,9 +1284,10 @@ class _SalesPageState extends State<SalesPage>
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: _border)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _border),
+      ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: _tabController.index == 0
@@ -1072,14 +1296,20 @@ class _SalesPageState extends State<SalesPage>
           isExpanded: true,
           icon: const Icon(Icons.keyboard_arrow_down, size: 20, color: _muted),
           style: GoogleFonts.poppins(fontSize: 13, color: _text),
-          items: (_tabController.index == 0
-                  ? serviceCategories
-                  : productCategories)
-              .map((cat) => DropdownMenuItem(
-                  value: cat,
-                  child: Text(cat,
-                      style: GoogleFonts.poppins(fontSize: 13, color: _text))))
-              .toList(),
+          items:
+              (_tabController.index == 0
+                      ? serviceCategories
+                      : productCategories)
+                  .map(
+                    (cat) => DropdownMenuItem(
+                      value: cat,
+                      child: Text(
+                        cat,
+                        style: GoogleFonts.poppins(fontSize: 13, color: _text),
+                      ),
+                    ),
+                  )
+                  .toList(),
           onChanged: (v) => setState(() {
             if (_tabController.index == 0)
               selectedServiceCategory = v;
@@ -1095,9 +1325,10 @@ class _SalesPageState extends State<SalesPage>
   Widget _catalogList(List items) {
     return Container(
       decoration: BoxDecoration(
-          color: _surface,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: _border)),
+        color: _surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _border),
+      ),
       child: ListView.separated(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
@@ -1117,10 +1348,11 @@ class _SalesPageState extends State<SalesPage>
             final s = item as Service;
             name = s.name ?? '';
             category = s.category ?? 'Uncategorized';
-            price = ((s.discountedPrice != null && s.discountedPrice! > 0)
-                    ? s.discountedPrice!
-                    : (s.price ?? 0))
-                .toDouble();
+            price =
+                ((s.discountedPrice != null && s.discountedPrice! > 0)
+                        ? s.discountedPrice!
+                        : (s.price ?? 0))
+                    .toDouble();
             regularPrice = (s.discountedPrice != null && s.discountedPrice! > 0)
                 ? (s.price ?? 0).toDouble()
                 : null;
@@ -1129,10 +1361,11 @@ class _SalesPageState extends State<SalesPage>
             final p = item as Product;
             name = p.productName ?? '';
             category = p.category ?? 'Uncategorized';
-            price = ((p.salePrice != null && p.salePrice! > 0)
-                    ? p.salePrice!
-                    : (p.price ?? 0))
-                .toDouble();
+            price =
+                ((p.salePrice != null && p.salePrice! > 0)
+                        ? p.salePrice!
+                        : (p.price ?? 0))
+                    .toDouble();
             regularPrice = (p.salePrice != null && p.salePrice! > 0)
                 ? (p.price ?? 0).toDouble()
                 : null;
@@ -1140,86 +1373,108 @@ class _SalesPageState extends State<SalesPage>
           }
 
           final bool isOutOfStock = !isService && (item as Product).stock == 0;
-          final bool isSelected = _isItemSelected(isService
-              ? (item as Service).id ?? ''
-              : (item as Product).id ?? '');
+          final bool isSelected = _isItemSelected(
+            isService ? (item as Service).id ?? '' : (item as Product).id ?? '',
+          );
 
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-            child: Row(children: [
-              // Name + category
-              Expanded(
+            child: Row(
+              children: [
+                // Name + category
+                Expanded(
                   flex: 3,
                   child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(name,
-                            style: GoogleFonts.poppins(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: _text)),
-                        Text(category,
-                            style: GoogleFonts.poppins(
-                                fontSize: 11, color: _muted)),
-                      ])),
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: _text,
+                        ),
+                      ),
+                      Text(
+                        category,
+                        style: GoogleFonts.poppins(fontSize: 11, color: _muted),
+                      ),
+                    ],
+                  ),
+                ),
 
-              // Price column
-              Expanded(
+                // Price column
+                Expanded(
                   flex: 2,
                   child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '₹${price.toStringAsFixed(0)}.00',
-                          style: GoogleFonts.poppins(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: regularPrice != null ? _primary : _text),
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '₹${price.toStringAsFixed(0)}.00',
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: regularPrice != null ? _primary : _text,
                         ),
-                        if (regularPrice != null)
-                          Text('₹${regularPrice.toStringAsFixed(0)}.00',
-                              style: GoogleFonts.poppins(
-                                  fontSize: 11,
-                                  color: _muted,
-                                  decoration: TextDecoration.lineThrough)),
-                      ])),
+                      ),
+                      if (regularPrice != null)
+                        Text(
+                          '₹${regularPrice.toStringAsFixed(0)}.00',
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            color: _muted,
+                            decoration: TextDecoration.lineThrough,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
 
-              // Duration (services) or spacer (products)
-              if (isService)
-                Expanded(
+                // Duration (services) or spacer (products)
+                if (isService)
+                  Expanded(
                     flex: 2,
-                    child: Text(duration ?? '',
-                        style: GoogleFonts.poppins(fontSize: 12, color: _text)))
-              else
-                const Spacer(flex: 2),
+                    child: Text(
+                      duration ?? '',
+                      style: GoogleFonts.poppins(fontSize: 12, color: _text),
+                    ),
+                  )
+                else
+                  const Spacer(flex: 2),
 
-              // Add / selected button — circle style matching screenshot
-              _addCircleButton(
+                // Add / selected button — circle style matching screenshot
+                _addCircleButton(
                   isOutOfStock: isOutOfStock,
                   isSelected: isSelected,
                   onTap: isOutOfStock
                       ? null
-                      : () => _addItemToBilling(item, isService: isService)),
-            ]),
+                      : () => _addItemToBilling(item, isService: isService),
+                ),
+              ],
+            ),
           );
         },
       ),
     );
   }
 
-  Widget _addCircleButton(
-      {required bool isOutOfStock,
-      required bool isSelected,
-      VoidCallback? onTap}) {
+  Widget _addCircleButton({
+    required bool isOutOfStock,
+    required bool isSelected,
+    VoidCallback? onTap,
+  }) {
     if (isOutOfStock) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
-            color: const Color(0xFFF1F5F9),
-            borderRadius: BorderRadius.circular(6)),
-        child: Text('Out of\nStock',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(fontSize: 9, color: _muted)),
+          color: const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Text(
+          'Out of\nStock',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.poppins(fontSize: 9, color: _muted),
+        ),
       );
     }
     return GestureDetector(
@@ -1231,10 +1486,15 @@ class _SalesPageState extends State<SalesPage>
           color: isSelected ? _primaryDark : Colors.white,
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
-              color: isSelected ? _primaryDark : _border, width: 1.5),
+            color: isSelected ? _primaryDark : _border,
+            width: 1.5,
+          ),
         ),
-        child: Icon(isSelected ? Icons.check : Icons.add,
-            size: 17, color: isSelected ? Colors.white : _text),
+        child: Icon(
+          isSelected ? Icons.check : Icons.add,
+          size: 17,
+          color: isSelected ? Colors.white : _text,
+        ),
       ),
     );
   }
@@ -1242,27 +1502,45 @@ class _SalesPageState extends State<SalesPage>
   // ─── Billing Panel ────────────────────────────────────────────────────────────
   Widget _buildBillingPanel({ScrollController? scrollController}) {
     return SingleChildScrollView(
-        controller: scrollController,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      controller: scrollController,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           // ── Header ──
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
-            child: Text('Billing',
-                style: GoogleFonts.poppins(
-                    fontSize: 15, fontWeight: FontWeight.w700, color: _text)),
+            child: Text(
+              'Billing',
+              style: GoogleFonts.poppins(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: _text,
+              ),
+            ),
           ),
           const SizedBox(height: 12),
 
           // ── Client Selection label ──
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Row(children: [
-              Icon(Icons.person_outline, size: 17, color: Colors.blue.shade400),
-              const SizedBox(width: 6),
-              Text('Client Selection',
+            child: Row(
+              children: [
+                Icon(
+                  Icons.person_outline,
+                  size: 17,
+                  color: Colors.blue.shade400,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Client Selection',
                   style: GoogleFonts.poppins(
-                      fontSize: 13, fontWeight: FontWeight.w600, color: _text)),
-            ]),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _text,
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 10),
 
@@ -1275,42 +1553,61 @@ class _SalesPageState extends State<SalesPage>
               onTap: () => setState(() => _showClientDropdown = true),
               onChanged: (v) {
                 _clientSearchTimer?.cancel();
-                _clientSearchTimer =
-                    Timer(const Duration(milliseconds: 300), () {
-                  setState(() {
-                    clientSearchQuery = v;
-                    _showClientDropdown = true;
-                  });
-                });
+                _clientSearchTimer = Timer(
+                  const Duration(milliseconds: 300),
+                  () {
+                    setState(() {
+                      clientSearchQuery = v;
+                      _showClientDropdown = true;
+                    });
+                  },
+                );
               },
               style: GoogleFonts.poppins(fontSize: 13, color: _text),
               decoration: InputDecoration(
                 hintText: 'Search clients by name, email or phone...',
                 hintStyle: GoogleFonts.poppins(
-                    fontSize: 12, color: const Color(0xFF94A3B8)),
-                prefixIcon: const Icon(Icons.search,
-                    color: Color(0xFF94A3B8), size: 18),
+                  fontSize: 12,
+                  color: const Color(0xFF94A3B8),
+                ),
+                prefixIcon: const Icon(
+                  Icons.search,
+                  color: Color(0xFF94A3B8),
+                  size: 18,
+                ),
                 suffixIcon: clientSearchQuery.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.close,
-                            size: 16, color: Color(0xFF94A3B8)),
+                        icon: const Icon(
+                          Icons.close,
+                          size: 16,
+                          color: Color(0xFF94A3B8),
+                        ),
                         onPressed: () {
                           _clientSearchController.clear();
                           setState(() => clientSearchQuery = '');
-                        })
+                        },
+                      )
                     : null,
                 filled: true,
                 fillColor: Colors.white,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 11,
+                ),
                 enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide:
-                        const BorderSide(color: Color(0xFF8B5CF6), width: 1.5)),
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(
+                    color: Color(0xFF8B5CF6),
+                    width: 1.5,
+                  ),
+                ),
                 focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide:
-                        const BorderSide(color: Color(0xFF7C3AED), width: 2)),
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(
+                    color: Color(0xFF7C3AED),
+                    width: 2,
+                  ),
+                ),
                 isDense: true,
               ),
             ),
@@ -1330,9 +1627,10 @@ class _SalesPageState extends State<SalesPage>
                   border: Border.all(color: _border),
                   boxShadow: [
                     BoxShadow(
-                        color: Colors.black.withOpacity(0.06),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4))
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
                   ],
                 ),
                 child: ListView.separated(
@@ -1352,33 +1650,48 @@ class _SalesPageState extends State<SalesPage>
                       }),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 10),
-                        child: Row(children: [
-                          CircleAvatar(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
                               radius: 15,
                               backgroundColor: const Color(0xFFE2E8F0),
                               child: Text(
-                                  c.fullName.isNotEmpty
-                                      ? c.fullName[0].toUpperCase()
-                                      : '?',
-                                  style: GoogleFonts.poppins(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: _muted))),
-                          const SizedBox(width: 10),
-                          Column(
+                                c.fullName.isNotEmpty
+                                    ? c.fullName[0].toUpperCase()
+                                    : '?',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: _muted,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(c.fullName,
-                                    style: GoogleFonts.poppins(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: _text)),
-                                Text(c.mobile,
-                                    style: GoogleFonts.poppins(
-                                        fontSize: 11, color: _muted)),
-                              ]),
-                        ]),
+                                Text(
+                                  c.fullName,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: _text,
+                                  ),
+                                ),
+                                Text(
+                                  c.mobile,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11,
+                                    color: _muted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -1393,46 +1706,64 @@ class _SalesPageState extends State<SalesPage>
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14),
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
-                    color: const Color(0xFFF8F9FA),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: _border)),
-                child: Row(children: [
-                  CircleAvatar(
-                    radius: 17,
-                    backgroundColor: const Color(0xFFD4B8C0),
-                    child: Text(
-                      selectedClient!.fullName.isNotEmpty
-                          ? selectedClient!.fullName[0].toUpperCase()
-                          : '?',
-                      style: GoogleFonts.poppins(
+                  color: const Color(0xFFF8F9FA),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: _border),
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 17,
+                      backgroundColor: const Color(0xFFD4B8C0),
+                      child: Text(
+                        selectedClient!.fullName.isNotEmpty
+                            ? selectedClient!.fullName[0].toUpperCase()
+                            : '?',
+                        style: GoogleFonts.poppins(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white),
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
+                    const SizedBox(width: 10),
+                    Expanded(
                       child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                        Text(selectedClient!.fullName,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            selectedClient!.fullName,
                             style: GoogleFonts.poppins(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: _text)),
-                        Text(selectedClient!.mobile,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: _text,
+                            ),
+                          ),
+                          Text(
+                            selectedClient!.mobile,
                             style: GoogleFonts.poppins(
-                                fontSize: 11, color: _muted)),
-                      ])),
-                  GestureDetector(
-                    onTap: () => setState(() => selectedClient = null),
-                    child: const Icon(Icons.close,
-                        size: 18, color: Color(0xFFEF4444)),
-                  ),
-                ]),
+                              fontSize: 11,
+                              color: _muted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => setState(() => selectedClient = null),
+                      child: const Icon(
+                        Icons.close,
+                        size: 18,
+                        color: Color(0xFFEF4444),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
 
@@ -1450,15 +1781,21 @@ class _SalesPageState extends State<SalesPage>
                       color: const Color(0xFFF1F5F9),
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: const Icon(Icons.content_cut,
-                        size: 14, color: _primaryDark),
+                    child: const Icon(
+                      Icons.content_cut,
+                      size: 14,
+                      color: _primaryDark,
+                    ),
                   ),
                   const SizedBox(width: 8),
-                  Text('Services',
-                      style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: _primaryDark)),
+                  Text(
+                    'Services',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: _primaryDark,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1489,15 +1826,21 @@ class _SalesPageState extends State<SalesPage>
                       color: const Color(0xFFF1F5F9),
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: const Icon(Icons.shopping_bag_outlined,
-                        size: 14, color: _primaryDark),
+                    child: const Icon(
+                      Icons.shopping_bag_outlined,
+                      size: 14,
+                      color: _primaryDark,
+                    ),
                   ),
                   const SizedBox(width: 8),
-                  Text('Products',
-                      style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: _primaryDark)),
+                  Text(
+                    'Products',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: _primaryDark,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1523,29 +1866,36 @@ class _SalesPageState extends State<SalesPage>
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14),
               child: GestureDetector(
-                onTap: () => Navigator.push(context,
-                        MaterialPageRoute(builder: (_) => const AddCustomer()))
-                    .then((v) {
-                  if (v == true) _fetchData();
-                }),
+                onTap: () =>
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AddCustomer()),
+                    ).then((v) {
+                      if (v == true) _fetchData();
+                    }),
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 11),
                   decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: _border)),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: _border),
+                  ),
                   child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.add, size: 16, color: _text),
-                        const SizedBox(width: 6),
-                        Text('Add New Client',
-                            style: GoogleFonts.poppins(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: _text)),
-                      ]),
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.add, size: 16, color: _text),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Add New Client',
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: _text,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -1554,129 +1904,179 @@ class _SalesPageState extends State<SalesPage>
           // ── Totals ──
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
-            child: Column(children: [
-              // Tax checkbox row
-              if (_tabController.index == 0)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Row(children: [
-                    SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: Checkbox(
-                        value: applyTax,
-                        activeColor: _primary,
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        onChanged: (val) =>
-                            setState(() => applyTax = val ?? false),
-                      ),
+            child: Column(
+              children: [
+                // Tax checkbox row
+                if (_tabController.index == 0)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: Checkbox(
+                            value: applyTax,
+                            activeColor: _primary,
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                            onChanged: (val) =>
+                                setState(() => applyTax = val ?? false),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Apply Taxes (${profileTaxRate.toStringAsFixed(0)}%)',
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: _text,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          'Configured in profile',
+                          style: GoogleFonts.poppins(
+                            fontSize: 10,
+                            color: _muted,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                        child: Text(
-                      'Apply Taxes (${profileTaxRate.toStringAsFixed(0)}%)',
-                      style: GoogleFonts.poppins(fontSize: 12, color: _text),
-                    )),
-                    Text('Configured in profile',
-                        style:
-                            GoogleFonts.poppins(fontSize: 10, color: _muted)),
-                  ]),
-                ),
+                  ),
 
-              // Subtotal row
-              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                Text('Subtotal',
-                    style: GoogleFonts.poppins(fontSize: 13, color: _muted)),
-                Text('₹ ${subtotal.toStringAsFixed(2)}',
-                    style: GoogleFonts.poppins(
+                // Subtotal row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Subtotal',
+                      style: GoogleFonts.poppins(fontSize: 13, color: _muted),
+                    ),
+                    Text(
+                      '₹ ${subtotal.toStringAsFixed(2)}',
+                      style: GoogleFonts.poppins(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: _text)),
-              ]),
+                        color: _text,
+                      ),
+                    ),
+                  ],
+                ),
 
-              if (applyTax) ...[
-                const SizedBox(height: 4),
-                Row(
+                if (applyTax) ...[
+                  const SizedBox(height: 4),
+                  Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Tax (${profileTaxRate.toStringAsFixed(1)}%)',
-                          style:
-                              GoogleFonts.poppins(fontSize: 13, color: _muted)),
-                      Text('₹ ${tax.toStringAsFixed(2)}',
-                          style: GoogleFonts.poppins(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: _text)),
-                    ]),
-              ],
+                      Text(
+                        'Tax (${profileTaxRate.toStringAsFixed(1)}%)',
+                        style: GoogleFonts.poppins(fontSize: 13, color: _muted),
+                      ),
+                      Text(
+                        '₹ ${tax.toStringAsFixed(2)}',
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: _text,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
 
-              const SizedBox(height: 10),
-              const Divider(height: 1, color: _border),
-              const SizedBox(height: 10),
+                const SizedBox(height: 10),
+                const Divider(height: 1, color: _border),
+                const SizedBox(height: 10),
 
-              // Total
-              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                Text('Total Amount',
-                    style: GoogleFonts.poppins(
+                // Total
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Total Amount',
+                      style: GoogleFonts.poppins(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
-                        color: _text)),
-                Text('₹ ${total.toStringAsFixed(2)}',
-                    style: GoogleFonts.poppins(
+                        color: _text,
+                      ),
+                    ),
+                    Text(
+                      '₹ ${total.toStringAsFixed(2)}',
+                      style: GoogleFonts.poppins(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: _text)),
-              ]),
-
-              const SizedBox(height: 14),
-
-              // Action buttons
-              Row(children: [
-                Expanded(
-                    child: SizedBox(
-                  height: 42,
-                  child: OutlinedButton(
-                    onPressed: _clearBilling,
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: _border),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
-                    ),
-                    child: Text('Clear',
-                        style: GoogleFonts.poppins(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: _muted)),
-                  ),
-                )),
-                const SizedBox(width: 10),
-                Expanded(
-                    flex: 2,
-                    child: SizedBox(
-                      height: 42,
-                      child: ElevatedButton(
-                        onPressed:
-                            (selectedItems.isEmpty || selectedClient == null)
-                                ? null
-                                : _showPaymentOptionsDialog,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _primaryDark,
-                          foregroundColor: Colors.white,
-                          disabledBackgroundColor: const Color(0xFFCBD5E1),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8)),
-                          elevation: 0,
-                        ),
-                        child: Text('Proceed to Payment',
-                            style: GoogleFonts.poppins(
-                                fontSize: 10, fontWeight: FontWeight.w600)),
+                        color: _text,
                       ),
-                    )),
-              ]),
-              const SizedBox(height: 16),
-            ]),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 14),
+
+                // Action buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 42,
+                        child: OutlinedButton(
+                          onPressed: _clearBilling,
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: _border),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: Text(
+                            'Clear',
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: _muted,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      flex: 2,
+                      child: SizedBox(
+                        height: 42,
+                        child: ElevatedButton(
+                          onPressed:
+                              (selectedItems.isEmpty || selectedClient == null)
+                              ? null
+                              : _showPaymentOptionsDialog,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _primaryDark,
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor: const Color(0xFFCBD5E1),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: Text(
+                            'Proceed to Payment',
+                            style: GoogleFonts.poppins(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
-        ]));
+        ],
+      ),
+    );
   }
 
   Widget _billingItemCard(Map<String, dynamic> item) {
@@ -1684,194 +2084,286 @@ class _SalesPageState extends State<SalesPage>
     final priceEach = item['price'] as double;
     final List addons = item['addons'] as List? ?? [];
     final double addonsTotal = addons.fold(
-        0.0, (s, a) => s + ((a['price'] as num?)?.toDouble() ?? 0.0));
+      0.0,
+      (s, a) => s + ((a['price'] as num?)?.toDouble() ?? 0.0),
+    );
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: _border)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // Row 1: name + addon chips + trash icon
-          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Expanded(
-                child: Wrap(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: _border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Row 1: name + addon chips + trash icon
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Wrap(
                     spacing: 6,
                     runSpacing: 4,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                  Text(item['name'],
-                      style: GoogleFonts.poppins(
+                      Text(
+                        item['name'],
+                        style: GoogleFonts.poppins(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: _text)),
-                  ...addons.map((a) => Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(4)),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          const Icon(Icons.add, size: 10, color: _muted),
-                          const SizedBox(width: 2),
-                          Text(a['name'] ?? '',
-                              style: GoogleFonts.poppins(
-                                  fontSize: 11,
-                                  color: _muted,
-                                  fontWeight: FontWeight.w500)),
-                        ]),
-                      )),
-                ])),
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: () => _removeItemFromBilling(item['id']),
-              child: Container(
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                    color: const Color(0xFFFEE2E2),
-                    borderRadius: BorderRadius.circular(5)),
-                child: const Icon(Icons.delete_outline,
-                    size: 14, color: Color(0xFFEF4444)),
-              ),
-            ),
-          ]),
-
-          const SizedBox(height: 5),
-
-          // Row 2: clock + duration
-          if (item['duration'] != null)
-            Row(children: [
-              const Icon(Icons.access_time_outlined, size: 13, color: _muted),
-              const SizedBox(width: 4),
-              Text(
-                ([
-                  item['duration'] as String?,
-                  ...addons.map<String?>((a) =>
-                      a['duration'] != null ? '${a['duration']} min' : null)
-                ].whereType<String>())
-                    .join(' + '),
-                style: GoogleFonts.poppins(fontSize: 11, color: _muted),
-              ),
-            ]),
-
-          const SizedBox(height: 8),
-
-          // Row 3: Assign Staff (left) + Quantity stepper (right)
-          if (_tabController.index == 0)
-            Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              // Staff dropdown
-              Expanded(
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                    Text('Assign Staff',
-                        style: GoogleFonts.poppins(
-                            fontSize: 10,
-                            color: _muted,
-                            fontWeight: FontWeight.w500)),
-                    const SizedBox(height: 4),
-                    Container(
-                      height: 34,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      decoration: BoxDecoration(
-                          color: const Color(0xFFF8F9FB),
-                          borderRadius: BorderRadius.circular(7),
-                          border: Border.all(color: _border)),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<StaffMember?>(
-                          value: item['staff'],
-                          isExpanded: true,
-                          icon: const Icon(Icons.keyboard_arrow_down,
-                              size: 16, color: _muted),
-                          hint: Text('Select',
-                              style: GoogleFonts.poppins(
-                                  fontSize: 11, color: _muted)),
-                          style:
-                              GoogleFonts.poppins(fontSize: 11, color: _text),
-                          items: staffList
-                              .where((s) {
-                                final ids = item['staffIds'] as List?;
-                                if (ids == null || ids.isEmpty) return true;
-                                return ids.contains(s.id);
-                              })
-                              .map((s) => DropdownMenuItem<StaffMember?>(
-                                  value: s,
-                                  child: Text(s.fullName ?? '',
-                                      style: GoogleFonts.poppins(
-                                          fontSize: 11, color: _text))))
-                              .toList(),
-                          onChanged: (v) => setState(() => item['staff'] = v),
+                          color: _text,
                         ),
                       ),
+                      ...addons.map(
+                        (a) => Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.add, size: 10, color: _muted),
+                              const SizedBox(width: 2),
+                              Text(
+                                a['name'] ?? '',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11,
+                                  color: _muted,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () => _removeItemFromBilling(item['id']),
+                  child: Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEE2E2),
+                      borderRadius: BorderRadius.circular(5),
                     ),
-                  ])),
-              const SizedBox(width: 12),
-              // Quantity
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Quantity',
-                    style: GoogleFonts.poppins(
-                        fontSize: 10,
-                        color: _muted,
-                        fontWeight: FontWeight.w500)),
-                const SizedBox(height: 4),
-                Row(children: [
-                  _qtyBtn(
-                      icon: Icons.remove,
-                      onTap: () => _updateItemQuantity(item['id'], qty - 1)),
-                  Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Text('$qty',
-                          style: GoogleFonts.poppins(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: _text))),
-                  _qtyBtn(
-                      icon: Icons.add,
-                      onTap: () => _updateItemQuantity(item['id'], qty + 1)),
-                ]),
-              ]),
-            ]),
-
-          const SizedBox(height: 8),
-
-          // Row 4: price display
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Row(children: [
-              Text('₹${priceEach.toStringAsFixed(2)}',
-                  style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: _muted,
-                      decoration: TextDecoration.lineThrough)),
-              if (addonsTotal > 0) ...[
-                const SizedBox(width: 6),
-                const Icon(Icons.arrow_forward, size: 12, color: _muted),
+                    child: const Icon(
+                      Icons.delete_outline,
+                      size: 14,
+                      color: Color(0xFFEF4444),
+                    ),
+                  ),
+                ),
               ],
-            ]),
-            Text(
-              '₹${priceEach.toStringAsFixed(2)}${addonsTotal > 0 ? ' + ₹${addonsTotal.toStringAsFixed(2)}' : ''}',
-              style: GoogleFonts.poppins(
-                  fontSize: 13, fontWeight: FontWeight.w600, color: _text),
             ),
-          ]),
 
-          // Total line (if qty > 1)
-          if (qty > 1)
-            Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: Text(
+            const SizedBox(height: 5),
+
+            // Row 2: clock + duration
+            if (item['duration'] != null)
+              Row(
+                children: [
+                  const Icon(
+                    Icons.access_time_outlined,
+                    size: 13,
+                    color: _muted,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    ([
+                      item['duration'] as String?,
+                      ...addons.map<String?>(
+                        (a) => a['duration'] != null
+                            ? '${a['duration']} min'
+                            : null,
+                      ),
+                    ].whereType<String>()).join(' + '),
+                    style: GoogleFonts.poppins(fontSize: 11, color: _muted),
+                  ),
+                ],
+              ),
+
+            const SizedBox(height: 8),
+
+            // Row 3: Assign Staff (left) + Quantity stepper (right)
+            if (_tabController.index == 0)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  // Staff dropdown
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Assign Staff',
+                          style: GoogleFonts.poppins(
+                            fontSize: 10,
+                            color: _muted,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Container(
+                          height: 34,
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8F9FB),
+                            borderRadius: BorderRadius.circular(7),
+                            border: Border.all(color: _border),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<StaffMember?>(
+                              value: item['staff'],
+                              isExpanded: true,
+                              icon: const Icon(
+                                Icons.keyboard_arrow_down,
+                                size: 16,
+                                color: _muted,
+                              ),
+                              hint: Text(
+                                'Select',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11,
+                                  color: _muted,
+                                ),
+                              ),
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                color: _text,
+                              ),
+                              items: staffList
+                                  .where((s) {
+                                    final ids = item['staffIds'] as List?;
+                                    if (ids == null || ids.isEmpty) return true;
+                                    return ids.contains(s.id);
+                                  })
+                                  .map(
+                                    (s) => DropdownMenuItem<StaffMember?>(
+                                      value: s,
+                                      child: Text(
+                                        s.fullName ?? '',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 11,
+                                          color: _text,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (v) =>
+                                  setState(() => item['staff'] = v),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Quantity
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Quantity',
+                        style: GoogleFonts.poppins(
+                          fontSize: 10,
+                          color: _muted,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          _qtyBtn(
+                            icon: Icons.remove,
+                            onTap: () =>
+                                _updateItemQuantity(item['id'], qty - 1),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Text(
+                              '$qty',
+                              style: GoogleFonts.poppins(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: _text,
+                              ),
+                            ),
+                          ),
+                          _qtyBtn(
+                            icon: Icons.add,
+                            onTap: () =>
+                                _updateItemQuantity(item['id'], qty + 1),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+
+            const SizedBox(height: 8),
+
+            // Row 4: price display
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      '₹${priceEach.toStringAsFixed(2)}',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: _muted,
+                        decoration: TextDecoration.lineThrough,
+                      ),
+                    ),
+                    if (addonsTotal > 0) ...[
+                      const SizedBox(width: 6),
+                      const Icon(Icons.arrow_forward, size: 12, color: _muted),
+                    ],
+                  ],
+                ),
+                Text(
+                  '₹${priceEach.toStringAsFixed(2)}${addonsTotal > 0 ? ' + ₹${addonsTotal.toStringAsFixed(2)}' : ''}',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _text,
+                  ),
+                ),
+              ],
+            ),
+
+            // Total line (if qty > 1)
+            if (qty > 1)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
                     'Total ₹${((priceEach + addonsTotal) * qty).toStringAsFixed(2)}',
                     style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: _text)),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: _text,
+                    ),
+                  ),
+                ),
               ),
-            ),
-        ]),
+          ],
+        ),
       ),
     );
   }
@@ -1883,9 +2375,10 @@ class _SalesPageState extends State<SalesPage>
         width: 28,
         height: 28,
         decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: _border)),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: _border),
+        ),
         child: Icon(icon, size: 14, color: _text),
       ),
     );
@@ -1893,7 +2386,9 @@ class _SalesPageState extends State<SalesPage>
 
   // ─── Invoice Summary Dialog ──────────────────────────────────────────────────
   void _showInvoiceSummaryDialog(
-      BuildContext context, Map<String, dynamic> data) {
+    BuildContext context,
+    Map<String, dynamic> data,
+  ) {
     final dateFormat = DateFormat('EEE, MMM dd, yyyy');
     final createdAt =
         DateTime.tryParse(data['createdAt'] ?? '') ?? DateTime.now();
@@ -1901,238 +2396,325 @@ class _SalesPageState extends State<SalesPage>
     final items = data['items'] as List? ?? [];
 
     showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => Dialog(
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              insetPadding:
-                  EdgeInsets.symmetric(horizontal: 12.w, vertical: 16.h),
-              child: Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(12.w),
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  Row(children: [
-                    Text('Invoice Summary',
-                        style: GoogleFonts.poppins(
-                            fontSize: 12.sp,
-                            fontWeight: FontWeight.bold,
-                            color: _text)),
-                    const Spacer(),
-                    IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: Icon(Icons.close, color: _muted, size: 16),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints()),
-                  ]),
-                  Divider(color: Colors.grey.shade100, height: 12.h),
-                  Flexible(
-                      child: SingleChildScrollView(
-                          child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                        Container(
-                          padding: EdgeInsets.all(12.w),
-                          decoration: BoxDecoration(
-                              gradient: const LinearGradient(colors: [
-                                Color(0xFF2E5BFF),
-                                Color(0xFF1B3BBE)
-                              ]),
-                              borderRadius: BorderRadius.circular(10)),
-                          child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(data['invoiceNumber'] ?? 'N/A',
-                                          style: GoogleFonts.poppins(
-                                              fontSize: 13.sp,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.white)),
-                                      Container(
-                                          padding: EdgeInsets.symmetric(
-                                              horizontal: 6.w, vertical: 2.h),
-                                          decoration: BoxDecoration(
-                                              color: const Color(0xFF22C55E),
-                                              borderRadius:
-                                                  BorderRadius.circular(6)),
-                                          child: Text(data['status'] ?? 'Paid',
-                                              style: GoogleFonts.poppins(
-                                                  fontSize: 8.sp,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: Colors.white))),
-                                    ]),
-                                SizedBox(height: 4.h),
-                                Text(
-                                    '${dateFormat.format(createdAt)} by ${clientInfo['fullName'] ?? 'Guest'}',
-                                    style: GoogleFonts.poppins(
-                                        fontSize: 9.sp,
-                                        color: Colors.white.withOpacity(0.9))),
-                              ]),
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        insetPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 16.h),
+        child: Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(12.w),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    'Invoice Summary',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.bold,
+                      color: _text,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: Icon(Icons.close, color: _muted, size: 16),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+              Divider(color: Colors.grey.shade100, height: 12.h),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(12.w),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF2E5BFF), Color(0xFF1B3BBE)],
+                          ),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        SizedBox(height: 12.h),
-                        _buildSummarySection(
-                            title: 'Quick Actions',
-                            child: Column(children: [
-                              SizedBox(
-                                  width: double.infinity,
-                                  child: ElevatedButton.icon(
-                                    onPressed: () {},
-                                    style: ElevatedButton.styleFrom(
-                                        backgroundColor:
-                                            const Color(0xFF43303F),
-                                        padding:
-                                            EdgeInsets.symmetric(vertical: 8.h),
-                                        shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(6))),
-                                    icon: const Icon(Icons.calendar_today,
-                                        size: 12, color: Colors.white),
-                                    label: Text('Rebook Client',
-                                        style: GoogleFonts.poppins(
-                                            color: Colors.white,
-                                            fontSize: 11.sp)),
-                                  )),
-                              SizedBox(height: 8.h),
-                              Row(children: [
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  data['invoiceNumber'] ?? 'N/A',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 6.w,
+                                    vertical: 2.h,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF22C55E),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    data['status'] ?? 'Paid',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 8.sp,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 4.h),
+                            Text(
+                              '${dateFormat.format(createdAt)} by ${clientInfo['fullName'] ?? 'Guest'}',
+                              style: GoogleFonts.poppins(
+                                fontSize: 9.sp,
+                                color: Colors.white.withOpacity(0.9),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 12.h),
+                      _buildSummarySection(
+                        title: 'Quick Actions',
+                        child: Column(
+                          children: [
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: () {},
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF43303F),
+                                  padding: EdgeInsets.symmetric(vertical: 8.h),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                ),
+                                icon: const Icon(
+                                  Icons.calendar_today,
+                                  size: 12,
+                                  color: Colors.white,
+                                ),
+                                label: Text(
+                                  'Rebook Client',
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontSize: 11.sp,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: 8.h),
+                            Row(
+                              children: [
                                 _summaryActionBtn(
-                                    Icons.email_outlined, 'Email'),
+                                  Icons.email_outlined,
+                                  'Email',
+                                ),
                                 SizedBox(width: 6.w),
                                 _summaryActionBtn(
-                                    Icons.print_outlined, 'Download')
-                              ]),
-                            ])),
-                        SizedBox(height: 12.h),
-                        _buildSummarySection(
-                            title: 'Client Information',
-                            child: Row(children: [
-                              Container(
-                                  padding: EdgeInsets.all(8.w),
-                                  decoration: BoxDecoration(
-                                      color: Colors.grey.shade50,
-                                      borderRadius: BorderRadius.circular(8)),
-                                  child: Icon(Icons.person_outline,
-                                      color: _muted, size: 18)),
-                              SizedBox(width: 10.w),
-                              Expanded(
-                                  child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                    Text(clientInfo['fullName'] ?? 'N/A',
-                                        style: GoogleFonts.poppins(
-                                            fontSize: 12.sp,
-                                            fontWeight: FontWeight.w600,
-                                            color: _text)),
-                                    Text(
-                                        '${clientInfo['phone'] ?? 'N/A'} • ${clientInfo['email'] ?? 'N/A'}',
-                                        style: GoogleFonts.poppins(
-                                            fontSize: 10.sp, color: _muted),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis),
-                                  ])),
-                            ])),
-                        SizedBox(height: 12.h),
-                        _buildSummarySection(
-                            title: 'Invoice Details',
-                            child: Column(
+                                  Icons.print_outlined,
+                                  'Download',
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 12.h),
+                      _buildSummarySection(
+                        title: 'Client Information',
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(8.w),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.person_outline,
+                                color: _muted,
+                                size: 18,
+                              ),
+                            ),
+                            SizedBox(width: 10.w),
+                            Expanded(
+                              child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Row(children: [
-                                    _infoCard('Payment',
-                                        data['paymentMethod'] ?? 'Cash'),
-                                    SizedBox(width: 8.w),
-                                    _infoCard(
-                                        'Status', data['status'] ?? 'Paid',
-                                        isStatus: true)
-                                  ]),
-                                  SizedBox(height: 12.h),
-                                  Text('Services',
-                                      style: GoogleFonts.poppins(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 11.sp)),
-                                  Divider(
-                                      color: Colors.grey.shade100, height: 8.h),
-                                  ...items.map((item) => Padding(
-                                        padding:
-                                            EdgeInsets.symmetric(vertical: 2.h),
-                                        child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(item['name'] ?? 'N/A',
-                                                  style: GoogleFonts.poppins(
-                                                      fontSize: 10.sp,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                      color: const Color(
-                                                          0xFF1E293B))),
-                                              Text(
-                                                  '₹${(item['price'] ?? 0).toStringAsFixed(2)}',
-                                                  style: GoogleFonts.poppins(
-                                                      fontSize: 10.sp,
-                                                      fontWeight:
-                                                          FontWeight.w600)),
-                                            ]),
-                                      )),
-                                  SizedBox(height: 12.h),
-                                  Container(
-                                    padding: EdgeInsets.all(10.w),
-                                    decoration: BoxDecoration(
-                                        color: const Color(0xFFF8F9FA),
-                                        borderRadius:
-                                            BorderRadius.circular(10)),
-                                    child: Column(children: [
-                                      _priceLine('Subtotal',
-                                          '₹${(data['subtotal'] ?? 0).toStringAsFixed(2)}'),
-                                      if ((data['discountAmount'] ?? 0) > 0)
-                                        _priceLine('Discount',
-                                            '-₹${(data['discountAmount'] ?? 0).toStringAsFixed(2)}',
-                                            color: const Color(0xFF22C55E)),
-                                      if ((data['taxAmount'] ?? 0) > 0)
-                                        _priceLine(
-                                            'Tax (${data['taxRate'] ?? 0}%)',
-                                            '₹${(data['taxAmount'] ?? 0).toStringAsFixed(2)}'),
-                                      if ((data['platformFee'] ?? 0) > 0)
-                                        _priceLine('Platform Fee',
-                                            '₹${(data['platformFee'] ?? 0).toStringAsFixed(2)}'),
-                                      Divider(
-                                          height: 12.h,
-                                          color: Colors.grey.withOpacity(0.2)),
-                                      _priceLine('Total',
-                                          '₹${(data['totalAmount'] ?? 0).toStringAsFixed(2)}',
-                                          isBold: true),
-                                      if ((data['balance'] ?? 0) > 0)
-                                        _priceLine('Balance',
-                                            '₹${(data['balance'] ?? 0).toStringAsFixed(2)}',
-                                            isBold: true,
-                                            color: const Color(0xFFEF4444)),
-                                    ]),
+                                  Text(
+                                    clientInfo['fullName'] ?? 'N/A',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12.sp,
+                                      fontWeight: FontWeight.w600,
+                                      color: _text,
+                                    ),
                                   ),
-                                ])),
-                      ]))),
-                  SizedBox(height: 16.h),
-                  SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF43303F),
-                            padding: EdgeInsets.symmetric(vertical: 10.h),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6))),
-                        child: Text('Close',
-                            style: GoogleFonts.poppins(
-                                color: Colors.white,
-                                fontSize: 12.sp,
-                                fontWeight: FontWeight.bold)),
-                      )),
-                ]),
+                                  Text(
+                                    '${clientInfo['phone'] ?? 'N/A'} • ${clientInfo['email'] ?? 'N/A'}',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 10.sp,
+                                      color: _muted,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 12.h),
+                      _buildSummarySection(
+                        title: 'Invoice Details',
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                _infoCard(
+                                  'Payment',
+                                  data['paymentMethod'] ?? 'Cash',
+                                ),
+                                SizedBox(width: 8.w),
+                                _infoCard(
+                                  'Status',
+                                  data['status'] ?? 'Paid',
+                                  isStatus: true,
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 12.h),
+                            Text(
+                              'Services',
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11.sp,
+                              ),
+                            ),
+                            Divider(color: Colors.grey.shade100, height: 8.h),
+                            ...items.map(
+                              (item) => Padding(
+                                padding: EdgeInsets.symmetric(vertical: 2.h),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      item['name'] ?? 'N/A',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 10.sp,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF1E293B),
+                                      ),
+                                    ),
+                                    Text(
+                                      '₹${(item['price'] ?? 0).toStringAsFixed(2)}',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 10.sp,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: 12.h),
+                            Container(
+                              padding: EdgeInsets.all(10.w),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8F9FA),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Column(
+                                children: [
+                                  _priceLine(
+                                    'Subtotal',
+                                    '₹${(data['subtotal'] ?? 0).toStringAsFixed(2)}',
+                                  ),
+                                  if ((data['discountAmount'] ?? 0) > 0)
+                                    _priceLine(
+                                      'Discount',
+                                      '-₹${(data['discountAmount'] ?? 0).toStringAsFixed(2)}',
+                                      color: const Color(0xFF22C55E),
+                                    ),
+                                  if ((data['taxAmount'] ?? 0) > 0)
+                                    _priceLine(
+                                      'Tax (${data['taxRate'] ?? 0}%)',
+                                      '₹${(data['taxAmount'] ?? 0).toStringAsFixed(2)}',
+                                    ),
+                                  if ((data['platformFee'] ?? 0) > 0)
+                                    _priceLine(
+                                      'Platform Fee',
+                                      '₹${(data['platformFee'] ?? 0).toStringAsFixed(2)}',
+                                    ),
+                                  Divider(
+                                    height: 12.h,
+                                    color: Colors.grey.withOpacity(0.2),
+                                  ),
+                                  _priceLine(
+                                    'Total',
+                                    '₹${(data['totalAmount'] ?? 0).toStringAsFixed(2)}',
+                                    isBold: true,
+                                  ),
+                                  if ((data['balance'] ?? 0) > 0)
+                                    _priceLine(
+                                      'Balance',
+                                      '₹${(data['balance'] ?? 0).toStringAsFixed(2)}',
+                                      isBold: true,
+                                      color: const Color(0xFFEF4444),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ));
+              SizedBox(height: 16.h),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF43303F),
+                    padding: EdgeInsets.symmetric(vertical: 10.h),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                  child: Text(
+                    'Close',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildSummarySection({required String title, required Widget child}) {
@@ -2140,83 +2722,130 @@ class _SalesPageState extends State<SalesPage>
       width: double.infinity,
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade200)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title,
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
             style: GoogleFonts.poppins(
-                fontSize: 12.sp, fontWeight: FontWeight.bold, color: _text)),
-        SizedBox(height: 4.h),
-        Divider(color: Colors.grey.shade100),
-        SizedBox(height: 8.h),
-        child,
-      ]),
+              fontSize: 12.sp,
+              fontWeight: FontWeight.bold,
+              color: _text,
+            ),
+          ),
+          SizedBox(height: 4.h),
+          Divider(color: Colors.grey.shade100),
+          SizedBox(height: 8.h),
+          child,
+        ],
+      ),
     );
   }
 
   Widget _summaryActionBtn(IconData icon, String label) => Expanded(
-          child: OutlinedButton(
-        onPressed: () {},
-        style: OutlinedButton.styleFrom(
-            padding: EdgeInsets.symmetric(vertical: 10.h),
-            side: BorderSide(color: Colors.grey.shade300),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-        child: Column(children: [
+    child: OutlinedButton(
+      onPressed: () {},
+      style: OutlinedButton.styleFrom(
+        padding: EdgeInsets.symmetric(vertical: 10.h),
+        side: BorderSide(color: Colors.grey.shade300),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      child: Column(
+        children: [
           Icon(icon, size: 18, color: _text),
           SizedBox(height: 4.h),
-          Text(label, style: GoogleFonts.poppins(fontSize: 9.sp, color: _text))
-        ]),
-      ));
+          Text(
+            label,
+            style: GoogleFonts.poppins(fontSize: 9.sp, color: _text),
+          ),
+        ],
+      ),
+    ),
+  );
 
   Widget _infoCard(String label, String value, {bool isStatus = false}) =>
       Expanded(
-          child: Container(
-        padding: EdgeInsets.all(12.w),
-        decoration: BoxDecoration(
+        child: Container(
+          padding: EdgeInsets.all(12.w),
+          decoration: BoxDecoration(
             color: const Color(0xFFF8FAFC),
-            borderRadius: BorderRadius.circular(8)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label,
-              style: GoogleFonts.poppins(
-                  fontSize: 9.sp, color: _muted, fontWeight: FontWeight.w500)),
-          SizedBox(height: 4.h),
-          isStatus
-              ? Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
-                  decoration: BoxDecoration(
-                      color: const Color(0xFFDCFCE7),
-                      borderRadius: BorderRadius.circular(4)),
-                  child: Text(value,
-                      style: GoogleFonts.poppins(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: GoogleFonts.poppins(
+                  fontSize: 9.sp,
+                  color: _muted,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              SizedBox(height: 4.h),
+              isStatus
+                  ? Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 8.w,
+                        vertical: 2.h,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDCFCE7),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        value,
+                        style: GoogleFonts.poppins(
                           fontSize: 10.sp,
                           fontWeight: FontWeight.bold,
-                          color: const Color(0xFF166534))))
-              : Text(value,
-                  style: GoogleFonts.poppins(
-                      fontSize: 10.sp,
-                      fontWeight: FontWeight.bold,
-                      color: _text)),
-        ]),
-      ));
-
-  Widget _priceLine(String label, String value,
-          {bool isBold = false, Color? color}) =>
-      Padding(
-        padding: EdgeInsets.symmetric(vertical: 2.h),
-        child:
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text(label,
-              style: GoogleFonts.poppins(
-                  fontSize: isBold ? 11.sp : 10.sp,
-                  color: color ?? (isBold ? _text : _muted),
-                  fontWeight: isBold ? FontWeight.bold : FontWeight.w500)),
-          Text(value,
-              style: GoogleFonts.poppins(
-                  fontSize: isBold ? 12.sp : 10.sp,
-                  fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
-                  color: color ?? _text)),
-        ]),
+                          color: const Color(0xFF166534),
+                        ),
+                      ),
+                    )
+                  : Text(
+                      value,
+                      style: GoogleFonts.poppins(
+                        fontSize: 10.sp,
+                        fontWeight: FontWeight.bold,
+                        color: _text,
+                      ),
+                    ),
+            ],
+          ),
+        ),
       );
+
+  Widget _priceLine(
+    String label,
+    String value, {
+    bool isBold = false,
+    Color? color,
+  }) => Padding(
+    padding: EdgeInsets.symmetric(vertical: 2.h),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.poppins(
+            fontSize: isBold ? 11.sp : 10.sp,
+            color: color ?? (isBold ? _text : _muted),
+            fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+          ),
+        ),
+        Text(
+          value,
+          style: GoogleFonts.poppins(
+            fontSize: isBold ? 12.sp : 10.sp,
+            fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
+            color: color ?? _text,
+          ),
+        ),
+      ],
+    ),
+  );
 }

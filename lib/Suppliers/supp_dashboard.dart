@@ -18,7 +18,7 @@ import '../widgets/subscription_wrapper.dart';
 // ─────────────────────────────────────────────
 const Color kPrimary = Color(0xFF4A2C3C);
 const Color kPrimaryLight = Color(0xFF6B3FA0);
-const Color kBg = Color(0xFFF7F7F8);
+const Color kBg = Colors.white;
 const Color kCard = Colors.white;
 const Color kBorder = Color(0xFFE5E7EB);
 

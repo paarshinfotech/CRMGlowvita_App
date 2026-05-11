@@ -21,6 +21,7 @@ import 'vendor_model.dart';
 import 'my_Profile.dart';
 import 'widgets/staff_earnings_dialog.dart';
 import 'widgets/subscription_wrapper.dart';
+import 'Notification.dart';
 
 class Staff extends StatefulWidget {
   const Staff({Key? key}) : super(key: key);
@@ -109,12 +110,12 @@ class _StaffState extends State<Staff> {
           }
           if (commission == 0.0) {
             if (earnings['commissionDetails'] != null) {
-              commission =
-                  (earnings['commissionDetails']['rate'] ?? 0.0).toDouble();
+              commission = (earnings['commissionDetails']['rate'] ?? 0.0)
+                  .toDouble();
             } else if (earnings['summary'] != null &&
                 earnings['summary']['commissionRate'] != null) {
-              commission =
-                  (earnings['summary']['commissionRate'] ?? 0.0).toDouble();
+              commission = (earnings['summary']['commissionRate'] ?? 0.0)
+                  .toDouble();
             }
           }
         } catch (e) {
@@ -152,16 +153,19 @@ class _StaffState extends State<Staff> {
     debugPrint('=== Fetch Staff Process Completed ===');
   }
 
-  Future<void> _openAddStaff(
-      {Map<String, dynamic>? existing, int? editIndex}) async {
+  Future<void> _openAddStaff({
+    Map<String, dynamic>? existing,
+    int? editIndex,
+  }) async {
     await showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => Theme(
         data: Theme.of(ctx).copyWith(
           dialogTheme: const DialogThemeData(backgroundColor: Colors.white),
-          textTheme: GoogleFonts.poppinsTextTheme(Theme.of(ctx).textTheme)
-              .apply(fontSizeFactor: 0.9),
+          textTheme: GoogleFonts.poppinsTextTheme(
+            Theme.of(ctx).textTheme,
+          ).apply(fontSizeFactor: 0.9),
         ),
         child: AddStaffDialog(
           existing: existing?['raw'],
@@ -171,27 +175,34 @@ class _StaffState extends State<Staff> {
     );
   }
 
-
   Future<void> _deleteStaff(String staffId, String staffName) async {
-    bool confirmDelete = await showDialog(
+    bool confirmDelete =
+        await showDialog(
           context: context,
           builder: (context) {
             return AlertDialog(
-              title: Text('Confirm Delete',
-                  style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+              title: Text(
+                'Confirm Delete',
+                style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+              ),
               content: Text(
-                  'Are you sure you want to delete staff member "$staffName"? This action cannot be undone.',
-                  style: GoogleFonts.poppins(fontSize: 10)),
+                'Are you sure you want to delete staff member "$staffName"? This action cannot be undone.',
+                style: GoogleFonts.poppins(fontSize: 10),
+              ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
-                  child: Text('Cancel',
-                      style: GoogleFonts.poppins(color: Colors.grey[600])),
+                  child: Text(
+                    'Cancel',
+                    style: GoogleFonts.poppins(color: Colors.grey[600]),
+                  ),
                 ),
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(true),
-                  child: Text('Delete',
-                      style: GoogleFonts.poppins(color: Colors.red)),
+                  child: Text(
+                    'Delete',
+                    style: GoogleFonts.poppins(color: Colors.red),
+                  ),
                 ),
               ],
             );
@@ -209,7 +220,8 @@ class _StaffState extends State<Staff> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-                responseJson['message'] ?? 'Staff member deleted successfully'),
+              responseJson['message'] ?? 'Staff member deleted successfully',
+            ),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
           ),
@@ -217,8 +229,10 @@ class _StaffState extends State<Staff> {
         await fetchStaff();
       } else {
         final errorData = json.decode(response.body);
-        throw Exception(errorData['message'] ??
-            'Failed to delete staff: ${response.statusCode}');
+        throw Exception(
+          errorData['message'] ??
+              'Failed to delete staff: ${response.statusCode}',
+        );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -268,17 +282,25 @@ class _StaffState extends State<Staff> {
     list.sort((a, b) {
       switch (_sortColumn) {
         case 0:
-          return cmp(a['fullName'].toString().toLowerCase(),
-              b['fullName'].toString().toLowerCase());
+          return cmp(
+            a['fullName'].toString().toLowerCase(),
+            b['fullName'].toString().toLowerCase(),
+          );
         case 1:
-          return cmp((a['mobile'] ?? '').toString().toLowerCase(),
-              (b['mobile'] ?? '').toString().toLowerCase());
+          return cmp(
+            (a['mobile'] ?? '').toString().toLowerCase(),
+            (b['mobile'] ?? '').toString().toLowerCase(),
+          );
         case 2:
-          return cmp((a['position'] ?? '').toString().toLowerCase(),
-              (b['position'] ?? '').toString().toLowerCase());
+          return cmp(
+            (a['position'] ?? '').toString().toLowerCase(),
+            (b['position'] ?? '').toString().toLowerCase(),
+          );
         case 3:
-          return cmp((a['status'] ?? 'Active').toString().toLowerCase(),
-              (b['status'] ?? 'Active').toString().toLowerCase());
+          return cmp(
+            (a['status'] ?? 'Active').toString().toLowerCase(),
+            (b['status'] ?? 'Active').toString().toLowerCase(),
+          );
         default:
           return 0;
       }
@@ -287,12 +309,24 @@ class _StaffState extends State<Staff> {
     return list;
   }
 
+  Widget _buildInitialAvatar() {
+    return Text(
+      (_profile?.businessName ?? 'H').substring(0, 1).toUpperCase(),
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: 12.sp,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final total = staffList.length;
     final activeCount = staffList.where((s) => s['status'] == 'Active').length;
-    final commissionActiveCount =
-        staffList.where((s) => s['isCommissionEnabled'] == true).length;
+    final commissionActiveCount = staffList
+        .where((s) => s['isCommissionEnabled'] == true)
+        .length;
 
     double pendingPayoutsSum = 0;
     for (var s in staffList) {
@@ -303,62 +337,71 @@ class _StaffState extends State<Staff> {
 
     return Theme(
       data: Theme.of(context).copyWith(
-        scaffoldBackgroundColor: const Color(0xFFF8F9FA),
+        scaffoldBackgroundColor: Colors.white,
         cardColor: Colors.white,
         cardTheme: const CardThemeData(
-            color: Colors.white,
-            surfaceTintColor: Colors.white,
-            elevation: 1,
-            margin: EdgeInsets.zero),
-        textTheme: GoogleFonts.poppinsTextTheme(Theme.of(context).textTheme)
-            .apply(fontSizeFactor: 0.75),
+          color: Colors.white,
+          surfaceTintColor: Colors.white,
+          elevation: 1,
+          margin: EdgeInsets.zero,
+        ),
+        textTheme: GoogleFonts.poppinsTextTheme(
+          Theme.of(context).textTheme,
+        ).apply(fontSizeFactor: 0.75),
       ),
       child: Scaffold(
         drawer: const CustomDrawer(currentPage: 'Staff'),
         appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          titleSpacing: 0,
+          leading: Builder(
+            builder: (context) => IconButton(
+              icon: const Icon(Icons.menu, color: Colors.black),
+              onPressed: () => Scaffold.of(context).openDrawer(),
+            ),
+          ),
           title: Text(
             'Staff Management',
             style: GoogleFonts.poppins(
-                color: Colors.black,
-                fontWeight: FontWeight.w600,
-                fontSize: 12.sp),
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w700,
+              color: Colors.black,
+            ),
           ),
-          backgroundColor: Colors.white,
-          elevation: 0.5,
-          iconTheme: const IconThemeData(color: Colors.black),
-          surfaceTintColor: Colors.white,
           actions: [
             IconButton(
-                icon: const Icon(Icons.search, size: 20),
-                onPressed: () {},
-                tooltip: 'Search'),
-            IconButton(
-                icon: const Icon(Icons.refresh, size: 20),
-                onPressed: fetchStaff,
-                tooltip: 'Refresh'),
+              icon: const Icon(Icons.notifications_outlined, color: Colors.black),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NotificationPage()),
+              ),
+            ),
             GestureDetector(
               onTap: () => Navigator.push(
-                  context, MaterialPageRoute(builder: (_) => My_Profile())),
+                context,
+                MaterialPageRoute(builder: (_) => const My_Profile()),
+              ),
               child: Padding(
                 padding: EdgeInsets.only(right: 12.w),
                 child: CircleAvatar(
-                  radius: 14.r,
+                  radius: 16,
                   backgroundColor: Theme.of(context).primaryColor,
-                  backgroundImage:
-                      (_profile != null && _profile!.profileImage.isNotEmpty)
-                          ? NetworkImage(_profile!.profileImage)
-                          : null,
-                  child: (_profile == null || _profile!.profileImage.isEmpty)
-                      ? Text(
-                          (_profile?.businessName ?? 'H')
-                              .substring(0, 1)
-                              .toUpperCase(),
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10.sp,
-                              fontWeight: FontWeight.bold),
-                        )
-                      : null,
+                  child: ClipOval(
+                    child: (_profile != null && _profile!.profileImage.isNotEmpty)
+                        ? Image.network(
+                            _profile!.profileImage,
+                            width: 32,
+                            height: 32,
+                            fit: BoxFit.cover,
+                            errorBuilder: (ctx, _, __) => _buildInitialAvatar(),
+                            loadingBuilder: (ctx, child, progress) =>
+                                progress == null
+                                    ? child
+                                    : const CircularProgressIndicator(),
+                          )
+                        : _buildInitialAvatar(),
+                  ),
                 ),
               ),
             ),
@@ -383,14 +426,21 @@ class _StaffState extends State<Staff> {
                       child: TextField(
                         decoration: InputDecoration(
                           isDense: true,
-                          prefixIcon: Icon(Icons.search,
-                              size: 18, color: Colors.grey[400]),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            size: 18,
+                            color: Colors.grey[400],
+                          ),
                           hintText: 'Search by name or email....',
                           hintStyle: GoogleFonts.poppins(
-                              fontSize: 11, color: Colors.grey[400]),
+                            fontSize: 11,
+                            color: Colors.grey[400],
+                          ),
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(
-                              vertical: 12, horizontal: 12),
+                            vertical: 12,
+                            horizontal: 12,
+                          ),
                         ),
                         style: GoogleFonts.poppins(fontSize: 11),
                         onChanged: (v) => setState(() => _searchQuery = v),
@@ -412,23 +462,29 @@ class _StaffState extends State<Staff> {
                             ),
                             child: DropdownButton<String>(
                               value: _selectedPosition,
-                              icon: Icon(Icons.keyboard_arrow_down,
-                                  size: 18, color: Colors.grey[600]),
+                              icon: Icon(
+                                Icons.keyboard_arrow_down,
+                                size: 18,
+                                color: Colors.grey[600],
+                              ),
                               underline: const SizedBox(),
                               isExpanded: true,
                               style: GoogleFonts.poppins(
-                                  fontSize: 11, color: Colors.black87),
-                              items: [
-                                'All Positions',
-                                'Senior Stylist',
-                                'Junior Barber',
-                                'Manager'
-                              ].map((String value) {
-                                return DropdownMenuItem<String>(
-                                  value: value,
-                                  child: Text(value),
-                                );
-                              }).toList(),
+                                fontSize: 11,
+                                color: Colors.black87,
+                              ),
+                              items:
+                                  [
+                                    'All Positions',
+                                    'Senior Stylist',
+                                    'Junior Barber',
+                                    'Manager',
+                                  ].map((String value) {
+                                    return DropdownMenuItem<String>(
+                                      value: value,
+                                      child: Text(value),
+                                    );
+                                  }).toList(),
                               onChanged: (String? newValue) {
                                 setState(() {
                                   _selectedPosition =
@@ -450,22 +506,28 @@ class _StaffState extends State<Staff> {
                             ),
                             child: DropdownButton<String>(
                               value: _selectedCommission,
-                              icon: Icon(Icons.keyboard_arrow_down,
-                                  size: 18, color: Colors.grey[600]),
+                              icon: Icon(
+                                Icons.keyboard_arrow_down,
+                                size: 18,
+                                color: Colors.grey[600],
+                              ),
                               underline: const SizedBox(),
                               isExpanded: true,
                               style: GoogleFonts.poppins(
-                                  fontSize: 11, color: Colors.black87),
-                              items: [
-                                'All Commission',
-                                'Commission Enabled',
-                                'Commission Disabled'
-                              ].map((String value) {
-                                return DropdownMenuItem<String>(
-                                  value: value,
-                                  child: Text(value),
-                                );
-                              }).toList(),
+                                fontSize: 11,
+                                color: Colors.black87,
+                              ),
+                              items:
+                                  [
+                                    'All Commission',
+                                    'Commission Enabled',
+                                    'Commission Disabled',
+                                  ].map((String value) {
+                                    return DropdownMenuItem<String>(
+                                      value: value,
+                                      child: Text(value),
+                                    );
+                                  }).toList(),
                               onChanged: (String? newValue) {
                                 setState(() {
                                   _selectedCommission =
@@ -483,11 +545,16 @@ class _StaffState extends State<Staff> {
                               value: 'copy',
                               child: Row(
                                 children: [
-                                  Icon(Icons.copy,
-                                      size: 16, color: Colors.grey[700]),
+                                  Icon(
+                                    Icons.copy,
+                                    size: 16,
+                                    color: Colors.grey[700],
+                                  ),
                                   const SizedBox(width: 8),
-                                  Text('Copy',
-                                      style: GoogleFonts.poppins(fontSize: 11)),
+                                  Text(
+                                    'Copy',
+                                    style: GoogleFonts.poppins(fontSize: 11),
+                                  ),
                                 ],
                               ),
                             ),
@@ -495,11 +562,16 @@ class _StaffState extends State<Staff> {
                               value: 'csv',
                               child: Row(
                                 children: [
-                                  Icon(Icons.table_chart,
-                                      size: 16, color: Colors.grey[700]),
+                                  Icon(
+                                    Icons.table_chart,
+                                    size: 16,
+                                    color: Colors.grey[700],
+                                  ),
                                   const SizedBox(width: 8),
-                                  Text('CSV',
-                                      style: GoogleFonts.poppins(fontSize: 11)),
+                                  Text(
+                                    'CSV',
+                                    style: GoogleFonts.poppins(fontSize: 11),
+                                  ),
                                 ],
                               ),
                             ),
@@ -507,11 +579,16 @@ class _StaffState extends State<Staff> {
                               value: 'excel',
                               child: Row(
                                 children: [
-                                  Icon(Icons.grid_on,
-                                      size: 16, color: Colors.green[700]),
+                                  Icon(
+                                    Icons.grid_on,
+                                    size: 16,
+                                    color: Colors.green[700],
+                                  ),
                                   const SizedBox(width: 8),
-                                  Text('Excel',
-                                      style: GoogleFonts.poppins(fontSize: 11)),
+                                  Text(
+                                    'Excel',
+                                    style: GoogleFonts.poppins(fontSize: 11),
+                                  ),
                                 ],
                               ),
                             ),
@@ -519,11 +596,16 @@ class _StaffState extends State<Staff> {
                               value: 'pdf',
                               child: Row(
                                 children: [
-                                  Icon(Icons.picture_as_pdf,
-                                      size: 16, color: Colors.red[700]),
+                                  Icon(
+                                    Icons.picture_as_pdf,
+                                    size: 16,
+                                    color: Colors.red[700],
+                                  ),
                                   const SizedBox(width: 8),
-                                  Text('PDF',
-                                      style: GoogleFonts.poppins(fontSize: 11)),
+                                  Text(
+                                    'PDF',
+                                    style: GoogleFonts.poppins(fontSize: 11),
+                                  ),
                                 ],
                               ),
                             ),
@@ -531,11 +613,16 @@ class _StaffState extends State<Staff> {
                               value: 'print',
                               child: Row(
                                 children: [
-                                  Icon(Icons.print,
-                                      size: 16, color: Colors.grey[700]),
+                                  Icon(
+                                    Icons.print,
+                                    size: 16,
+                                    color: Colors.grey[700],
+                                  ),
                                   const SizedBox(width: 8),
-                                  Text('Print',
-                                      style: GoogleFonts.poppins(fontSize: 11)),
+                                  Text(
+                                    'Print',
+                                    style: GoogleFonts.poppins(fontSize: 11),
+                                  ),
                                 ],
                               ),
                             ),
@@ -551,19 +638,26 @@ class _StaffState extends State<Staff> {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.upload_outlined,
-                                    size: 16, color: Colors.black54),
+                                Icon(
+                                  Icons.upload_outlined,
+                                  size: 16,
+                                  color: Colors.black54,
+                                ),
                                 const SizedBox(width: 8),
                                 Text(
                                   'Export',
                                   style: GoogleFonts.poppins(
-                                      fontSize: 11,
-                                      color: Colors.black87,
-                                      fontWeight: FontWeight.w500),
+                                    fontSize: 11,
+                                    color: Colors.black87,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                                 const SizedBox(width: 4),
-                                Icon(Icons.keyboard_arrow_down,
-                                    size: 16, color: Colors.black38),
+                                Icon(
+                                  Icons.keyboard_arrow_down,
+                                  size: 16,
+                                  color: Colors.black38,
+                                ),
                               ],
                             ),
                           ),
@@ -629,49 +723,59 @@ class _StaffState extends State<Staff> {
                   child: isLoading
                       ? const Center(child: CircularProgressIndicator())
                       : (errorMessage != null)
-                          ? Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(errorMessage!,
-                                      style: GoogleFonts.poppins(
-                                          color: Colors.red, fontSize: 9)),
-                                  const SizedBox(height: 10),
-                                  ElevatedButton(
-                                      onPressed: fetchStaff,
-                                      child: Text('Retry',
-                                          style: GoogleFonts.poppins(
-                                              fontSize: 9))),
-                                ],
-                              ),
-                            )
-                          : rows.isEmpty
-                              ? Center(
-                                  child: Text('No staff found.',
-                                      style: GoogleFonts.poppins(
-                                          color: Colors.grey[600],
-                                          fontSize: 9)))
-                              : ListView.separated(
-                                  itemCount: rows.length,
-                                  separatorBuilder: (_, __) =>
-                                      const SizedBox(height: 8),
-                                  itemBuilder: (context, idx) {
-                                    final s = rows[idx];
-                                    final actualIndex = staffList.indexOf(s);
-
-                                    return _StaffCard(
-                                      staff: s,
-                                      onEdit: () => _openAddStaff(
-                                          existing: s, editIndex: actualIndex),
-                                      onDelete: () =>
-                                          _deleteStaff(s['id'], s['fullName']),
-                                      onViewEarnings: () =>
-                                          _showEarningsDialog(s),
-                                      onSendCredentials: () =>
-                                          _sendCredentials(s),
-                                    );
-                                  },
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                errorMessage!,
+                                style: GoogleFonts.poppins(
+                                  color: Colors.red,
+                                  fontSize: 9,
                                 ),
+                              ),
+                              const SizedBox(height: 10),
+                              ElevatedButton(
+                                onPressed: fetchStaff,
+                                child: Text(
+                                  'Retry',
+                                  style: GoogleFonts.poppins(fontSize: 9),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : rows.isEmpty
+                      ? Center(
+                          child: Text(
+                            'No staff found.',
+                            style: GoogleFonts.poppins(
+                              color: Colors.grey[600],
+                              fontSize: 9,
+                            ),
+                          ),
+                        )
+                      : ListView.separated(
+                          itemCount: rows.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 8),
+                          itemBuilder: (context, idx) {
+                            final s = rows[idx];
+                            final actualIndex = staffList.indexOf(s);
+
+                            return _StaffCard(
+                              staff: s,
+                              onEdit: () => _openAddStaff(
+                                existing: s,
+                                editIndex: actualIndex,
+                              ),
+                              onDelete: () =>
+                                  _deleteStaff(s['id'], s['fullName']),
+                              onViewEarnings: () => _showEarningsDialog(s),
+                              onSendCredentials: () => _sendCredentials(s),
+                            );
+                          },
+                        ),
                 ),
               ],
             ),
@@ -683,7 +787,10 @@ class _StaffState extends State<Staff> {
           label: Text(
             'Add Staff',
             style: GoogleFonts.poppins(
-                color: Colors.white, fontSize: 10, fontWeight: FontWeight.w500),
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+            ),
           ),
           icon: const Icon(Icons.add, color: Colors.white, size: 18),
         ),
@@ -704,8 +811,10 @@ class _StaffState extends State<Staff> {
     if (staffId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Staff ID not found.',
-              style: GoogleFonts.poppins(fontSize: 10)),
+          content: Text(
+            'Staff ID not found.',
+            style: GoogleFonts.poppins(fontSize: 10),
+          ),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
@@ -729,8 +838,10 @@ class _StaffState extends State<Staff> {
             children: [
               const CircularProgressIndicator(),
               const SizedBox(height: 12),
-              Text('Sending credentials...',
-                  style: GoogleFonts.poppins(fontSize: 12)),
+              Text(
+                'Sending credentials...',
+                style: GoogleFonts.poppins(fontSize: 12),
+              ),
             ],
           ),
         ),
@@ -760,8 +871,10 @@ class _StaffState extends State<Staff> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content:
-                Text('Error: $e', style: GoogleFonts.poppins(fontSize: 10)),
+            content: Text(
+              'Error: $e',
+              style: GoogleFonts.poppins(fontSize: 10),
+            ),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -794,11 +907,13 @@ class _StaffState extends State<Staff> {
     try {
       StringBuffer buffer = StringBuffer();
       buffer.writeln(
-          'Name\tEmail\tMobile\tPosition\tStatus\tCommission Rate\tBalance');
+        'Name\tEmail\tMobile\tPosition\tStatus\tCommission Rate\tBalance',
+      );
 
       for (var staff in _filteredStaff) {
         buffer.writeln(
-            '${staff['fullName']}\t${staff['email']}\t${staff['mobile']}\t${staff['position']}\t${staff['status']}\t${staff['commissionRate']?.toStringAsFixed(1) ?? '0'}%\t₹${staff['balance']?.toStringAsFixed(2) ?? '0.00'}');
+          '${staff['fullName']}\t${staff['email']}\t${staff['mobile']}\t${staff['position']}\t${staff['status']}\t${staff['commissionRate']?.toStringAsFixed(1) ?? '0'}%\t₹${staff['balance']?.toStringAsFixed(2) ?? '0.00'}',
+        );
       }
 
       await Clipboard.setData(ClipboardData(text: buffer.toString()));
@@ -807,8 +922,9 @@ class _StaffState extends State<Staff> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-                '${_filteredStaff.length} staff members copied to clipboard!',
-                style: GoogleFonts.poppins(fontSize: 10)),
+              '${_filteredStaff.length} staff members copied to clipboard!',
+              style: GoogleFonts.poppins(fontSize: 10),
+            ),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 2),
@@ -820,8 +936,10 @@ class _StaffState extends State<Staff> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to copy: $e',
-                style: GoogleFonts.poppins(fontSize: 10)),
+            content: Text(
+              'Failed to copy: $e',
+              style: GoogleFonts.poppins(fontSize: 10),
+            ),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -842,7 +960,7 @@ class _StaffState extends State<Staff> {
         'Position',
         'Status',
         'Commission Rate (%)',
-        'Balance (₹)'
+        'Balance (₹)',
       ]);
 
       // Data rows
@@ -871,8 +989,10 @@ class _StaffState extends State<Staff> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('CSV exported successfully!',
-                style: GoogleFonts.poppins(fontSize: 10)),
+            content: Text(
+              'CSV exported successfully!',
+              style: GoogleFonts.poppins(fontSize: 10),
+            ),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
             action: SnackBarAction(
@@ -892,8 +1012,10 @@ class _StaffState extends State<Staff> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to export CSV: $e',
-                style: GoogleFonts.poppins(fontSize: 10)),
+            content: Text(
+              'Failed to export CSV: $e',
+              style: GoogleFonts.poppins(fontSize: 10),
+            ),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -932,11 +1054,12 @@ class _StaffState extends State<Staff> {
         'Position',
         'Status',
         'Commission Rate (%)',
-        'Balance (₹)'
+        'Balance (₹)',
       ];
       for (int i = 0; i < headers.length; i++) {
-        var cell = sheetObject
-            .cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0));
+        var cell = sheetObject.cell(
+          CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0),
+        );
         cell.value = TextCellValue(headers[i]);
         cell.cellStyle = headerStyle;
       }
@@ -948,34 +1071,53 @@ class _StaffState extends State<Staff> {
 
         sheetObject
             .cell(
-                CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
-            .value = TextCellValue(staff['fullName'] ?? '');
+              CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex),
+            )
+            .value = TextCellValue(
+          staff['fullName'] ?? '',
+        );
         sheetObject
             .cell(
-                CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex))
-            .value = TextCellValue(staff['email'] ?? '');
+              CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex),
+            )
+            .value = TextCellValue(
+          staff['email'] ?? '',
+        );
         sheetObject
             .cell(
-                CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex))
-            .value = TextCellValue(staff['mobile'] ?? '');
+              CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex),
+            )
+            .value = TextCellValue(
+          staff['mobile'] ?? '',
+        );
         sheetObject
             .cell(
-                CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex))
-            .value = TextCellValue(staff['position'] ?? '');
+              CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex),
+            )
+            .value = TextCellValue(
+          staff['position'] ?? '',
+        );
         sheetObject
             .cell(
-                CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex))
-            .value = TextCellValue(staff['status'] ?? 'Active');
+              CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex),
+            )
+            .value = TextCellValue(
+          staff['status'] ?? 'Active',
+        );
         sheetObject
-                .cell(CellIndex.indexByColumnRow(
-                    columnIndex: 5, rowIndex: rowIndex))
-                .value =
-            TextCellValue(staff['commissionRate']?.toStringAsFixed(1) ?? '0');
+            .cell(
+              CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex),
+            )
+            .value = TextCellValue(
+          staff['commissionRate']?.toStringAsFixed(1) ?? '0',
+        );
         sheetObject
-                .cell(CellIndex.indexByColumnRow(
-                    columnIndex: 6, rowIndex: rowIndex))
-                .value =
-            TextCellValue(staff['balance']?.toStringAsFixed(2) ?? '0.00');
+            .cell(
+              CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: rowIndex),
+            )
+            .value = TextCellValue(
+          staff['balance']?.toStringAsFixed(2) ?? '0.00',
+        );
       }
 
       // Save file
@@ -992,8 +1134,10 @@ class _StaffState extends State<Staff> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Excel exported successfully!',
-                  style: GoogleFonts.poppins(fontSize: 10)),
+              content: Text(
+                'Excel exported successfully!',
+                style: GoogleFonts.poppins(fontSize: 10),
+              ),
               backgroundColor: Colors.green,
               behavior: SnackBarBehavior.floating,
               action: SnackBarAction(
@@ -1014,8 +1158,10 @@ class _StaffState extends State<Staff> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to export Excel: $e',
-                style: GoogleFonts.poppins(fontSize: 10)),
+            content: Text(
+              'Failed to export Excel: $e',
+              style: GoogleFonts.poppins(fontSize: 10),
+            ),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -1051,13 +1197,17 @@ class _StaffState extends State<Staff> {
               // Summary info
               pw.Text(
                 'Generated on: ${DateTime.now().toString().split('.')[0]}',
-                style:
-                    const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
+                style: const pw.TextStyle(
+                  fontSize: 10,
+                  color: PdfColors.grey700,
+                ),
               ),
               pw.Text(
                 'Total Staff: ${_filteredStaff.length}',
-                style:
-                    const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
+                style: const pw.TextStyle(
+                  fontSize: 10,
+                  color: PdfColors.grey700,
+                ),
               ),
               pw.SizedBox(height: 20),
 
@@ -1090,7 +1240,7 @@ class _StaffState extends State<Staff> {
                   'Position',
                   'Status',
                   'Commission %',
-                  'Balance'
+                  'Balance',
                 ],
                 data: _filteredStaff.map((staff) {
                   return [
@@ -1120,8 +1270,10 @@ class _StaffState extends State<Staff> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('PDF exported successfully!',
-                style: GoogleFonts.poppins(fontSize: 10)),
+            content: Text(
+              'PDF exported successfully!',
+              style: GoogleFonts.poppins(fontSize: 10),
+            ),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
             action: SnackBarAction(
@@ -1141,8 +1293,10 @@ class _StaffState extends State<Staff> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to export PDF: $e',
-                style: GoogleFonts.poppins(fontSize: 10)),
+            content: Text(
+              'Failed to export PDF: $e',
+              style: GoogleFonts.poppins(fontSize: 10),
+            ),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -1180,12 +1334,16 @@ class _StaffState extends State<Staff> {
                   pw.Text(
                     'Generated on: ${DateTime.now().toString().split('.')[0]}',
                     style: const pw.TextStyle(
-                        fontSize: 10, color: PdfColors.grey700),
+                      fontSize: 10,
+                      color: PdfColors.grey700,
+                    ),
                   ),
                   pw.Text(
                     'Total Staff: ${_filteredStaff.length}',
                     style: const pw.TextStyle(
-                        fontSize: 10, color: PdfColors.grey700),
+                      fontSize: 10,
+                      color: PdfColors.grey700,
+                    ),
                   ),
                   pw.SizedBox(height: 20),
 
@@ -1218,7 +1376,7 @@ class _StaffState extends State<Staff> {
                       'Position',
                       'Status',
                       'Commission %',
-                      'Balance'
+                      'Balance',
                     ],
                     data: _filteredStaff.map((staff) {
                       return [
@@ -1244,8 +1402,10 @@ class _StaffState extends State<Staff> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Print dialog opened',
-                style: GoogleFonts.poppins(fontSize: 10)),
+            content: Text(
+              'Print dialog opened',
+              style: GoogleFonts.poppins(fontSize: 10),
+            ),
             backgroundColor: Colors.blue,
             behavior: SnackBarBehavior.floating,
           ),
@@ -1256,8 +1416,10 @@ class _StaffState extends State<Staff> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to print: $e',
-                style: GoogleFonts.poppins(fontSize: 10)),
+            content: Text(
+              'Failed to print: $e',
+              style: GoogleFonts.poppins(fontSize: 10),
+            ),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -1387,7 +1549,8 @@ class _StaffCard extends StatelessWidget {
                 radius: 22,
                 backgroundColor: Colors.grey[200],
                 backgroundImage: _StaffState._getImageProvider(staff['image']),
-                child: (staff['image'] == null ||
+                child:
+                    (staff['image'] == null ||
                         staff['image'].toString().isEmpty)
                     ? Text(
                         staff['firstName'].toString().isNotEmpty
@@ -1434,8 +1597,10 @@ class _StaffCard extends StatelessWidget {
 
               // Status Badge
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: isActive ? Colors.green[50] : Colors.grey[200],
                   borderRadius: BorderRadius.circular(12),
@@ -1485,8 +1650,11 @@ class _StaffCard extends StatelessWidget {
                         border: Border.all(color: Colors.grey[300]!),
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      child: Icon(Icons.edit_outlined,
-                          size: 16, color: Colors.grey[700]),
+                      child: Icon(
+                        Icons.edit_outlined,
+                        size: 16,
+                        color: Colors.grey[700],
+                      ),
                     ),
                   ),
                   const SizedBox(width: 6),
@@ -1498,8 +1666,11 @@ class _StaffCard extends StatelessWidget {
                         border: Border.all(color: Colors.grey[300]!),
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      child: Icon(Icons.currency_rupee,
-                          size: 16, color: Colors.green[700]),
+                      child: Icon(
+                        Icons.currency_rupee,
+                        size: 16,
+                        color: Colors.green[700],
+                      ),
                     ),
                   ),
                   const SizedBox(width: 6),
@@ -1512,8 +1683,11 @@ class _StaffCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(4),
                         color: Colors.blue[50],
                       ),
-                      child: Icon(Icons.email_outlined,
-                          size: 16, color: Colors.blue[700]),
+                      child: Icon(
+                        Icons.email_outlined,
+                        size: 16,
+                        color: Colors.blue[700],
+                      ),
                     ),
                   ),
                   const SizedBox(width: 6),
@@ -1525,8 +1699,11 @@ class _StaffCard extends StatelessWidget {
                         border: Border.all(color: Colors.grey[300]!),
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      child: Icon(Icons.delete_outline,
-                          size: 16, color: Colors.red[700]),
+                      child: Icon(
+                        Icons.delete_outline,
+                        size: 16,
+                        color: Colors.red[700],
+                      ),
                     ),
                   ),
                 ],

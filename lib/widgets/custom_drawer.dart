@@ -27,6 +27,7 @@ import '../add_ons.dart';
 import '../wedding_packages.dart';
 import '../vendor_model.dart';
 import '../services/api_service.dart';
+import '../marketing.dart';
 
 // Drawer implementation for the app
 class CustomDrawer extends StatefulWidget {
@@ -435,7 +436,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                       icon: Icons.campaign_outlined,
                       title: 'Marketing',
                       isSelected: widget.currentPage == 'Marketing',
-                      onTap: () {},
+                      onTap: () => _navigateTo(context, const MarketingPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),

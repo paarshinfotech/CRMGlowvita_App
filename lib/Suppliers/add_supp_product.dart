@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/api_service.dart';
+import 'dart:convert';
 
 class AddSuppProductPage extends StatefulWidget {
   final Map<String, dynamic>? existingProduct;
@@ -160,6 +161,13 @@ class _AddSuppProductPageState extends State<AddSuppProductPage> {
     });
   }
 
+  Future<String> _imageToBase64(File imageFile) async {
+    final bytes = await imageFile.readAsBytes();
+    final extension = imageFile.path.split('.').last.toLowerCase();
+    final mimeType = extension == 'png' ? 'image/png' : 'image/jpeg';
+    return 'data:$mimeType;base64,${base64Encode(bytes)}';
+  }
+
   void _showAddCategoryDialog() {
     final nameController = TextEditingController();
     final descController = TextEditingController();
@@ -263,15 +271,14 @@ class _AddSuppProductPageState extends State<AddSuppProductPage> {
       );
       final categoryName = categoryMap['name'] ?? selectedCategoryId;
 
-      // Filter images into existing URLs and new local files
-      final List<String> existingImageUrls = [];
-      final List<String> newLocalImagePaths = [];
+      // Convert new local images to base64 and combine with existing URLs
+      final List<String> finalImages = [];
 
       for (var img in images) {
         if (img.path.startsWith('http')) {
-          existingImageUrls.add(img.path);
+          finalImages.add(img.path);
         } else {
-          newLocalImagePaths.add(img.path);
+          finalImages.add(await _imageToBase64(File(img.path)));
         }
       }
 
@@ -295,24 +302,12 @@ class _AddSuppProductPageState extends State<AddSuppProductPage> {
             .toList(),
         'showOnWebsite': _showOnWebsite,
         'isActive': _showOnWebsite,
+        'productImages': finalImages,
       };
-
-      // Only add productImages field if there are existing URLs to preserve
-      // If none, we let the Multipart file fields handle it or send an empty array if creating
-      if (existingImageUrls.isNotEmpty) {
-        productData['productImages'] = existingImageUrls;
-      } else if (newLocalImagePaths.isEmpty) {
-        // If both are empty, send an empty array to clear images
-        productData['productImages'] = [];
-      } else if (widget.existingProduct != null && existingImageUrls.isEmpty) {
-        // Explicitly clear existing images if they were all removed
-        productData['productImages'] = [];
-      }
 
       bool success;
       if (widget.existingProduct == null) {
-        success = await ApiService.createProduct(productData,
-            imagePaths: newLocalImagePaths);
+        success = await ApiService.createProduct(productData);
         if (success && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -324,8 +319,7 @@ class _AddSuppProductPageState extends State<AddSuppProductPage> {
       } else {
         final id =
             widget.existingProduct!['_id'] ?? widget.existingProduct!['id'];
-        success = await ApiService.updateProduct(id.toString(), productData,
-            imagePaths: newLocalImagePaths);
+        success = await ApiService.updateProduct(id.toString(), productData);
         if (success && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -364,7 +358,7 @@ class _AddSuppProductPageState extends State<AddSuppProductPage> {
         elevation: 0,
         foregroundColor: Colors.black,
       ),
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: Colors.white,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(12),
         child: Column(

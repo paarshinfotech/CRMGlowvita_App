@@ -7,6 +7,8 @@ import '../customer_model.dart';
 import '../services/api_service.dart';
 import '../supplier_model.dart';
 import '../widgets/subscription_wrapper.dart';
+import 'supp_notifications.dart';
+import 'supp_profile.dart';
 import 'dart:async';
 
 class SuppSalesPage extends StatefulWidget {
@@ -61,6 +63,27 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
       }
     });
     _fetchData();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final p = await ApiService.getSupplierProfile();
+      if (mounted) setState(() => supplierProfile = p);
+    } catch (e) {
+      debugPrint('fetchProfile: $e');
+    }
+  }
+
+  Widget _buildInitialAvatar() {
+    return Text(
+      (supplierProfile?.shopName ?? 'S').substring(0, 1).toUpperCase(),
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: 12.sp,
+        fontWeight: FontWeight.bold,
+      ),
+    );
   }
 
   Future<void> _fetchData() async {
@@ -97,10 +120,12 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
   List<Product> get filteredProducts {
     return products.where((p) {
       final q = productSearchQuery.toLowerCase();
-      final matchesSearch = q.isEmpty ||
+      final matchesSearch =
+          q.isEmpty ||
           (p.productName?.toLowerCase().contains(q) ?? false) ||
           (p.category?.toLowerCase().contains(q) ?? false);
-      final matchesCategory = selectedProductCategory == 'All' ||
+      final matchesCategory =
+          selectedProductCategory == 'All' ||
           p.category == selectedProductCategory;
       return matchesSearch && matchesCategory;
     }).toList();
@@ -126,9 +151,9 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
 
   // ── Billing Helpers ───────────────────────────────────────────────────────────
   double get subtotal => selectedItems.fold(
-      0.0,
-      (sum, item) =>
-          sum + (item['price'] as double) * (item['quantity'] as int));
+    0.0,
+    (sum, item) => sum + (item['price'] as double) * (item['quantity'] as int),
+  );
 
   double get tax => subtotal * (profileTaxRate / 100);
   double get total => subtotal + tax;
@@ -140,19 +165,22 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
   void _addItemToBilling(Product p) {
     if (selectedItems.any((i) => i['sourceId'] == p.id)) return;
     if (p.stock == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('This product is out of stock'),
-        backgroundColor: Colors.red,
-        duration: Duration(seconds: 2),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This product is out of stock'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
       return;
     }
 
     setState(() {
-      final price = ((p.salePrice != null && p.salePrice! > 0)
-              ? p.salePrice!
-              : (p.price ?? 0))
-          .toDouble();
+      final price =
+          ((p.salePrice != null && p.salePrice! > 0)
+                  ? p.salePrice!
+                  : (p.price ?? 0))
+              .toDouble();
 
       selectedItems.add({
         'id': DateTime.now().millisecondsSinceEpoch,
@@ -197,138 +225,212 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => Dialog(
           backgroundColor: Colors.white,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           child: Container(
             width: 450,
             padding: EdgeInsets.all(24.w),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Payment Options',
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Payment Options',
                       style: GoogleFonts.poppins(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: _text)),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 20),
-                    onPressed:
-                        isProcessing ? null : () => Navigator.pop(context),
-                  ),
-                ],
-              ),
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: _text,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 20),
+                      onPressed: isProcessing
+                          ? null
+                          : () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
 
-              SizedBox(height: 8.h),
-              Text('Total Amount: ₹${total.toStringAsFixed(2)}',
+                SizedBox(height: 8.h),
+                Text(
+                  'Total Amount: ₹${total.toStringAsFixed(2)}',
                   style: GoogleFonts.poppins(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF635B63))),
-              SizedBox(height: 24.h),
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF635B63),
+                  ),
+                ),
+                SizedBox(height: 24.h),
 
-              // Save Order button (processes via createBilling API)
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: isProcessing
-                      ? null
-                      : () async {
-                          if (selectedClient == null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
+                // Save Order button (processes via createBilling API)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: isProcessing
+                        ? null
+                        : () async {
+                            if (selectedClient == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                    content:
-                                        Text('Please select a client first')));
-                            return;
-                          }
-                          setDialogState(() => isProcessing = true);
-                          await _processSale(
+                                  content: Text('Please select a client first'),
+                                ),
+                              );
+                              return;
+                            }
+                            setDialogState(() => isProcessing = true);
+                            await _processSale(
                               selectedMethod ?? 'Cash',
                               context,
                               setDialogState,
-                              () => setDialogState(() => isProcessing = false));
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _primaryDark,
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: 16.h),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8)),
+                              () => setDialogState(() => isProcessing = false),
+                            );
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _primaryDark,
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(vertical: 16.h),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: isProcessing
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Text(
+                            'Save Order',
+                            style: GoogleFonts.poppins(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                   ),
-                  child: isProcessing
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2))
-                      : Text('Save Order',
-                          style: GoogleFonts.poppins(
-                              fontSize: 15, fontWeight: FontWeight.w600)),
                 ),
-              ),
 
-              SizedBox(height: 24.h),
-              Row(children: [
-                const Expanded(child: Divider()),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.w),
-                  child: Text('PAYMENT METHODS',
-                      style: GoogleFonts.poppins(
+                SizedBox(height: 24.h),
+                Row(
+                  children: [
+                    const Expanded(child: Divider()),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16.w),
+                      child: Text(
+                        'PAYMENT METHODS',
+                        style: GoogleFonts.poppins(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                           color: const Color(0xFF7C8BA1),
-                          letterSpacing: 0.5)),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                    const Expanded(child: Divider()),
+                  ],
                 ),
-                const Expanded(child: Divider()),
-              ]),
-              SizedBox(height: 24.h),
+                SizedBox(height: 24.h),
 
-              // Payment method buttons — tap selects AND submits
-              Wrap(spacing: 12, runSpacing: 12, children: [
-                _paymentMethodButton(
-                    'Cash', Icons.money, setDialogState, selectedMethod, (m) {
-                  selectedMethod = m;
-                  setDialogState(() {});
-                  _processSale(m, context, setDialogState,
-                      () => setDialogState(() => isProcessing = false));
-                }),
-                _paymentMethodButton(
-                    'QR Code', Icons.qr_code, setDialogState, selectedMethod,
-                    (m) {
-                  selectedMethod = m;
-                  setDialogState(() {});
-                  _processSale(m, context, setDialogState,
-                      () => setDialogState(() => isProcessing = false));
-                }),
-                _paymentMethodButton('Debit Card', Icons.credit_card,
-                    setDialogState, selectedMethod, (m) {
-                  selectedMethod = m;
-                  setDialogState(() {});
-                  _processSale(m, context, setDialogState,
-                      () => setDialogState(() => isProcessing = false));
-                }),
-                _paymentMethodButton('Credit Card', Icons.credit_card,
-                    setDialogState, selectedMethod, (m) {
-                  selectedMethod = m;
-                  setDialogState(() {});
-                  _processSale(m, context, setDialogState,
-                      () => setDialogState(() => isProcessing = false));
-                }),
-                _paymentMethodButton('Net Banking', Icons.account_balance,
-                    setDialogState, selectedMethod, (m) {
-                  selectedMethod = m;
-                  setDialogState(() {});
-                  _processSale(m, context, setDialogState,
-                      () => setDialogState(() => isProcessing = false));
-                }),
-              ]),
+                // Payment method buttons — tap selects AND submits
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    _paymentMethodButton(
+                      'Cash',
+                      Icons.money,
+                      setDialogState,
+                      selectedMethod,
+                      (m) {
+                        selectedMethod = m;
+                        setDialogState(() {});
+                        _processSale(
+                          m,
+                          context,
+                          setDialogState,
+                          () => setDialogState(() => isProcessing = false),
+                        );
+                      },
+                    ),
+                    _paymentMethodButton(
+                      'QR Code',
+                      Icons.qr_code,
+                      setDialogState,
+                      selectedMethod,
+                      (m) {
+                        selectedMethod = m;
+                        setDialogState(() {});
+                        _processSale(
+                          m,
+                          context,
+                          setDialogState,
+                          () => setDialogState(() => isProcessing = false),
+                        );
+                      },
+                    ),
+                    _paymentMethodButton(
+                      'Debit Card',
+                      Icons.credit_card,
+                      setDialogState,
+                      selectedMethod,
+                      (m) {
+                        selectedMethod = m;
+                        setDialogState(() {});
+                        _processSale(
+                          m,
+                          context,
+                          setDialogState,
+                          () => setDialogState(() => isProcessing = false),
+                        );
+                      },
+                    ),
+                    _paymentMethodButton(
+                      'Credit Card',
+                      Icons.credit_card,
+                      setDialogState,
+                      selectedMethod,
+                      (m) {
+                        selectedMethod = m;
+                        setDialogState(() {});
+                        _processSale(
+                          m,
+                          context,
+                          setDialogState,
+                          () => setDialogState(() => isProcessing = false),
+                        );
+                      },
+                    ),
+                    _paymentMethodButton(
+                      'Net Banking',
+                      Icons.account_balance,
+                      setDialogState,
+                      selectedMethod,
+                      (m) {
+                        selectedMethod = m;
+                        setDialogState(() {});
+                        _processSale(
+                          m,
+                          context,
+                          setDialogState,
+                          () => setDialogState(() => isProcessing = false),
+                        );
+                      },
+                    ),
+                  ],
+                ),
 
-              if (isProcessing) ...[
-                SizedBox(height: 20.h),
-                const CircularProgressIndicator(color: _primary),
+                if (isProcessing) ...[
+                  SizedBox(height: 20.h),
+                  const CircularProgressIndicator(color: _primary),
+                ],
               ],
-            ]),
+            ),
           ),
         ),
       ),
@@ -362,11 +464,14 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
           children: [
             Icon(icon, size: 22, color: isSelected ? _primaryDark : _muted),
             SizedBox(height: 6.h),
-            Text(label,
-                style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: isSelected ? _primaryDark : _text)),
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? _primaryDark : _text,
+              ),
+            ),
           ],
         ),
       ),
@@ -382,7 +487,8 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
   ) async {
     if (selectedClient == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select a client first')));
+        const SnackBar(content: Text('Please select a client first')),
+      );
       return;
     }
 
@@ -403,15 +509,17 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
         "platformFee": 0,
         "totalAmount": total,
         "items": selectedItems
-            .map((item) => {
-                  "itemId": item['sourceId'],
-                  "itemType": "Product",
-                  "name": item['name'],
-                  "price": item['price'],
-                  "quantity": item['quantity'],
-                  "totalPrice":
-                      (item['price'] as num) * (item['quantity'] as num),
-                })
+            .map(
+              (item) => {
+                "itemId": item['sourceId'],
+                "itemType": "Product",
+                "name": item['name'],
+                "price": item['price'],
+                "quantity": item['quantity'],
+                "totalPrice":
+                    (item['price'] as num) * (item['quantity'] as num),
+              },
+            )
             .toList(),
         "status": "Paid",
         "billingDate": DateTime.now().toIso8601String(),
@@ -426,9 +534,12 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
             content: Text('Error saving order: $e'),
-            backgroundColor: Colors.red));
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } finally {
       onFinally();
@@ -437,7 +548,9 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
 
   // ── Invoice Summary Dialog ────────────────────────────────────────────────────
   void _showInvoiceSummaryDialog(
-      BuildContext context, Map<String, dynamic> data) {
+    BuildContext context,
+    Map<String, dynamic> data,
+  ) {
     final dateFormat = DateFormat('EEE, MMM dd, yyyy');
     final createdAt =
         DateTime.tryParse(data['createdAt'] ?? '') ?? DateTime.now();
@@ -459,20 +572,25 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               // Title row
-              Row(children: [
-                Text('Invoice Summary',
+              Row(
+                children: [
+                  Text(
+                    'Invoice Summary',
                     style: GoogleFonts.poppins(
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.bold,
-                        color: _text)),
-                const Spacer(),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: Icon(Icons.close, color: _muted, size: 16.sp),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-              ]),
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.bold,
+                      color: _text,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: Icon(Icons.close, color: _muted, size: 16.sp),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
               Divider(color: Colors.grey.shade100, height: 12.h),
 
               // Scrollable body
@@ -485,10 +603,9 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
                       Container(
                         padding: EdgeInsets.all(12.w),
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(colors: [
-                            Color(0xFF2E5BFF),
-                            Color(0xFF1B3BBE),
-                          ]),
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF2E5BFF), Color(0xFF1B3BBE)],
+                          ),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Column(
@@ -497,23 +614,31 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(data['invoiceNumber'] ?? 'N/A',
-                                    style: GoogleFonts.poppins(
-                                        fontSize: 13.sp,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white)),
+                                Text(
+                                  data['invoiceNumber'] ?? 'N/A',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
                                 Container(
                                   padding: EdgeInsets.symmetric(
-                                      horizontal: 6.w, vertical: 2.h),
+                                    horizontal: 6.w,
+                                    vertical: 2.h,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: const Color(0xFF22C55E),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
-                                  child: Text(data['status'] ?? 'Paid',
-                                      style: GoogleFonts.poppins(
-                                          fontSize: 8.sp,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.white)),
+                                  child: Text(
+                                    data['status'] ?? 'Paid',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 8.sp,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
@@ -521,8 +646,9 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
                             Text(
                               'Saved on ${dateFormat.format(createdAt)} at $vendorName',
                               style: GoogleFonts.poppins(
-                                  fontSize: 9.sp,
-                                  color: Colors.white.withOpacity(0.9)),
+                                fontSize: 9.sp,
+                                color: Colors.white.withOpacity(0.9),
+                              ),
                             ),
                           ],
                         ),
@@ -533,33 +659,54 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
                       // ── Quick Actions ─────────────────────────────────
                       _buildSummarySection(
                         title: 'Quick Actions',
-                        child: Column(children: [
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              onPressed: () {},
-                              style: ElevatedButton.styleFrom(
+                        child: Column(
+                          children: [
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: () {},
+                                style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFF43303F),
                                   padding: EdgeInsets.symmetric(vertical: 8.h),
                                   shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(6))),
-                              icon: const Icon(Icons.calendar_today,
-                                  size: 12, color: Colors.white),
-                              label: Text('Rebook Client',
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                ),
+                                icon: const Icon(
+                                  Icons.calendar_today,
+                                  size: 12,
+                                  color: Colors.white,
+                                ),
+                                label: Text(
+                                  'Rebook Client',
                                   style: GoogleFonts.poppins(
-                                      color: Colors.white, fontSize: 11.sp)),
+                                    color: Colors.white,
+                                    fontSize: 11.sp,
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
-                          SizedBox(height: 8.h),
-                          Row(children: [
-                            _summaryActionBtn(Icons.email_outlined, 'Email'),
-                            SizedBox(width: 6.w),
-                            _summaryActionBtn(Icons.print_outlined, 'Print'),
-                            SizedBox(width: 6.w),
-                            _summaryActionBtn(
-                                Icons.download_outlined, 'Download'),
-                          ]),
-                        ]),
+                            SizedBox(height: 8.h),
+                            Row(
+                              children: [
+                                _summaryActionBtn(
+                                  Icons.email_outlined,
+                                  'Email',
+                                ),
+                                SizedBox(width: 6.w),
+                                _summaryActionBtn(
+                                  Icons.print_outlined,
+                                  'Print',
+                                ),
+                                SizedBox(width: 6.w),
+                                _summaryActionBtn(
+                                  Icons.download_outlined,
+                                  'Download',
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
 
                       SizedBox(height: 12.h),
@@ -567,40 +714,50 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
                       // ── Client Information ────────────────────────────
                       _buildSummarySection(
                         title: 'Client Information',
-                        child: Row(children: [
-                          Container(
-                            padding: EdgeInsets.all(8.w),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade50,
-                              borderRadius: BorderRadius.circular(8),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(8.w),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.person_outline,
+                                color: _muted,
+                                size: 18,
+                              ),
                             ),
-                            child: Icon(Icons.person_outline,
-                                color: _muted, size: 18),
-                          ),
-                          SizedBox(width: 10.w),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
+                            SizedBox(width: 10.w),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
                                     clientInfo['fullName'] ??
                                         selectedClient?.fullName ??
                                         'N/A',
                                     style: GoogleFonts.poppins(
-                                        fontSize: 12.sp,
-                                        fontWeight: FontWeight.w600,
-                                        color: _text)),
-                                Text(
+                                      fontSize: 12.sp,
+                                      fontWeight: FontWeight.w600,
+                                      color: _text,
+                                    ),
+                                  ),
+                                  Text(
                                     '${clientInfo['phone'] ?? selectedClient?.mobile ?? 'N/A'}'
                                     '${(clientInfo['email'] ?? selectedClient?.email ?? '').isNotEmpty ? ' • ${clientInfo['email'] ?? selectedClient?.email}' : ''}',
                                     style: GoogleFonts.poppins(
-                                        fontSize: 10.sp, color: _muted),
+                                      fontSize: 10.sp,
+                                      color: _muted,
+                                    ),
                                     maxLines: 1,
-                                    overflow: TextOverflow.ellipsis),
-                              ],
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ]),
+                          ],
+                        ),
                       ),
 
                       SizedBox(height: 12.h),
@@ -612,53 +769,71 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // Invoice number + Date row
-                            Row(children: [
-                              _infoCard('Invoice Number',
-                                  data['invoiceNumber'] ?? 'N/A'),
-                              SizedBox(width: 8.w),
-                              _infoCard('Date', dateFormat.format(createdAt)),
-                            ]),
+                            Row(
+                              children: [
+                                _infoCard(
+                                  'Invoice Number',
+                                  data['invoiceNumber'] ?? 'N/A',
+                                ),
+                                SizedBox(width: 8.w),
+                                _infoCard('Date', dateFormat.format(createdAt)),
+                              ],
+                            ),
                             SizedBox(height: 8.h),
-                            Row(children: [
-                              _infoCard('Payment Method',
-                                  data['paymentMethod'] ?? 'Cash'),
-                              SizedBox(width: 8.w),
-                              _infoCard('Status', data['status'] ?? 'Completed',
-                                  isStatus: true),
-                            ]),
+                            Row(
+                              children: [
+                                _infoCard(
+                                  'Payment Method',
+                                  data['paymentMethod'] ?? 'Cash',
+                                ),
+                                SizedBox(width: 8.w),
+                                _infoCard(
+                                  'Status',
+                                  data['status'] ?? 'Completed',
+                                  isStatus: true,
+                                ),
+                              ],
+                            ),
 
                             SizedBox(height: 12.h),
-                            Text('Products',
-                                style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 11.sp)),
+                            Text(
+                              'Products',
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11.sp,
+                              ),
+                            ),
                             Divider(color: Colors.grey.shade100, height: 8.h),
 
                             // Item rows
-                            ...items.map((item) => Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 3.h),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          item['name'] ?? 'N/A',
-                                          style: GoogleFonts.poppins(
-                                              fontSize: 10.sp,
-                                              fontWeight: FontWeight.w600,
-                                              color: const Color(0xFF1E293B)),
+                            ...items.map(
+                              (item) => Padding(
+                                padding: EdgeInsets.symmetric(vertical: 3.h),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        item['name'] ?? 'N/A',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 10.sp,
+                                          fontWeight: FontWeight.w600,
+                                          color: const Color(0xFF1E293B),
                                         ),
                                       ),
-                                      Text(
-                                        '₹${(item['totalPrice'] ?? item['price'] ?? 0).toStringAsFixed(2)}',
-                                        style: GoogleFonts.poppins(
-                                            fontSize: 10.sp,
-                                            fontWeight: FontWeight.w600),
+                                    ),
+                                    Text(
+                                      '₹${(item['totalPrice'] ?? item['price'] ?? 0).toStringAsFixed(2)}',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 10.sp,
+                                        fontWeight: FontWeight.w600,
                                       ),
-                                    ],
-                                  ),
-                                )),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
 
                             SizedBox(height: 12.h),
 
@@ -666,34 +841,49 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
                             Container(
                               padding: EdgeInsets.all(10.w),
                               decoration: BoxDecoration(
-                                  color: const Color(0xFFF8F9FA),
-                                  borderRadius: BorderRadius.circular(10)),
-                              child: Column(children: [
-                                _priceLine('Subtotal',
-                                    '₹${(data['subtotal'] ?? 0).toStringAsFixed(2)}'),
-                                if ((data['discountAmount'] ?? 0) > 0)
-                                  _priceLine('Discount',
-                                      '-₹${(data['discountAmount'] ?? 0).toStringAsFixed(2)}',
-                                      color: const Color(0xFF22C55E)),
-                                if ((data['taxAmount'] ?? 0) > 0)
+                                color: const Color(0xFFF8F9FA),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Column(
+                                children: [
                                   _priceLine(
+                                    'Subtotal',
+                                    '₹${(data['subtotal'] ?? 0).toStringAsFixed(2)}',
+                                  ),
+                                  if ((data['discountAmount'] ?? 0) > 0)
+                                    _priceLine(
+                                      'Discount',
+                                      '-₹${(data['discountAmount'] ?? 0).toStringAsFixed(2)}',
+                                      color: const Color(0xFF22C55E),
+                                    ),
+                                  if ((data['taxAmount'] ?? 0) > 0)
+                                    _priceLine(
                                       'Tax (${(data['taxRate'] ?? 0).toStringAsFixed(1)}%)',
-                                      '₹${(data['taxAmount'] ?? 0).toStringAsFixed(2)}'),
-                                if ((data['platformFee'] ?? 0) > 0)
-                                  _priceLine('Platform Fee',
-                                      '₹${(data['platformFee'] ?? 0).toStringAsFixed(2)}'),
-                                Divider(
+                                      '₹${(data['taxAmount'] ?? 0).toStringAsFixed(2)}',
+                                    ),
+                                  if ((data['platformFee'] ?? 0) > 0)
+                                    _priceLine(
+                                      'Platform Fee',
+                                      '₹${(data['platformFee'] ?? 0).toStringAsFixed(2)}',
+                                    ),
+                                  Divider(
                                     height: 12.h,
-                                    color: Colors.grey.withOpacity(0.2)),
-                                _priceLine('Total',
+                                    color: Colors.grey.withOpacity(0.2),
+                                  ),
+                                  _priceLine(
+                                    'Total',
                                     '₹${(data['totalAmount'] ?? 0).toStringAsFixed(2)}',
-                                    isBold: true),
-                                if ((data['balance'] ?? 0) > 0)
-                                  _priceLine('Balance',
+                                    isBold: true,
+                                  ),
+                                  if ((data['balance'] ?? 0) > 0)
+                                    _priceLine(
+                                      'Balance',
                                       '₹${(data['balance'] ?? 0).toStringAsFixed(2)}',
                                       isBold: true,
-                                      color: const Color(0xFFEF4444)),
-                              ]),
+                                      color: const Color(0xFFEF4444),
+                                    ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
@@ -711,15 +901,20 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(context),
                   style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF43303F),
-                      padding: EdgeInsets.symmetric(vertical: 10.h),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6))),
-                  child: Text('Close',
-                      style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontSize: 12.sp,
-                          fontWeight: FontWeight.bold)),
+                    backgroundColor: const Color(0xFF43303F),
+                    padding: EdgeInsets.symmetric(vertical: 10.h),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                  child: Text(
+                    'Close',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -742,9 +937,14 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style: GoogleFonts.poppins(
-                  fontSize: 12.sp, fontWeight: FontWeight.bold, color: _text)),
+          Text(
+            title,
+            style: GoogleFonts.poppins(
+              fontSize: 12.sp,
+              fontWeight: FontWeight.bold,
+              color: _text,
+            ),
+          ),
           SizedBox(height: 4.h),
           Divider(color: Colors.grey.shade100),
           SizedBox(height: 8.h),
@@ -755,21 +955,25 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
   }
 
   Widget _summaryActionBtn(IconData icon, String label) => Expanded(
-        child: OutlinedButton(
-          onPressed: () {},
-          style: OutlinedButton.styleFrom(
-              padding: EdgeInsets.symmetric(vertical: 10.h),
-              side: BorderSide(color: Colors.grey.shade300),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8))),
-          child: Column(children: [
-            Icon(icon, size: 18, color: _text),
-            SizedBox(height: 4.h),
-            Text(label,
-                style: GoogleFonts.poppins(fontSize: 9.sp, color: _text)),
-          ]),
-        ),
-      );
+    child: OutlinedButton(
+      onPressed: () {},
+      style: OutlinedButton.styleFrom(
+        padding: EdgeInsets.symmetric(vertical: 10.h),
+        side: BorderSide(color: Colors.grey.shade300),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 18, color: _text),
+          SizedBox(height: 4.h),
+          Text(
+            label,
+            style: GoogleFonts.poppins(fontSize: 9.sp, color: _text),
+          ),
+        ],
+      ),
+    ),
+  );
 
   Widget _infoCard(String label, String value, {bool isStatus = false}) =>
       Expanded(
@@ -782,52 +986,76 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label,
-                  style: GoogleFonts.poppins(
-                      fontSize: 9.sp,
-                      color: _muted,
-                      fontWeight: FontWeight.w500)),
+              Text(
+                label,
+                style: GoogleFonts.poppins(
+                  fontSize: 9.sp,
+                  color: _muted,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
               SizedBox(height: 4.h),
               isStatus
                   ? Container(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 8.w,
+                        vertical: 2.h,
+                      ),
                       decoration: BoxDecoration(
-                          color: const Color(0xFFDCFCE7),
-                          borderRadius: BorderRadius.circular(4)),
-                      child: Text(value,
-                          style: GoogleFonts.poppins(
-                              fontSize: 10.sp,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF166534))))
-                  : Text(value,
-                      style: GoogleFonts.poppins(
+                        color: const Color(0xFFDCFCE7),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        value,
+                        style: GoogleFonts.poppins(
                           fontSize: 10.sp,
                           fontWeight: FontWeight.bold,
-                          color: _text)),
+                          color: const Color(0xFF166534),
+                        ),
+                      ),
+                    )
+                  : Text(
+                      value,
+                      style: GoogleFonts.poppins(
+                        fontSize: 10.sp,
+                        fontWeight: FontWeight.bold,
+                        color: _text,
+                      ),
+                    ),
             ],
           ),
         ),
       );
 
-  Widget _priceLine(String label, String value,
-          {bool isBold = false, Color? color}) =>
-      Padding(
-        padding: EdgeInsets.symmetric(vertical: 2.h),
-        child:
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text(label,
-              style: GoogleFonts.poppins(
-                  fontSize: isBold ? 11.sp : 10.sp,
-                  color: color ?? (isBold ? _text : _muted),
-                  fontWeight: isBold ? FontWeight.bold : FontWeight.w500)),
-          Text(value,
-              style: GoogleFonts.poppins(
-                  fontSize: isBold ? 12.sp : 10.sp,
-                  fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
-                  color: color ?? _text)),
-        ]),
-      );
+  Widget _priceLine(
+    String label,
+    String value, {
+    bool isBold = false,
+    Color? color,
+  }) => Padding(
+    padding: EdgeInsets.symmetric(vertical: 2.h),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.poppins(
+            fontSize: isBold ? 11.sp : 10.sp,
+            color: color ?? (isBold ? _text : _muted),
+            fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+          ),
+        ),
+        Text(
+          value,
+          style: GoogleFonts.poppins(
+            fontSize: isBold ? 12.sp : 10.sp,
+            fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
+            color: color ?? _text,
+          ),
+        ),
+      ],
+    ),
+  );
 
   // ── BUILD ─────────────────────────────────────────────────────────────────────
   @override
@@ -839,16 +1067,22 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
       drawer: const SupplierDrawer(currentPage: 'Sales'),
       backgroundColor: _bg,
       appBar: AppBar(
-        title: Text('Sales Overview',
-            style: GoogleFonts.poppins(
-                fontWeight: FontWeight.w600, color: _text, fontSize: 12.sp)),
+        title: Text(
+          'Sales Overview',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w600,
+            color: _text,
+            fontSize: 12.sp,
+          ),
+        ),
         backgroundColor: _surface,
         elevation: 0,
         iconTheme: const IconThemeData(color: _text),
         actions: [
           IconButton(
-              onPressed: _fetchData,
-              icon: const Icon(Icons.refresh, size: 20, color: _muted)),
+            onPressed: _fetchData,
+            icon: const Icon(Icons.refresh, size: 20, color: _muted),
+          ),
           const SizedBox(width: 10),
         ],
       ),
@@ -856,8 +1090,8 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
         child: isLoading
             ? const Center(child: CircularProgressIndicator(color: _primary))
             : isWide
-                ? _buildWideLayout(width)
-                : _buildMobileLayout(),
+            ? _buildWideLayout(width)
+            : _buildMobileLayout(),
       ),
     );
   }
@@ -893,53 +1127,65 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
           builder: (context, scrollController) => Container(
             decoration: BoxDecoration(
               color: _surface,
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(20)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
               boxShadow: [
                 BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, -5))
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, -5),
+                ),
               ],
             ),
-            child: Column(children: [
-              Container(
-                margin: const EdgeInsets.symmetric(vertical: 12),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                    color: _border, borderRadius: BorderRadius.circular(2)),
-              ),
-              if (selectedItems.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('${selectedItems.length} Item(s)',
-                          style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: _primary)),
-                      Text('Total: ₹${total.toStringAsFixed(2)}',
-                          style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: _text)),
-                    ],
+            child: Column(
+              children: [
+                Container(
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: _border,
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-              const SizedBox(height: 10),
-              Expanded(
-                child: SingleChildScrollView(
-                  controller: scrollController,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: _buildBillingPart(),
+                if (selectedItems.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '${selectedItems.length} Item(s)',
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: _primary,
+                          ),
+                        ),
+                        Text(
+                          'Total: ₹${total.toStringAsFixed(2)}',
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: _text,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 10),
+                Expanded(
+                  child: SingleChildScrollView(
+                    controller: scrollController,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: _buildBillingPart(),
+                    ),
                   ),
                 ),
-              ),
-            ]),
+              ],
+            ),
           ),
         ),
       ],
@@ -951,21 +1197,24 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(children: [
-          Expanded(
+        Row(
+          children: [
+            Expanded(
               child: _searchField(
-            controller: _productSearchController,
-            hint: 'Search products...',
-            onChanged: (v) => setState(() => productSearchQuery = v),
-            onClear: () => setState(() {
-              _productSearchController.clear();
-              productSearchQuery = '';
-            }),
-            showClear: productSearchQuery.isNotEmpty,
-          )),
-          const SizedBox(width: 12),
-          SizedBox(width: 160, child: _categoryDropdown()),
-        ]),
+                controller: _productSearchController,
+                hint: 'Search products...',
+                onChanged: (v) => setState(() => productSearchQuery = v),
+                onClear: () => setState(() {
+                  _productSearchController.clear();
+                  productSearchQuery = '';
+                }),
+                showClear: productSearchQuery.isNotEmpty,
+              ),
+            ),
+            const SizedBox(width: 12),
+            SizedBox(width: 160, child: _categoryDropdown()),
+          ],
+        ),
         const SizedBox(height: 15),
         _buildCatalogList(),
       ],
@@ -978,15 +1227,18 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
       return Container(
         height: 200,
         alignment: Alignment.center,
-        child: Text('No products found',
-            style: GoogleFonts.poppins(color: _muted, fontSize: 13)),
+        child: Text(
+          'No products found',
+          style: GoogleFonts.poppins(color: _muted, fontSize: 13),
+        ),
       );
     }
     return Container(
       decoration: BoxDecoration(
-          color: _surface,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: _border)),
+        color: _surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _border),
+      ),
       child: ListView.separated(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
@@ -995,10 +1247,11 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
             Divider(height: 1, color: Colors.grey.shade100),
         itemBuilder: (context, index) {
           final p = items[index];
-          final price = ((p.salePrice != null && p.salePrice! > 0)
-                  ? p.salePrice!
-                  : (p.price ?? 0))
-              .toDouble();
+          final price =
+              ((p.salePrice != null && p.salePrice! > 0)
+                      ? p.salePrice!
+                      : (p.price ?? 0))
+                  .toDouble();
           final regularPrice = (p.salePrice != null && p.salePrice! > 0)
               ? (p.price ?? 0).toDouble()
               : null;
@@ -1007,52 +1260,67 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
 
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-            child: Row(children: [
-              // Name + category
-              Expanded(
-                flex: 3,
-                child: Column(
+            child: Row(
+              children: [
+                // Name + category
+                Expanded(
+                  flex: 3,
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(p.productName ?? '',
-                          style: GoogleFonts.poppins(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: _text)),
-                      Text(p.category ?? 'Uncategorized',
-                          style:
-                              GoogleFonts.poppins(fontSize: 11, color: _muted)),
-                    ]),
-              ),
+                      Text(
+                        p.productName ?? '',
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: _text,
+                        ),
+                      ),
+                      Text(
+                        p.category ?? 'Uncategorized',
+                        style: GoogleFonts.poppins(fontSize: 11, color: _muted),
+                      ),
+                    ],
+                  ),
+                ),
 
-              // Price column
-              Expanded(
-                flex: 2,
-                child: Column(
+                // Price column
+                Expanded(
+                  flex: 2,
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('₹${price.toStringAsFixed(0)}.00',
-                          style: GoogleFonts.poppins(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: regularPrice != null ? _primary : _text)),
+                      Text(
+                        '₹${price.toStringAsFixed(0)}.00',
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: regularPrice != null ? _primary : _text,
+                        ),
+                      ),
                       if (regularPrice != null)
-                        Text('₹${regularPrice.toStringAsFixed(0)}.00',
-                            style: GoogleFonts.poppins(
-                                fontSize: 11,
-                                color: _muted,
-                                decoration: TextDecoration.lineThrough)),
-                    ]),
-              ),
+                        Text(
+                          '₹${regularPrice.toStringAsFixed(0)}.00',
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            color: _muted,
+                            decoration: TextDecoration.lineThrough,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
 
-              const Spacer(flex: 2),
+                const Spacer(flex: 2),
 
-              // Add button
-              _addCircleButton(
+                // Add button
+                _addCircleButton(
                   isOutOfStock: isOutOfStock,
                   isSelected: isSelected,
-                  onTap: isOutOfStock ? null : () => _addItemToBilling(p)),
-            ]),
+                  onTap: isOutOfStock ? null : () => _addItemToBilling(p),
+                ),
+              ],
+            ),
           );
         },
       ),
@@ -1076,13 +1344,18 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Billing',
-                    style: GoogleFonts.poppins(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: _text)),
-                Text('Review items and process payment',
-                    style: GoogleFonts.poppins(fontSize: 11, color: _muted)),
+                Text(
+                  'Billing',
+                  style: GoogleFonts.poppins(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: _text,
+                  ),
+                ),
+                Text(
+                  'Review items and process payment',
+                  style: GoogleFonts.poppins(fontSize: 11, color: _muted),
+                ),
               ],
             ),
           ),
@@ -1092,14 +1365,24 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
           // Client Selection label
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Row(children: [
-              Icon(Icons.person_outlined,
-                  size: 17, color: Colors.blue.shade400),
-              const SizedBox(width: 6),
-              Text('Client Selection',
+            child: Row(
+              children: [
+                Icon(
+                  Icons.person_outlined,
+                  size: 17,
+                  color: Colors.blue.shade400,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Client Selection',
                   style: GoogleFonts.poppins(
-                      fontSize: 13, fontWeight: FontWeight.w600, color: _text)),
-            ]),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _text,
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 10),
 
@@ -1113,39 +1396,58 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
           if (selectedItems.isNotEmpty) ...[
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-              child: Row(children: [
-                Expanded(
+              child: Row(
+                children: [
+                  Expanded(
                     flex: 3,
-                    child: Text('Item',
-                        style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: _muted))),
-                Expanded(
+                    child: Text(
+                      'Item',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: _muted,
+                      ),
+                    ),
+                  ),
+                  Expanded(
                     flex: 2,
-                    child: Text('Price',
-                        style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: _muted))),
-                Text('Qty',
-                    style: GoogleFonts.poppins(
+                    child: Text(
+                      'Price',
+                      style: GoogleFonts.poppins(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: _muted)),
-                const SizedBox(width: 32),
-                Text('Total',
+                        color: _muted,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    'Qty',
                     style: GoogleFonts.poppins(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: _muted)),
-                const SizedBox(width: 36),
-                Text('Actions',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: _muted,
+                    ),
+                  ),
+                  const SizedBox(width: 32),
+                  Text(
+                    'Total',
                     style: GoogleFonts.poppins(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: _muted)),
-              ]),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: _muted,
+                    ),
+                  ),
+                  const SizedBox(width: 36),
+                  Text(
+                    'Actions',
+                    style: GoogleFonts.poppins(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: _muted,
+                    ),
+                  ),
+                ],
+              ),
             ),
             const Divider(height: 1),
 
@@ -1161,31 +1463,43 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
               child: Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                    color: const Color(0xFFF8F9FA),
-                    borderRadius: BorderRadius.circular(10)),
-                child: Column(children: [
-                  _billingLine('Subtotal', '₹${subtotal.toStringAsFixed(2)}'),
-                  if (profileTaxRate > 0)
-                    _billingLine('GST (${profileTaxRate.toStringAsFixed(1)}%)',
-                        '₹${tax.toStringAsFixed(2)}'),
-                  const SizedBox(height: 8),
-                  const Divider(height: 1, color: _border),
-                  const SizedBox(height: 8),
-                  Row(
+                  color: const Color(0xFFF8F9FA),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  children: [
+                    _billingLine('Subtotal', '₹${subtotal.toStringAsFixed(2)}'),
+                    if (profileTaxRate > 0)
+                      _billingLine(
+                        'GST (${profileTaxRate.toStringAsFixed(1)}%)',
+                        '₹${tax.toStringAsFixed(2)}',
+                      ),
+                    const SizedBox(height: 8),
+                    const Divider(height: 1, color: _border),
+                    const SizedBox(height: 8),
+                    Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Total Amount',
-                            style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: _text)),
-                        Text('₹${total.toStringAsFixed(2)}',
-                            style: GoogleFonts.poppins(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                color: _text)),
-                      ]),
-                ]),
+                        Text(
+                          'Total Amount',
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: _text,
+                          ),
+                        ),
+                        Text(
+                          '₹${total.toStringAsFixed(2)}',
+                          style: GoogleFonts.poppins(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: _text,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 14),
@@ -1194,49 +1508,67 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
           // Action buttons
           Padding(
             padding: const EdgeInsets.all(14.0),
-            child: Row(children: [
-              Expanded(
-                child: SizedBox(
-                  height: 42,
-                  child: OutlinedButton.icon(
-                    onPressed: _clearBilling,
-                    icon: const Icon(Icons.delete_outline,
-                        size: 16, color: Colors.red),
-                    style: OutlinedButton.styleFrom(
+            child: Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 42,
+                    child: OutlinedButton.icon(
+                      onPressed: _clearBilling,
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        size: 16,
+                        color: Colors.red,
+                      ),
+                      style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.red,
                         side: const BorderSide(color: Colors.red),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8))),
-                    label: Text('Clear Cart',
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      label: Text(
+                        'Clear Cart',
                         style: GoogleFonts.poppins(
-                            fontSize: 13, fontWeight: FontWeight.w600)),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                flex: 2,
-                child: SizedBox(
-                  height: 42,
-                  child: ElevatedButton.icon(
-                    onPressed: (selectedItems.isEmpty || selectedClient == null)
-                        ? null
-                        : _showPaymentOptionsDialog,
-                    icon: const Icon(Icons.shopping_cart_outlined, size: 16),
-                    style: ElevatedButton.styleFrom(
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: SizedBox(
+                    height: 42,
+                    child: ElevatedButton.icon(
+                      onPressed:
+                          (selectedItems.isEmpty || selectedClient == null)
+                          ? null
+                          : _showPaymentOptionsDialog,
+                      icon: const Icon(Icons.shopping_cart_outlined, size: 16),
+                      style: ElevatedButton.styleFrom(
                         backgroundColor: _primaryDark,
                         foregroundColor: Colors.white,
                         disabledBackgroundColor: const Color(0xFFCBD5E1),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
-                        elevation: 0),
-                    label: Text('Process Payment',
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        elevation: 0,
+                      ),
+                      label: Text(
+                        'Process Payment',
                         style: GoogleFonts.poppins(
-                            fontSize: 13, fontWeight: FontWeight.w600)),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ]),
+              ],
+            ),
           ),
         ],
       ),
@@ -1249,75 +1581,103 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      child: Row(children: [
-        // Name + category
-        Expanded(
-          flex: 3,
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(item['name'],
-                style: GoogleFonts.poppins(
+      child: Row(
+        children: [
+          // Name + category
+          Expanded(
+            flex: 3,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item['name'],
+                  style: GoogleFonts.poppins(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: _primary)),
-            Text(item['category'],
-                style: GoogleFonts.poppins(fontSize: 11, color: _muted)),
-          ]),
-        ),
+                    color: _primary,
+                  ),
+                ),
+                Text(
+                  item['category'],
+                  style: GoogleFonts.poppins(fontSize: 11, color: _muted),
+                ),
+              ],
+            ),
+          ),
 
-        // Price (with strikethrough style matching screenshot)
-        Expanded(
-          flex: 2,
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('₹${(priceEach * 1.05).toStringAsFixed(0)}.00',
-                style: GoogleFonts.poppins(
+          // Price (with strikethrough style matching screenshot)
+          Expanded(
+            flex: 2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '₹${(priceEach * 1.05).toStringAsFixed(0)}.00',
+                  style: GoogleFonts.poppins(
                     fontSize: 11,
                     color: _muted,
-                    decoration: TextDecoration.lineThrough)),
-            Text('₹${priceEach.toStringAsFixed(2)}',
-                style: GoogleFonts.poppins(
+                    decoration: TextDecoration.lineThrough,
+                  ),
+                ),
+                Text(
+                  '₹${priceEach.toStringAsFixed(2)}',
+                  style: GoogleFonts.poppins(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: _primary)),
-          ]),
-        ),
-
-        // Qty stepper
-        Row(children: [
-          _qtyBtn(
-              icon: Icons.remove,
-              onTap: () => _updateItemQuantity(item['id'], qty - 1)),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Text('$qty',
-                style: GoogleFonts.poppins(
-                    fontSize: 13, fontWeight: FontWeight.bold)),
+                    color: _primary,
+                  ),
+                ),
+              ],
+            ),
           ),
-          _qtyBtn(
-              icon: Icons.add,
-              onTap: () => _updateItemQuantity(item['id'], qty + 1)),
-        ]),
 
-        // Total
-        SizedBox(
-          width: 72,
-          child: Text(
-            '₹${(priceEach * qty).toStringAsFixed(2)}',
-            textAlign: TextAlign.right,
-            style: GoogleFonts.poppins(
-                fontSize: 13, fontWeight: FontWeight.bold, color: _text),
+          // Qty stepper
+          Row(
+            children: [
+              _qtyBtn(
+                icon: Icons.remove,
+                onTap: () => _updateItemQuantity(item['id'], qty - 1),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  '$qty',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              _qtyBtn(
+                icon: Icons.add,
+                onTap: () => _updateItemQuantity(item['id'], qty + 1),
+              ),
+            ],
           ),
-        ),
 
-        // Delete
-        IconButton(
-          onPressed: () => _removeItemFromBilling(item['id']),
-          icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
-          padding: const EdgeInsets.only(left: 4),
-          constraints: const BoxConstraints(),
-        ),
-      ]),
+          // Total
+          SizedBox(
+            width: 72,
+            child: Text(
+              '₹${(priceEach * qty).toStringAsFixed(2)}',
+              textAlign: TextAlign.right,
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: _text,
+              ),
+            ),
+          ),
+
+          // Delete
+          IconButton(
+            onPressed: () => _removeItemFromBilling(item['id']),
+            icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+            padding: const EdgeInsets.only(left: 4),
+            constraints: const BoxConstraints(),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1328,9 +1688,10 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
         width: 26,
         height: 26,
         decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: _border)),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: _border),
+        ),
         child: Icon(icon, size: 14, color: _text),
       ),
     );
@@ -1339,12 +1700,19 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
   Widget _billingLine(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Text(label, style: GoogleFonts.poppins(fontSize: 13, color: _muted)),
-        Text(value,
-            style:
-                GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600)),
-      ]),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: GoogleFonts.poppins(fontSize: 13, color: _muted)),
+          Text(
+            value,
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1352,86 +1720,108 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
   Widget _buildClientSearch() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14),
-      child: Column(children: [
-        TextField(
-          controller: _clientSearchController,
-          focusNode: _clientSearchFocusNode,
-          onTap: () => setState(() => _showClientDropdown = true),
-          onChanged: (v) {
-            _clientSearchTimer?.cancel();
-            _clientSearchTimer = Timer(const Duration(milliseconds: 300), () {
-              setState(() {
-                clientSearchQuery = v;
-                _showClientDropdown = true;
+      child: Column(
+        children: [
+          TextField(
+            controller: _clientSearchController,
+            focusNode: _clientSearchFocusNode,
+            onTap: () => setState(() => _showClientDropdown = true),
+            onChanged: (v) {
+              _clientSearchTimer?.cancel();
+              _clientSearchTimer = Timer(const Duration(milliseconds: 300), () {
+                setState(() {
+                  clientSearchQuery = v;
+                  _showClientDropdown = true;
+                });
               });
-            });
-          },
-          style: GoogleFonts.poppins(fontSize: 13),
-          decoration: InputDecoration(
-            hintText: 'Search clients by name, email, or phone...',
-            hintStyle: GoogleFonts.poppins(
-                fontSize: 12, color: const Color(0xFF94A3B8)),
-            prefixIcon: const Icon(Icons.search, size: 18, color: _muted),
-            filled: true,
-            fillColor: Colors.white,
-            isDense: true,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-            enabledBorder: OutlineInputBorder(
+            },
+            style: GoogleFonts.poppins(fontSize: 13),
+            decoration: InputDecoration(
+              hintText: 'Search clients by name, email, or phone...',
+              hintStyle: GoogleFonts.poppins(
+                fontSize: 12,
+                color: const Color(0xFF94A3B8),
+              ),
+              prefixIcon: const Icon(Icons.search, size: 18, color: _muted),
+              filled: true,
+              fillColor: Colors.white,
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 11,
+              ),
+              enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: _border)),
-            focusedBorder: OutlineInputBorder(
+                borderSide: const BorderSide(color: _border),
+              ),
+              focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide:
-                    const BorderSide(color: Color(0xFFCBD5E1), width: 1.5)),
+                borderSide: const BorderSide(
+                  color: Color(0xFFCBD5E1),
+                  width: 1.5,
+                ),
+              ),
+            ),
           ),
-        ),
-        if (_showClientDropdown &&
-            selectedClient == null &&
-            filteredClients.isNotEmpty)
-          Container(
-            margin: const EdgeInsets.only(top: 4),
-            constraints: const BoxConstraints(maxHeight: 200),
-            decoration: BoxDecoration(
+          if (_showClientDropdown &&
+              selectedClient == null &&
+              filteredClients.isNotEmpty)
+            Container(
+              margin: const EdgeInsets.only(top: 4),
+              constraints: const BoxConstraints(maxHeight: 200),
+              decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: _border),
                 boxShadow: [
                   BoxShadow(
-                      color: Colors.black.withOpacity(0.06), blurRadius: 8)
-                ]),
-            child: ListView.separated(
-              shrinkWrap: true,
-              itemCount: filteredClients.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (_, i) {
-                final c = filteredClients[i];
-                return ListTile(
-                  onTap: () => setState(() {
-                    selectedClient = c;
-                    _clientSearchController.text = c.fullName;
-                    _showClientDropdown = false;
-                    _clientSearchFocusNode.unfocus();
-                  }),
-                  leading: CircleAvatar(
-                    radius: 15,
-                    backgroundColor: const Color(0xFFD4B8C0),
-                    child: Text(c.fullName.isNotEmpty ? c.fullName[0] : '?',
-                        style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white)),
+                    color: Colors.black.withOpacity(0.06),
+                    blurRadius: 8,
                   ),
-                  title: Text(c.fullName,
+                ],
+              ),
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: filteredClients.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (_, i) {
+                  final c = filteredClients[i];
+                  return ListTile(
+                    onTap: () => setState(() {
+                      selectedClient = c;
+                      _clientSearchController.text = c.fullName;
+                      _showClientDropdown = false;
+                      _clientSearchFocusNode.unfocus();
+                    }),
+                    leading: CircleAvatar(
+                      radius: 15,
+                      backgroundColor: const Color(0xFFD4B8C0),
+                      child: Text(
+                        c.fullName.isNotEmpty ? c.fullName[0] : '?',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    title: Text(
+                      c.fullName,
                       style: GoogleFonts.poppins(
-                          fontSize: 13, fontWeight: FontWeight.w600)),
-                  subtitle:
-                      Text(c.mobile, style: GoogleFonts.poppins(fontSize: 11)),
-                );
-              },
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    subtitle: Text(
+                      c.mobile,
+                      style: GoogleFonts.poppins(fontSize: 11),
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
-      ]),
+        ],
+      ),
     );
   }
 
@@ -1441,39 +1831,51 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-            color: const Color(0xFFF8F9FA),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: _border)),
-        child: Row(children: [
-          CircleAvatar(
-            radius: 17,
-            backgroundColor: const Color(0xFFD4B8C0),
-            child: Text(
+          color: const Color(0xFFF8F9FA),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: _border),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 17,
+              backgroundColor: const Color(0xFFD4B8C0),
+              child: Text(
                 selectedClient!.fullName.isNotEmpty
                     ? selectedClient!.fullName[0]
                     : '?',
-                style: GoogleFonts.poppins(fontSize: 14, color: Colors.white)),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(selectedClient!.fullName,
-                  style: GoogleFonts.poppins(
-                      fontSize: 13, fontWeight: FontWeight.w600)),
-              Text(selectedClient!.mobile,
-                  style: GoogleFonts.poppins(fontSize: 11)),
-            ]),
-          ),
-          IconButton(
-            onPressed: () => setState(() {
-              selectedClient = null;
-              _clientSearchController.clear();
-              clientSearchQuery = '';
-            }),
-            icon: const Icon(Icons.close, size: 18, color: Colors.red),
-          ),
-        ]),
+                style: GoogleFonts.poppins(fontSize: 14, color: Colors.white),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    selectedClient!.fullName,
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    selectedClient!.mobile,
+                    style: GoogleFonts.poppins(fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              onPressed: () => setState(() {
+                selectedClient = null;
+                _clientSearchController.clear();
+                clientSearchQuery = '';
+              }),
+              icon: const Icon(Icons.close, size: 18, color: Colors.red),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1492,26 +1894,39 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
       style: GoogleFonts.poppins(fontSize: 13, color: _text),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle:
-            GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF94A3B8)),
-        prefixIcon:
-            const Icon(Icons.search, color: Color(0xFF94A3B8), size: 19),
+        hintStyle: GoogleFonts.poppins(
+          fontSize: 13,
+          color: const Color(0xFF94A3B8),
+        ),
+        prefixIcon: const Icon(
+          Icons.search,
+          color: Color(0xFF94A3B8),
+          size: 19,
+        ),
         suffixIcon: showClear
             ? IconButton(
-                icon:
-                    const Icon(Icons.close, size: 16, color: Color(0xFF94A3B8)),
-                onPressed: onClear)
+                icon: const Icon(
+                  Icons.close,
+                  size: 16,
+                  color: Color(0xFF94A3B8),
+                ),
+                onPressed: onClear,
+              )
             : null,
         filled: true,
         fillColor: Colors.white,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 11,
+        ),
         enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: _border)),
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: _border),
+        ),
         focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1.5)),
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1.5),
+        ),
         isDense: true,
       ),
     );
@@ -1522,9 +1937,10 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: _border)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _border),
+      ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: selectedProductCategory,
@@ -1532,10 +1948,15 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
           icon: const Icon(Icons.keyboard_arrow_down, size: 20, color: _muted),
           style: GoogleFonts.poppins(fontSize: 13, color: _text),
           items: productCategories
-              .map((cat) => DropdownMenuItem(
+              .map(
+                (cat) => DropdownMenuItem(
                   value: cat,
-                  child: Text(cat,
-                      style: GoogleFonts.poppins(fontSize: 13, color: _text))))
+                  child: Text(
+                    cat,
+                    style: GoogleFonts.poppins(fontSize: 13, color: _text),
+                  ),
+                ),
+              )
               .toList(),
           onChanged: (v) =>
               setState(() => selectedProductCategory = v ?? 'All'),
@@ -1552,13 +1973,17 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
   }) {
     if (isOutOfStock) {
       return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(6)),
-          child: Text('Out of\nStock',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(fontSize: 9, color: _muted)));
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Text(
+          'Out of\nStock',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.poppins(fontSize: 9, color: _muted),
+        ),
+      );
     }
     return GestureDetector(
       onTap: onTap,
@@ -1566,12 +1991,18 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
         width: 30,
         height: 30,
         decoration: BoxDecoration(
-            color: isSelected ? _primaryDark : Colors.white,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(
-                color: isSelected ? _primaryDark : _border, width: 1.5)),
-        child: Icon(isSelected ? Icons.check : Icons.add,
-            size: 17, color: isSelected ? Colors.white : _text),
+          color: isSelected ? _primaryDark : Colors.white,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: isSelected ? _primaryDark : _border,
+            width: 1.5,
+          ),
+        ),
+        child: Icon(
+          isSelected ? Icons.check : Icons.add,
+          size: 17,
+          color: isSelected ? Colors.white : _text,
+        ),
       ),
     );
   }

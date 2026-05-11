@@ -290,7 +290,7 @@ class _SuppProfilePageState extends State<SuppProfilePage>
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: const Color(0xFFFAFAFA),
+        backgroundColor: Colors.white,
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -312,7 +312,7 @@ class _SuppProfilePageState extends State<SuppProfilePage>
 
     if (_errorMessage != null) {
       return Scaffold(
-        backgroundColor: const Color(0xFFFAFAFA),
+        backgroundColor: Colors.white,
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -337,7 +337,7 @@ class _SuppProfilePageState extends State<SuppProfilePage>
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,

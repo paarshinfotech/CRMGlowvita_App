@@ -133,7 +133,7 @@ class _SuppSettlementsPageState extends State<SuppSettlementsPage> {
 
     return Scaffold(
       drawer: const SupplierDrawer(currentPage: 'Settlements'),
-      backgroundColor: const Color(0xFFF6F7FB),
+      backgroundColor: Colors.white,
       appBar: AppBar(
         elevation: 0.5,
         backgroundColor: Colors.white,

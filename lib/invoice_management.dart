@@ -13,6 +13,9 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'my_Profile.dart';
+import 'Notification.dart';
+import 'vendor_model.dart';
 
 class InvoiceManagementPage extends StatefulWidget {
   const InvoiceManagementPage({super.key});
@@ -31,6 +34,7 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
   List<AppointmentModel> appointments = [];
   bool _isLoading = true;
   String? _errorMessage;
+  VendorProfile? _profile;
 
   @override
   void initState() {
@@ -42,6 +46,27 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
       }
     });
     _fetchInvoices();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final p = await ApiService.getVendorProfile();
+      if (mounted) setState(() => _profile = p);
+    } catch (e) {
+      debugPrint('fetchProfile: $e');
+    }
+  }
+
+  Widget _buildInitialAvatar() {
+    return Text(
+      (_profile?.businessName ?? 'H').substring(0, 1).toUpperCase(),
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: 12.sp,
+        fontWeight: FontWeight.bold,
+      ),
+    );
   }
 
   Future<void> _fetchInvoices() async {
@@ -250,147 +275,68 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
   Widget build(BuildContext context) {
     return Scaffold(
       drawer: const CustomDrawer(currentPage: 'Invoice Management'),
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text(
-          "Invoice Management",
-          style: GoogleFonts.poppins(
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-              fontSize: 12.sp),
-        ),
         backgroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.black),
         elevation: 0,
-        bottom: PreferredSize(
-          preferredSize: Size.fromHeight(40.h),
-          child: Container(
-            margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(10.r),
-            ),
-            child: TabBar(
-              controller: _tabController,
-              indicator: BoxDecoration(
-                borderRadius: BorderRadius.circular(8.r),
-                color: Theme.of(context).primaryColor,
-                boxShadow: [
-                  BoxShadow(
-                    color: Theme.of(context).primaryColor.withOpacity(0.3),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              indicatorSize: TabBarIndicatorSize.tab,
-              labelColor: Colors.white,
-              unselectedLabelColor: Colors.blueGrey,
-              labelStyle: GoogleFonts.poppins(
-                fontSize: 10.sp,
-                fontWeight: FontWeight.w600,
-              ),
-              unselectedLabelStyle: GoogleFonts.poppins(
-                fontSize: 10.sp,
-                fontWeight: FontWeight.w500,
-              ),
-              tabs: const [
-                Tab(text: 'Counter Billing'),
-                Tab(text: 'Appointments'),
-              ],
-            ),
+        titleSpacing: 0,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: Colors.black),
+            onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),
+        title: Text(
+          'Invoice Management',
+          style: GoogleFonts.poppins(
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w700,
+            color: Colors.black,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined, color: Colors.black),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NotificationPage()),
+            ),
+          ),
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const My_Profile()),
+            ),
+            child: Padding(
+              padding: EdgeInsets.only(right: 12.w),
+              child: CircleAvatar(
+                radius: 16,
+                backgroundColor: Theme.of(context).primaryColor,
+                child: ClipOval(
+                  child: (_profile != null && _profile!.profileImage.isNotEmpty)
+                      ? Image.network(
+                          _profile!.profileImage,
+                          width: 32,
+                          height: 32,
+                          fit: BoxFit.cover,
+                          errorBuilder: (ctx, _, __) => _buildInitialAvatar(),
+                          loadingBuilder: (ctx, child, progress) =>
+                              progress == null
+                                  ? child
+                                  : const CircularProgressIndicator(),
+                        )
+                      : _buildInitialAvatar(),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(_gap),
         child: Column(
           children: [
-            // Top stats row (unchanged, see previous code)
-            Row(
-              children: [
-                Expanded(
-                  child: _InfoCard(
-                    title: 'Total Revenue',
-                    value: '₹${totalRevenue.toStringAsFixed(0)}',
-                    subtitle: 'From all transactions',
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _InfoCard(
-                    title: 'Services Sold',
-                    value: '$totalServicesSold',
-                    subtitle: 'Service transactions',
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _InfoCard(
-                    title: 'Products Sold',
-                    value: '$totalProductsSold',
-                    subtitle: 'Product transactions',
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            // Count card, search bar, filter bar (unchanged)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(_radius),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(Icons.receipt,
-                        color: Theme.of(context).primaryColor, size: 20),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('My Invoices',
-                            style: GoogleFonts.poppins(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            )),
-                        Text('$totalBills invoices in system',
-                            style: GoogleFonts.poppins(
-                              fontSize: 10,
-                              color: Colors.grey.shade600,
-                            )),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text('$totalBills',
-                        style: GoogleFonts.poppins(
-                          color: Theme.of(context).primaryColor,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 11,
-                        )),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
+            /// 🔹 SEARCH
             TextField(
               controller: _searchController,
               onChanged: (v) => setState(() => _searchQuery = v),
@@ -420,6 +366,41 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
               ),
             ),
             const SizedBox(height: 10),
+
+            const SizedBox(height: 10),
+
+            // TabBar in body
+            Container(
+              margin: EdgeInsets.symmetric(vertical: 4.h),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(10.r),
+              ),
+              child: TabBar(
+                controller: _tabController,
+                indicator: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8.r),
+                  color: Theme.of(context).primaryColor,
+                ),
+                indicatorSize: TabBarIndicatorSize.tab,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.blueGrey,
+                labelStyle: GoogleFonts.poppins(
+                  fontSize: 10.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+                unselectedLabelStyle: GoogleFonts.poppins(
+                  fontSize: 10.sp,
+                  fontWeight: FontWeight.w500,
+                ),
+                tabs: const [
+                  Tab(text: 'Counter Billing'),
+                  Tab(text: 'Appointments'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+
             SizedBox(
               height: 44,
               child: Row(
@@ -591,97 +572,171 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
               ),
             ),
             const SizedBox(height: 10),
-            // Date filter row (unchanged)
+            // Date filter row
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(_radius),
                 border: Border.all(color: Colors.grey.shade200),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Text(
-                    'Date Range',
-                    style: GoogleFonts.poppins(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black,
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => _selectDate(context, true),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.calendar_today,
+                                size: 14, color: Colors.grey),
+                            const SizedBox(width: 8),
+                            Text(
+                              _startDate == null
+                                  ? 'Start Date'
+                                  : DateFormat('dd/MM/yyyy').format(_startDate!),
+                              style: GoogleFonts.poppins(
+                                  fontSize: 11,
+                                  color: _startDate == null
+                                      ? Colors.grey
+                                      : Colors.black),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: InkWell(
-                          onTap: () => _selectDate(context, true),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.grey.shade300),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => _selectDate(context, false),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.calendar_today,
+                                size: 14, color: Colors.grey),
+                            const SizedBox(width: 8),
+                            Text(
+                              _endDate == null
+                                  ? 'End Date'
+                                  : DateFormat('dd/MM/yyyy').format(_endDate!),
+                              style: GoogleFonts.poppins(
+                                  fontSize: 11,
+                                  color: _endDate == null
+                                      ? Colors.grey
+                                      : Colors.black),
                             ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.calendar_today,
-                                    size: 16, color: Colors.grey),
-                                const SizedBox(width: 8),
-                                Text(
-                                  _startDate == null
-                                      ? 'Start Date'
-                                      : '${_startDate!.day}/${_startDate!.month}/${_startDate!.year}',
-                                  style: GoogleFonts.poppins(
-                                      fontSize: 12,
-                                      color: _startDate == null
-                                          ? Colors.grey
-                                          : Colors.black),
-                                ),
-                              ],
-                            ),
-                          ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: InkWell(
-                          onTap: () => _selectDate(context, false),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.grey.shade300),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.calendar_today,
-                                    size: 16, color: Colors.grey),
-                                const SizedBox(width: 8),
-                                Text(
-                                  _endDate == null
-                                      ? 'End Date'
-                                      : '${_endDate!.day}/${_endDate!.month}/${_endDate!.year}',
-                                  style: GoogleFonts.poppins(
-                                      fontSize: 12,
-                                      color: _endDate == null
-                                          ? Colors.grey
-                                          : Colors.black),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ],
               ),
             ),
+            const SizedBox(height: 16),
+
+            // Top stats row
+            Row(
+              children: [
+                Expanded(
+                  child: _InfoCard(
+                    title: 'Total Revenue',
+                    value: '₹${totalRevenue.toStringAsFixed(0)}',
+                    subtitle: 'From all transactions',
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _InfoCard(
+                    title: 'Services Sold',
+                    value: '$totalServicesSold',
+                    subtitle: 'Service transactions',
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _InfoCard(
+                    title: 'Products Sold',
+                    value: '$totalProductsSold',
+                    subtitle: 'Product transactions',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Count card
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(_radius),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(Icons.receipt,
+                        color: Theme.of(context).primaryColor, size: 20),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('My Invoices',
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            )),
+                        Text('$totalBills invoices in system',
+                            style: GoogleFonts.poppins(
+                              fontSize: 10,
+                              color: Colors.grey.shade600,
+                            )),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text('$totalBills',
+                        style: GoogleFonts.poppins(
+                          color: Theme.of(context).primaryColor,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 11,
+                        )),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
             const SizedBox(height: 12),
             // --- invoice card list ---
             Expanded(
@@ -747,222 +802,182 @@ class InvoiceCard extends StatelessWidget {
     final hasProducts = invoice.items
         .any((i) => i.itemType == 'Product' || i.itemType == 'Item');
 
-    final itemType =
-        hasServices ? "Service" : (hasProducts ? "Product" : "Item");
-    final itemIcon = hasServices
-        ? Icons.cut
-        : (hasProducts ? Icons.shopping_cart : Icons.category);
-    final itemColor = hasServices
-        ? Theme.of(context).primaryColor
-        : (hasProducts ? Colors.green : Colors.grey);
+    final itemType = hasServices
+        ? "Services"
+        : (hasProducts ? "Products" : "Items");
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(13),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.shade100),
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // top: code, date, status row
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "#${invoice.invoiceNumber}",
-                        style: GoogleFonts.poppins(
-                          color: Theme.of(context).primaryColor,
-                          fontWeight: FontWeight.w600,
-                          decoration: TextDecoration.underline,
-                          fontSize: 11,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        DateFormat('yyyy-MM-dd').format(invoice.createdAt),
-                        style: GoogleFonts.poppins(
-                          color: Colors.grey[600],
-                          fontSize: 9,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Status at top right
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      (invoice.paymentStatus == 'Paid' ||
-                              invoice.paymentStatus == 'completed' ||
-                              invoice.paymentStatus == 'Completed')
-                          ? 'Completed'
-                          : invoice.paymentStatus,
-                      style: GoogleFonts.poppins(
-                        color: (invoice.paymentStatus == 'Paid' ||
-                                invoice.paymentStatus == 'completed' ||
-                                invoice.paymentStatus == 'Completed')
-                            ? Colors.green
-                            : Colors.orange,
-                        fontWeight: FontWeight.w500,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                )
-              ],
-            ),
-            const SizedBox(height: 5),
-            // name and email
-            Text(
-              invoice.clientInfo.fullName,
-              style: GoogleFonts.poppins(
-                fontSize: 11,
-                color: Colors.black,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            Text(
-              invoice.clientInfo.email,
-              style: GoogleFonts.poppins(
-                fontSize: 10,
-                color: Colors.grey[700],
-              ),
-            ),
-            const SizedBox(height: 5),
-            // items
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top Row: ID and Date
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
               children: [
                 Text(
-                  "Items:",
+                  invoice.invoiceNumber,
                   style: GoogleFonts.poppins(
-                      fontSize: 10, color: Colors.grey[800]),
-                ),
-                const SizedBox(width: 4),
-                Icon(itemIcon, size: 13, color: itemColor),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: RichText(
-                    overflow: TextOverflow.ellipsis,
-                    text: TextSpan(
-                      style: GoogleFonts.poppins(
-                        fontSize: 10,
-                        color: Colors.black,
-                      ),
-                      children: [
-                        TextSpan(
-                          text: itemType,
-                          style: GoogleFonts.poppins(
-                            color: itemColor,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        TextSpan(
-                          text: " : ${firstItem?.name ?? '-'} ",
-                        ),
-                        TextSpan(
-                          text: "(x${firstItem?.quantity ?? '1'})",
-                          style: const TextStyle(fontWeight: FontWeight.w500),
-                        ),
-                      ],
-                    ),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    color: Colors.black,
                   ),
                 ),
                 const SizedBox(width: 8),
+                const Icon(Icons.circle, size: 4, color: Colors.grey),
+                const SizedBox(width: 8),
                 Text(
-                  invoice.items.length.toString(),
+                  DateFormat('MMM d, yyyy').format(invoice.createdAt),
                   style: GoogleFonts.poppins(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.black),
-                ),
-              ],
-            ),
-            const SizedBox(height: 5),
-            // Payment status
-            Row(
-              children: [
-                Text(
-                  "Payment Status:",
-                  style: GoogleFonts.poppins(
-                      fontSize: 10, color: Colors.grey[800]),
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  invoice.paymentStatus,
-                  style: GoogleFonts.poppins(
-                      fontSize: 10,
-                      color:
-                          (invoice.paymentStatus.toLowerCase() == 'completed' ||
-                                  invoice.paymentStatus.toLowerCase() == 'paid')
-                              ? Colors.green
-                              : (invoice.paymentStatus.toLowerCase() ==
-                                      'completed_without_payment'
-                                  ? Colors.orange[800]
-                                  : Colors.orange),
-                      fontWeight: FontWeight.w600),
-                )
-              ],
-            ),
-            const SizedBox(height: 5),
-            // Amount and actions
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                RichText(
-                  text: TextSpan(
-                    text: '₹${invoice.totalAmount}',
-                    style: GoogleFonts.poppins(
-                        color: Theme.of(context).primaryColor,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600),
-                    children: [
-                      TextSpan(
-                        text: "\nTotal Amount",
-                        style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w400,
-                            color: Colors.grey[700],
-                            fontSize: 9),
-                      ),
-                    ],
+                    fontSize: 10,
+                    color: Colors.grey.shade500,
                   ),
                 ),
+              ],
+            ),
+          ),
+
+          // Name Row
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                const Icon(Icons.person, size: 13, color: Color(0xFF3B82F6)),
+                const SizedBox(width: 8),
+                Text(
+                  invoice.clientInfo.fullName,
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 8),
+          Divider(height: 1, color: Colors.grey.shade400),
+
+          // Content Grid
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              children: [
                 Row(
                   children: [
-                    TextButton.icon(
-                      style: TextButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        side: BorderSide(color: Colors.grey.shade200),
-                        backgroundColor: Colors.white,
-                        minimumSize: const Size(0, 0),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    // Phone
+                    Expanded(
+                      child: Row(
+                        children: [
+                          const Icon(Icons.phone, size: 14, color: Colors.green),
+                          const SizedBox(width: 8),
+                          Text(
+                            invoice.clientInfo.phone,
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: Colors.grey.shade800,
+                            ),
+                          ),
+                        ],
                       ),
-                      icon: Icon(Icons.visibility,
-                          size: 15, color: Theme.of(context).primaryColor),
-                      label: Text("View",
-                          style: GoogleFonts.poppins(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                              color: Theme.of(context).primaryColor)),
-                      onPressed: onView,
+                    ),
+                    // Services
+                    Expanded(
+                      child: Row(
+                        children: [
+                          const Icon(Icons.circle, size: 6, color: Colors.blue),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '$itemType : ${firstItem?.name ?? '-'} (x${firstItem?.quantity ?? 1})',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                color: const Color(0xFF6B7280),
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    // Amount
+                    Expanded(
+                      child: Row(
+                        children: [
+                          const Icon(Icons.account_balance_wallet,
+                              size: 14, color: Colors.green),
+                          const SizedBox(width: 8),
+                          Text(
+                            '₹${invoice.totalAmount.toStringAsFixed(0)}',
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Paid By
+                    Expanded(
+                      child: Text(
+                        'Paid By : ${invoice.paymentMethod}',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                // Billing Type and Icons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Billing Type : ${invoice.billingType}',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: Colors.black,
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.visibility_outlined,
+                              size: 20, color: Color(0xFF374151)),
+                          onPressed: onView,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
