@@ -15,6 +15,7 @@ import '../billing_invoice_model.dart';
 import 'marketplace_models.dart';
 import '../supplier_model.dart';
 import '../models/notification_model.dart';
+import '../models/shipping_model.dart';
 
 class StaffMember {
   final String? id;
@@ -490,6 +491,7 @@ class ApiService {
       '/crm/notifications/register-token';
   static const String notificationsEndpoint = '/notifications';
   static const String crmNotificationsEndpoint = '/crm/notifications';
+  static const String shippingEndpoint = '/crm/shipping';
 
   // Static notifier for vendor profile
   static final ValueNotifier<VendorProfile?> vendorProfileNotifier =
@@ -4019,7 +4021,9 @@ class ApiService {
         final dynamic decoded = json.decode(response.body);
         if (decoded is List) return decoded;
         if (decoded is Map && decoded['data'] is List) return decoded['data'];
-        throw Exception('Unexpected response format for staff commission report');
+        throw Exception(
+          'Unexpected response format for staff commission report',
+        );
       } else {
         throw Exception(
           'Failed to load staff commission report: ${response.statusCode} - ${response.body}',
@@ -4030,8 +4034,54 @@ class ApiService {
       rethrow;
     }
   }
-}
 
+  // === SHIPPING SETTINGS ===
+
+  // Get shipping settings
+  static Future<ShippingSettings?> getShippingSettings() async {
+    try {
+      final response = await _get('$baseUrl$shippingEndpoint');
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return ShippingSettings.fromJson(data['data']);
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error getting shipping settings: $e');
+      return null;
+    }
+  }
+
+  // Create shipping settings
+  static Future<bool> createShippingSettings(ShippingSettings settings) async {
+    try {
+      final response = await _post(
+        '$baseUrl$shippingEndpoint',
+        settings.toJson(),
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      debugPrint('Error creating shipping settings: $e');
+      return false;
+    }
+  }
+
+  // Update shipping settings
+  static Future<bool> updateShippingSettings(ShippingSettings settings) async {
+    try {
+      final response = await _put(
+        '$baseUrl$shippingEndpoint',
+        settings.toJson(),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('Error updating shipping settings: $e');
+      return false;
+    }
+  }
+}
 
 class Service {
   String? id;

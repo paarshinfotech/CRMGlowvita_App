@@ -5,7 +5,9 @@ import 'services/api_service.dart';
 import 'my_Profile.dart';
 import 'Notification.dart';
 import 'vendor_model.dart';
+import 'models/shipping_model.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+
 
 class ShippingPage extends StatefulWidget {
   const ShippingPage({super.key});
@@ -21,12 +23,36 @@ class _ShippingConfigPageState extends State<ShippingPage> {
   ChargeType chargeType = ChargeType.fixed;
   final TextEditingController amountCtrl = TextEditingController(text: '80');
   VendorProfile? _profile;
+  ShippingSettings? _settings;
+  bool _isLoading = false;
+
 
   @override
   void initState() {
     super.initState();
     _fetchProfile();
+    _fetchShippingSettings();
   }
+
+  Future<void> _fetchShippingSettings() async {
+    setState(() => _isLoading = true);
+    try {
+      final settings = await ApiService.getShippingSettings();
+      if (settings != null && mounted) {
+        setState(() {
+          _settings = settings;
+          enableShipping = settings.isEnabled;
+          chargeType = settings.chargeType == 'percentage'
+              ? ChargeType.percent
+              : ChargeType.fixed;
+          amountCtrl.text = settings.amount.toString();
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
 
   Future<void> _fetchProfile() async {
     try {
@@ -54,12 +80,40 @@ class _ShippingConfigPageState extends State<ShippingPage> {
     super.dispose();
   }
 
-  void _save() {
-    // TODO: persist settings or call API
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Shipping settings saved')));
+  Future<void> _save() async {
+    setState(() => _isLoading = true);
+    try {
+      final settings = ShippingSettings(
+        chargeType: chargeType == ChargeType.percent ? 'percentage' : 'fixed',
+        amount: double.tryParse(amountCtrl.text) ?? 0.0,
+        isEnabled: enableShipping,
+      );
+
+      bool success;
+      if (_settings == null) {
+        success = await ApiService.createShippingSettings(settings);
+      } else {
+        success = await ApiService.updateShippingSettings(settings);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              success
+                  ? 'Shipping settings saved successfully'
+                  : 'Failed to save shipping settings',
+            ),
+            backgroundColor: success ? Colors.green : Colors.red,
+          ),
+        );
+        if (success) _fetchShippingSettings();
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -248,7 +302,7 @@ class _ShippingConfigPageState extends State<ShippingPage> {
                       child: SizedBox(
                         width: 160,
                         child: ElevatedButton(
-                          onPressed: enableShipping ? _save : null,
+                          onPressed: (enableShipping && !_isLoading) ? _save : null,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF4A2C3C),
                             foregroundColor: Colors.white,
@@ -258,16 +312,26 @@ class _ShippingConfigPageState extends State<ShippingPage> {
                             ),
                             elevation: 0,
                           ),
-                          child: Text(
-                            'Save Changes',
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                            ),
-                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Text(
+                                  'Save Changes',
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
+                                ),
                         ),
                       ),
                     ),
+
                   ],
                 ),
               ),

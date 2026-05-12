@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'supp_drawer.dart';
 import '../widgets/subscription_wrapper.dart';
+import '../services/api_service.dart';
+import '../models/shipping_model.dart';
+
 
 class SuppShippingPage extends StatefulWidget {
   const SuppShippingPage({super.key});
@@ -13,8 +16,36 @@ enum ChargeType { fixed, percent }
 
 class _SuppShippingConfigPageState extends State<SuppShippingPage> {
   bool enableShipping = true;
-  ChargeType chargeType = ChargeType.fixed;
-  final TextEditingController amountCtrl = TextEditingController(text: '80');
+   ChargeType chargeType = ChargeType.fixed;
+   final TextEditingController amountCtrl = TextEditingController(text: '80');
+   ShippingSettings? _settings;
+   bool _isLoading = false;
+
+   @override
+   void initState() {
+     super.initState();
+     _fetchShippingSettings();
+   }
+
+   Future<void> _fetchShippingSettings() async {
+     setState(() => _isLoading = true);
+     try {
+       final settings = await ApiService.getShippingSettings();
+       if (settings != null && mounted) {
+         setState(() {
+           _settings = settings;
+           enableShipping = settings.isEnabled;
+           chargeType = settings.chargeType == 'percentage'
+               ? ChargeType.percent
+               : ChargeType.fixed;
+           amountCtrl.text = settings.amount.toString();
+         });
+       }
+     } finally {
+       if (mounted) setState(() => _isLoading = false);
+     }
+   }
+
 
   @override
   void dispose() {
@@ -22,11 +53,40 @@ class _SuppShippingConfigPageState extends State<SuppShippingPage> {
     super.dispose();
   }
 
-  void _save() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Shipping settings saved successfully')),
-    );
+  Future<void> _save() async {
+    setState(() => _isLoading = true);
+    try {
+      final settings = ShippingSettings(
+        chargeType: chargeType == ChargeType.percent ? 'percentage' : 'fixed',
+        amount: double.tryParse(amountCtrl.text) ?? 0.0,
+        isEnabled: enableShipping,
+      );
+
+      bool success;
+      if (_settings == null) {
+        success = await ApiService.createShippingSettings(settings);
+      } else {
+        success = await ApiService.updateShippingSettings(settings);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              success
+                  ? 'Shipping settings saved successfully'
+                  : 'Failed to save shipping settings',
+            ),
+            backgroundColor: success ? Colors.green : Colors.red,
+          ),
+        );
+        if (success) _fetchShippingSettings();
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -230,13 +290,23 @@ class _SuppShippingConfigPageState extends State<SuppShippingPage> {
                               borderRadius: BorderRadius.circular(10),
                             ),
                           ),
-                          child: Text(
-                            'Save Changes',
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
+                           child: _isLoading
+                               ? const SizedBox(
+                                   height: 20,
+                                   width: 20,
+                                   child: CircularProgressIndicator(
+                                     color: Colors.white,
+                                     strokeWidth: 2,
+                                   ),
+                                 )
+                               : Text(
+                                   'Save Changes',
+                                   style: GoogleFonts.poppins(
+                                     fontSize: 14,
+                                     fontWeight: FontWeight.w600,
+                                   ),
+                                 ),
+
                         ),
                       ),
                     ),
