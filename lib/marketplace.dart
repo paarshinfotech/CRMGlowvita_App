@@ -1363,7 +1363,7 @@ class MarketProductDetailsDialogState
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// QUICK CHECKOUT DIALOG  (matches screenshot 3)
+// QUICK CHECKOUT DIALOG
 // ─────────────────────────────────────────────────────────────────────────────
 class MarketQuickCheckoutDialog extends StatefulWidget {
   final MarketplaceProduct product;
@@ -1393,6 +1393,12 @@ class MarketQuickCheckoutDialogState extends State<MarketQuickCheckoutDialog> {
   int _qty = 1;
   late RazorpayService _razorpayService;
 
+  List<dynamic> _savedAddresses = [];
+  bool _isLoadingAddresses = true;
+  bool _showAddAddressForm = false;
+  String? _selectedAddressId;
+  Map<String, dynamic>? _editingAddress;
+
   @override
   void initState() {
     super.initState();
@@ -1410,6 +1416,37 @@ class MarketQuickCheckoutDialogState extends State<MarketQuickCheckoutDialog> {
 
     // Listen to cart changes to ensure summary and quantities stay in sync
     cartManager.addListener(_onCartChanged);
+
+    _fetchAddresses();
+  }
+
+  Future<void> _fetchAddresses() async {
+    setState(() => _isLoadingAddresses = true);
+    try {
+      final res = await ApiService.getAddresses();
+      if (mounted) {
+        setState(() {
+          _savedAddresses = res['savedAddresses'] ?? [];
+          _isLoadingAddresses = false;
+          // Auto-select primary address if any
+          final primary = _savedAddresses
+              .cast<Map<String, dynamic>?>()
+              .firstWhere(
+                (a) => a?['isPrimary'] == true,
+                orElse: () => _savedAddresses.isNotEmpty
+                    ? _savedAddresses.first as Map<String, dynamic>
+                    : null,
+              );
+          if (primary != null) {
+            _selectedAddressId = primary['_id'];
+            _addressSaved = true;
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching addresses: $e');
+      if (mounted) setState(() => _isLoadingAddresses = false);
+    }
   }
 
   void _onCartChanged() {
@@ -1521,13 +1558,41 @@ class MarketQuickCheckoutDialogState extends State<MarketQuickCheckoutDialog> {
 
   MarketplaceProduct get p => widget.product;
   int get subtotal => p.salePrice * _qty;
-  String get fullAddress =>
-      '${_flatCtrl.text}, ${_streetCtrl.text}, ${_cityCtrl.text}, ${_stateCtrl.text} - ${_pinCtrl.text}';
 
-  void _saveAddress() {
+  String get fullAddress {
+    if (_selectedAddressId != null && _savedAddresses.isNotEmpty) {
+      final addr = _savedAddresses.firstWhere(
+        (a) => a['_id'] == _selectedAddressId,
+        orElse: () => null,
+      );
+      if (addr != null) {
+        return '${addr['address']}, ${addr['city']}, ${addr['state']} - ${addr['pincode']}';
+      }
+    }
+    return '${_flatCtrl.text}, ${_streetCtrl.text}, ${_cityCtrl.text}, ${_stateCtrl.text} - ${_pinCtrl.text}';
+  }
+
+  void _editAddress(Map<String, dynamic> addr) {
+    setState(() {
+      _editingAddress = addr;
+      _nameCtrl.text = addr['fullName'] ?? '';
+      _mobileCtrl.text = addr['mobileNo'] ?? '';
+      _pinCtrl.text = addr['pincode'] ?? '';
+      _flatCtrl.text =
+          addr['address'] ?? ''; // Backend seems to use 'address' for the line
+      _streetCtrl.text =
+          ''; // Clear street as it might be combined in 'address'
+      _cityCtrl.text = addr['city'] ?? '';
+      _stateCtrl.text = addr['state'] ?? '';
+      _defaultAddr = addr['isPrimary'] ?? false;
+      _showAddAddressForm = true;
+    });
+  }
+
+  Future<void> _saveOrUpdateAddress() async {
     if (_nameCtrl.text.trim().isEmpty ||
         _mobileCtrl.text.trim().isEmpty ||
-        _pinCtrl.text.trim().length != 6) {
+        _pinCtrl.text.trim().length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please fill in name, mobile, and 6-digit PIN'),
@@ -1535,13 +1600,67 @@ class MarketQuickCheckoutDialogState extends State<MarketQuickCheckoutDialog> {
       );
       return;
     }
-    setState(() => _addressSaved = true);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Address saved!'),
-        duration: Duration(seconds: 1),
-      ),
-    );
+
+    setState(() => _isSubmitting = true);
+    try {
+      final payload = {
+        "fullName": _nameCtrl.text.trim(),
+        "mobileNo": _mobileCtrl.text.trim(),
+        "address": _flatCtrl.text.trim(),
+        "city": _cityCtrl.text.trim(),
+        "state": _stateCtrl.text.trim(),
+        "pincode": _pinCtrl.text.trim(),
+        "lat": 1, // Default as per payload example
+        "lng": 1,
+        "isPrimary": _defaultAddr,
+      };
+
+      Map<String, dynamic> response;
+      if (_editingAddress != null) {
+        response = await ApiService.updateAddress(
+          _editingAddress!['_id'],
+          payload,
+        );
+      } else {
+        response = await ApiService.addAddress(payload);
+      }
+
+      if (response['success'] == true) {
+        await _fetchAddresses();
+        setState(() {
+          _showAddAddressForm = false;
+          _editingAddress = null;
+          _addressSaved = true;
+          // If we just added/updated, try to select it
+          if (response['savedAddresses'] is List &&
+              (response['savedAddresses'] as List).isNotEmpty) {
+            _selectedAddressId =
+                (response['savedAddresses'] as List).last['_id'];
+          }
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(response['message'] ?? 'Address saved!')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+    } finally {
+      setState(() => _isSubmitting = false);
+    }
+  }
+
+  void _clearForm() {
+    _nameCtrl.clear();
+    _mobileCtrl.clear();
+    _pinCtrl.clear();
+    _flatCtrl.clear();
+    _streetCtrl.clear();
+    _cityCtrl.clear();
+    _stateCtrl.clear();
+    _defaultAddr = false;
+    _editingAddress = null;
   }
 
   Future<void> _placeOrder() async {
@@ -1785,7 +1904,6 @@ class MarketQuickCheckoutDialogState extends State<MarketQuickCheckoutDialog> {
     );
   }
 
-  // ── Left: Shipping form ──────────────────────────────────────────────────
   Widget _buildLeftPanel() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
@@ -1797,116 +1915,286 @@ class MarketQuickCheckoutDialogState extends State<MarketQuickCheckoutDialog> {
             'Shipping & Contact Details',
           ),
           const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              border: Border.all(color: kMarketBorder, width: 1.5),
-              borderRadius: BorderRadius.circular(14),
+          if (_isLoadingAddresses)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: CircularProgressIndicator(color: kMarketPrimary),
+              ),
+            )
+          else if (!_showAddAddressForm)
+            _buildAddressList()
+          else
+            _buildAddressForm(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAddressList() {
+    return Column(
+      children: [
+        if (_savedAddresses.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            child: Text(
+              'No saved addresses found.',
+              style: GoogleFonts.dmSans(color: kMarketMuted),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'New Address',
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
+          )
+        else
+          ..._savedAddresses.map((addr) {
+            final isSelected = _selectedAddressId == addr['_id'];
+            return GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedAddressId = addr['_id'];
+                  _addressSaved = true;
+                });
+              },
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isSelected ? kMarketPrimaryLight : Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isSelected ? kMarketPrimary : kMarketBorder,
+                    width: 1.5,
                   ),
                 ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(child: _field('FULL NAME', _nameCtrl, '')),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _field(
-                        'MOBILE NO',
-                        _mobileCtrl,
-                        '',
-                        type: TextInputType.phone,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Row(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      child: _field(
-                        'PINCODE',
-                        _pinCtrl,
-                        '6-digit PIN',
-                        maxLen: 6,
-                        type: TextInputType.number,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(child: _field('FLAT/HOUSE NO', _flatCtrl, '')),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                _field('AREA/STREET', _streetCtrl, ''),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(child: _field('CITY', _cityCtrl, '')),
-                    const SizedBox(width: 10),
-                    Expanded(child: _field('STATE', _stateCtrl, '')),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                GestureDetector(
-                  onTap: () => setState(() => _defaultAddr = !_defaultAddr),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: Checkbox(
-                          value: _defaultAddr,
-                          onChanged: (v) =>
-                              setState(() => _defaultAddr = v ?? false),
-                          activeColor: kMarketPrimary,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                addr['fullName'] ?? 'N/A',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              if (addr['isPrimary'] == true) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: kMarketPrimary.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    'Default',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: kMarketPrimary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
-                        ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${addr['address']}, ${addr['city']}, ${addr['state']} - ${addr['pincode']}',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 12,
+                              color: kMarketMuted,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Phone: ${addr['mobileNo']}',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          GestureDetector(
+                            onTap: () => _editAddress(addr),
+                            child: Text(
+                              'Edit',
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.blue,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Default address',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 12,
-                          color: kMarketMuted,
-                        ),
+                    ),
+                    if (isSelected)
+                      const Icon(
+                        Icons.check_circle,
+                        color: kMarketPrimary,
+                        size: 20,
                       ),
-                    ],
+                  ],
+                ),
+              ),
+            );
+          }),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: () {
+            _clearForm();
+            setState(() => _showAddAddressForm = true);
+          },
+          icon: const Icon(Icons.add, size: 16),
+          label: Text(
+            'Add New Address',
+            style: GoogleFonts.poppins(fontWeight: FontWeight.w700),
+          ),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: kMarketPrimary,
+            side: const BorderSide(color: kMarketBorder, width: 1.5),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            minimumSize: const Size(double.infinity, 45),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAddressForm() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: kMarketBorder, width: 1.5),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                _editingAddress != null ? 'Edit Address' : 'New Address',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              IconButton(
+                onPressed: () => setState(() => _showAddAddressForm = false),
+                icon: const Icon(Icons.cancel, color: kMarketMuted, size: 20),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(child: _field('FULL NAME', _nameCtrl, '')),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _field(
+                  'MOBILE NO',
+                  _mobileCtrl,
+                  '',
+                  type: TextInputType.phone,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _field(
+                  'PINCODE',
+                  _pinCtrl,
+                  '6-digit PIN',
+                  maxLen: 6,
+                  type: TextInputType.number,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(child: _field('FLAT/HOUSE NO', _flatCtrl, '')),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _field('AREA/STREET', _streetCtrl, ''),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(child: _field('CITY', _cityCtrl, '')),
+              const SizedBox(width: 10),
+              Expanded(child: _field('STATE', _stateCtrl, '')),
+            ],
+          ),
+          const SizedBox(height: 10),
+          GestureDetector(
+            onTap: () => setState(() => _defaultAddr = !_defaultAddr),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: Checkbox(
+                    value: _defaultAddr,
+                    onChanged: (v) => setState(() => _defaultAddr = v ?? false),
+                    activeColor: kMarketPrimary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _saveAddress,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: kMarketPrimary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                const SizedBox(width: 8),
+                Text(
+                  'Default address',
+                  style: GoogleFonts.dmSans(fontSize: 12, color: kMarketMuted),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _isSubmitting ? null : _saveOrUpdateAddress,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kMarketPrimary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                elevation: 0,
+              ),
+              child: _isSubmitting
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
                       ),
-                      elevation: 0,
-                    ),
-                    child: Text(
-                      'Save and Use This Address',
+                    )
+                  : Text(
+                      _editingAddress != null
+                          ? 'Update Address'
+                          : 'Save and Use This Address',
                       style: GoogleFonts.poppins(
                         fontWeight: FontWeight.w700,
                         fontSize: 13,
                       ),
                     ),
-                  ),
-                ),
-              ],
             ),
           ),
         ],

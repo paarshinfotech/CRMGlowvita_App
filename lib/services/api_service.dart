@@ -492,6 +492,7 @@ class ApiService {
   static const String notificationsEndpoint = '/notifications';
   static const String crmNotificationsEndpoint = '/crm/notifications';
   static const String shippingEndpoint = '/crm/shipping';
+  static const String addressesEndpoint = '/crm/addresses';
 
   // Static notifier for vendor profile
   static final ValueNotifier<VendorProfile?> vendorProfileNotifier =
@@ -1667,6 +1668,39 @@ class ApiService {
     } catch (e) {
       print('Error creating order: $e');
       rethrow;
+    }
+  }
+
+  // Addresses APIs
+  static Future<Map<String, dynamic>> getAddresses() async {
+    final response = await _get('$baseUrl$addressesEndpoint');
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load addresses: ${response.body}');
+    }
+  }
+
+  static Future<Map<String, dynamic>> addAddress(
+    Map<String, dynamic> addressData,
+  ) async {
+    final response = await _post('$baseUrl$addressesEndpoint', addressData);
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to add address: ${response.body}');
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateAddress(
+    String id,
+    Map<String, dynamic> addressData,
+  ) async {
+    final response = await _put('$baseUrl$addressesEndpoint/$id', addressData);
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to update address: ${response.body}');
     }
   }
 
