@@ -7,6 +7,9 @@ import 'widgets/custom_drawer.dart';
 import 'widgets/subscription_wrapper.dart';
 import 'vendor_model.dart';
 import 'services/api_service.dart';
+import 'marketing/social_post_creator.dart';
+import 'marketing/social_media_marketing.dart';
+import 'marketing/message_blast.dart';
 
 class MarketingPage extends StatefulWidget {
   const MarketingPage({super.key});
@@ -123,6 +126,12 @@ class _MarketingPageState extends State<MarketingPage> {
                 icon: Icons.add_comment_outlined,
                 iconColor: Colors.blue.shade100,
                 iconTextColor: Colors.blue,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const SocialPostCreatorPage(),
+                  ),
+                ),
               ),
               SizedBox(height: 14.h),
               _buildMarketingCard(
@@ -131,6 +140,12 @@ class _MarketingPageState extends State<MarketingPage> {
                 icon: Icons.campaign_outlined,
                 iconColor: Colors.purple.shade50,
                 iconTextColor: Colors.purple,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const SocialMediaMarketingPage(),
+                  ),
+                ),
               ),
               SizedBox(height: 14.h),
               _buildMarketingCard(
@@ -139,6 +154,10 @@ class _MarketingPageState extends State<MarketingPage> {
                 icon: Icons.messenger_outline,
                 iconColor: Colors.blue.shade50,
                 iconTextColor: Colors.blueAccent,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MessageBlastPage()),
+                ),
               ),
             ],
           ),
@@ -153,9 +172,9 @@ class _MarketingPageState extends State<MarketingPage> {
     required IconData icon,
     required Color iconColor,
     required Color iconTextColor,
+    required VoidCallback onTap,
   }) {
     return Container(
-      padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14.r),
@@ -168,42 +187,56 @@ class _MarketingPageState extends State<MarketingPage> {
           ),
         ],
       ),
-      child: Row(
-        children: [
-          Container(
-            padding: EdgeInsets.all(10.w),
-            decoration: BoxDecoration(
-              color: iconColor,
-              borderRadius: BorderRadius.circular(10.r),
-            ),
-            child: Icon(icon, color: iconTextColor, size: 22.sp),
-          ),
-          SizedBox(width: 14.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14.r),
+          child: Padding(
+            padding: EdgeInsets.all(14.w),
+            child: Row(
               children: [
-                Text(
-                  title,
-                  style: GoogleFonts.poppins(
-                    fontSize: 10.sp,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+                Container(
+                  padding: EdgeInsets.all(10.w),
+                  decoration: BoxDecoration(
+                    color: iconColor,
+                    borderRadius: BorderRadius.circular(10.r),
+                  ),
+                  child: Icon(icon, color: iconTextColor, size: 22.sp),
+                ),
+                SizedBox(width: 14.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: GoogleFonts.poppins(
+                          fontSize: 10.sp,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      SizedBox(height: 2.h),
+                      Text(
+                        description,
+                        style: GoogleFonts.poppins(
+                          fontSize: 7.5.sp,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                SizedBox(height: 2.h),
-                Text(
-                  description,
-                  style: GoogleFonts.poppins(
-                    fontSize: 7.5.sp,
-                    color: Colors.grey.shade600,
-                  ),
+                Icon(
+                  Icons.chevron_right,
+                  color: Colors.grey.shade400,
+                  size: 20.sp,
                 ),
               ],
             ),
           ),
-          Icon(Icons.chevron_right, color: Colors.grey.shade400, size: 20.sp),
-        ],
+        ),
       ),
     );
   }

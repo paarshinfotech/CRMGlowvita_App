@@ -94,73 +94,81 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
   }
 
   List<BillingInvoice> _generateAppointmentInvoices() {
-    return appointments.where((appt) {
-      bool isPaid = appt.paymentStatus == 'completed';
-      bool hasInvoice =
-          appt.invoiceNumber != null && appt.invoiceNumber!.isNotEmpty;
-      return isPaid || hasInvoice;
-    }).map((appt) {
-      // Determine correct status based on payment rule
-      String finalStatus = appt.status ?? 'N/A';
-      if (appt.status == 'completed' &&
-          (appt.paymentStatus == 'completed' || appt.paymentStatus == 'Paid')) {
-        finalStatus = 'Paid';
-      } else if (appt.paymentStatus == 'completed' ||
-          appt.paymentStatus == 'Paid') {
-        finalStatus = 'Paid';
-      } else if (appt.status == 'completed' &&
-          appt.paymentStatus != 'completed' &&
-          appt.paymentStatus != 'Paid') {
-        finalStatus = 'Completed Without Payment';
-      }
+    return appointments
+        .where((appt) {
+          bool isPaid = appt.paymentStatus == 'completed';
+          bool hasInvoice =
+              appt.invoiceNumber != null && appt.invoiceNumber!.isNotEmpty;
+          return isPaid || hasInvoice;
+        })
+        .map((appt) {
+          // Determine correct status based on payment rule
+          String finalStatus = appt.status ?? 'N/A';
+          if (appt.status == 'completed' &&
+              (appt.paymentStatus == 'completed' ||
+                  appt.paymentStatus == 'Paid')) {
+            finalStatus = 'Paid';
+          } else if (appt.paymentStatus == 'completed' ||
+              appt.paymentStatus == 'Paid') {
+            finalStatus = 'Paid';
+          } else if (appt.status == 'completed' &&
+              appt.paymentStatus != 'completed' &&
+              appt.paymentStatus != 'Paid') {
+            finalStatus = 'Completed Without Payment';
+          }
 
-      return BillingInvoice(
-        id: appt.id ?? '',
-        invoiceNumber: appt.invoiceNumber ?? 'N/A',
-        clientInfo: ClientInfo(
-          fullName: appt.clientName ?? 'N/A',
-          email: appt.client?.email ?? '',
-          phone: appt.client?.phone ?? '',
-          profilePicture: '',
-          address: appt.venueAddress ?? '',
-        ),
-        vendorId: appt.vendorId ?? '',
-        clientId: appt.client?.id ?? '',
-        items: (appt.serviceItems ?? [])
-            .map((si) => BillingItem(
-                  itemId: si.service ?? '',
-                  itemType: 'Service',
-                  name: si.serviceName ?? appt.serviceName ?? 'Service',
-                  description: '',
-                  price: si.amount ?? appt.amount ?? 0.0,
-                  quantity: 1,
-                  totalPrice: si.amount ?? appt.amount ?? 0.0,
-                  duration: si.duration ?? appt.duration ?? 0,
-                  addOns: (si.addOns ?? [])
-                      .map((ao) => AddOnItem(
+          return BillingInvoice(
+            id: appt.id ?? '',
+            invoiceNumber: appt.invoiceNumber ?? 'N/A',
+            clientInfo: ClientInfo(
+              fullName: appt.clientName ?? 'N/A',
+              email: appt.client?.email ?? '',
+              phone: appt.client?.phone ?? '',
+              profilePicture: '',
+              address: appt.venueAddress ?? '',
+            ),
+            vendorId: appt.vendorId ?? '',
+            clientId: appt.client?.id ?? '',
+            items: (appt.serviceItems ?? [])
+                .map(
+                  (si) => BillingItem(
+                    itemId: si.service ?? '',
+                    itemType: 'Service',
+                    name: si.serviceName ?? appt.serviceName ?? 'Service',
+                    description: '',
+                    price: si.amount ?? appt.amount ?? 0.0,
+                    quantity: 1,
+                    totalPrice: si.amount ?? appt.amount ?? 0.0,
+                    duration: si.duration ?? appt.duration ?? 0,
+                    addOns: (si.addOns ?? [])
+                        .map(
+                          (ao) => AddOnItem(
                             id: ao.id ?? '',
                             name: ao.name ?? '',
                             price: (ao.price ?? 0).toDouble(),
                             duration: ao.duration ?? 0,
-                          ))
-                      .toList(),
-                  discount: 0,
-                  discountType: 'flat',
-                ))
-            .toList(),
-        subtotal: appt.amount ?? 0.0,
-        taxRate: 0,
-        taxAmount: appt.serviceTax ?? 0.0,
-        platformFee: appt.platformFee ?? 0.0,
-        totalAmount: appt.totalAmount ?? appt.finalAmount ?? 0.0,
-        balance: appt.amountRemaining ?? 0.0,
-        paymentMethod: appt.paymentMethod ?? 'N/A',
-        paymentStatus: finalStatus,
-        billingType: 'Appointment',
-        createdAt: appt.date ?? DateTime.now(),
-        updatedAt: appt.date ?? DateTime.now(),
-      );
-    }).toList();
+                          ),
+                        )
+                        .toList(),
+                    discount: 0,
+                    discountType: 'flat',
+                  ),
+                )
+                .toList(),
+            subtotal: appt.amount ?? 0.0,
+            taxRate: 0,
+            taxAmount: appt.serviceTax ?? 0.0,
+            platformFee: appt.platformFee ?? 0.0,
+            totalAmount: appt.totalAmount ?? appt.finalAmount ?? 0.0,
+            balance: appt.amountRemaining ?? 0.0,
+            paymentMethod: appt.paymentMethod ?? 'N/A',
+            paymentStatus: finalStatus,
+            billingType: 'Appointment',
+            createdAt: appt.date ?? DateTime.now(),
+            updatedAt: appt.date ?? DateTime.now(),
+          );
+        })
+        .toList();
   }
 
   String _searchQuery = '';
@@ -170,53 +178,66 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
   DateTime? _endDate;
   final TextEditingController _searchController = TextEditingController();
 
-  int get totalBills => invoices.length;
+  List<BillingInvoice> get _allBaseInvoices => [
+    ...invoices.where((i) => i.billingType != 'Appointment'),
+    ..._generateAppointmentInvoices(),
+  ];
+
+  int get totalBills => _allBaseInvoices.length;
   double get totalRevenue =>
-      invoices.fold(0.0, (sum, i) => sum + i.totalAmount);
-  int get totalServicesSold => invoices.fold(
-      0,
-      (sum, i) =>
-          sum + i.items.where((item) => item.itemType == 'Service').length);
-  int get totalProductsSold => invoices.fold(
-      0,
-      (sum, i) =>
-          sum +
-          i.items
-              .where((item) =>
-                  item.itemType == 'Product' || item.itemType == 'Item')
-              .length);
+      _allBaseInvoices.fold(0.0, (sum, i) => sum + i.totalAmount);
+  int get totalServicesSold => _allBaseInvoices.fold(
+    0,
+    (sum, i) =>
+        sum + i.items.where((item) => item.itemType == 'Service').length,
+  );
+  int get totalProductsSold => _allBaseInvoices.fold(
+    0,
+    (sum, i) =>
+        sum +
+        i.items
+            .where(
+              (item) => item.itemType == 'Product' || item.itemType == 'Item',
+            )
+            .length,
+  );
 
   List<BillingInvoice> get filteredInvoices {
     List<BillingInvoice> sourceInvoices = [];
     if (_tabController.index == 0) {
-      sourceInvoices =
-          invoices.where((i) => i.billingType != 'Appointment').toList();
+      sourceInvoices = invoices
+          .where((i) => i.billingType != 'Appointment')
+          .toList();
     } else {
       sourceInvoices = _generateAppointmentInvoices();
     }
 
     return sourceInvoices.where((invoice) {
-      final matchesSearch = _searchQuery.isEmpty ||
-          invoice.invoiceNumber
-              .toLowerCase()
-              .contains(_searchQuery.toLowerCase()) ||
-          invoice.clientInfo.fullName
-              .toLowerCase()
-              .contains(_searchQuery.toLowerCase()) ||
-          invoice.clientInfo.email
-              .toLowerCase()
-              .contains(_searchQuery.toLowerCase());
+      final matchesSearch =
+          _searchQuery.isEmpty ||
+          invoice.invoiceNumber.toLowerCase().contains(
+            _searchQuery.toLowerCase(),
+          ) ||
+          invoice.clientInfo.fullName.toLowerCase().contains(
+            _searchQuery.toLowerCase(),
+          ) ||
+          invoice.clientInfo.email.toLowerCase().contains(
+            _searchQuery.toLowerCase(),
+          );
 
       final matchesPaymentMethod =
           _selectedPaymentMethod == 'All Payment Methods' ||
-              invoice.paymentMethod == _selectedPaymentMethod;
+          invoice.paymentMethod == _selectedPaymentMethod;
 
-      final hasServices =
-          invoice.items.any((item) => item.itemType == 'Service');
-      final hasProducts = invoice.items
-          .any((item) => item.itemType == 'Product' || item.itemType == 'Item');
+      final hasServices = invoice.items.any(
+        (item) => item.itemType == 'Service',
+      );
+      final hasProducts = invoice.items.any(
+        (item) => item.itemType == 'Product' || item.itemType == 'Item',
+      );
 
-      final matchesItemType = _selectedItemType == 'All Item Types' ||
+      final matchesItemType =
+          _selectedItemType == 'All Item Types' ||
           (_selectedItemType == 'Services' && hasServices) ||
           (_selectedItemType == 'Products' && hasProducts);
 
@@ -322,8 +343,8 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
                           errorBuilder: (ctx, _, __) => _buildInitialAvatar(),
                           loadingBuilder: (ctx, child, progress) =>
                               progress == null
-                                  ? child
-                                  : const CircularProgressIndicator(),
+                              ? child
+                              : const CircularProgressIndicator(),
                         )
                       : _buildInitialAvatar(),
                 ),
@@ -344,8 +365,11 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
               decoration: InputDecoration(
                 hintText: 'Search Invoices...',
                 hintStyle: GoogleFonts.poppins(fontSize: 13),
-                prefixIcon:
-                    const Icon(Icons.search, color: Colors.grey, size: 20),
+                prefixIcon: const Icon(
+                  Icons.search,
+                  color: Colors.grey,
+                  size: 20,
+                ),
                 suffixIcon: _searchQuery.isEmpty
                     ? null
                     : IconButton(
@@ -361,8 +385,10 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
                   borderRadius: BorderRadius.circular(_radius),
                   borderSide: BorderSide.none,
                 ),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
               ),
             ),
             const SizedBox(height: 10),
@@ -414,16 +440,23 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                            color: const Color(0xFFD1D5DB), width: 1.1),
+                          color: const Color(0xFFD1D5DB),
+                          width: 1.1,
+                        ),
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
                           isExpanded: true,
                           value: _selectedPaymentMethod,
                           style: GoogleFonts.poppins(
-                              fontSize: 13, color: Colors.black87),
-                          icon: const Icon(Icons.keyboard_arrow_down_rounded,
-                              color: Color(0xFF1E293B), size: 20),
+                            fontSize: 13,
+                            color: Colors.black87,
+                          ),
+                          icon: const Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: Color(0xFF1E293B),
+                            size: 20,
+                          ),
                           dropdownColor: Colors.white,
                           onChanged: (value) =>
                               setState(() => _selectedPaymentMethod = value!),
@@ -431,12 +464,16 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
                             DropdownMenuItem(
                               value: 'All Payment Methods',
                               child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 3),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 3,
+                                ),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.payment,
-                                        size: 16, color: Colors.grey),
+                                    const Icon(
+                                      Icons.payment,
+                                      size: 16,
+                                      color: Colors.grey,
+                                    ),
                                     const SizedBox(width: 8),
                                     Text(
                                       'All Payment Methods',
@@ -449,12 +486,16 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
                             DropdownMenuItem(
                               value: 'Cash',
                               child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 3),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 3,
+                                ),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.account_balance_wallet,
-                                        size: 16, color: Colors.green),
+                                    const Icon(
+                                      Icons.account_balance_wallet,
+                                      size: 16,
+                                      color: Colors.green,
+                                    ),
                                     const SizedBox(width: 8),
                                     Text(
                                       'Cash',
@@ -467,12 +508,16 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
                             DropdownMenuItem(
                               value: 'Net Banking',
                               child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 3),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 3,
+                                ),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.account_balance,
-                                        size: 16, color: Colors.purple),
+                                    const Icon(
+                                      Icons.account_balance,
+                                      size: 16,
+                                      color: Colors.purple,
+                                    ),
                                     const SizedBox(width: 8),
                                     Text(
                                       'Net Banking',
@@ -495,16 +540,23 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                            color: const Color(0xFFD1D5DB), width: 1.1),
+                          color: const Color(0xFFD1D5DB),
+                          width: 1.1,
+                        ),
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
                           isExpanded: true,
                           value: _selectedItemType,
                           style: GoogleFonts.poppins(
-                              fontSize: 13, color: Colors.black87),
-                          icon: const Icon(Icons.keyboard_arrow_down_rounded,
-                              color: Color(0xFF1E293B), size: 20),
+                            fontSize: 13,
+                            color: Colors.black87,
+                          ),
+                          icon: const Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: Color(0xFF1E293B),
+                            size: 20,
+                          ),
                           dropdownColor: Colors.white,
                           onChanged: (value) =>
                               setState(() => _selectedItemType = value!),
@@ -512,12 +564,16 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
                             DropdownMenuItem(
                               value: 'All Item Types',
                               child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 3),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 3,
+                                ),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.category,
-                                        size: 16, color: Colors.grey),
+                                    const Icon(
+                                      Icons.category,
+                                      size: 16,
+                                      color: Colors.grey,
+                                    ),
                                     const SizedBox(width: 8),
                                     Text(
                                       'All Item Types',
@@ -530,12 +586,16 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
                             DropdownMenuItem(
                               value: 'Services',
                               child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 3),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 3,
+                                ),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.cut,
-                                        size: 16, color: Colors.green),
+                                    const Icon(
+                                      Icons.cut,
+                                      size: 16,
+                                      color: Colors.green,
+                                    ),
                                     const SizedBox(width: 8),
                                     Text(
                                       'Services',
@@ -548,12 +608,16 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
                             DropdownMenuItem(
                               value: 'Products',
                               child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 3),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 3,
+                                ),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.shopping_cart,
-                                        size: 16, color: Colors.green),
+                                    const Icon(
+                                      Icons.shopping_cart,
+                                      size: 16,
+                                      color: Colors.green,
+                                    ),
                                     const SizedBox(width: 8),
                                     Text(
                                       'Products',
@@ -588,7 +652,9 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
                       onTap: () => _selectDate(context, true),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 8),
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(8),
@@ -596,18 +662,24 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.calendar_today,
-                                size: 14, color: Colors.grey),
+                            const Icon(
+                              Icons.calendar_today,
+                              size: 14,
+                              color: Colors.grey,
+                            ),
                             const SizedBox(width: 8),
                             Text(
                               _startDate == null
                                   ? 'Start Date'
-                                  : DateFormat('dd/MM/yyyy').format(_startDate!),
+                                  : DateFormat(
+                                      'dd/MM/yyyy',
+                                    ).format(_startDate!),
                               style: GoogleFonts.poppins(
-                                  fontSize: 11,
-                                  color: _startDate == null
-                                      ? Colors.grey
-                                      : Colors.black),
+                                fontSize: 11,
+                                color: _startDate == null
+                                    ? Colors.grey
+                                    : Colors.black,
+                              ),
                             ),
                           ],
                         ),
@@ -620,7 +692,9 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
                       onTap: () => _selectDate(context, false),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 8),
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(8),
@@ -628,18 +702,22 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.calendar_today,
-                                size: 14, color: Colors.grey),
+                            const Icon(
+                              Icons.calendar_today,
+                              size: 14,
+                              color: Colors.grey,
+                            ),
                             const SizedBox(width: 8),
                             Text(
                               _endDate == null
                                   ? 'End Date'
                                   : DateFormat('dd/MM/yyyy').format(_endDate!),
                               style: GoogleFonts.poppins(
-                                  fontSize: 11,
-                                  color: _endDate == null
-                                      ? Colors.grey
-                                      : Colors.black),
+                                fontSize: 11,
+                                color: _endDate == null
+                                    ? Colors.grey
+                                    : Colors.black,
+                              ),
                             ),
                           ],
                         ),
@@ -681,69 +759,16 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
             ),
             const SizedBox(height: 16),
 
-            // Count card
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(_radius),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(Icons.receipt,
-                        color: Theme.of(context).primaryColor, size: 20),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('My Invoices',
-                            style: GoogleFonts.poppins(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            )),
-                        Text('$totalBills invoices in system',
-                            style: GoogleFonts.poppins(
-                              fontSize: 10,
-                              color: Colors.grey.shade600,
-                            )),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text('$totalBills',
-                        style: GoogleFonts.poppins(
-                          color: Theme.of(context).primaryColor,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 11,
-                        )),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
             const SizedBox(height: 12),
             // --- invoice card list ---
             Expanded(
               child: filteredInvoices.isEmpty
                   ? Center(
-                      child: Text('No invoices found',
-                          style: GoogleFonts.poppins(fontSize: 13)))
+                      child: Text(
+                        'No invoices found',
+                        style: GoogleFonts.poppins(fontSize: 13),
+                      ),
+                    )
                   : ListView.builder(
                       padding: const EdgeInsets.only(bottom: 12, top: 2),
                       itemCount: filteredInvoices.length,
@@ -772,13 +797,16 @@ class InvoiceDetailsDialog extends StatelessWidget {
 
     return Dialog(
       insetPadding: EdgeInsets.symmetric(
-          horizontal: isMobile ? 3 : 12, vertical: isMobile ? 5 : 20),
+        horizontal: isMobile ? 3 : 12,
+        vertical: isMobile ? 5 : 20,
+      ),
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
       child: Container(
         width: isMobile ? double.infinity : 400,
         constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.95),
+          maxHeight: MediaQuery.of(context).size.height * 0.95,
+        ),
         child: InvoiceView(invoice: invoice),
       ),
     );
@@ -789,18 +817,15 @@ class InvoiceCard extends StatelessWidget {
   final BillingInvoice invoice;
   final VoidCallback? onView;
 
-  const InvoiceCard({
-    super.key,
-    required this.invoice,
-    this.onView,
-  });
+  const InvoiceCard({super.key, required this.invoice, this.onView});
 
   @override
   Widget build(BuildContext context) {
     final firstItem = invoice.items.isNotEmpty ? invoice.items.first : null;
     final hasServices = invoice.items.any((i) => i.itemType == 'Service');
-    final hasProducts = invoice.items
-        .any((i) => i.itemType == 'Product' || i.itemType == 'Item');
+    final hasProducts = invoice.items.any(
+      (i) => i.itemType == 'Product' || i.itemType == 'Item',
+    );
 
     final itemType = hasServices
         ? "Services"
@@ -883,7 +908,11 @@ class InvoiceCard extends StatelessWidget {
                     Expanded(
                       child: Row(
                         children: [
-                          const Icon(Icons.phone, size: 14, color: Colors.green),
+                          const Icon(
+                            Icons.phone,
+                            size: 14,
+                            color: Colors.green,
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             invoice.clientInfo.phone,
@@ -923,8 +952,11 @@ class InvoiceCard extends StatelessWidget {
                     Expanded(
                       child: Row(
                         children: [
-                          const Icon(Icons.account_balance_wallet,
-                              size: 14, color: Colors.green),
+                          const Icon(
+                            Icons.account_balance_wallet,
+                            size: 14,
+                            color: Colors.green,
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             '₹${invoice.totalAmount.toStringAsFixed(0)}',
@@ -964,8 +996,11 @@ class InvoiceCard extends StatelessWidget {
                     Row(
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.visibility_outlined,
-                              size: 20, color: Color(0xFF374151)),
+                          icon: const Icon(
+                            Icons.visibility_outlined,
+                            size: 20,
+                            color: Color(0xFF374151),
+                          ),
                           onPressed: onView,
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
@@ -988,12 +1023,12 @@ class _InfoCard extends StatelessWidget {
   final String value;
   final String subtitle;
 
-  const _InfoCard(
-      {required this.title,
-      required this.value,
-      required this.subtitle,
-      Key? key})
-      : super(key: key);
+  const _InfoCard({
+    required this.title,
+    required this.value,
+    required this.subtitle,
+    Key? key,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -1003,18 +1038,28 @@ class _InfoCard extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title,
-              style:
-                  GoogleFonts.poppins(color: Colors.grey[600], fontSize: 10)),
-          const SizedBox(height: 6),
-          Text(value,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 10),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              value,
               style: GoogleFonts.poppins(
-                  fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          Text(subtitle,
-              style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 9)),
-        ]),
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 9),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -510,7 +510,7 @@ class _SuppNotificationsPageState extends State<SuppNotificationsPage> {
                     size: 20,
                     color: Colors.grey,
                   ),
-                  onPressed: () => _editNotification(notification),
+                  onPressed: () => _viewNotification(notification),
                 ),
                 IconButton(
                   icon: const Icon(
@@ -569,9 +569,120 @@ class _SuppNotificationsPageState extends State<SuppNotificationsPage> {
     }
   }
 
-  void _editNotification(Map<String, dynamic> notification) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('View/Edit detail feature coming soon.')),
+  void _viewNotification(Map<String, dynamic> notification) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        final status = notification['status'] ?? 'Sent';
+        final channels = List<String>.from(
+          notification['channels'] ?? ['Push'],
+        );
+        final dateStr = notification['createdAt'] ?? '';
+        final date = dateStr.isNotEmpty
+            ? DateTime.parse(dateStr)
+            : DateTime.now();
+
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.r),
+          ),
+          child: Container(
+            padding: EdgeInsets.all(20.w),
+            constraints: BoxConstraints(maxWidth: 400.w),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Notification Details',
+                      style: GoogleFonts.poppins(
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 20),
+                      onPressed: () => Navigator.pop(ctx),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+                const Divider(height: 24),
+                _detailItem('Title', notification['title'] ?? 'N/A'),
+                SizedBox(height: 12.h),
+                _detailItem(
+                  'Message',
+                  notification['body'] ?? notification['content'] ?? 'N/A',
+                ),
+                SizedBox(height: 12.h),
+                _detailItem('Target', notification['targetType'] ?? 'N/A'),
+                SizedBox(height: 12.h),
+                Row(
+                  children: [
+                    Expanded(child: _detailItem('Status', status)),
+                    Expanded(
+                      child: _detailItem(
+                        'Date',
+                        DateFormat('d MMM yyyy').format(date),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 12.h),
+                _detailItem('Channels', channels.join(', ')),
+                SizedBox(height: 24.h),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(vertical: 12.h),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.r),
+                      ),
+                    ),
+                    child: Text(
+                      'Close',
+                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _detailItem(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.poppins(
+            fontSize: 10.sp,
+            color: Colors.grey,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        SizedBox(height: 2.h),
+        Text(
+          value,
+          style: GoogleFonts.poppins(
+            fontSize: 12.sp,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+      ],
     );
   }
 

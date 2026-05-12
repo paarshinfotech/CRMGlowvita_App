@@ -155,26 +155,33 @@ class _DashboardPageState extends State<DashboardPage>
     _counterSale = 0;
 
     for (var invoice in _allInvoices) {
-      final total = invoice.totalAmount;
-      _totalRevenue += total;
+      if (invoice.billingType != 'Appointment') {
+        final total = invoice.totalAmount;
+        _counterSale += total;
 
-      if (invoice.items.isNotEmpty) {
-        for (var item in invoice.items) {
-          final price = item.price;
-          final qty = item.quantity;
-          if (item.itemType == 'product') {
-            _productRevenue += price * qty;
-          } else {
-            _serviceRevenue += price * qty;
+        if (invoice.items.isNotEmpty) {
+          for (var item in invoice.items) {
+            final price = item.price;
+            final qty = item.quantity;
+            if (item.itemType?.toLowerCase() == 'product' ||
+                item.itemType?.toLowerCase() == 'item') {
+              _productRevenue += price * qty;
+            }
           }
         }
       }
+    }
 
-      // Counter sale if not online
-      if (invoice.paymentStatus == 'paid') {
-        _counterSale += total;
+    for (var appt in _allAppointments) {
+      bool isPaid = appt.paymentStatus == 'completed';
+      bool hasInvoice =
+          appt.invoiceNumber != null && appt.invoiceNumber!.isNotEmpty;
+      if (isPaid || hasInvoice) {
+        _serviceRevenue += appt.totalAmount ?? appt.finalAmount ?? 0.0;
       }
     }
+
+    _totalRevenue = _counterSale + _serviceRevenue;
 
     _totalBookings = _allAppointments.length;
     _bookingHours = 0;
@@ -202,7 +209,7 @@ class _DashboardPageState extends State<DashboardPage>
       }
     }
 
-    _totalBusiness = _totalRevenue;
+    _totalBusiness = _serviceRevenue;
 
     _totalExpense = 0;
     for (var expense in _allExpenses) {
@@ -254,21 +261,25 @@ class _DashboardPageState extends State<DashboardPage>
       });
     }
 
-    // Sales Overview - Last 7 months
+    // Sales Overview - Last 7 months (Appointment Revenue Only)
     _monthlySalesData = List.filled(7, 0.0);
     double maxMonthly = 0;
     DateTime now = DateTime.now();
-    for (var invoice in _allInvoices) {
-      if (invoice.createdAt != null) {
+    for (var appt in _allAppointments) {
+      bool isPaid = appt.paymentStatus == 'completed';
+      bool hasInvoice =
+          appt.invoiceNumber != null && appt.invoiceNumber!.isNotEmpty;
+      if ((isPaid || hasInvoice) && appt.date != null) {
         // Calculate difference in months
-        int monthsDiff =
-            (now.year - invoice.createdAt.year) * 12 +
-            (now.month - invoice.createdAt.month);
+        int monthsDiff = (now.year - appt.date!.year) * 12 +
+            (now.month - appt.date!.month);
         if (monthsDiff >= 0 && monthsDiff < 7) {
           int index = 6 - monthsDiff; // 0 is 6 months ago, 6 is current month
-          _monthlySalesData[index] += invoice.totalAmount;
-          if (_monthlySalesData[index] > maxMonthly)
+          double amt = appt.totalAmount ?? appt.finalAmount ?? 0.0;
+          _monthlySalesData[index] += amt;
+          if (_monthlySalesData[index] > maxMonthly) {
             maxMonthly = _monthlySalesData[index];
+          }
         }
       }
     }
@@ -1079,11 +1090,34 @@ class _DashboardPageState extends State<DashboardPage>
                                         ],
                                       ),
                                     ),
-                                    // Year selector removed
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          '₹ ${_serviceRevenue.toStringAsFixed(0)}',
+                                          style: TextStyle(
+                                            fontSize: 16.sp,
+                                            fontWeight: FontWeight.w800,
+                                            color: kPrimary,
+                                          ),
+                                        ),
+                                        Text(
+                                          'Revenue',
+                                          style: TextStyle(
+                                            fontSize: 9.sp,
+                                            color: Colors.grey[500],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ],
                                 ),
                                 SizedBox(height: 12.h),
-                                _SalesOverviewChart(data: _monthlySalesData),
+                                _SalesOverviewChart(
+                                  data: _monthlySalesData,
+                                  totalRevenue: _serviceRevenue,
+                                ),
                               ],
                             ),
                           ),
@@ -1228,7 +1262,8 @@ class _DashboardPageState extends State<DashboardPage>
 // ═══════════════════════════════════════════════════════
 class _SalesOverviewChart extends StatelessWidget {
   final List<double> data;
-  const _SalesOverviewChart({required this.data});
+  final double totalRevenue;
+  const _SalesOverviewChart({required this.data, required this.totalRevenue});
 
   static List<String> get _months {
     final now = DateTime.now();
@@ -1280,7 +1315,7 @@ class _SalesOverviewChart extends StatelessWidget {
                     SizedBox(
                       height: chartH,
                       child: CustomPaint(
-                        painter: _SalesLinePainter(data: data),
+                        painter: _SalesLinePainter(data: data, totalRevenue: totalRevenue),
                         size: Size(slotW * _months.length, chartH),
                       ),
                     ),
@@ -1317,7 +1352,8 @@ class _SalesOverviewChart extends StatelessWidget {
 
 class _SalesLinePainter extends CustomPainter {
   final List<double> data;
-  const _SalesLinePainter({required this.data});
+  final double totalRevenue;
+  const _SalesLinePainter({required this.data, required this.totalRevenue});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1395,9 +1431,9 @@ class _SalesLinePainter extends CustomPainter {
       Paint()..color = const Color(0xFF42A5F5),
     );
     final tp = TextPainter(
-      text: const TextSpan(
-        text: ' ',
-        style: TextStyle(
+      text: TextSpan(
+        text: '₹ ${totalRevenue.toStringAsFixed(0)}',
+        style: const TextStyle(
           color: Colors.white,
           fontSize: 8,
           fontWeight: FontWeight.w600,
