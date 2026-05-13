@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
+import '../services/api_service.dart';
 
 class MessageBlastPage extends StatefulWidget {
   const MessageBlastPage({super.key});
@@ -13,11 +14,59 @@ class MessageBlastPage extends StatefulWidget {
 class _MessageBlastPageState extends State<MessageBlastPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  List<dynamic> campaigns = [];
+  List<dynamic> smsPackages = [];
+  bool isLoading = true;
+  bool isLoadingPackages = true;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _fetchCampaigns();
+    _fetchSMSPackages();
+  }
+
+  Future<void> _fetchSMSPackages() async {
+    setState(() => isLoadingPackages = true);
+    final response = await ApiService.fetchSMSPackages();
+    if (response['success'] == true) {
+      setState(() {
+        smsPackages = response['data'] ?? [];
+        isLoadingPackages = false;
+      });
+    } else {
+      setState(() => isLoadingPackages = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              response['message'] ?? 'Failed to fetch SMS packages',
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _fetchCampaigns() async {
+    setState(() => isLoading = true);
+    final response = await ApiService.fetchCampaigns();
+    if (response['success'] == true) {
+      setState(() {
+        campaigns = response['data'] ?? [];
+        isLoading = false;
+      });
+    } else {
+      setState(() => isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response['message'] ?? 'Failed to fetch campaigns'),
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -103,12 +152,31 @@ class _MessageBlastPageState extends State<MessageBlastPage>
   }
 
   Widget _buildSMSPackages() {
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(14.w),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
+    if (isLoadingPackages) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFF3B2D3D)),
+      );
+    }
+
+    if (smsPackages.isEmpty) {
+      return Center(
+        child: Text(
+          'No SMS packages found',
+          style: GoogleFonts.poppins(fontSize: 10.sp),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _fetchSMSPackages,
+      color: const Color(0xFF3B2D3D),
+      child: ListView.builder(
+        padding: EdgeInsets.all(14.w),
+        itemCount: smsPackages.length,
+        itemBuilder: (context, index) {
+          final package = smsPackages[index];
+          return Container(
+            margin: EdgeInsets.only(bottom: 12.h),
             width: double.infinity,
             padding: EdgeInsets.all(16.w),
             decoration: BoxDecoration(
@@ -126,13 +194,37 @@ class _MessageBlastPageState extends State<MessageBlastPage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'demopackage',
-                  style: GoogleFonts.poppins(
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.black,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      package['name'] ?? 'N/A',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black,
+                      ),
+                    ),
+                    if (package['isPopular'] == true)
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8.w,
+                          vertical: 2.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20.r),
+                        ),
+                        child: Text(
+                          'POPULAR',
+                          style: GoogleFonts.poppins(
+                            fontSize: 7.sp,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.orange[800],
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 SizedBox(height: 6.h),
                 Row(
@@ -140,7 +232,7 @@ class _MessageBlastPageState extends State<MessageBlastPage>
                   textBaseline: TextBaseline.alphabetic,
                   children: [
                     Text(
-                      '₹300',
+                      '₹${package['price'] ?? 0}',
                       style: GoogleFonts.poppins(
                         fontSize: 17.sp,
                         fontWeight: FontWeight.w800,
@@ -166,7 +258,7 @@ class _MessageBlastPageState extends State<MessageBlastPage>
                     ),
                     SizedBox(width: 6.w),
                     Text(
-                      '1,000 SMS',
+                      '${package['smsCount'] ?? 0} SMS',
                       style: GoogleFonts.poppins(
                         fontSize: 9.sp,
                         color: Colors.black87,
@@ -177,20 +269,23 @@ class _MessageBlastPageState extends State<MessageBlastPage>
                 ),
                 SizedBox(height: 6.h),
                 Text(
-                  'Valid for 30 days',
+                  'Valid for ${package['validityDays'] ?? 0} days',
                   style: GoogleFonts.poppins(
                     fontSize: 8.sp,
                     color: Colors.blue[400],
                   ),
                 ),
-                SizedBox(height: 4.h),
-                Text(
-                  'Hello demo',
-                  style: GoogleFonts.poppins(
-                    fontSize: 8.sp,
-                    color: Colors.grey[500],
+                if (package['description'] != null &&
+                    package['description'].toString().isNotEmpty) ...[
+                  SizedBox(height: 4.h),
+                  Text(
+                    package['description'],
+                    style: GoogleFonts.poppins(
+                      fontSize: 8.sp,
+                      color: Colors.grey[500],
+                    ),
                   ),
-                ),
+                ],
                 SizedBox(height: 16.h),
                 SizedBox(
                   width: double.infinity,
@@ -216,104 +311,109 @@ class _MessageBlastPageState extends State<MessageBlastPage>
                 ),
               ],
             ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildCampaigns() {
+    if (isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFF3B2D3D)),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _fetchCampaigns,
+      color: const Color(0xFF3B2D3D),
+      child: Column(
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 8.h),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'My Campaigns',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      'Manage your marketing campaigns',
+                      style: GoogleFonts.poppins(
+                        fontSize: 8.sp,
+                        color: Colors.blue[400],
+                      ),
+                    ),
+                  ],
+                ),
+                ElevatedButton.icon(
+                  onPressed: () => _showCreateCampaignDialog(),
+                  icon: const Icon(Icons.add, size: 13, color: Colors.white),
+                  label: Text(
+                    'Create Campaign',
+                    style: GoogleFonts.poppins(
+                      fontSize: 8.sp,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF3B2D3D),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 10.w,
+                      vertical: 8.h,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: campaigns.isEmpty
+                ? Center(
+                    child: Text(
+                      'No campaigns found',
+                      style: GoogleFonts.poppins(fontSize: 10.sp),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: EdgeInsets.symmetric(horizontal: 14.w),
+                    itemCount: campaigns.length,
+                    itemBuilder: (context, index) =>
+                        _buildCampaignCard(campaigns[index]),
+                  ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildCampaigns() {
-    final campaigns = [
-      {
-        'name': 'Summer Offer 2026',
-        'type': 'SMS',
-        'status': 'Draft',
-        'statusColor': const Color(0xFF1B263B),
-        'message':
-            'Hello {{name}}, this is a reminder for your appointment on {{date}} at {{time}}. Please arrive 10 minutes early. Thank you!',
-        'target': 'All Customers',
-        'budget': '₹100',
-        'created': '5/7/2026',
-      },
-      {
-        'name': 'New User Welcome',
-        'type': 'SMS',
-        'status': 'Active',
-        'statusColor': Colors.green[700]!,
-        'message':
-            'Welcome {{name}}! We\'re glad you joined us. Explore our services and enjoy 20% off your first order. Use code WELCOME20.',
-        'target': 'New Customers',
-        'budget': '₹250',
-        'created': '1/7/2026',
-      },
-    ];
-
-    return Column(
-      children: [
-        Padding(
-          padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 8.h),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'My Campaigns',
-                    style: GoogleFonts.poppins(
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  Text(
-                    'Manage your marketing campaigns',
-                    style: GoogleFonts.poppins(
-                      fontSize: 8.sp,
-                      color: Colors.blue[400],
-                    ),
-                  ),
-                ],
-              ),
-              ElevatedButton.icon(
-                onPressed: () => _showCreateCampaignDialog(),
-                icon: const Icon(Icons.add, size: 13, color: Colors.white),
-                label: Text(
-                  'Create Campaign',
-                  style: GoogleFonts.poppins(
-                    fontSize: 8.sp,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF3B2D3D),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 10.w,
-                    vertical: 8.h,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.r),
-                  ),
-                  elevation: 0,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            padding: EdgeInsets.symmetric(horizontal: 14.w),
-            itemCount: campaigns.length,
-            itemBuilder: (context, index) =>
-                _buildCampaignCard(campaigns[index]),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildCampaignCard(Map<String, dynamic> campaign) {
-    final Color statusColor = campaign['statusColor'] as Color;
+    final String status = campaign['status'] ?? 'Draft';
+    Color statusColor = const Color(0xFF1B263B);
+    if (status == 'Active') statusColor = Colors.green[700]!;
+    if (status == 'Completed') statusColor = Colors.blue[700]!;
+
+    final String campaignType =
+        (campaign['type'] is List && (campaign['type'] as List).isNotEmpty)
+        ? (campaign['type'] as List).first
+        : (campaign['type']?.toString() ?? 'SMS');
+
+    final String createdAt = campaign['createdAt'] != null
+        ? DateFormat('d/M/yyyy').format(DateTime.parse(campaign['createdAt']))
+        : 'N/A';
+
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
       padding: EdgeInsets.all(12.w),
@@ -337,7 +437,7 @@ class _MessageBlastPageState extends State<MessageBlastPage>
             children: [
               Expanded(
                 child: Text(
-                  campaign['name'],
+                  campaign['name'] ?? 'No Name',
                   style: GoogleFonts.poppins(
                     fontSize: 10.sp,
                     fontWeight: FontWeight.w700,
@@ -346,23 +446,15 @@ class _MessageBlastPageState extends State<MessageBlastPage>
                 ),
               ),
               SizedBox(width: 6.w),
-              _buildPill(
-                campaign['type'],
-                Colors.grey[100]!,
-                Colors.grey[700]!,
-              ),
+              _buildPill(campaignType, Colors.grey[100]!, Colors.grey[700]!),
               SizedBox(width: 4.w),
-              _buildPill(
-                campaign['status'],
-                statusColor.withOpacity(0.12),
-                statusColor,
-              ),
+              _buildPill(status, statusColor.withOpacity(0.12), statusColor),
             ],
           ),
           SizedBox(height: 6.h),
           // Message preview
           Text(
-            campaign['message'],
+            campaign['content'] ?? 'No Content',
             style: GoogleFonts.poppins(
               fontSize: 8.sp,
               color: Colors.purple[300],
@@ -377,9 +469,12 @@ class _MessageBlastPageState extends State<MessageBlastPage>
             spacing: 10.w,
             runSpacing: 4.h,
             children: [
-              _buildCampaignMeta('Target:', campaign['target']),
-              _buildCampaignMeta('Budget:', campaign['budget']),
-              _buildCampaignMeta('Created:', campaign['created']),
+              _buildCampaignMeta(
+                'Target:',
+                campaign['targetAudience'] ?? 'All Customers',
+              ),
+              _buildCampaignMeta('Budget:', '₹${campaign['budget'] ?? 0}'),
+              _buildCampaignMeta('Created:', createdAt),
             ],
           ),
           SizedBox(height: 10.h),
@@ -484,7 +579,7 @@ class _MessageBlastPageState extends State<MessageBlastPage>
     showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (context) => const CreateCampaignDialog(),
+      builder: (context) => CreateCampaignDialog(onSuccess: _fetchCampaigns),
     );
   }
 }
@@ -493,7 +588,8 @@ class _MessageBlastPageState extends State<MessageBlastPage>
 //  CreateCampaignDialog
 // ─────────────────────────────────────────────
 class CreateCampaignDialog extends StatefulWidget {
-  const CreateCampaignDialog({super.key});
+  final VoidCallback onSuccess;
+  const CreateCampaignDialog({super.key, required this.onSuccess});
 
   @override
   State<CreateCampaignDialog> createState() => _CreateCampaignDialogState();
@@ -501,14 +597,16 @@ class CreateCampaignDialog extends StatefulWidget {
 
 class _CreateCampaignDialogState extends State<CreateCampaignDialog> {
   String selectedType = 'SMS';
-  String? selectedTemplate = 'Appointment reminder';
+  String? selectedTemplateId;
+  List<dynamic> templates = [];
+  bool isLoadingTemplates = true;
 
   /// Controls whether the "Create New Template" inline form is visible.
   bool _showNewTemplateForm = false;
 
   final TextEditingController _campaignNameController = TextEditingController();
   final TextEditingController _messageController = TextEditingController(
-    text: 'Hello {{name}}!',
+    text: 'Hello!',
   );
   final TextEditingController _budgetController = TextEditingController();
   final TextEditingController _templateNameController = TextEditingController();
@@ -516,6 +614,7 @@ class _CreateCampaignDialogState extends State<CreateCampaignDialog> {
   DateTime? selectedDate;
 
   String selectedAudience = 'All Customers';
+  bool isSubmitting = false;
 
   static const List<String> _audienceOptions = [
     'All Customers',
@@ -524,6 +623,76 @@ class _CreateCampaignDialogState extends State<CreateCampaignDialog> {
     'Premium Customers',
     'Inactive Customers',
   ];
+
+  Future<void> _submitCampaign() async {
+    if (_campaignNameController.text.isEmpty ||
+        _messageController.text.isEmpty ||
+        _budgetController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill all required fields')),
+      );
+      return;
+    }
+
+    setState(() => isSubmitting = true);
+
+    final campaignData = {
+      "name": _campaignNameController.text,
+      "content": _messageController.text,
+      "type": [selectedType],
+      "status": "Draft",
+      "targetAudience": selectedAudience,
+      "budget": int.tryParse(_budgetController.text) ?? 0,
+    };
+
+    if (selectedDate != null) {
+      campaignData["scheduledDate"] = selectedDate!.toIso8601String();
+    }
+
+    final response = await ApiService.createCampaign(campaignData);
+
+    if (response['success'] == true) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Campaign created successfully')),
+        );
+        widget.onSuccess();
+        Navigator.pop(context);
+      }
+    } else {
+      setState(() => isSubmitting = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response['message'] ?? 'Failed to create campaign'),
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchTemplates();
+  }
+
+  Future<void> _fetchTemplates() async {
+    setState(() => isLoadingTemplates = true);
+    final response = await ApiService.fetchCampaigns(limit: 5);
+    if (response['success'] == true) {
+      setState(() {
+        templates = response['data'] ?? [];
+        isLoadingTemplates = false;
+        if (templates.isNotEmpty) {
+          selectedTemplateId = templates.first['_id'];
+          _messageController.text = templates.first['content'] ?? 'Hello!';
+        }
+      });
+    } else {
+      setState(() => isLoadingTemplates = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -800,7 +969,25 @@ class _CreateCampaignDialogState extends State<CreateCampaignDialog> {
                     ],
 
                     // Template card (always visible)
-                    _buildTemplateCard(),
+                    if (isLoadingTemplates)
+                      const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF3B2D3D),
+                        ),
+                      )
+                    else if (templates.isEmpty)
+                      Center(
+                        child: Text(
+                          'No templates available',
+                          style: GoogleFonts.poppins(fontSize: 8.sp),
+                        ),
+                      )
+                    else
+                      Column(
+                        children: templates
+                            .map((t) => _buildTemplateCard(t))
+                            .toList(),
+                      ),
                     SizedBox(height: 16.h),
                     Divider(color: Colors.grey[200]),
                     SizedBox(height: 12.h),
@@ -931,7 +1118,7 @@ class _CreateCampaignDialogState extends State<CreateCampaignDialog> {
                     Padding(
                       padding: EdgeInsets.only(left: 15.w),
                       child: Text(
-                        'Using template: Appointment reminder',
+                        'Using template: ${templates.firstWhere((t) => t['_id'] == selectedTemplateId, orElse: () => {'name': 'None'})['name']}',
                         style: GoogleFonts.poppins(
                           fontSize: 7.5.sp,
                           color: Colors.blue[400],
@@ -973,7 +1160,7 @@ class _CreateCampaignDialogState extends State<CreateCampaignDialog> {
                   ),
                   SizedBox(width: 10.w),
                   ElevatedButton(
-                    onPressed: () {},
+                    onPressed: isSubmitting ? null : _submitCampaign,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF3B2D3D),
                       padding: EdgeInsets.symmetric(
@@ -985,14 +1172,23 @@ class _CreateCampaignDialogState extends State<CreateCampaignDialog> {
                       ),
                       elevation: 0,
                     ),
-                    child: Text(
-                      'Create Campaign',
-                      style: GoogleFonts.poppins(
-                        fontSize: 8.sp,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                    child: isSubmitting
+                        ? SizedBox(
+                            height: 12.h,
+                            width: 12.h,
+                            child: const CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Text(
+                            'Create Campaign',
+                            style: GoogleFonts.poppins(
+                              fontSize: 8.sp,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                   ),
                 ],
               ),
@@ -1004,11 +1200,15 @@ class _CreateCampaignDialogState extends State<CreateCampaignDialog> {
   }
 
   // ── Template card ──────────────────────────
-  Widget _buildTemplateCard() {
-    final isSelected = selectedTemplate == 'Appointment reminder';
+  Widget _buildTemplateCard(Map<String, dynamic> template) {
+    final isSelected = selectedTemplateId == template['_id'];
     return GestureDetector(
-      onTap: () => setState(() => selectedTemplate = 'Appointment reminder'),
+      onTap: () => setState(() {
+        selectedTemplateId = template['_id'];
+        _messageController.text = template['content'] ?? 'Hello!';
+      }),
       child: Container(
+        margin: EdgeInsets.only(bottom: 8.h),
         padding: EdgeInsets.all(12.w),
         decoration: BoxDecoration(
           border: Border.all(
@@ -1042,7 +1242,7 @@ class _CreateCampaignDialogState extends State<CreateCampaignDialog> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Appointment reminder',
+                        template['name'] ?? 'Unnamed Template',
                         style: GoogleFonts.poppins(
                           fontSize: 8.sp,
                           fontWeight: FontWeight.w600,
@@ -1050,7 +1250,7 @@ class _CreateCampaignDialogState extends State<CreateCampaignDialog> {
                       ),
                       SizedBox(height: 2.h),
                       Text(
-                        'Hello {{name}}, this is a reminder for your appointment on {{date}} at {{time}}....',
+                        template['content'] ?? '',
                         style: GoogleFonts.poppins(
                           fontSize: 7.5.sp,
                           color: Colors.grey[500],
@@ -1064,8 +1264,8 @@ class _CreateCampaignDialogState extends State<CreateCampaignDialog> {
                 Container(
                   width: 8.w,
                   height: 8.w,
-                  decoration: const BoxDecoration(
-                    color: Colors.green,
+                  decoration: BoxDecoration(
+                    color: isSelected ? Colors.green : Colors.grey[300],
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -1075,15 +1275,22 @@ class _CreateCampaignDialogState extends State<CreateCampaignDialog> {
             Row(
               children: [
                 _buildBadge(
-                  'Promotional',
+                  (template['type'] is List &&
+                          (template['type'] as List).isNotEmpty)
+                      ? (template['type'] as List).first
+                      : 'SMS',
                   Colors.grey[200]!,
                   Colors.grey[700]!,
                 ),
                 SizedBox(width: 6.w),
-                _buildBadge('Active', Colors.green[100]!, Colors.green[700]!),
+                _buildBadge(
+                  template['status'] ?? 'Active',
+                  Colors.green[100]!,
+                  Colors.green[700]!,
+                ),
                 SizedBox(width: 6.w),
                 _buildBadge(
-                  '\$100.00',
+                  '₹${template['budget'] ?? 0}',
                   Colors.orange[100]!,
                   Colors.orange[800]!,
                 ),
@@ -1358,8 +1565,9 @@ class _CreateCampaignDialogState extends State<CreateCampaignDialog> {
                 time.hour,
                 time.minute,
               );
-              _dateController.text =
-                  DateFormat('dd-MM-yyyy HH:mm').format(selectedDate!);
+              _dateController.text = DateFormat(
+                'dd-MM-yyyy HH:mm',
+              ).format(selectedDate!);
             });
           }
         }

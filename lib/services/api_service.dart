@@ -493,6 +493,8 @@ class ApiService {
   static const String crmNotificationsEndpoint = '/crm/notifications';
   static const String shippingEndpoint = '/crm/shipping';
   static const String addressesEndpoint = '/crm/addresses';
+  static const String campaignsEndpoint = '/crm/campaigns';
+  static const String smsPackagesEndpoint = '/crm/sms-packages';
 
   // Static notifier for vendor profile
   static final ValueNotifier<VendorProfile?> vendorProfileNotifier =
@@ -4113,6 +4115,44 @@ class ApiService {
     } catch (e) {
       debugPrint('Error updating shipping settings: $e');
       return false;
+    }
+  }
+
+  // Campaign Management
+  static Future<Map<String, dynamic>> fetchCampaigns({
+    int page = 1,
+    int limit = 10,
+  }) async {
+    try {
+      final response = await _get(
+        '$baseUrl$campaignsEndpoint?page=$page&limit=$limit',
+      );
+      return json.decode(response.body);
+    } catch (e) {
+      debugPrint('Error fetching campaigns: $e');
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  static Future<Map<String, dynamic>> createCampaign(
+    Map<String, dynamic> campaignData,
+  ) async {
+    try {
+      final response = await _post('$baseUrl$campaignsEndpoint', campaignData);
+      return json.decode(response.body);
+    } catch (e) {
+      debugPrint('Error creating campaign: $e');
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  static Future<Map<String, dynamic>> fetchSMSPackages() async {
+    try {
+      final response = await _get('$baseUrl$smsPackagesEndpoint');
+      return json.decode(response.body);
+    } catch (e) {
+      debugPrint('Error fetching SMS packages: $e');
+      return {'success': false, 'message': e.toString()};
     }
   }
 }

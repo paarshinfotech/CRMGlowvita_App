@@ -112,8 +112,8 @@ class _ReportsPageState extends State<ReportsPage> {
                           errorBuilder: (ctx, _, __) => _buildInitialAvatar(),
                           loadingBuilder: (ctx, child, progress) =>
                               progress == null
-                                  ? child
-                                  : const CircularProgressIndicator(),
+                              ? child
+                              : const CircularProgressIndicator(),
                         )
                       : _buildInitialAvatar(),
                 ),
@@ -128,45 +128,44 @@ class _ReportsPageState extends State<ReportsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header Row
-            LayoutBuilder(builder: (context, constraints) {
-              final isWide = constraints.maxWidth > 800;
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Reports',
-                          style: TextStyle(
-                            fontFamily: 'Georgia',
-                            fontSize: 17.sp,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF1E293B),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isWide = constraints.maxWidth > 800;
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Reports',
+                            style: TextStyle(
+                              fontFamily: 'Georgia',
+                              fontSize: 17.sp,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF1E293B),
+                            ),
                           ),
-                        ),
-                        SizedBox(height: 4.h),
-                        Text(
-                          'Generate and download detailed reports for various components of the platform.',
-                          style: GoogleFonts.poppins(
-                            fontSize: 11.sp,
-                            color: _muted,
+                          SizedBox(height: 4.h),
+                          Text(
+                            'Generate and download detailed reports for various components of the platform.',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11.sp,
+                              color: _muted,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  if (isWide) ...[
-                    SizedBox(width: 32.w),
-                    SizedBox(
-                      width: 240.w,
-                      child: _buildSearchBar(),
-                    ),
+                    if (isWide) ...[
+                      SizedBox(width: 32.w),
+                      SizedBox(width: 240.w, child: _buildSearchBar()),
+                    ],
                   ],
-                ],
-              );
-            }),
+                );
+              },
+            ),
             if (MediaQuery.of(context).size.width <= 800) ...[
               SizedBox(height: 12.h),
               _buildSearchBar(),
@@ -179,6 +178,8 @@ class _ReportsPageState extends State<ReportsPage> {
             _buildTwoColumnGrid(context, [
               _ReportCard(
                 title: 'All Appointments Report',
+                icon: Icons.assignment_outlined,
+                iconColor: Colors.blue,
                 description:
                     'Complete record of all appointments with detailed information.',
                 details: [
@@ -188,13 +189,17 @@ class _ReportsPageState extends State<ReportsPage> {
                   'Booking Type, Notes',
                 ],
                 onView: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => AllAppointmentsSummary())),
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AllAppointmentsSummary(),
+                  ),
+                ),
                 onDownload: () {},
               ),
               _ReportCard(
                 title: 'Appointment Summary by Service',
+                icon: Icons.settings_outlined,
+                iconColor: Colors.purple,
                 description:
                     'Aggregated view showing appointment counts, revenue, and popularity by service type.',
                 details: [
@@ -204,13 +209,17 @@ class _ReportsPageState extends State<ReportsPage> {
                   'Staff Performance Metrics',
                 ],
                 onView: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => AppointmentsbyServicesSummary())),
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AppointmentsbyServicesSummary(),
+                  ),
+                ),
                 onDownload: () {},
               ),
               _ReportCard(
                 title: 'Completed Appointments Report',
+                icon: Icons.check_circle_outline,
+                iconColor: Colors.green,
                 description:
                     'Detailed listing of all successfully completed appointments.',
                 details: [
@@ -220,13 +229,17 @@ class _ReportsPageState extends State<ReportsPage> {
                   'Rating/Review, Booking Type',
                 ],
                 onView: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => CompletedAppointmentsSummary())),
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CompletedAppointmentsSummary(),
+                  ),
+                ),
                 onDownload: () {},
               ),
               _ReportCard(
                 title: 'Cancelled Appointments Report',
+                icon: Icons.cancel_outlined,
+                iconColor: Colors.red,
                 description:
                     'Comprehensive analysis of cancelled appointments with reasons and impact.',
                 details: [
@@ -236,14 +249,17 @@ class _ReportsPageState extends State<ReportsPage> {
                   'Status, Booking Type',
                 ],
                 onView: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) =>
-                            AppointmentsCancellationSummary())),
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AppointmentsCancellationSummary(),
+                  ),
+                ),
                 onDownload: () {},
               ),
               _ReportCard(
                 title: 'All Appointments by Staff',
+                icon: Icons.people_outline,
+                iconColor: Colors.teal,
                 description:
                     'Detailed report showing appointment statistics aggregated by staff member.',
                 details: [
@@ -253,24 +269,30 @@ class _ReportsPageState extends State<ReportsPage> {
                   'Performance Metrics',
                 ],
                 onView: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => AppointmentsbyStaffSummary())),
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AppointmentsbyStaffSummary(),
+                  ),
+                ),
                 onDownload: () {},
               ),
               _ReportCard(
                 title: 'Staff Commission Summary',
+                icon: Icons.account_balance_wallet_outlined,
+                iconColor: Colors.indigo,
                 description: 'Overview of commissions earned by staff members.',
                 details: [
                   'Staff Name',
                   'Total Sales',
                   'Commission Rate',
-                  'Earned Amount'
+                  'Earned Amount',
                 ],
                 onView: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => StaffCommissionSummary())),
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => StaffCommissionSummary(),
+                  ),
+                ),
                 onDownload: () {},
               ),
             ]),
@@ -283,18 +305,20 @@ class _ReportsPageState extends State<ReportsPage> {
             _buildTwoColumnGrid(context, [
               _ReportCard(
                 title: 'Settlement Summary Report',
+                icon: Icons.account_balance_outlined,
+                iconColor: Colors.deepPurple,
                 description:
                     'Overview of fund settlements between vendors and the platform.',
                 details: [
                   'Settlement ID',
                   'Vendor Name',
                   'Transfer Amount',
-                  'Status'
+                  'Status',
                 ],
                 onView: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => SettlementSummary())),
+                  context,
+                  MaterialPageRoute(builder: (context) => SettlementSummary()),
+                ),
                 onDownload: () {},
               ),
             ]),
@@ -307,46 +331,58 @@ class _ReportsPageState extends State<ReportsPage> {
             _buildTwoColumnGrid(context, [
               _ReportCard(
                 title: 'Sales by Service',
+                icon: Icons.bar_chart_outlined,
+                iconColor: Colors.blueAccent,
                 description:
                     'Detailed revenue breakdown generated by each service offering.',
                 details: [
                   'Service Category',
                   'Gross Revenue',
                   'Net Sales',
-                  'Volume'
+                  'Volume',
                 ],
-                onView: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => SalesByService())),
+                onView: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => SalesByService()),
+                ),
                 onDownload: () {},
               ),
               _ReportCard(
                 title: 'Sales by Customer',
+                icon: Icons.person_search_outlined,
+                iconColor: Colors.cyan,
                 description:
                     'Revenue breakdown by customer to identify high-value clients.',
                 details: [
                   'Customer Name',
                   'Total Spend',
                   'Visit Frequency',
-                  'Last Visit'
+                  'Last Visit',
                 ],
-                onView: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => SalesByCustomer())),
+                onView: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => SalesByCustomer()),
+                ),
                 onDownload: () {},
               ),
               _ReportCard(
                 title: 'Sales by Product',
+                icon: Icons.shopping_bag_outlined,
+                iconColor: Colors.pink,
                 description:
                     'Detailed record of revenue generated by individual products.',
                 details: [
                   'Product Name',
                   'Quantity Sold',
                   'Net Revenue',
-                  'Stock Remaining'
+                  'Stock Remaining',
                 ],
                 onView: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const SalesByProduct())),
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SalesByProduct(),
+                  ),
+                ),
                 onDownload: () {},
               ),
             ]),
@@ -358,44 +394,55 @@ class _ReportsPageState extends State<ReportsPage> {
             _buildTwoColumnGrid(context, [
               _ReportCard(
                 title: 'All Products Report',
+                icon: Icons.inventory_2_outlined,
+                iconColor: Colors.blueGrey,
                 description:
                     'Complete record of all products with detailed information.',
                 details: [
                   'Product Name, Brand, Category',
                   'Price, Sale Price, Stock',
-                  'Status, Is Active, Created Date'
+                  'Status, Is Active, Created Date',
                 ],
                 onView: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const AllProductsReport())),
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AllProductsReport(),
+                  ),
+                ),
                 onDownload: () {},
               ),
               _ReportCard(
                 title: 'Inventory / Stock Report',
+                icon: Icons.warehouse_outlined,
+                iconColor: Colors.brown,
                 description:
                     'Detailed analysis of product inventory and stock levels.',
                 details: ['Product Name', 'Stock Available', 'Stock Status'],
                 onView: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const InventoryStockReport())),
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const InventoryStockReport(),
+                  ),
+                ),
                 onDownload: () {},
               ),
               _ReportCard(
                 title: 'Category-wise Product Report',
+                icon: Icons.category_outlined,
+                iconColor: Colors.orange,
                 description:
                     'Aggregated view showing product counts and sales by category.',
                 details: [
                   'Category Name',
                   'Number of Products, Active Products',
-                  'Average Price, Average Sale Price'
+                  'Average Price, Average Sale Price',
                 ],
                 onView: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) =>
-                            const CategoryWiseProductReport())),
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const CategoryWiseProductReport(),
+                  ),
+                ),
                 onDownload: () {},
               ),
             ]),
@@ -463,6 +510,8 @@ class _ReportCard extends StatelessWidget {
   final List<String> details;
   final VoidCallback onView;
   final VoidCallback onDownload;
+  final IconData icon;
+  final Color iconColor;
 
   const _ReportCard({
     required this.title,
@@ -470,146 +519,122 @@ class _ReportCard extends StatelessWidget {
     required this.details,
     required this.onView,
     required this.onDownload,
+    required this.icon,
+    required this.iconColor,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+      margin: EdgeInsets.only(bottom: 12.h),
+      padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8.r),
-        border: Border.all(color: const Color(0xFFE8EDF2), width: 1),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.025),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Left: content
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(8.w),
+                decoration: BoxDecoration(
+                  color: iconColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10.r),
+                ),
+                child: Icon(icon, color: iconColor, size: 14.sp),
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: Text(
                   title,
                   style: GoogleFonts.poppins(
-                    fontSize: 10.sp,
+                    fontSize: 9.5.sp,
                     fontWeight: FontWeight.w600,
                     color: const Color(0xFF1E293B),
                   ),
                 ),
-                SizedBox(height: 3.h),
-                Text(
-                  description,
-                  style: GoogleFonts.poppins(
-                    fontSize: 8.5.sp,
-                    color: const Color(0xFF94A3B8),
-                    height: 1.3,
-                  ),
-                ),
-                SizedBox(height: 7.h),
-                ...details.map(
-                  (d) => Padding(
-                    padding: EdgeInsets.only(bottom: 2.h),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: EdgeInsets.only(top: 3.5.h, right: 5.w),
-                          child: Container(
-                            width: 3.w,
-                            height: 3.w,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFCBD5E1),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: Text(
-                            d,
-                            style: GoogleFonts.poppins(
-                              fontSize: 8.5.sp,
-                              color: const Color(0xFF64748B),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+              ),
+            ],
+          ),
+          SizedBox(height: 10.h),
+          Text(
+            description,
+            style: GoogleFonts.poppins(
+              fontSize: 8.sp,
+              color: const Color(0xFF64748B),
+              height: 1.4,
             ),
           ),
-          SizedBox(width: 12.w),
-          // Right: buttons stacked
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _cardButton(
-                icon: Icons.visibility_outlined,
-                label: 'View',
-                onPressed: onView,
-                isPrimary: false,
+          SizedBox(height: 10.h),
+          ...details.map(
+            (d) => Padding(
+              padding: EdgeInsets.only(bottom: 4.h),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.only(top: 5.h, right: 8.w, left: 10.w),
+                    child: Container(
+                      width: 2.5.w,
+                      height: 2.5.w,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF94A3B8),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      d,
+                      style: GoogleFonts.poppins(
+                        fontSize: 8.sp,
+                        color: const Color(0xFF475569),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              SizedBox(height: 5.h),
-              _cardButton(
-                icon: Icons.file_download_outlined,
-                label: 'Download',
-                onPressed: onDownload,
-                isPrimary: true,
+            ),
+          ),
+          SizedBox(height: 10.h),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              ElevatedButton(
+                onPressed: onView,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF3B2D3D),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 16.w,
+                    vertical: 5.h,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6.r),
+                  ),
+                  elevation: 0,
+                ),
+                child: Text(
+                  'View',
+                  style: GoogleFonts.poppins(
+                    fontSize: 8.sp,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
               ),
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _cardButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onPressed,
-    required bool isPrimary,
-  }) {
-    final bgColor = isPrimary ? _primaryDark : Colors.white;
-    final fgColor = isPrimary ? Colors.white : const Color(0xFF1E293B);
-    final borderColor =
-        isPrimary ? Colors.transparent : const Color(0xFFE2E8F0);
-
-    return InkWell(
-      onTap: onPressed,
-      borderRadius: BorderRadius.circular(4.r),
-      child: Container(
-        width: 76.w,
-        padding: EdgeInsets.symmetric(vertical: 5.h),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(4.r),
-          border: Border.all(color: borderColor),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 9.sp, color: fgColor),
-            SizedBox(width: 3.w),
-            Text(
-              label,
-              style: GoogleFonts.poppins(
-                fontSize: 8.5.sp,
-                fontWeight: FontWeight.w600,
-                color: fgColor,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
