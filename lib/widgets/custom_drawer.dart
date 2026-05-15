@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:glowvita/intro_page.dart';
 import 'package:glowvita/my_Profile.dart';
+import 'package:glowvita/wallet.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../dashboard.dart';
@@ -28,6 +29,7 @@ import '../wedding_packages.dart';
 import '../vendor_model.dart';
 import '../services/api_service.dart';
 import '../marketing.dart';
+import 'package:glowvita/login.dart';
 
 // Drawer implementation for the app
 class CustomDrawer extends StatefulWidget {
@@ -104,9 +106,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                 horizontal: 12 * scale,
                 vertical: 12 * scale,
               ),
-              decoration: BoxDecoration(
-                color: Colors.white,
-              ),
+              decoration: BoxDecoration(color: Colors.white),
               child: SafeArea(
                 bottom: false,
                 child: SizedBox(
@@ -123,8 +123,10 @@ class _CustomDrawerState extends State<CustomDrawer> {
                           width: 50 * scale,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) =>
-                              Image.asset('assets/images/logo.png',
-                                  height: 50 * scale),
+                              Image.asset(
+                                'assets/images/logo.png',
+                                height: 50 * scale,
+                              ),
                         ),
                       ),
                       // Back Button on the right
@@ -309,10 +311,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                       title: 'Products',
                       isSelected: widget.currentPage == 'Products',
                       onTap: () {
-                        _navigateTo(
-                          context,
-                          const Products(),
-                        );
+                        _navigateTo(context, const Products());
                       },
                       scale: scale,
                       baseFontScale: baseFontScale,
@@ -322,10 +321,8 @@ class _CustomDrawerState extends State<CustomDrawer> {
                       icon: Icons.question_answer_outlined,
                       title: 'Product Questions',
                       isSelected: widget.currentPage == 'Product Questions',
-                      onTap: () => _navigateTo(
-                        context,
-                        const ProductQuestionsPage(),
-                      ),
+                      onTap: () =>
+                          _navigateTo(context, const ProductQuestionsPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
@@ -343,10 +340,8 @@ class _CustomDrawerState extends State<CustomDrawer> {
                       icon: Icons.store_outlined,
                       title: 'Marketplace',
                       isSelected: widget.currentPage == 'Marketplace',
-                      onTap: () => _navigateTo(
-                        context,
-                        const MarketplacePage(),
-                      ),
+                      onTap: () =>
+                          _navigateTo(context, const MarketplacePage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
@@ -364,10 +359,8 @@ class _CustomDrawerState extends State<CustomDrawer> {
                       icon: Icons.receipt_outlined,
                       title: 'Invoice Management',
                       isSelected: widget.currentPage == 'Invoice Management',
-                      onTap: () => _navigateTo(
-                        context,
-                        const InvoiceManagementPage(),
-                      ),
+                      onTap: () =>
+                          _navigateTo(context, const InvoiceManagementPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
@@ -385,10 +378,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                       icon: Icons.local_shipping_outlined,
                       title: 'Shipping',
                       isSelected: widget.currentPage == 'Shipping',
-                      onTap: () => _navigateTo(
-                        context,
-                        const ShippingPage(),
-                      ),
+                      onTap: () => _navigateTo(context, const ShippingPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
@@ -406,10 +396,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                       icon: Icons.account_balance_wallet_outlined,
                       title: 'Expenses',
                       isSelected: widget.currentPage == 'Expenses',
-                      onTap: () => _navigateTo(
-                        context,
-                        const ExpensesPage(),
-                      ),
+                      onTap: () => _navigateTo(context, const ExpensesPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
@@ -445,10 +432,8 @@ class _CustomDrawerState extends State<CustomDrawer> {
                       icon: Icons.notifications_outlined,
                       title: 'Notifications',
                       isSelected: widget.currentPage == 'Notifications',
-                      onTap: () => _navigateTo(
-                        context,
-                        const NotificationPage(),
-                      ),
+                      onTap: () =>
+                          _navigateTo(context, const NotificationPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
@@ -458,6 +443,15 @@ class _CustomDrawerState extends State<CustomDrawer> {
                       title: 'Reports',
                       isSelected: widget.currentPage == 'Reports',
                       onTap: () => _navigateTo(context, const ReportsPage()),
+                      scale: scale,
+                      baseFontScale: baseFontScale,
+                    ),
+                    _buildMenuItem(
+                      context: context,
+                      icon: Icons.account_balance_wallet_outlined,
+                      title: 'Wallet',
+                      isSelected: widget.currentPage == 'Wallet',
+                      onTap: () => _navigateTo(context, const WalletPage()),
                       scale: scale,
                       baseFontScale: baseFontScale,
                     ),
@@ -471,10 +465,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
               padding: EdgeInsets.all(16 * scale),
               decoration: BoxDecoration(
                 border: Border(
-                  top: BorderSide(
-                    color: Colors.grey[200]!,
-                    width: 1,
-                  ),
+                  top: BorderSide(color: Colors.grey[200]!, width: 1),
                 ),
               ),
               child: InkWell(
@@ -563,12 +554,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
 
   void _navigateTo(BuildContext context, Widget page) {
     Navigator.pop(context); // Close drawer
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => page,
-      ),
-    );
+    Navigator.push(context, MaterialPageRoute(builder: (context) => page));
   }
 
   void _handleSignOut(
@@ -590,9 +576,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
           ),
           content: Text(
             'Are you sure you want to sign out?',
-            style: GoogleFonts.poppins(
-              fontSize: 11 * baseFontScale,
-            ),
+            style: GoogleFonts.poppins(fontSize: 11 * baseFontScale),
           ),
           actions: [
             TextButton(
@@ -622,7 +606,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
 
                 Navigator.pushAndRemoveUntil(
                   context,
-                  MaterialPageRoute(builder: (context) => const IntroPage()),
+                  MaterialPageRoute(builder: (context) => const Login()),
                   (route) => false,
                 );
               },

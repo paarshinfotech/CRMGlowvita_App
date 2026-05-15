@@ -487,7 +487,7 @@ class _SupplierDrawerState extends State<SupplierDrawer> {
               await prefs.clear();
               Navigator.pushAndRemoveUntil(
                   context,
-                  MaterialPageRoute(builder: (context) => const IntroPage()),
+                  MaterialPageRoute(builder: (context) => const Login()),
                   (route) => false);
             },
             style: ElevatedButton.styleFrom(

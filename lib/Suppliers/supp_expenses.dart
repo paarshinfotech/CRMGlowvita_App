@@ -33,12 +33,27 @@ class _SuppExpensesPageState extends State<SuppExpensesPage> {
   DateTime? _startDate, _endDate;
   double? _minAmount = 0, _maxAmount;
   final TextEditingController _searchController = TextEditingController();
+  List<String> _apiExpenseTypes = [];
 
   @override
   void initState() {
     super.initState();
     _fetchExpenses();
     _fetchProfile();
+    _loadExpenseTypes();
+  }
+
+  Future<void> _loadExpenseTypes() async {
+    try {
+      final types = await ApiService.fetchExpenseTypes();
+      if (mounted) {
+        setState(() {
+          _apiExpenseTypes = types.map((e) => e['name'] as String).toList();
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading expense types: $e');
+    }
   }
 
   Future<void> _fetchProfile() async {
@@ -155,7 +170,33 @@ class _SuppExpensesPageState extends State<SuppExpensesPage> {
   void _openAddExpenseDialog() async {
     final result = await showDialog(
       context: context,
-      builder: (_) => const AddExpenseDialog(),
+      builder: (_) => AddExpenseDialog(
+        expenseTypes: _apiExpenseTypes.isNotEmpty
+            ? _apiExpenseTypes
+            : const [
+                "Customs Charges",
+                "Equipment Purchase",
+                "Freight Charges",
+                "Handling Charges",
+                "Import/Export Duty",
+                "Logistics & Shipping",
+                "Machine Maintenance",
+                "Office Rent",
+                "Raw Material Purchase",
+                "Repair Charges",
+                "Salaries & Wages",
+                "Stock Purchase",
+                "Product Packaging",
+                "Marketing & Ads",
+                "Lab Testing",
+                "Utilities",
+                "Software Subscriptions",
+                "Insurance",
+                "Travel",
+                "Office Supplies",
+                "Others",
+              ],
+      ),
     );
     if (result == true) {
       _fetchExpenses();
@@ -165,11 +206,46 @@ class _SuppExpensesPageState extends State<SuppExpensesPage> {
   void _openEditExpenseDialog(Map<String, dynamic> expense) async {
     final result = await showDialog(
       context: context,
-      builder: (_) => AddExpenseDialog(expense: expense, isEdit: true),
+      builder: (_) => AddExpenseDialog(
+        expense: expense,
+        isEdit: true,
+        expenseTypes: _apiExpenseTypes.isNotEmpty
+            ? _apiExpenseTypes
+            : const [
+                "Customs Charges",
+                "Equipment Purchase",
+                "Freight Charges",
+                "Handling Charges",
+                "Import/Export Duty",
+                "Logistics & Shipping",
+                "Machine Maintenance",
+                "Office Rent",
+                "Raw Material Purchase",
+                "Repair Charges",
+                "Salaries & Wages",
+                "Stock Purchase",
+                "Product Packaging",
+                "Marketing & Ads",
+                "Lab Testing",
+                "Utilities",
+                "Software Subscriptions",
+                "Insurance",
+                "Travel",
+                "Office Supplies",
+                "Others",
+              ],
+      ),
     );
     if (result == true) {
       _fetchExpenses();
     }
+  }
+
+  void _openViewExpenseDialog(Map<String, dynamic> expense) {
+    showDialog(
+      context: context,
+      builder: (_) => ExpenseDetailsDialog(expense: expense),
+    );
   }
 
   void _deleteExpense(String id) async {
@@ -565,12 +641,14 @@ class _SuppExpensesPageState extends State<SuppExpensesPage> {
                           itemCount: filteredExpenses.length,
                           itemBuilder: (ctx, idx) => ExpenseCard(
                             expense: filteredExpenses[idx],
+                            onView: () =>
+                                _openViewExpenseDialog(filteredExpenses[idx]),
                             onEdit: () =>
                                 _openEditExpenseDialog(filteredExpenses[idx]),
                             onDelete: () => _deleteExpense(
                               filteredExpenses[idx]['_id'] ?? '',
                             ),
-                            fontSize: 13,
+                            fontSize: 11,
                           ),
                         ),
                       ),
@@ -587,12 +665,14 @@ class ExpenseCard extends StatelessWidget {
   final Map<String, dynamic> expense;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
+  final VoidCallback? onView;
   final double fontSize;
   const ExpenseCard({
     super.key,
     required this.expense,
     this.onEdit,
     this.onDelete,
+    this.onView,
     this.fontSize = 13,
   });
 
@@ -637,7 +717,7 @@ class ExpenseCard extends StatelessWidget {
                     style: GoogleFonts.poppins(
                       color: Colors.black87,
                       fontWeight: FontWeight.w600,
-                      fontSize: fontSize + 1,
+                      fontSize: fontSize + 2,
                     ),
                   ),
                   Container(
@@ -656,7 +736,7 @@ class ExpenseCard extends StatelessWidget {
                       expense['paymentMode'] ?? "Online",
                       style: GoogleFonts.poppins(
                         color: const Color(0xFF4338CA),
-                        fontSize: fontSize - 3,
+                        fontSize: fontSize,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -670,7 +750,7 @@ class ExpenseCard extends StatelessWidget {
                     "Invoice No.: ${expense['invoiceNo'] ?? 'N/A'}",
                     style: GoogleFonts.poppins(
                       color: Colors.grey[600],
-                      fontSize: fontSize - 2,
+                      fontSize: fontSize,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -680,7 +760,7 @@ class ExpenseCard extends StatelessWidget {
                     _formatDate(expense['date']),
                     style: GoogleFonts.poppins(
                       color: Colors.grey[600],
-                      fontSize: fontSize - 2,
+                      fontSize: fontSize,
                     ),
                   ),
                 ],
@@ -693,7 +773,7 @@ class ExpenseCard extends StatelessWidget {
                       text: "Amount : ",
                       style: GoogleFonts.poppins(
                         color: Colors.grey[600],
-                        fontSize: fontSize,
+                        fontSize: fontSize + 2,
                       ),
                     ),
                     TextSpan(
@@ -701,7 +781,7 @@ class ExpenseCard extends StatelessWidget {
                       style: GoogleFonts.poppins(
                         color: const Color(0xFF166534),
                         fontWeight: FontWeight.w600,
-                        fontSize: fontSize,
+                        fontSize: fontSize + 2,
                       ),
                     ),
                   ],
@@ -716,6 +796,16 @@ class ExpenseCard extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
+              IconButton(
+                onPressed: onView,
+                icon: const Icon(
+                  Icons.visibility_outlined,
+                  color: Colors.blue,
+                  size: 22,
+                ),
+                constraints: const BoxConstraints(),
+                padding: const EdgeInsets.all(8),
+              ),
               IconButton(
                 onPressed: onEdit,
                 icon: const Icon(
@@ -1403,7 +1493,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final minFont = 11.0;
+    final minFont = 10.0;
 
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 11),
@@ -1890,6 +1980,255 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
             ),
         ],
       ),
+    );
+  }
+}
+
+class ExpenseDetailsDialog extends StatelessWidget {
+  final Map<String, dynamic> expense;
+  const ExpenseDetailsDialog({super.key, required this.expense});
+
+  String _formatDate(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return "N/A";
+    try {
+      final dt = DateTime.parse(dateStr);
+      return DateFormat('d MMM yyyy').format(dt);
+    } catch (_) {
+      return dateStr;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final invoice = expense['invoice'];
+    final expenseType = expense['expenseType'] ?? expense['type'] ?? "Expense";
+    final amount = (expense['amount'] ?? 0).toString();
+    final date = _formatDate(expense['date']);
+    final paymentMode = expense['paymentMode'] ?? "N/A";
+    final invoiceNo = expense['invoiceNo'] ?? "N/A";
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+      insetPadding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 40.h),
+      child: Container(
+        width: 600.w,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16.r),
+        ),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Left side: Image preview
+              Expanded(
+                flex: 1,
+                child: Container(
+                  color: const Color(0xFFF3F4F6),
+                  child: invoice != null && invoice.toString().isNotEmpty
+                      ? _buildInvoicePreview(invoice.toString())
+                      : _buildNoImage(),
+                ),
+              ),
+              // Right side: Details
+              Expanded(
+                flex: 1,
+                child: Padding(
+                  padding: EdgeInsets.all(20.w),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "EXPENSE DETAILS",
+                            style: GoogleFonts.poppins(
+                              fontSize: 6.5.sp,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey[500],
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.pop(context),
+                            icon: Icon(Icons.close, size: 18.sp),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 10.h),
+                      Row(
+                        children: [
+                          Icon(Icons.receipt_long_outlined, size: 20.sp),
+                          SizedBox(width: 8.w),
+                          Text(
+                            expenseType,
+                            style: GoogleFonts.poppins(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 16.h),
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(14.w),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8F9FB),
+                          borderRadius: BorderRadius.circular(10.r),
+                          border: Border.all(color: const Color(0xFFE5E7EB)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Total Amount",
+                              style: GoogleFonts.poppins(
+                                fontSize: 9.sp,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            Text(
+                              "₹$amount",
+                              style: GoogleFonts.poppins(
+                                fontSize: 20.sp,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF1F2937),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 16.h),
+                      _buildDetailRow(
+                        Icons.calendar_today_outlined,
+                        "Transaction Date",
+                        date,
+                      ),
+                      SizedBox(height: 12.h),
+                      _buildDetailRow(
+                        Icons.payment_outlined,
+                        "Payment Mode",
+                        paymentMode,
+                      ),
+                      SizedBox(height: 12.h),
+                      _buildDetailRow(Icons.tag, "Invoice No.", invoiceNo),
+                      const Spacer(),
+                      SizedBox(height: 16.h),
+                      Align(
+                        alignment: Alignment.bottomRight,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFE5E7EB),
+                            foregroundColor: Colors.black87,
+                            elevation: 0,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 16.w,
+                              vertical: 8.h,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6.r),
+                            ),
+                          ),
+                          child: Text(
+                            "Close",
+                            style: GoogleFonts.poppins(
+                              fontSize: 11.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInvoicePreview(String invoice) {
+    if (invoice.startsWith('http')) {
+      return Image.network(
+        invoice,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) => _buildNoImage(),
+      );
+    } else if (invoice.contains('base64,')) {
+      try {
+        return Image.memory(
+          base64Decode(invoice.split('base64,').last),
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) => _buildNoImage(),
+        );
+      } catch (e) {
+        return _buildNoImage();
+      }
+    }
+    return _buildNoImage();
+  }
+
+  Widget _buildNoImage() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.image_not_supported_outlined,
+          size: 42.sp,
+          color: Colors.grey[400],
+        ),
+        SizedBox(height: 10.h),
+        Text(
+          "No invoice image attached",
+          style: GoogleFonts.poppins(color: Colors.grey[500], fontSize: 10.sp),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Container(
+          padding: EdgeInsets.all(6.w),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF3F4F6),
+            borderRadius: BorderRadius.circular(8.r),
+          ),
+          child: Icon(icon, size: 14.sp, color: Colors.grey[600]),
+        ),
+        SizedBox(width: 12.w),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+                fontSize: 7.sp,
+                color: Colors.grey[500],
+              ),
+            ),
+            Text(
+              value,
+              style: GoogleFonts.poppins(
+                fontSize: 8.sp,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

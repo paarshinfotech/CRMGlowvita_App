@@ -495,6 +495,9 @@ class ApiService {
   static const String addressesEndpoint = '/crm/addresses';
   static const String campaignsEndpoint = '/crm/campaigns';
   static const String smsPackagesEndpoint = '/crm/sms-packages';
+  static const String walletEndpoint = '/crm/wallet';
+  static const String expenseTypesEndpoint = '/admin/super-data/expensetype';
+
 
   // Static notifier for vendor profile
   static final ValueNotifier<VendorProfile?> vendorProfileNotifier =
@@ -706,6 +709,16 @@ class ApiService {
       return response;
     } finally {
       client.close();
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchExpenseTypes() async {
+    final response = await _get('$adminBaseUrl$expenseTypesEndpoint');
+    if (response.statusCode == 200) {
+      final List data = json.decode(response.body);
+      return List<Map<String, dynamic>>.from(data);
+    } else {
+      throw Exception('Failed to fetch expense types');
     }
   }
 
@@ -4149,9 +4162,42 @@ class ApiService {
   static Future<Map<String, dynamic>> fetchSMSPackages() async {
     try {
       final response = await _get('$baseUrl$smsPackagesEndpoint');
-      return json.decode(response.body);
+      final data = json.decode(response.body);
+      if (response.statusCode == 200 || data['success'] == true) {
+        return data;
+      }
+      return {
+        'success': false,
+        'message': data['message'] ?? 'Failed to fetch packages',
+      };
     } catch (e) {
       debugPrint('Error fetching SMS packages: $e');
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  static Future<Map<String, dynamic>> fetchWalletData() async {
+    try {
+      final response = await _get('$baseUrl$walletEndpoint');
+      final data = json.decode(response.body);
+      if (response.statusCode == 200 || data['success'] == true) {
+        return data['data'] ?? {};
+      }
+      throw data['message'] ?? 'Failed to fetch wallet data';
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> requestWithdrawal(
+    Map<String, dynamic> body,
+  ) async {
+    try {
+      final response = await _post('$baseUrl$walletEndpoint/withdraw', body);
+      final data = json.decode(response.body);
+      return data;
+    } catch (e) {
+      debugPrint('Error requesting withdrawal: $e');
       return {'success': false, 'message': e.toString()};
     }
   }
