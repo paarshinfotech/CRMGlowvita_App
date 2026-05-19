@@ -41,6 +41,8 @@ class _AddServicePageState extends State<AddServicePage>
   // Image & Picker
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
+  String? _existingImageUrl;
+  List<Map<String, dynamic>> _fetchedServices = [];
 
   // Category ID tracking
   String? selectedCategoryId; // Will store the actual MongoDB _id
@@ -128,6 +130,7 @@ class _AddServicePageState extends State<AddServicePage>
       selectedCategoryId =
           data['categoryId'] ?? data['category_id'] ?? data['category_ID'];
       _descriptionController.text = data['description'] ?? '';
+      _existingImageUrl = data['serviceImage'] ?? data['image'] ?? data['categoryImage'];
 
       var priceVal =
           data['price'] ?? data['service_price'] ?? data['servicePrice'];
@@ -311,10 +314,32 @@ class _AddServicePageState extends State<AddServicePage>
                     (val) {
                       setState(() {
                         selectedServiceName = val;
-                        if (val != null &&
-                            serviceNameToAddonIds.containsKey(val)) {
-                          _selectedAddOnIds =
-                              List.from(serviceNameToAddonIds[val]!);
+                        if (val != null) {
+                          final s = _fetchedServices.firstWhere(
+                            (item) => item['name'] == val,
+                            orElse: () => <String, dynamic>{},
+                          );
+                          if (s.isNotEmpty) {
+                            if (s['description'] != null && s['description'].toString().trim().isNotEmpty) {
+                              _descriptionController.text = s['description'];
+                            }
+                            final String? img = s['serviceImage'] ?? s['image'];
+                            if (img != null && img.trim().isNotEmpty) {
+                              _existingImageUrl = img;
+                            }
+                            if (s['price'] != null) {
+                              _priceController.text = s['price'].toString();
+                            }
+                            final discVal = s['discountedPrice'] ?? s['discounted_price'];
+                            if (discVal != null) {
+                              _discountedPriceController.text = discVal.toString();
+                            }
+                          }
+                          
+                          if (serviceNameToAddonIds.containsKey(val)) {
+                            _selectedAddOnIds =
+                                List.from(serviceNameToAddonIds[val]!);
+                          }
                         }
                       });
                     },
@@ -430,6 +455,19 @@ class _AddServicePageState extends State<AddServicePage>
                       borderRadius: BorderRadius.circular(8),
                       child: Image.file(_selectedImage!,
                           height: 100, fit: BoxFit.cover),
+                    ),
+                  ] else if (_existingImageUrl != null) ...[
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        _existingImageUrl!,
+                        height: 100,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            const SizedBox.shrink(),
+                      ),
                     ),
                   ],
                 ],
@@ -1159,6 +1197,7 @@ class _AddServicePageState extends State<AddServicePage>
       }
 
       setState(() {
+        _fetchedServices = servicesData;
         // If we were passed an ID, we might not have the name, so we use selectedCategory
         final String? catName = (categoryName == selectedCategoryId)
             ? selectedCategory
@@ -1662,6 +1701,8 @@ class _AddServicePageState extends State<AddServicePage>
                                   responseData;
                               final String newName =
                                   data['name'] ?? 'New Service';
+                              final String? newDesc = data['description'];
+                              final String? newImg = data['serviceImage'] ?? data['image'];
 
                               setState(() {
                                 // Update local list
@@ -1669,6 +1710,12 @@ class _AddServicePageState extends State<AddServicePage>
                                   serviceNames.add(newName);
                                 }
                                 selectedServiceName = newName;
+                                if (newDesc != null && newDesc.trim().isNotEmpty) {
+                                  _descriptionController.text = newDesc;
+                                }
+                                if (newImg != null && newImg.trim().isNotEmpty) {
+                                  _existingImageUrl = newImg;
+                                }
                               });
 
                               _newServiceNameController.clear();

@@ -498,7 +498,6 @@ class ApiService {
   static const String walletEndpoint = '/crm/wallet';
   static const String expenseTypesEndpoint = '/admin/super-data/expensetype';
 
-
   // Static notifier for vendor profile
   static final ValueNotifier<VendorProfile?> vendorProfileNotifier =
       ValueNotifier<VendorProfile?>(null);
@@ -2217,7 +2216,7 @@ class ApiService {
   static Future<http.Response> createServiceCategory(
     Map<String, dynamic> data,
   ) async {
-    return await _post('$baseUrl/crm/categories', data);
+    return await _post('$baseUrl/admin/categories', data);
   }
 
   // ==================== SERVICES BY CATEGORY ==================== //
@@ -2225,10 +2224,8 @@ class ApiService {
     String categoryName,
   ) async {
     try {
-      // Filtering by category (can be ID or name depending on server)
-      final response = await _get(
-        '$baseUrl/crm/services?category=$categoryName',
-      );
+      // Fetch all services and filter locally to ensure perfect mapping
+      final response = await _get('$baseUrl/admin/services');
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
         List<dynamic> list = [];
@@ -2237,7 +2234,29 @@ class ApiService {
         } else if (decoded is Map) {
           list = decoded['data'] ?? decoded['services'] ?? [];
         }
-        return List<Map<String, dynamic>>.from(list);
+
+        final allServices = List<Map<String, dynamic>>.from(list);
+
+        // Filter locally by category ID or category name
+        final filteredList = allServices.where((s) {
+          final cat = s['category'];
+          if (cat == null) return false;
+          if (cat is Map) {
+            final catId = cat['_id'] ?? cat['id'];
+            final catName = cat['name'];
+            return (catId != null &&
+                    catId.toString().toLowerCase() ==
+                        categoryName.toLowerCase()) ||
+                (catName != null &&
+                    catName.toString().toLowerCase() ==
+                        categoryName.toLowerCase());
+          } else if (cat is String) {
+            return cat.toLowerCase() == categoryName.toLowerCase();
+          }
+          return false;
+        }).toList();
+
+        return filteredList;
       } else {
         throw Exception('Failed to load services: ${response.statusCode}');
       }
@@ -2251,13 +2270,13 @@ class ApiService {
   static Future<http.Response> createMasterCategory(
     Map<String, dynamic> data,
   ) async {
-    return await _post('$adminBaseUrl/admin/categories', data);
+    return await _post('$baseUrl/admin/categories', data);
   }
 
   static Future<http.Response> createMasterService(
     Map<String, dynamic> data,
   ) async {
-    return await _post('$adminBaseUrl/admin/services', data);
+    return await _post('$baseUrl/admin/services', data);
   }
 
   // ==================== ADD-ONS ==================== //
@@ -3018,6 +3037,22 @@ class ApiService {
       }
     } catch (e) {
       print('Error deleting wedding package: $e');
+      rethrow;
+    }
+  }
+
+  // Get Auth Profile
+  static Future<Map<String, dynamic>> getAuthProfile() async {
+    try {
+      final response = await _get('$baseUrl/crm/auth/profile');
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data;
+      } else {
+        throw Exception('Failed to load auth profile');
+      }
+    } catch (e) {
+      print('Error fetching auth profile: $e');
       rethrow;
     }
   }

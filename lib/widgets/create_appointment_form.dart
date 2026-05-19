@@ -9,6 +9,7 @@ import '../customer_model.dart';
 import '../calender.dart';
 import '../services/api_service.dart';
 import '../appointment_model.dart';
+import '../vendor_model.dart';
 
 class FormClient {
   final String name;
@@ -99,6 +100,8 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
   bool _isLoadingServices = true;
   Service? _selectedService;
 
+  Taxes? _taxes;
+
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _startTime = TimeOfDay.now();
 
@@ -122,6 +125,7 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
       _loadStaff(),
       _loadServices(),
       _loadAddOns(),
+      _loadTaxes(),
     ]);
 
     if (widget.existingAppointment != null && _queuedServices.isEmpty) {
@@ -306,6 +310,37 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
     }
   }
 
+  Future<void> _loadTaxes() async {
+    try {
+      final profile = await ApiService.getVendorProfile();
+      if (mounted) {
+        setState(() {
+          _taxes = profile.taxes;
+        });
+        _recalculatePricingAndTimes();
+      }
+    } catch (e) {
+      print('Error loading taxes from crm/vendor: $e');
+      try {
+        final res = await ApiService.getAuthProfile();
+        if (res != null && res['success'] == true && res['data'] != null) {
+          final taxData = res['data']['taxes'];
+          if (taxData != null && mounted) {
+            setState(() {
+              _taxes = Taxes(
+                taxValue: (taxData['taxValue'] as num?)?.toDouble() ?? 0.0,
+                taxType: taxData['taxType'] ?? 'percentage',
+              );
+            });
+            _recalculatePricingAndTimes();
+          }
+        }
+      } catch (err) {
+        print('Error loading taxes from crm/auth/profile: $err');
+      }
+    }
+  }
+
   Future<void> _refreshClients() async => await _loadClients();
 
   @override
@@ -340,25 +375,63 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
     double totalAmount = 0;
     int totalDuration = 0;
 
-    if (_queuedServices.isEmpty) return;
+    // Use queued services if any exist
+    if (_queuedServices.isNotEmpty) {
+      for (var qs in _queuedServices) {
+        if (!qs.isFromPackage) {
+          totalAmount += (qs.service.price ?? 0).toDouble();
+          totalDuration += qs.service.duration ?? 0;
+        }
 
-    for (var qs in _queuedServices) {
-      // Only add price/duration if NOT part of the package (custom/extra services)
-      if (!qs.isFromPackage) {
-        totalAmount += (qs.service.price ?? 0).toDouble();
-        totalDuration += qs.service.duration ?? 0;
+        for (var addon in qs.selectedAddOns) {
+          totalAmount += (addon.price ?? 0).toDouble();
+          totalDuration += addon.duration ?? 0;
+        }
       }
-
-      // Add add-ons price and duration (Add-ons are always extra)
-      for (var addon in qs.selectedAddOns) {
+    } 
+    // Otherwise, if a service is selected in the dropdown, calculate for it
+    else if (_selectedService != null) {
+      totalAmount += (_selectedService!.price ?? 0).toDouble();
+      totalDuration += _selectedService!.duration ?? 0;
+      for (var addon in _selectedAddOns) {
         totalAmount += (addon.price ?? 0).toDouble();
         totalDuration += addon.duration ?? 0;
       }
     }
 
+    if (_queuedServices.isEmpty && _selectedService == null) {
+      _amountCtrl.text = '';
+      _totalCtrl.text = '';
+      _durationCtrl.text = '';
+      _endTimeCtrl.text = '';
+      _taxCtrl.text = '';
+      setState(() {});
+      return;
+    }
+
     final discount = _parseMoney(_discountCtrl.text);
-    final tax = _parseMoney(_taxCtrl.text);
+
+    // Auto-calculate tax based on loaded tax settings
+    double tax = 0.0;
+    if (_taxes != null) {
+      final baseAmount = (totalAmount - discount).clamp(0.0, double.infinity);
+      if (_taxes!.taxType == 'percentage') {
+        tax = baseAmount * (_taxes!.taxValue / 100.0);
+      } else {
+        // fixed tax is only applied if there is any service amount
+        tax = totalAmount > 0 ? _taxes!.taxValue : 0.0;
+      }
+    } else {
+      tax = _parseMoney(_taxCtrl.text);
+    }
+
     final total = (totalAmount - discount).clamp(0.0, double.infinity) + tax;
+
+    // Avoid setting controller text to trigger duplicate listener if it hasn't changed
+    final currentTaxInCtrl = _parseMoney(_taxCtrl.text);
+    if ((tax - currentTaxInCtrl).abs() > 0.01) {
+      _taxCtrl.text = tax > 0 ? tax.toStringAsFixed(2) : '';
+    }
 
     _amountCtrl.text = totalAmount > 0 ? totalAmount.toStringAsFixed(2) : '';
     _totalCtrl.text = total > 0 ? total.toStringAsFixed(2) : '';
@@ -1398,6 +1471,7 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                                   _availableAddOns = [];
                                 }
                               });
+                              _recalculatePricingAndTimes();
                             },
                           ),
                         ),
@@ -1490,6 +1564,7 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                                       _selectedAddOns.add(addon);
                                     }
                                   });
+                                  _recalculatePricingAndTimes();
                                 },
                                 child: Container(
                                   padding: EdgeInsets.symmetric(
