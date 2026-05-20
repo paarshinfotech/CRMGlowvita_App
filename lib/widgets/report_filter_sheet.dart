@@ -74,11 +74,11 @@ class _ReportFilterSheetState extends State<ReportFilterSheet> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
       ),
-      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 20.h),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -93,15 +93,16 @@ class _ReportFilterSheetState extends State<ReportFilterSheet> {
                   Text(
                     widget.title,
                     style: GoogleFonts.poppins(
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w600,
                       color: const Color(0xFF1E293B),
                     ),
                   ),
+                  SizedBox(height: 2.h),
                   Text(
                     widget.subtitle,
                     style: GoogleFonts.poppins(
-                      fontSize: 12.sp,
+                      fontSize: 10.sp,
                       color: const Color(0xFF64748B),
                     ),
                   ),
@@ -109,11 +110,13 @@ class _ReportFilterSheetState extends State<ReportFilterSheet> {
               ),
               IconButton(
                 onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close),
+                icon: const Icon(Icons.close, size: 18),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
               ),
             ],
           ),
-          SizedBox(height: 24.h),
+          SizedBox(height: 16.h),
 
           // Date Fields
           Row(
@@ -121,23 +124,23 @@ class _ReportFilterSheetState extends State<ReportFilterSheet> {
               Expanded(
                 child: _buildDateField('Start Date', 'startDate'),
               ),
-              SizedBox(width: 16.w),
+              SizedBox(width: 12.w),
               Expanded(
                 child: _buildDateField('End Date', 'endDate'),
               ),
             ],
           ),
-          SizedBox(height: 16.h),
+          SizedBox(height: 12.h),
 
           // Dynamic Dropdown Fields
           ...widget.fields.map((field) {
             return Padding(
-              padding: EdgeInsets.only(bottom: 16.h),
+              padding: EdgeInsets.only(bottom: 12.h),
               child: _buildDropdownField(field),
             );
           }),
 
-          SizedBox(height: 16.h),
+          SizedBox(height: 8.h),
 
           // Buttons
           Row(
@@ -149,13 +152,14 @@ class _ReportFilterSheetState extends State<ReportFilterSheet> {
                     Navigator.pop(context);
                   },
                   style: OutlinedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: 14.h),
+                    padding: EdgeInsets.symmetric(vertical: 10.h),
                     side: const BorderSide(color: Color(0xFFE2E8F0)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.r)),
                   ),
                   child: Text(
                     'Clear',
                     style: GoogleFonts.poppins(
+                      fontSize: 11.sp,
                       color: const Color(0xFF1E293B),
                       fontWeight: FontWeight.w600,
                     ),
@@ -171,12 +175,13 @@ class _ReportFilterSheetState extends State<ReportFilterSheet> {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF372935),
-                    padding: EdgeInsets.symmetric(vertical: 14.h),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: EdgeInsets.symmetric(vertical: 10.h),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.r)),
                   ),
                   child: Text(
                     'Apply Filters',
                     style: GoogleFonts.poppins(
+                      fontSize: 11.sp,
                       color: Colors.white,
                       fontWeight: FontWeight.w600,
                     ),
@@ -185,7 +190,7 @@ class _ReportFilterSheetState extends State<ReportFilterSheet> {
               ),
             ],
           ),
-          SizedBox(height: 10.h),
+          SizedBox(height: 6.h),
         ],
       ),
     );
@@ -208,19 +213,19 @@ class _ReportFilterSheetState extends State<ReportFilterSheet> {
         Text(
           label,
           style: GoogleFonts.poppins(
-            fontSize: 13.sp,
+            fontSize: 10.sp,
             fontWeight: FontWeight.w600,
             color: const Color(0xFF1E293B),
           ),
         ),
-        SizedBox(height: 6.h),
+        SizedBox(height: 4.h),
         InkWell(
           onTap: () => _pickDate(key),
           child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
+            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
             decoration: BoxDecoration(
               border: Border.all(color: const Color(0xFFE2E8F0)),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(6.r),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -228,11 +233,11 @@ class _ReportFilterSheetState extends State<ReportFilterSheet> {
                 Text(
                   displayDate,
                   style: GoogleFonts.poppins(
-                    fontSize: 13.sp,
+                    fontSize: 11.sp,
                     color: dateStr.isNotEmpty ? Colors.black87 : const Color(0xFF94A3B8),
                   ),
                 ),
-                Icon(Icons.calendar_today_outlined, size: 16.sp, color: const Color(0xFF64748B)),
+                Icon(Icons.calendar_today_outlined, size: 13.sp, color: const Color(0xFF64748B)),
               ],
             ),
           ),
@@ -248,24 +253,25 @@ class _ReportFilterSheetState extends State<ReportFilterSheet> {
         Text(
           field.label,
           style: GoogleFonts.poppins(
-            fontSize: 13.sp,
+            fontSize: 10.sp,
             fontWeight: FontWeight.w600,
             color: const Color(0xFF1E293B),
           ),
         ),
-        SizedBox(height: 6.h),
+        SizedBox(height: 4.h),
         Container(
-          padding: EdgeInsets.symmetric(horizontal: 12.w),
+          height: 34.h,
+          padding: EdgeInsets.symmetric(horizontal: 10.w),
           decoration: BoxDecoration(
             border: Border.all(color: const Color(0xFFE2E8F0)),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(6.r),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               isExpanded: true,
               value: _currentFilters[field.key] ?? 'All',
-              icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
-              style: GoogleFonts.poppins(fontSize: 13.sp, color: Colors.black87),
+              icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B), size: 16),
+              style: GoogleFonts.poppins(fontSize: 11.sp, color: Colors.black87),
               onChanged: (String? newValue) {
                 setState(() {
                   _currentFilters[field.key] = newValue;

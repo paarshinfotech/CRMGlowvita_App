@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../services/api_service.dart';
+import '../widgets/report_widgets.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Page
@@ -79,20 +80,51 @@ class _SettlementSummaryState extends State<SettlementSummary> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: _buildAppBar(),
+      appBar: ReportAppBar(
+        title: 'Settlement Summary',
+        onBackPressed: () => Navigator.pop(context),
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: _purple))
           : _errorMsg != null
               ? _buildErrorState()
               : SingleChildScrollView(
-                  padding: EdgeInsets.all(12.w),
+                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Search and refresh toolbar matching the buttons bar
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ReportSearchBarAndButtons(
+                              controller: _searchCtrl,
+                              hintText: 'Search transfers...',
+                              onChanged: (v) {
+                                setState(() {
+                                  _searchText = v;
+                                });
+                              },
+                              onFilterTap: () {},
+                              exportMenu: const SizedBox.shrink(),
+                            ),
+                          ),
+                          SizedBox(width: 8.w),
+                          IconButton(
+                            icon: Icon(Icons.refresh_rounded, color: Colors.black87, size: 20.sp),
+                            onPressed: _fetchData,
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 20.h),
+
+                      // Premium Stats Grid
                       _buildStatsRow(),
-                      SizedBox(height: 12.h),
+                      SizedBox(height: 24.h),
+
                       _buildTitledSection('Money Transfers', _buildTransfersTable()),
-                      SizedBox(height: 12.h),
+                      SizedBox(height: 24.h),
+
                       _buildTitledSection('Detailed Settlements', _buildAppointmentsTable()),
                     ],
                   ),
@@ -126,13 +158,29 @@ class _SettlementSummaryState extends State<SettlementSummary> {
     final owed = _n(_totals['totalAdminOwesVendor']);
     final payable = _n(_totals['totalVendorOwesAdmin']);
     final balance = _n(_totals['finalBalance']);
-    return Row(
+    return ReportStatsGrid(
       children: [
-        _statCard('Owed to You', _fmt(owed), Icons.arrow_downward_rounded, Colors.green),
-        SizedBox(width: 8.w),
-        _statCard('Payable to Admin', _fmt(payable), Icons.arrow_upward_rounded, Colors.red),
-        SizedBox(width: 8.w),
-        _statCard('Net Balance', _fmt(balance.abs()), Icons.account_balance_wallet_rounded, _purple),
+        ReportStatCard(
+          label: 'Owed to You',
+          value: _fmt(owed),
+          icon: Icons.arrow_downward_rounded,
+          iconColor: const Color(0xFF10B981),
+          circleBgColor: const Color(0xFFECFDF5),
+        ),
+        ReportStatCard(
+          label: 'Payable to Admin',
+          value: _fmt(payable),
+          icon: Icons.arrow_upward_rounded,
+          iconColor: const Color(0xFFC62828),
+          circleBgColor: const Color(0xFFFFEBEE),
+        ),
+        ReportStatCard(
+          label: 'Net Balance',
+          value: _fmt(balance.abs()),
+          icon: Icons.account_balance_wallet_rounded,
+          iconColor: const Color(0xFF3B82F6),
+          circleBgColor: const Color(0xFFEFF6FF),
+        ),
       ],
     );
   }
@@ -163,7 +211,7 @@ class _SettlementSummaryState extends State<SettlementSummary> {
         SizedBox(height: 6.h),
         Container(
           width: double.infinity,
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: const [BoxShadow(color: Color(0x12000000), blurRadius: 10, offset: Offset(0, 3))]),
+          decoration: const BoxDecoration(color: Colors.white),
           child: child,
         ),
       ],
@@ -174,9 +222,10 @@ class _SettlementSummaryState extends State<SettlementSummary> {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: DataTable(
-        headingRowColor: MaterialStateProperty.all(const Color(0xFFF9F9FB)),
-        headingTextStyle: GoogleFonts.poppins(fontSize: 9.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
+        headingRowColor: MaterialStateProperty.all(Colors.white),
+        headingTextStyle: GoogleFonts.poppins(fontSize: 9.sp, fontWeight: FontWeight.w500, color: const Color(0xFF71717A)),
         dataTextStyle: GoogleFonts.poppins(fontSize: 9.sp, color: Colors.black87),
+        dividerThickness: 0,
         columnSpacing: 15.w,
         columns: const [
           DataColumn(label: Text('Date')),
@@ -201,9 +250,10 @@ class _SettlementSummaryState extends State<SettlementSummary> {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: DataTable(
-        headingRowColor: MaterialStateProperty.all(const Color(0xFFF9F9FB)),
-        headingTextStyle: GoogleFonts.poppins(fontSize: 9.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
+        headingRowColor: MaterialStateProperty.all(Colors.white),
+        headingTextStyle: GoogleFonts.poppins(fontSize: 9.sp, fontWeight: FontWeight.w500, color: const Color(0xFF71717A)),
         dataTextStyle: GoogleFonts.poppins(fontSize: 9.sp, color: Colors.black87),
+        dividerThickness: 0,
         columnSpacing: 15.w,
         columns: const [
           DataColumn(label: Text('Date')),

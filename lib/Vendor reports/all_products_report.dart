@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 import '../utils/export_helper.dart';
 import '../widgets/report_filter_sheet.dart';
+import '../widgets/report_widgets.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Page
@@ -101,85 +102,116 @@ class _AllProductsReportState extends State<AllProductsReport> {
 
   @override
   Widget build(BuildContext context) {
+    int activeCount = _filtered.where((p) => p['isActive'] == true).length;
+    int outOfStock = _filtered.where((p) => ((p['stock'] as num?)?.toInt() ?? 0) == 0).length;
+    double totalVal = _filtered.fold(0.0, (sum, p) => sum + (((p['price'] as num?)?.toDouble() ?? 0.0) * ((p['stock'] as num?)?.toInt() ?? 0)));
+
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: _buildAppBar(),
-      body: Padding(
-        padding: EdgeInsets.all(12.w),
+      appBar: ReportAppBar(
+        title: 'All Products Report',
+        onBackPressed: () => Navigator.pop(context),
+      ),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: const [BoxShadow(color: Color(0x12000000), blurRadius: 10, offset: Offset(0, 3))],
+            // Search and plum buttons row matching Figma exactly
+            ReportSearchBarAndButtons(
+              controller: _searchCtrl,
+              hintText: 'Search products...',
+              onChanged: (v) {
+                _searchText = v;
+                _applyFilter();
+              },
+              onFilterTap: _showFilterSheet,
+              exportMenu: PopupMenuButton<String>(
+                position: PopupMenuPosition.under,
+                offset: Offset(0, 8.h),
+                child: const ReportPlumButton(
+                  label: 'Export',
+                  suffixIcon: Icons.download_rounded,
                 ),
+                onSelected: (value) => _handleExport(value),
+                itemBuilder: (context) => [
+                  _buildExportItem('copy', Icons.copy_rounded, 'Copy'),
+                  _buildExportItem('excel', Icons.grid_on_rounded, 'Excel'),
+                  _buildExportItem('csv', Icons.description_rounded, 'CSV'),
+                  _buildExportItem('pdf', Icons.picture_as_pdf_rounded, 'PDF'),
+                  _buildExportItem('print', Icons.print_rounded, 'Print'),
+                ],
+              ),
+            ),
+            SizedBox(height: 20.h),
+
+            // Stats grid in 2 columns
+            ReportStatsGrid(
+              children: [
+                ReportStatCard(
+                  label: 'Total Products',
+                  value: _filtered.length.toString().padLeft(2, '0'),
+                  icon: Icons.inventory_2_outlined,
+                  iconColor: const Color(0xFF7C5CFC),
+                  circleBgColor: const Color(0xFFF3F0FF),
+                ),
+                ReportStatCard(
+                  label: 'Active Products',
+                  value: activeCount.toString().padLeft(2, '0'),
+                  icon: Icons.check_circle_outline_rounded,
+                  iconColor: const Color(0xFF10B981),
+                  circleBgColor: const Color(0xFFECFDF5),
+                ),
+                ReportStatCard(
+                  label: 'Out of Stock',
+                  value: outOfStock.toString().padLeft(2, '0'),
+                  icon: Icons.error_outline_rounded,
+                  iconColor: const Color(0xFFC62828),
+                  circleBgColor: const Color(0xFFFFEBEE),
+                ),
+                ReportStatCard(
+                  label: 'Catalog Value',
+                  value: _fmt(totalVal),
+                  icon: Icons.payments_rounded,
+                  iconColor: const Color(0xFFF59E0B),
+                  circleBgColor: const Color(0xFFFEF3C7),
+                ),
+              ],
+            ),
+            SizedBox(height: 24.h),
+
+
+
+            // Premium table container without borders
+            Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+              ),
+              child: Theme(
+                data: getReportTableTheme(context),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    _buildTable(),
+                    Divider(height: 1, color: Colors.grey.shade50),
                     Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: SizedBox(
-                              height: 34.h,
-                              child: TextField(
-                                controller: _searchCtrl,
-                                onChanged: (v) { _searchText = v; _applyFilter(); },
-                                style: GoogleFonts.poppins(fontSize: 11.sp),
-                                decoration: InputDecoration(
-                                  prefixIcon: Icon(Icons.search_rounded, color: Colors.grey.shade400, size: 16.sp),
-                                  hintText: 'Search products...',
-                                  hintStyle: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.grey.shade400),
-                                  filled: true,
-                                  fillColor: const Color(0xFFF5F6FA),
-                                  contentPadding: EdgeInsets.zero,
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none),
-                                ),
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 8.w),
-                          _toolbarBtn(
-                            icon: Icons.filter_list_rounded,
-                            label: 'Filter',
-                            isActive: true,
-                            onTap: _showFilterSheet,
-                          ),
-                          SizedBox(width: 8.w),
-                          PopupMenuButton<String>(
-                            position: PopupMenuPosition.under,
-                            offset: Offset(0, 10.h),
-                            child: _toolbarBtn(
-                               icon: Icons.upload_rounded,
-                               label: 'Export',
-                               onTap: null,
-                             ),
-                            onSelected: (value) => _handleExport(value),
-                            itemBuilder: (context) => [
-                              _buildExportItem('copy', Icons.copy_rounded, 'Copy'),
-                              _buildExportItem('excel', Icons.grid_on_rounded, 'Excel'),
-                              _buildExportItem('csv', Icons.description_rounded, 'CSV'),
-                              _buildExportItem('pdf', Icons.picture_as_pdf_rounded, 'PDF'),
-                              _buildExportItem('print', Icons.print_rounded, 'Print'),
-                            ],
-                          ),
-                          SizedBox(width: 8.w),
-                          _toolbarBtn(
-                            icon: Icons.refresh_rounded,
-                            label: '',
-                            onTap: _fetchData,
-                            isIconOnly: true,
-                          ),
-                        ],
+                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                      child: ReportPagination(
+                        currentPage: _currentPage,
+                        totalPages: _totalPages,
+                        rowsPerPage: _rowsPerPage,
+                        totalItems: _filtered.length,
+                        onPageChanged: (page) => setState(() => _currentPage = page),
+                        onRowsPerPageChanged: (val) {
+                          if (val != null) {
+                            setState(() {
+                              _rowsPerPage = val;
+                              _currentPage = 0;
+                            });
+                          }
+                        },
                       ),
                     ),
-                    Divider(height: 1, color: Colors.grey.shade100),
-                    Expanded(child: _buildTable()),
-                    Divider(height: 1, color: Colors.grey.shade100),
-                    _buildPaginationFooter(),
                   ],
                 ),
               ),
@@ -220,11 +252,12 @@ class _AllProductsReportState extends State<AllProductsReport> {
       scrollDirection: Axis.horizontal,
       child: SingleChildScrollView(
         child: DataTable(
-          headingRowColor: MaterialStateProperty.all(const Color(0xFFF9F9FB)),
-          headingTextStyle: GoogleFonts.poppins(fontSize: 9.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
+          headingRowColor: MaterialStateProperty.all(Colors.white),
+          headingTextStyle: GoogleFonts.poppins(fontSize: 9.sp, fontWeight: FontWeight.w500, color: const Color(0xFF71717A)),
           dataTextStyle: GoogleFonts.poppins(fontSize: 9.sp, color: Colors.black87),
-          horizontalMargin: 12.w,
-          columnSpacing: 15.w,
+          dividerThickness: 0,
+          horizontalMargin: 8.w,
+          columnSpacing: 16.w,
           columns: const [
             DataColumn(label: Text('Product Name')),
             DataColumn(label: Text('Brand')),

@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../services/api_service.dart';
+import '../widgets/report_widgets.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Page
@@ -107,73 +108,104 @@ class _SalesByServiceState extends State<SalesByService> {
 
   @override
   Widget build(BuildContext context) {
+    int totalSold = _filtered.fold(0, (sum, r) => sum + ((r['serviceSold'] as num?)?.toInt() ?? 0));
+    double totalGross = _filtered.fold(0.0, (sum, r) => sum + _n(r['grossSale']));
+    double totalNet = _filtered.fold(0.0, (sum, r) => sum + _n(r['netSale']));
+
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: _buildAppBar(),
-      body: Padding(
-        padding: EdgeInsets.all(12.w),
+      appBar: ReportAppBar(
+        title: 'Sales by Service',
+        onBackPressed: () => Navigator.pop(context),
+      ),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: const [BoxShadow(color: Color(0x12000000), blurRadius: 10, offset: Offset(0, 3))],
+            // Search and plum buttons row matching Figma exactly
+            ReportSearchBarAndButtons(
+              controller: _searchCtrl,
+              hintText: 'Search service...',
+              onChanged: (v) {
+                _searchText = v;
+                _applyFilter();
+              },
+              onFilterTap: _pickDateRange,
+              exportMenu: const ReportPlumButton(
+                label: 'Export',
+                suffixIcon: Icons.download_rounded,
+              ),
+            ),
+            SizedBox(height: 20.h),
+
+            // Stats grid in 2 columns
+            ReportStatsGrid(
+              children: [
+                ReportStatCard(
+                  label: 'Total Services',
+                  value: _filtered.length.toString().padLeft(2, '0'),
+                  icon: Icons.category_outlined,
+                  iconColor: const Color(0xFF7C5CFC),
+                  circleBgColor: const Color(0xFFF3F0FF),
                 ),
+                ReportStatCard(
+                  label: 'Total Sold',
+                  value: totalSold.toString().padLeft(2, '0'),
+                  icon: Icons.shopping_bag_outlined,
+                  iconColor: const Color(0xFF3B82F6),
+                  circleBgColor: const Color(0xFFEFF6FF),
+                ),
+                ReportStatCard(
+                  label: 'Gross Sales',
+                  value: _fmt(totalGross),
+                  icon: Icons.payments_rounded,
+                  iconColor: const Color(0xFFF59E0B),
+                  circleBgColor: const Color(0xFFFEF3C7),
+                ),
+                ReportStatCard(
+                  label: 'Net Sales',
+                  value: _fmt(totalNet),
+                  icon: Icons.price_check_rounded,
+                  iconColor: const Color(0xFF10B981),
+                  circleBgColor: const Color(0xFFECFDF5),
+                ),
+              ],
+            ),
+            SizedBox(height: 24.h),
+
+
+
+            // Premium table container without borders
+            Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+              ),
+              child: Theme(
+                data: getReportTableTheme(context),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    _buildTable(),
+                    Divider(height: 1, color: Colors.grey.shade50),
                     Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: SizedBox(
-                              height: 34.h,
-                              child: TextField(
-                                controller: _searchCtrl,
-                                onChanged: (v) { _searchText = v; _applyFilter(); },
-                                style: GoogleFonts.poppins(fontSize: 11.sp),
-                                decoration: InputDecoration(
-                                  prefixIcon: Icon(Icons.search_rounded, color: Colors.grey.shade400, size: 16.sp),
-                                  hintText: 'Search service...',
-                                  hintStyle: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.grey.shade400),
-                                  filled: true,
-                                  fillColor: const Color(0xFFF5F6FA),
-                                  contentPadding: EdgeInsets.zero,
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none),
-                                ),
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 8.w),
-                          _toolbarBtn(
-                            icon: Icons.filter_list_rounded,
-                            label: _dateRange != null ? 'Filtered' : 'Filter',
-                            isActive: _dateRange != null,
-                            onTap: _pickDateRange,
-                          ),
-                          SizedBox(width: 8.w),
-                          _toolbarBtn(
-                            icon: Icons.upload_rounded,
-                            label: 'Export',
-                            onTap: () {},
-                          ),
-                          SizedBox(width: 8.w),
-                          _toolbarBtn(
-                            icon: Icons.refresh_rounded,
-                            label: '',
-                            onTap: _fetchData,
-                            isIconOnly: true,
-                          ),
-                        ],
+                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                      child: ReportPagination(
+                        currentPage: _currentPage,
+                        totalPages: _totalPages,
+                        rowsPerPage: _rowsPerPage,
+                        totalItems: _filtered.length,
+                        onPageChanged: (page) => setState(() => _currentPage = page),
+                        onRowsPerPageChanged: (val) {
+                          if (val != null) {
+                            setState(() {
+                              _rowsPerPage = val;
+                              _currentPage = 0;
+                            });
+                          }
+                        },
                       ),
                     ),
-                    Divider(height: 1, color: Colors.grey.shade100),
-                    Expanded(child: _buildTable()),
-                    Divider(height: 1, color: Colors.grey.shade100),
-                    _buildPaginationFooter(),
                   ],
                 ),
               ),
@@ -214,11 +246,12 @@ class _SalesByServiceState extends State<SalesByService> {
       scrollDirection: Axis.horizontal,
       child: SingleChildScrollView(
         child: DataTable(
-          headingRowColor: MaterialStateProperty.all(const Color(0xFFF9F9FB)),
-          headingTextStyle: GoogleFonts.poppins(fontSize: 9.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
+          headingRowColor: MaterialStateProperty.all(Colors.white),
+          headingTextStyle: GoogleFonts.poppins(fontSize: 9.sp, fontWeight: FontWeight.w500, color: const Color(0xFF71717A)),
           dataTextStyle: GoogleFonts.poppins(fontSize: 9.sp, color: Colors.black87),
-          horizontalMargin: 12.w,
-          columnSpacing: 20.w,
+          dividerThickness: 0,
+          horizontalMargin: 8.w,
+          columnSpacing: 16.w,
           columns: const [
             DataColumn(label: Text('Service')),
             DataColumn(label: Text('Sold')),
