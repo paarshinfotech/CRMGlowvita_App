@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'widgets/custom_drawer.dart';
@@ -16,11 +18,23 @@ class ReferralProg extends StatefulWidget {
 
 class _ReferralProgState extends State<ReferralProg> {
   VendorProfile? _profile;
+  ReferralSettings? _referralSettings;
+  bool _isLoadingSettings = true;
+
+  int _totalReferrals = 0;
+  int _successfulReferrals = 0;
+  double _totalBonusEarned = 0.0;
+  List<dynamic> _recentTracking = [];
+  bool _isLoadingStats = true;
+  bool _isLoadingHistory = true;
 
   @override
   void initState() {
     super.initState();
     _fetchProfile();
+    _fetchReferralSettings();
+    _fetchReferralStats();
+    _fetchReferralHistory();
   }
 
   Future<void> _fetchProfile() async {
@@ -33,6 +47,61 @@ class _ReferralProgState extends State<ReferralProg> {
       }
     } catch (e) {
       debugPrint('Error fetching profile: $e');
+    }
+  }
+
+  Future<void> _fetchReferralSettings() async {
+    try {
+      final settings = await ReferralApi.getReferralSettings();
+      if (mounted) {
+        setState(() {
+          _referralSettings = settings;
+          _isLoadingSettings = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching referral settings: $e');
+      if (mounted) setState(() => _isLoadingSettings = false);
+    }
+  }
+
+  Future<void> _fetchReferralStats() async {
+    try {
+      final stats = await ReferralApi.getReferralStats();
+      if (mounted && stats != null) {
+        setState(() {
+          _totalReferrals =
+              (stats['totalReferrals'] ?? stats['total'] ?? 0) as int;
+          _successfulReferrals =
+              (stats['successfulReferrals'] ?? stats['successful'] ?? 0) as int;
+          _totalBonusEarned =
+              (stats['totalBonusEarned'] ?? stats['totalBonus'] ?? 0.0)
+                  .toDouble();
+          _isLoadingStats = false;
+        });
+      } else {
+        if (mounted) setState(() => _isLoadingStats = false);
+      }
+    } catch (e) {
+      debugPrint('Error fetching referral stats: $e');
+      if (mounted) setState(() => _isLoadingStats = false);
+    }
+  }
+
+  Future<void> _fetchReferralHistory() async {
+    try {
+      final history = await ReferralApi.getReferralHistory();
+      if (mounted && history != null) {
+        setState(() {
+          _recentTracking = history;
+          _isLoadingHistory = false;
+        });
+      } else {
+        if (mounted) setState(() => _isLoadingHistory = false);
+      }
+    } catch (e) {
+      debugPrint('Error fetching referral history: $e');
+      if (mounted) setState(() => _isLoadingHistory = false);
     }
   }
 
@@ -153,27 +222,90 @@ class _ReferralProgState extends State<ReferralProg> {
               ],
             ),
             SizedBox(height: 12.h),
-            _buildTrackingItem(
-              name: 'Olivia Cameron',
-              studio: 'Elegance Beauty Studio',
-              amount: '₹ 73,655',
-              date: '25 Jan 2026',
-              status: 'Pending',
-              statusColor: Colors.orange.shade100,
-              statusTextColor: Colors.orange.shade800,
-              imageUrl: 'https://i.pravatar.cc/150?u=2',
-            ),
-            SizedBox(height: 12.h),
-            _buildTrackingItem(
-              name: 'Priya Sharma',
-              studio: 'Style Studio',
-              amount: '₹ 15,485',
-              date: '21 Jan 2026',
-              status: 'Approved',
-              statusColor: Colors.green.shade100,
-              statusTextColor: Colors.green.shade800,
-              imageUrl: 'https://i.pravatar.cc/150?u=3',
-            ),
+            if (_isLoadingHistory)
+              Container(
+                padding: EdgeInsets.symmetric(vertical: 20.h),
+                alignment: Alignment.center,
+                child: const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    color: Color(0xFF4A2C3C),
+                    strokeWidth: 2,
+                  ),
+                ),
+              )
+            else if (_recentTracking.isEmpty)
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: 30.h),
+                child: Center(
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.history_toggle_off_outlined,
+                        color: Colors.grey.shade400,
+                        size: 36.sp,
+                      ),
+                      SizedBox(height: 8.h),
+                      Text(
+                        'No referral activity yet',
+                        style: GoogleFonts.poppins(
+                          fontSize: 10.sp,
+                          color: Colors.grey.shade500,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              ..._recentTracking.map((item) {
+                final String name =
+                    item['name'] ??
+                    item['fullName'] ??
+                    item['refereeName'] ??
+                    'Colleague';
+                final String studio =
+                    item['businessName'] ?? item['studio'] ?? 'Salon/Studio';
+                final double amtVal = (item['amount'] ?? item['bonus'] ?? 0.0)
+                    .toDouble();
+                final String amount =
+                    '₹ ${amtVal % 1 == 0 ? amtVal.toInt() : amtVal.toStringAsFixed(2)}';
+                final String date = item['date'] ?? item['createdAt'] ?? '';
+                final String status = item['status'] ?? 'Pending';
+
+                Color statusColor = Colors.orange.shade100;
+                Color statusTextColor = Colors.orange.shade800;
+                if (status.toLowerCase() == 'approved' ||
+                    status.toLowerCase() == 'success') {
+                  statusColor = Colors.green.shade100;
+                  statusTextColor = Colors.green.shade800;
+                } else if (status.toLowerCase() == 'failed' ||
+                    status.toLowerCase() == 'rejected') {
+                  statusColor = Colors.red.shade100;
+                  statusTextColor = Colors.red.shade800;
+                }
+
+                final String fallbackImg =
+                    'https://i.pravatar.cc/150?u=${Uri.encodeComponent(name)}';
+                final String imageUrl =
+                    item['profileImage'] ?? item['imageUrl'] ?? fallbackImg;
+
+                return Padding(
+                  padding: EdgeInsets.only(bottom: 12.h),
+                  child: _buildTrackingItem(
+                    name: name,
+                    studio: studio,
+                    amount: amount,
+                    date: date,
+                    status: status,
+                    statusColor: statusColor,
+                    statusTextColor: statusTextColor,
+                    imageUrl: imageUrl.isNotEmpty ? imageUrl : fallbackImg,
+                  ),
+                );
+              }),
             SizedBox(height: 20.h),
           ],
         ),
@@ -182,6 +314,10 @@ class _ReferralProgState extends State<ReferralProg> {
   }
 
   Widget _buildHeroCard() {
+    final String referralCode = _profile?.referralCode ?? '';
+    final String playStoreLink =
+        'https://play.google.com/store/apps/details?id=com.paarsh.glowvitacrm&referrer=ref%3D$referralCode%26role%3Dvendor';
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(20.w),
@@ -244,46 +380,117 @@ class _ReferralProgState extends State<ReferralProg> {
             ),
           ),
           SizedBox(height: 20.h),
+
+          // Referral Code display
+          Text(
+            'Your Referral Code',
+            style: GoogleFonts.poppins(
+              fontSize: 8.sp,
+              fontWeight: FontWeight.w600,
+              color: Colors.white70,
+            ),
+          ),
+          SizedBox(height: 6.h),
           Container(
-            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+            padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withOpacity(0.15),
               borderRadius: BorderRadius.circular(10.r),
-              border: Border.all(color: Colors.white.withOpacity(0.3)),
+              border: Border.all(color: Colors.white.withOpacity(0.25)),
             ),
             child: Row(
               children: [
+                Icon(
+                  Icons.discount_outlined,
+                  size: 14.sp,
+                  color: Colors.white70,
+                ),
+                SizedBox(width: 10.w),
                 Expanded(
                   child: Text(
-                    'https://partners.glowvitasalon.com',
+                    referralCode.isNotEmpty ? referralCode : '—',
                     style: GoogleFonts.poppins(
-                      fontSize: 8.sp,
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w700,
                       color: Colors.white,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 10.w,
-                    vertical: 4.h,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(6.r),
-                  ),
-                  child: Text(
-                    'Copy Link',
-                    style: GoogleFonts.poppins(
-                      fontSize: 8.5.sp,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF4A2C3C),
+                      letterSpacing: 2.5,
                     ),
                   ),
                 ),
+                if (referralCode.isNotEmpty)
+                  GestureDetector(
+                    onTap: () {
+                      Clipboard.setData(ClipboardData(text: referralCode));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Referral code copied!'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 10.w,
+                        vertical: 4.h,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(6.r),
+                      ),
+                      child: Text(
+                        'Copy',
+                        style: GoogleFonts.poppins(
+                          fontSize: 8.5.sp,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF4A2C3C),
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
+
+          SizedBox(height: 15.h),
+
+          // Share Button — shares only the Play Store download link
+          GestureDetector(
+            onTap: () {
+              Share.share(
+                'Join me on GlowVita and let\'s grow our business together!\n\n'
+                'Download the app here: $playStoreLink',
+                subject: 'Join GlowVita',
+              );
+            },
+            child: Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(vertical: 10.h),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10.r),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.share,
+                    size: 14.sp,
+                    color: const Color(0xFF4A2C3C),
+                  ),
+                  SizedBox(width: 8.w),
+                  Text(
+                    'Share Invitation',
+                    style: GoogleFonts.poppins(
+                      fontSize: 10.sp,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF4A2C3C),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
           SizedBox(height: 15.h),
           Row(
             children: [
@@ -298,6 +505,54 @@ class _ReferralProgState extends State<ReferralProg> {
                 style: GoogleFonts.poppins(fontSize: 8.sp, color: Colors.white),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLinkRow(String link, String buttonLabel) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(10.r),
+        border: Border.all(color: Colors.white.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              link,
+              style: GoogleFonts.poppins(fontSize: 8.sp, color: Colors.white),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          GestureDetector(
+            onTap: () {
+              Clipboard.setData(ClipboardData(text: link));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('$buttonLabel copied to clipboard!'),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(6.r),
+              ),
+              child: Text(
+                'Copy',
+                style: GoogleFonts.poppins(
+                  fontSize: 8.5.sp,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF4A2C3C),
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -336,7 +591,8 @@ class _ReferralProgState extends State<ReferralProg> {
             ),
             _buildStepText(
               '3. Earn Your Bonus',
-              'Once their account is approved and they meet criteria, you\'ll receive a ₹0 bonus.',
+              'Once their account is approved and they meet criteria, you\'ll receive a '
+                  '${_referralSettings != null ? _referralSettings!.referrerBonus.formattedValue : "₹0"} bonus.',
             ),
           ],
         ),
@@ -393,25 +649,130 @@ class _ReferralProgState extends State<ReferralProg> {
     );
   }
 
+  Widget _buildSettingsRow({
+    required IconData icon,
+    required String label,
+    required String value,
+    required String sub,
+    required Color iconColor,
+  }) {
+    return Row(
+      children: [
+        Container(
+          padding: EdgeInsets.all(5.w),
+          decoration: BoxDecoration(
+            color: iconColor.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, size: 11.sp, color: iconColor),
+        ),
+        SizedBox(width: 10.w),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: GoogleFonts.poppins(
+                  fontSize: 8.sp,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              Text(
+                sub,
+                style: GoogleFonts.poppins(
+                  fontSize: 7.sp,
+                  color: Colors.grey.shade400,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Text(
+          value,
+          style: GoogleFonts.poppins(
+            fontSize: 12.sp,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF4A2C3C),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPillInfo(IconData icon, String label, String value) {
+    return Expanded(
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(8.r),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 9.sp, color: Colors.grey.shade500),
+                SizedBox(width: 4.w),
+                Text(
+                  label,
+                  style: GoogleFonts.poppins(
+                    fontSize: 6.5.sp,
+                    color: Colors.grey.shade500,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 2.h),
+            Text(
+              value,
+              style: GoogleFonts.poppins(
+                fontSize: 8.sp,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildStatsCards() {
+    if (_isLoadingStats) {
+      return Container(
+        height: 60.h,
+        alignment: Alignment.center,
+        child: const SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(
+            color: Color(0xFF4A2C3C),
+            strokeWidth: 2,
+          ),
+        ),
+      );
+    }
     return Row(
       children: [
         _buildStatCard(
-          '205',
+          '$_totalReferrals',
           'Total Referrals',
           Icons.people_outline,
           Colors.orange,
         ),
         SizedBox(width: 10.w),
         _buildStatCard(
-          '106',
+          '$_successfulReferrals',
           'Successful Referrals',
           Icons.check_circle_outline,
           Colors.green,
         ),
         SizedBox(width: 10.w),
         _buildStatCard(
-          '₹ 73,655',
+          '₹ ${_totalBonusEarned % 1 == 0 ? _totalBonusEarned.toInt() : _totalBonusEarned.toStringAsFixed(2)}',
           'Total Bonus Earned',
           Icons.card_giftcard,
           Colors.red,

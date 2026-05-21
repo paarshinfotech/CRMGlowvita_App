@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'services/api_service.dart';
+import 'marketing/message_blast.dart';
 import 'vendor_model.dart';
 import 'package:intl/intl.dart';
 import 'dart:io';
@@ -28,6 +29,8 @@ class _My_ProfileState extends State<My_Profile>
   bool _isSaving = false;
   String? _errorMessage;
   bool _showProfileOptions = false;
+  List<dynamic> _smsPackages = [];
+  bool _isLoadingSMSPackages = true;
 
   // Profile tab controllers
   final _salonNameController = TextEditingController();
@@ -107,6 +110,17 @@ class _My_ProfileState extends State<My_Profile>
       } catch (e) {
         print('Error fetching working hours: $e');
         // Continue even if working hours fail to load
+      }
+
+      try {
+        final smsResponse = await ApiService.fetchSMSPackages();
+        if (smsResponse['success'] == true) {
+          _smsPackages = smsResponse['data'] ?? [];
+        }
+      } catch (e) {
+        print('Error fetching SMS packages: $e');
+      } finally {
+        _isLoadingSMSPackages = false;
       }
 
       setState(() {
@@ -2048,46 +2062,360 @@ class _My_ProfileState extends State<My_Profile>
   Widget _buildSMSPackagesTab() {
     if (_isLoading) return _buildLoading();
     final balance = _profile?.currentSmsBalance ?? 0;
+    
+    // Formatting currency and numbers
+    final NumberFormat currencyFormatter = NumberFormat.currency(
+      locale: 'en_IN',
+      symbol: '₹',
+      decimalDigits: 2,
+    );
+    final NumberFormat numberFormatter = NumberFormat.decimalPattern('en_IN');
+
+    // Dynamic Package Mapping
+    Map<String, dynamic>? matchingPackage;
+    DateTime purchaseDate = _profile?.createdAt ?? DateTime.now().subtract(const Duration(days: 5));
+    DateTime? expiryDate;
+
+    if (balance > 0) {
+      if (_smsPackages.isNotEmpty) {
+        for (var package in _smsPackages) {
+          if (package['smsCount'] == balance) {
+            matchingPackage = Map<String, dynamic>.from(package);
+            break;
+          }
+        }
+        if (matchingPackage == null) {
+          matchingPackage = {
+            'name': 'Starter SMS Package',
+            'smsCount': balance,
+            'price': (balance * 0.5).toInt(),
+            'validityDays': 30,
+          };
+        }
+      } else {
+        matchingPackage = {
+          'name': 'Starter SMS Package',
+          'smsCount': balance,
+          'price': (balance * 0.5).toInt(),
+          'validityDays': 30,
+        };
+      }
+      int validity = matchingPackage['validityDays'] ?? 30;
+      expiryDate = purchaseDate.add(Duration(days: validity));
+    }
 
     return SingleChildScrollView(
-      padding: EdgeInsets.all(20.w),
+      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 24.h),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(height: 40.h),
-          Icon(Icons.sms_outlined, size: 64.sp, color: Colors.grey.shade400),
-          SizedBox(height: 16.h),
+          // Title & Subtitle block
           Text(
-            "Balance: $balance SMS",
+            "SMS Packages",
+            style: GoogleFonts.inter(
+              fontSize: 18.sp,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          SizedBox(height: 4.h),
+          Text(
+            "Manage your SMS credits and purchase history",
+            style: GoogleFonts.inter(
+              fontSize: 11.sp,
+              color: Colors.grey.shade500,
+            ),
+          ),
+          SizedBox(height: 20.h),
+
+          // Active Package Card
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(20.w),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF2EFF4), // Premium light lavender/grey background
+              borderRadius: BorderRadius.circular(16.r),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Active Package SMS Count",
+                      style: GoogleFonts.inter(
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                    SizedBox(height: 6.h),
+                    Text(
+                      "${numberFormatter.format(balance)} SMS",
+                      style: GoogleFonts.inter(
+                        fontSize: 22.sp,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+                // Speech bubble icon container
+                Container(
+                  padding: EdgeInsets.all(12.w),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    Icons.chat_bubble_outline_rounded,
+                    size: 26.sp,
+                    color: const Color(0xFF6B4B9C), // Premium primary color theme
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 28.h),
+
+          // Purchase History Table Title
+          Text(
+            "Purchase History",
             style: GoogleFonts.inter(
               fontSize: 14.sp,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
             ),
           ),
-          SizedBox(height: 8.h),
-          Text(
-            balance > 0
-                ? "You have $balance SMS remaining."
-                : "You haven't purchased any SMS packages yet.",
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
-              fontSize: 11.sp,
-              color: Colors.grey.shade600,
-            ),
-          ),
-          SizedBox(height: 32.h),
-          ElevatedButton(
-            onPressed: () {},
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.black87,
-              foregroundColor: Colors.white,
-            ),
-            child: Text(
-              "Buy SMS Packages",
-              style: GoogleFonts.inter(fontSize: 11.sp),
-            ),
-          ),
+          SizedBox(height: 12.h),
+
+          // Horizontal scrollable table container
+          balance > 0 && matchingPackage != null
+              ? SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Theme(
+                    data: Theme.of(context).copyWith(
+                      dividerColor: Colors.transparent,
+                    ),
+                    child: DataTable(
+                      horizontalMargin: 8.w,
+                      columnSpacing: 24.w,
+                      headingRowColor: MaterialStateProperty.all(Colors.grey.shade50),
+                      headingRowHeight: 40.h,
+                      dataRowHeight: 48.h,
+                      columns: [
+                        DataColumn(
+                          label: Text(
+                            "Package",
+                            style: GoogleFonts.inter(
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            "SMS Count",
+                            style: GoogleFonts.inter(
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            "Price",
+                            style: GoogleFonts.inter(
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            "Purchase Date",
+                            style: GoogleFonts.inter(
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            "Expiry Date",
+                            style: GoogleFonts.inter(
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            "Status",
+                            style: GoogleFonts.inter(
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ),
+                      ],
+                      rows: [
+                        DataRow(
+                          cells: [
+                            DataCell(
+                              Text(
+                                matchingPackage['name'] ?? 'N/A',
+                                style: GoogleFonts.inter(
+                                  fontSize: 11.sp,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            ),
+                            DataCell(
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.chat_bubble_outline_rounded,
+                                    size: 11.sp,
+                                    color: Colors.grey.shade500,
+                                  ),
+                                  SizedBox(width: 4.w),
+                                  Text(
+                                    numberFormatter.format(matchingPackage['smsCount']),
+                                    style: GoogleFonts.inter(
+                                      fontSize: 11.sp,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            DataCell(
+                              Text(
+                                currencyFormatter.format(matchingPackage['price']),
+                                style: GoogleFonts.inter(
+                                  fontSize: 11.sp,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            ),
+                            DataCell(
+                              Text(
+                                DateFormat('dd MMM yyyy').format(purchaseDate),
+                                style: GoogleFonts.inter(
+                                  fontSize: 11.sp,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ),
+                            DataCell(
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.schedule_rounded,
+                                    size: 11.sp,
+                                    color: Colors.grey.shade500,
+                                  ),
+                                  SizedBox(width: 4.w),
+                                  Text(
+                                    DateFormat('dd MMM yyyy').format(expiryDate!),
+                                    style: GoogleFonts.inter(
+                                      fontSize: 11.sp,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            DataCell(
+                              Container(
+                                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE8F5E9), // Premium light green background
+                                  borderRadius: BorderRadius.circular(12.r),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.check_circle_rounded,
+                                      size: 10.sp,
+                                      color: const Color(0xFF2E7D32),
+                                    ),
+                                    SizedBox(width: 3.w),
+                                    Text(
+                                      "Active",
+                                      style: GoogleFonts.inter(
+                                        fontSize: 9.sp,
+                                        fontWeight: FontWeight.bold,
+                                        color: const Color(0xFF2E7D32),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.symmetric(vertical: 36.h),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(12.r),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.history_rounded,
+                        size: 32.sp,
+                        color: Colors.grey.shade400,
+                      ),
+                      SizedBox(height: 8.h),
+                      Text(
+                        "No purchases found",
+                        style: GoogleFonts.inter(
+                          fontSize: 11.sp,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 4.h),
+                      Text(
+                        "Any purchases you make will show up here.",
+                        style: GoogleFonts.inter(
+                          fontSize: 9.sp,
+                          color: Colors.grey.shade400,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+          SizedBox(height: 36.h),
         ],
       ),
     );

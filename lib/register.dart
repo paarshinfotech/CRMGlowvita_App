@@ -10,8 +10,9 @@ import 'services/api_service.dart';
 
 class RegisterPage extends StatefulWidget {
   final String? initialRole;
+  final String? initialReferralCode;
 
-  const RegisterPage({super.key, this.initialRole});
+  const RegisterPage({super.key, this.initialRole, this.initialReferralCode});
 
   @override
   State<RegisterPage> createState() => _RegisterPageState();
@@ -59,6 +60,14 @@ class _RegisterPageState extends State<RegisterPage> {
   bool isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialReferralCode != null) {
+      referralCtrl.text = widget.initialReferralCode!;
+    }
+  }
 
   @override
   void dispose() {

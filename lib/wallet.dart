@@ -421,7 +421,7 @@ class _WalletPageState extends State<WalletPage> {
                                     }
                                   },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFA59D9E),
+                              backgroundColor: const Color(0xFF2D1B2E),
                               foregroundColor: Colors.white,
                               padding: EdgeInsets.symmetric(vertical: 10.h),
                               shape: RoundedRectangleBorder(
@@ -658,7 +658,7 @@ class _WalletPageState extends State<WalletPage> {
                         Expanded(
                           child: _StatCard(
                             label: 'Min. Balance',
-                            value: _formatAmount(minWithdrawal),
+                            value: _formatAmount(maxWithdrawablePerc),
                             subtitle: 'Required for payout',
                             icon: Icons.info_outline_rounded,
                             iconColor: const Color(0xFFF59E0B), // Amber

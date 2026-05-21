@@ -4763,3 +4763,171 @@ class TransactionCategory {
     return TransactionCategory(id: json['_id'] ?? '', name: json['name'] ?? '');
   }
 }
+
+// ─── Referral Settings Model ───────────────────────────────────────────────
+
+class ReferralBonusInfo {
+  final String bonusType;
+  final double bonusValue;
+  final String creditTime;
+  final bool enabled;
+
+  ReferralBonusInfo({
+    required this.bonusType,
+    required this.bonusValue,
+    required this.creditTime,
+    this.enabled = true,
+  });
+
+  factory ReferralBonusInfo.fromJson(Map<String, dynamic> json) {
+    return ReferralBonusInfo(
+      bonusType: json['bonusType']?.toString() ?? 'amount',
+      bonusValue: (json['bonusValue'] as num?)?.toDouble() ?? 0.0,
+      creditTime: json['creditTime']?.toString() ?? '7 days',
+      enabled: json['enabled'] ?? true,
+    );
+  }
+
+  /// Formatted display value: e.g. "₹500" for amount or "10%" for percentage
+  String get formattedValue {
+    if (bonusType == 'percentage') return '${bonusValue.toStringAsFixed(0)}%';
+    if (bonusValue == 0) return '₹0';
+    return '₹${bonusValue % 1 == 0 ? bonusValue.toInt() : bonusValue}';
+  }
+}
+
+class ReferralSettings {
+  final String referralType;
+  final ReferralBonusInfo referrerBonus;
+  final ReferralBonusInfo refereeBonus;
+  final String usageLimit;
+  final int usageCount;
+  final int minOrders;
+  final int minBookings;
+  final int minPayoutCycle;
+
+  ReferralSettings({
+    required this.referralType,
+    required this.referrerBonus,
+    required this.refereeBonus,
+    required this.usageLimit,
+    required this.usageCount,
+    required this.minOrders,
+    required this.minBookings,
+    required this.minPayoutCycle,
+  });
+
+  factory ReferralSettings.fromJson(Map<String, dynamic> json) {
+    return ReferralSettings(
+      referralType: json['referralType']?.toString() ?? 'V2V',
+      referrerBonus: json['referrerBonus'] != null
+          ? ReferralBonusInfo.fromJson(
+              Map<String, dynamic>.from(json['referrerBonus']),
+            )
+          : ReferralBonusInfo(
+              bonusType: 'amount',
+              bonusValue: 0,
+              creditTime: '7 days',
+            ),
+      refereeBonus: json['refereeBonus'] != null
+          ? ReferralBonusInfo.fromJson(
+              Map<String, dynamic>.from(json['refereeBonus']),
+            )
+          : ReferralBonusInfo(
+              bonusType: 'amount',
+              bonusValue: 0,
+              creditTime: '7 days',
+              enabled: false,
+            ),
+      usageLimit: json['usageLimit']?.toString() ?? 'unlimited',
+      usageCount: (json['usageCount'] as num?)?.toInt() ?? 0,
+      minOrders: (json['minOrders'] as num?)?.toInt() ?? 0,
+      minBookings: (json['minBookings'] as num?)?.toInt() ?? 0,
+      minPayoutCycle: (json['minPayoutCycle'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+extension ReferralApi on ApiService {
+  /// Fetches referral program settings from /crm/referrals
+  static Future<ReferralSettings?> getReferralSettings() async {
+    try {
+      final response = await ApiService._post(
+        '${ApiService.baseUrl}/crm/referrals',
+        {'action': 'getSettings'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        // API may return nested under a key or directly as the object
+        final Map<String, dynamic> settingsJson =
+            data is Map<String, dynamic> && data.containsKey('data')
+            ? Map<String, dynamic>.from(data['data'])
+            : Map<String, dynamic>.from(data);
+        return ReferralSettings.fromJson(settingsJson);
+      } else {
+        debugPrint(
+          '⚠️ getReferralSettings → ${response.statusCode}: ${response.body}',
+        );
+        return null;
+      }
+    } catch (e) {
+      debugPrint('❌ getReferralSettings error: $e');
+      return null;
+    }
+  }
+
+  /// Fetches referral program stats from /crm/referrals
+  static Future<Map<String, dynamic>?> getReferralStats() async {
+    try {
+      final response = await ApiService._post(
+        '${ApiService.baseUrl}/crm/referrals',
+        {'action': 'getStats'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final Map<String, dynamic> statsJson =
+            data is Map<String, dynamic> && data.containsKey('data')
+            ? Map<String, dynamic>.from(data['data'])
+            : Map<String, dynamic>.from(data);
+        return statsJson;
+      } else {
+        debugPrint(
+          '⚠️ getReferralStats → ${response.statusCode}: ${response.body}',
+        );
+        return null;
+      }
+    } catch (e) {
+      debugPrint('❌ getReferralStats error: $e');
+      return null;
+    }
+  }
+
+  /// Fetches referral history list from /crm/referrals
+  static Future<List<dynamic>?> getReferralHistory() async {
+    try {
+      final response = await ApiService._post(
+        '${ApiService.baseUrl}/crm/referrals',
+        {'action': 'getHistory'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final list = data is Map<String, dynamic> && data.containsKey('data')
+            ? data['data']
+            : data;
+        if (list is List) return list;
+        return null;
+      } else {
+        debugPrint(
+          '⚠️ getReferralHistory → ${response.statusCode}: ${response.body}',
+        );
+        return null;
+      }
+    } catch (e) {
+      debugPrint('❌ getReferralHistory error: $e');
+      return null;
+    }
+  }
+}

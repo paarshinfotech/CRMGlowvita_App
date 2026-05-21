@@ -433,7 +433,7 @@ class _SuppWalletPageState extends State<SuppWalletPage> {
                                     }
                                   },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFA59D9E),
+                              backgroundColor: const Color(0xFF2D1B2E),
                               foregroundColor: Colors.white,
                               padding: EdgeInsets.symmetric(vertical: 10.h),
                               shape: RoundedRectangleBorder(
@@ -587,6 +587,7 @@ class _SuppWalletPageState extends State<SuppWalletPage> {
                             ),
                             subtitle: 'Bonus earnings',
                             icon: Icons.card_giftcard_outlined,
+                            iconColor: Colors.green, // Add this line
                           ),
                         ),
                         SizedBox(width: 8.w),
@@ -739,6 +740,7 @@ class _SuppWalletPageState extends State<SuppWalletPage> {
                     _SectionCard(
                       title: 'Recent Transactions',
                       titleIcon: Icons.history_rounded,
+                      iconColor: const Color(0xFF64748B),
                       subtitle: 'Your latest credits and debits',
                       child: Column(
                         children: [
