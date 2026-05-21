@@ -164,23 +164,20 @@ class _SuppWalletPageState extends State<SuppWalletPage> {
                       children: [
                         Expanded(
                           child: InkWell(
-                            onTap:
-                                () => setDialogState(
-                                  () => payoutMethod = 'bank_transfer',
-                                ),
+                            onTap: () => setDialogState(
+                              () => payoutMethod = 'bank_transfer',
+                            ),
                             child: Container(
                               padding: EdgeInsets.symmetric(vertical: 8.h),
                               decoration: BoxDecoration(
-                                color:
-                                    payoutMethod == 'bank_transfer'
-                                        ? const Color(0xFF2D1B2E)
-                                        : Colors.white,
+                                color: payoutMethod == 'bank_transfer'
+                                    ? const Color(0xFF2D1B2E)
+                                    : Colors.white,
                                 borderRadius: BorderRadius.circular(6.r),
                                 border: Border.all(
-                                  color:
-                                      payoutMethod == 'bank_transfer'
-                                          ? const Color(0xFF2D1B2E)
-                                          : Colors.grey[300]!,
+                                  color: payoutMethod == 'bank_transfer'
+                                      ? const Color(0xFF2D1B2E)
+                                      : Colors.grey[300]!,
                                 ),
                               ),
                               child: Center(
@@ -188,10 +185,9 @@ class _SuppWalletPageState extends State<SuppWalletPage> {
                                   'Bank Transfer',
                                   style: GoogleFonts.poppins(
                                     fontSize: 8.5.sp,
-                                    color:
-                                        payoutMethod == 'bank_transfer'
-                                            ? Colors.white
-                                            : Colors.black87,
+                                    color: payoutMethod == 'bank_transfer'
+                                        ? Colors.white
+                                        : Colors.black87,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
@@ -202,21 +198,19 @@ class _SuppWalletPageState extends State<SuppWalletPage> {
                         SizedBox(width: 8.w),
                         Expanded(
                           child: InkWell(
-                            onTap:
-                                () => setDialogState(() => payoutMethod = 'upi'),
+                            onTap: () =>
+                                setDialogState(() => payoutMethod = 'upi'),
                             child: Container(
                               padding: EdgeInsets.symmetric(vertical: 8.h),
                               decoration: BoxDecoration(
-                                color:
-                                    payoutMethod == 'upi'
-                                        ? const Color(0xFF2D1B2E)
-                                        : Colors.white,
+                                color: payoutMethod == 'upi'
+                                    ? const Color(0xFF2D1B2E)
+                                    : Colors.white,
                                 borderRadius: BorderRadius.circular(6.r),
                                 border: Border.all(
-                                  color:
-                                      payoutMethod == 'upi'
-                                          ? const Color(0xFF2D1B2E)
-                                          : Colors.grey[300]!,
+                                  color: payoutMethod == 'upi'
+                                      ? const Color(0xFF2D1B2E)
+                                      : Colors.grey[300]!,
                                 ),
                               ),
                               child: Center(
@@ -224,10 +218,9 @@ class _SuppWalletPageState extends State<SuppWalletPage> {
                                   'Instant UPI',
                                   style: GoogleFonts.poppins(
                                     fontSize: 8.5.sp,
-                                    color:
-                                        payoutMethod == 'upi'
-                                            ? Colors.white
-                                            : Colors.black87,
+                                    color: payoutMethod == 'upi'
+                                        ? Colors.white
+                                        : Colors.black87,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
@@ -356,85 +349,89 @@ class _SuppWalletPageState extends State<SuppWalletPage> {
                         SizedBox(width: 12.w),
                         Expanded(
                           child: ElevatedButton(
-                            onPressed:
-                                isSubmitting
-                                    ? null
-                                    : () async {
-                                      if (amountController.text.isEmpty ||
-                                          holderNameController.text.isEmpty) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                              const SnackBar(
-                                                content: Text(
-                                                  'Please fill all fields',
-                                                ),
-                                              ),
-                                            );
-                                        return;
+                            onPressed: isSubmitting
+                                ? null
+                                : () async {
+                                    if (amountController.text.isEmpty ||
+                                        holderNameController.text.isEmpty) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Please fill all fields',
+                                          ),
+                                        ),
+                                      );
+                                      return;
+                                    }
+
+                                    final amount =
+                                        double.tryParse(
+                                          amountController.text,
+                                        ) ??
+                                        0;
+                                    if (amount <= 0 ||
+                                        amount > maxWithdrawable) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Invalid amount'),
+                                        ),
+                                      );
+                                      return;
+                                    }
+
+                                    setDialogState(() => isSubmitting = true);
+
+                                    final Map<String, dynamic> body = {
+                                      'amount': amount,
+                                      'withdrawalMethod': payoutMethod,
+                                      'bankDetails': {
+                                        'accountHolderName':
+                                            holderNameController.text,
+                                      },
+                                    };
+
+                                    if (payoutMethod == 'bank_transfer') {
+                                      body['bankDetails']['accountNumber'] =
+                                          accountNumberController.text;
+                                      body['bankDetails']['ifsc'] =
+                                          ifscController.text;
+                                    } else {
+                                      body['bankDetails']['upiId'] =
+                                          upiIdController.text;
+                                    }
+
+                                    final result =
+                                        await ApiService.requestWithdrawal(
+                                          body,
+                                        );
+
+                                    if (mounted) {
+                                      Navigator.pop(context);
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            result['message'] ??
+                                                (result['success'] == true
+                                                    ? 'Withdrawal requested successfully'
+                                                    : 'Failed to request withdrawal'),
+                                          ),
+                                          backgroundColor:
+                                              result['success'] == true
+                                              ? Colors.green
+                                              : Colors.red,
+                                        ),
+                                      );
+                                      if (result['success'] == true) {
+                                        _fetchInitialData();
                                       }
-
-                                      final amount =
-                                          double.tryParse(
-                                            amountController.text,
-                                          ) ??
-                                          0;
-                                      if (amount <= 0 ||
-                                          amount > maxWithdrawable) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                              const SnackBar(
-                                                content: Text('Invalid amount'),
-                                              ),
-                                            );
-                                        return;
-                                      }
-
-                                      setDialogState(() => isSubmitting = true);
-
-                                      final Map<String, dynamic> body = {
-                                        'amount': amount,
-                                        'withdrawalMethod': payoutMethod,
-                                        'bankDetails': {
-                                          'accountHolderName':
-                                              holderNameController.text,
-                                        },
-                                      };
-
-                                      if (payoutMethod == 'bank_transfer') {
-                                        body['bankDetails']['accountNumber'] =
-                                            accountNumberController.text;
-                                        body['bankDetails']['ifsc'] =
-                                            ifscController.text;
-                                      } else {
-                                        body['bankDetails']['upiId'] =
-                                            upiIdController.text;
-                                      }
-
-                                      final result = await ApiService
-                                          .requestWithdrawal(body);
-
-                                      if (mounted) {
-                                        Navigator.pop(context);
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                              SnackBar(
-                                                content: Text(
-                                                  result['message'] ??
-                                                      (result['success'] == true
-                                                          ? 'Withdrawal requested successfully'
-                                                          : 'Failed to request withdrawal'),
-                                                ),
-                                                backgroundColor:
-                                                    result['success'] == true
-                                                        ? Colors.green
-                                                        : Colors.red,
-                                              ),
-                                            );
-                                        if (result['success'] == true) {
-                                          _fetchInitialData();
-                                        }
-                                      }
-                                    },
+                                    }
+                                  },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFA59D9E),
                               foregroundColor: Colors.white,
@@ -444,23 +441,22 @@ class _SuppWalletPageState extends State<SuppWalletPage> {
                               ),
                               elevation: 0,
                             ),
-                            child:
-                                isSubmitting
-                                    ? SizedBox(
-                                      height: 12.sp,
-                                      width: 12.sp,
-                                      child: const CircularProgressIndicator(
-                                        color: Colors.white,
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                    : Text(
-                                      'Confirm Payout',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 10.sp,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                            child: isSubmitting
+                                ? SizedBox(
+                                    height: 12.sp,
+                                    width: 12.sp,
+                                    child: const CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
                                     ),
+                                  )
+                                : Text(
+                                    'Confirm Payout',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 10.sp,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                           ),
                         ),
                       ],
@@ -586,7 +582,9 @@ class _SuppWalletPageState extends State<SuppWalletPage> {
                         Expanded(
                           child: _StatCard(
                             label: 'Referral Rewards',
-                            value: _formatAmount(_walletData?['referralRewards'] ?? 0),
+                            value: _formatAmount(
+                              _walletData?['referralRewards'] ?? 0,
+                            ),
                             subtitle: 'Bonus earnings',
                             icon: Icons.card_giftcard_outlined,
                           ),
@@ -691,13 +689,12 @@ class _SuppWalletPageState extends State<SuppWalletPage> {
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed:
-                                  balance >= minWithdrawal
-                                      ? () => _showWithdrawalDialog(
-                                        balance.toDouble(),
-                                        withdrawableBalance,
-                                      )
-                                      : null,
+                              onPressed: balance >= minWithdrawal
+                                  ? () => _showWithdrawalDialog(
+                                      balance.toDouble(),
+                                      withdrawableBalance,
+                                    )
+                                  : null,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF2D1B2E),
                                 foregroundColor: Colors.white,
@@ -801,7 +798,9 @@ class _SuppWalletPageState extends State<SuppWalletPage> {
                                       flex: 4,
                                     ),
                                     _TableData(
-                                      tx['transactionId']?.toString().toUpperCase() ??
+                                      tx['transactionId']
+                                              ?.toString()
+                                              .toUpperCase() ??
                                           '---',
                                       flex: 3,
                                     ),
@@ -834,12 +833,14 @@ class _StatCard extends StatelessWidget {
   final String value;
   final String subtitle;
   final IconData icon;
+  final Color iconColor; // New: Allow custom color
 
   const _StatCard({
     required this.label,
     required this.value,
     required this.subtitle,
     required this.icon,
+    this.iconColor = Colors.grey,
   });
 
   @override
@@ -855,27 +856,29 @@ class _StatCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                label,
-                style: GoogleFonts.poppins(
-                  fontSize: 8.sp,
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
               Container(
-                padding: EdgeInsets.all(5.w),
+                padding: EdgeInsets.all(6.w),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF2F2F2),
+                  color: iconColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(6.r),
                 ),
-                child: Icon(icon, size: 12.sp, color: Colors.grey[600]),
+                child: Icon(icon, size: 18.sp, color: iconColor),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: Text(
+                  label,
+                  style: GoogleFonts.poppins(
+                    fontSize: 8.sp,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
               ),
             ],
           ),
-          SizedBox(height: 4.h),
+          SizedBox(height: 8.h),
           Text(
             value,
             style: GoogleFonts.poppins(
@@ -900,12 +903,14 @@ class _SectionCard extends StatelessWidget {
   final IconData titleIcon;
   final String? subtitle;
   final Widget child;
+  final Color iconColor; // New
 
   const _SectionCard({
     required this.title,
     required this.titleIcon,
     this.subtitle,
     required this.child,
+    this.iconColor = Colors.black87,
   });
 
   @override
@@ -923,8 +928,8 @@ class _SectionCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(titleIcon, size: 13.sp, color: Colors.black87),
-              SizedBox(width: 5.w),
+              Icon(titleIcon, size: 16.sp, color: iconColor),
+              SizedBox(width: 6.w),
               Text(
                 title,
                 style: GoogleFonts.poppins(
@@ -938,7 +943,7 @@ class _SectionCard extends StatelessWidget {
           if (subtitle != null) ...[
             SizedBox(height: 2.h),
             Padding(
-              padding: EdgeInsets.only(left: 18.w),
+              padding: EdgeInsets.only(left: 22.w),
               child: Text(
                 subtitle!,
                 style: GoogleFonts.poppins(

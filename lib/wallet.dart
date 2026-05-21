@@ -623,6 +623,7 @@ class _WalletPageState extends State<WalletPage> {
                             value: _formatAmount(balance),
                             subtitle: 'Total earnings',
                             icon: Icons.account_balance_wallet_outlined,
+                            iconColor: const Color(0xFF2D8CFF), // Blue
                           ),
                         ),
                         SizedBox(width: 8.w),
@@ -633,11 +634,11 @@ class _WalletPageState extends State<WalletPage> {
                             subtitle:
                                 '${maxWithdrawablePerc.toStringAsFixed(0)}% of total balance',
                             icon: Icons.arrow_upward_rounded,
+                            iconColor: const Color(0xFF22C55E), // Green
                           ),
                         ),
                       ],
                     ),
-                    SizedBox(height: 8.h),
 
                     // Stats Cards Row 2
                     Row(
@@ -650,6 +651,7 @@ class _WalletPageState extends State<WalletPage> {
                             ),
                             subtitle: 'Bonus earnings',
                             icon: Icons.card_giftcard_outlined,
+                            iconColor: const Color(0xFF8B5CF6), // Purple
                           ),
                         ),
                         SizedBox(width: 8.w),
@@ -659,6 +661,7 @@ class _WalletPageState extends State<WalletPage> {
                             value: _formatAmount(minWithdrawal),
                             subtitle: 'Required for payout',
                             icon: Icons.info_outline_rounded,
+                            iconColor: const Color(0xFFF59E0B), // Amber
                           ),
                         ),
                       ],
@@ -669,6 +672,7 @@ class _WalletPageState extends State<WalletPage> {
                     _SectionCard(
                       title: 'Withdrawal Requests',
                       titleIcon: Icons.credit_card_outlined,
+                      iconColor: const Color(0xFF22C55E), // Green
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -803,6 +807,7 @@ class _WalletPageState extends State<WalletPage> {
                       title: 'Recent Transactions',
                       titleIcon: Icons.history_rounded,
                       subtitle: 'Your latest credits and debits',
+                      iconColor: const Color(0xFF64748B),
                       child: Column(
                         children: [
                           // Table header
@@ -896,12 +901,14 @@ class _StatCard extends StatelessWidget {
   final String value;
   final String subtitle;
   final IconData icon;
+  final Color iconColor; // New: Allow custom color
 
   const _StatCard({
     required this.label,
     required this.value,
     required this.subtitle,
     required this.icon,
+    this.iconColor = Colors.grey,
   });
 
   @override
@@ -917,27 +924,29 @@ class _StatCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                label,
-                style: GoogleFonts.poppins(
-                  fontSize: 8.sp,
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
               Container(
-                padding: EdgeInsets.all(5.w),
+                padding: EdgeInsets.all(6.w),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF2F2F2),
+                  color: iconColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(6.r),
                 ),
-                child: Icon(icon, size: 12.sp, color: Colors.grey[600]),
+                child: Icon(icon, size: 18.sp, color: iconColor),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: Text(
+                  label,
+                  style: GoogleFonts.poppins(
+                    fontSize: 8.sp,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
               ),
             ],
           ),
-          SizedBox(height: 4.h),
+          SizedBox(height: 8.h),
           Text(
             value,
             style: GoogleFonts.poppins(
@@ -962,12 +971,14 @@ class _SectionCard extends StatelessWidget {
   final IconData titleIcon;
   final String? subtitle;
   final Widget child;
+  final Color iconColor; // New
 
   const _SectionCard({
     required this.title,
     required this.titleIcon,
     this.subtitle,
     required this.child,
+    this.iconColor = Colors.black87,
   });
 
   @override
@@ -985,8 +996,8 @@ class _SectionCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(titleIcon, size: 13.sp, color: Colors.black87),
-              SizedBox(width: 5.w),
+              Icon(titleIcon, size: 16.sp, color: iconColor),
+              SizedBox(width: 6.w),
               Text(
                 title,
                 style: GoogleFonts.poppins(
@@ -1000,7 +1011,7 @@ class _SectionCard extends StatelessWidget {
           if (subtitle != null) ...[
             SizedBox(height: 2.h),
             Padding(
-              padding: EdgeInsets.only(left: 18.w),
+              padding: EdgeInsets.only(left: 22.w),
               child: Text(
                 subtitle!,
                 style: GoogleFonts.poppins(
