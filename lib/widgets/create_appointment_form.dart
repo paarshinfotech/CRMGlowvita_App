@@ -1591,7 +1591,7 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                                           ),
                                         ),
                                         Text(
-                                          '₹${s.price}',
+                                          '₹${s.discountedPrice != null ? s.discountedPrice : s.price}',
                                           style: TextStyle(
                                             fontSize: 9.sp,
                                             color: Colors.grey[500],
@@ -1663,7 +1663,7 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                 if (_selectedService != null) ...[
                   SizedBox(height: 4.h),
                   Text(
-                    'Selected: ${_selectedService?.name ?? ''} · ${_selectedService?.duration ?? 0} min · ₹${_selectedService?.price ?? 0}',
+                    'Selected: ${_selectedService?.name ?? ''} · ${_selectedService?.duration ?? 0} min · ₹${_selectedService?.discountedPrice ?? _selectedService?.price ?? 0}',
                     style: TextStyle(fontSize: 9.sp, color: Colors.grey[600]),
                   ),
                   if (_availableAddOns.isNotEmpty) ...[

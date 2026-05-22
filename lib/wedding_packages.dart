@@ -967,14 +967,14 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
                                     ),
                                   ),
                                 ),
-                                Text(
-                                  '₹${priceVal.toStringAsFixed(0)}',
+                                /* Text(
+                                  '₹${s.discountedPrice != null ? s.discountedPrice : s.price}',
                                   style: GoogleFonts.poppins(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w500,
                                     color: Colors.grey.shade700,
                                   ),
-                                ),
+                                ),*/
                               ],
                             ),
                           );
