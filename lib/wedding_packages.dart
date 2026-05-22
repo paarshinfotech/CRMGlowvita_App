@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'widgets/custom_drawer.dart';
 import 'add_wedding_package.dart';
@@ -25,7 +26,7 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
     'All Status',
     'Approved',
     'Rejected',
-    'Pending'
+    'Pending',
   ];
 
   List<WeddingPackage> _allPackages = [];
@@ -90,12 +91,14 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
   void _applyFilters() {
     setState(() {
       _filteredPackages = _allPackages.where((p) {
-        final matchesSearch = searchQuery.isEmpty ||
+        final matchesSearch =
+            searchQuery.isEmpty ||
             (p.name?.toLowerCase().contains(searchQuery.toLowerCase()) ??
                 false) ||
             (p.description?.toLowerCase().contains(searchQuery.toLowerCase()) ??
                 false);
-        final matchesStatus = _statusFilter == 'All Status' ||
+        final matchesStatus =
+            _statusFilter == 'All Status' ||
             (p.status?.toLowerCase() == _statusFilter.toLowerCase());
         return matchesSearch && matchesStatus;
       }).toList();
@@ -120,9 +123,9 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
   double get _avgPrice => _allPackages.isEmpty
       ? 0
       : _allPackages
-              .map((e) => e.discountedPrice ?? e.totalPrice ?? 0)
-              .reduce((a, b) => a + b) /
-          _allPackages.length;
+                .map((e) => e.discountedPrice ?? e.totalPrice ?? 0)
+                .reduce((a, b) => a + b) /
+            _allPackages.length;
 
   String get _popularPackage =>
       _allPackages.isEmpty ? '-' : (_allPackages.first.name ?? '-');
@@ -130,7 +133,7 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
   double get _avgDurationHours => _allPackages.isEmpty
       ? 0
       : _allPackages.map((e) => e.duration ?? 0).reduce((a, b) => a + b) /
-          (_allPackages.length * 60);
+            (_allPackages.length * 60);
 
   @override
   Widget build(BuildContext context) {
@@ -183,8 +186,8 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
                           errorBuilder: (ctx, _, __) => _buildInitialAvatar(),
                           loadingBuilder: (ctx, child, progress) =>
                               progress == null
-                                  ? child
-                                  : const CircularProgressIndicator(),
+                              ? child
+                              : const CircularProgressIndicator(),
                         )
                       : _buildInitialAvatar(),
                 ),
@@ -215,11 +218,18 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
                       decoration: InputDecoration(
                         hintText: 'Search by name or description....',
                         hintStyle: GoogleFonts.poppins(
-                            fontSize: 12, color: Colors.grey.shade400),
-                        prefixIcon: Icon(Icons.search,
-                            size: 17, color: Colors.grey.shade400),
+                          fontSize: 12,
+                          color: Colors.grey.shade400,
+                        ),
+                        prefixIcon: Icon(
+                          Icons.search,
+                          size: 17,
+                          color: Colors.grey.shade400,
+                        ),
                         contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 0),
+                          horizontal: 12,
+                          vertical: 0,
+                        ),
                         isDense: true,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -232,7 +242,9 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                           borderSide: BorderSide(
-                              color: Theme.of(context).primaryColor, width: 1.2),
+                            color: Theme.of(context).primaryColor,
+                            width: 1.2,
+                          ),
                         ),
                         filled: true,
                         fillColor: Colors.white,
@@ -249,39 +261,53 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
                           child: DropdownButtonFormField<String>(
                             value: _statusFilter,
                             style: GoogleFonts.poppins(
-                                fontSize: 12, color: Colors.grey.shade800),
+                              fontSize: 12,
+                              color: Colors.grey.shade800,
+                            ),
                             decoration: InputDecoration(
                               isDense: true,
                               contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 9),
+                                horizontal: 12,
+                                vertical: 9,
+                              ),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
-                                borderSide:
-                                    BorderSide(color: Colors.grey.shade300),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade300,
+                                ),
                               ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
-                                borderSide:
-                                    BorderSide(color: Colors.grey.shade300),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade300,
+                                ),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
                                 borderSide: BorderSide(
-                                    color: Theme.of(context).primaryColor,
-                                    width: 1.2),
+                                  color: Theme.of(context).primaryColor,
+                                  width: 1.2,
+                                ),
                               ),
                               filled: true,
                               fillColor: Colors.white,
                             ),
-                            icon: Icon(Icons.keyboard_arrow_down_rounded,
-                                size: 18, color: Colors.grey.shade500),
+                            icon: Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              size: 18,
+                              color: Colors.grey.shade500,
+                            ),
                             dropdownColor: Colors.white,
                             items: _statusOptions
-                                .map((s) => DropdownMenuItem(
-                                      value: s,
-                                      child: Text(s,
-                                          style: GoogleFonts.poppins(fontSize: 12)),
-                                    ))
+                                .map(
+                                  (s) => DropdownMenuItem(
+                                    value: s,
+                                    child: Text(
+                                      s,
+                                      style: GoogleFonts.poppins(fontSize: 12),
+                                    ),
+                                  ),
+                                )
                                 .toList(),
                             onChanged: (v) {
                               if (v != null) {
@@ -297,8 +323,11 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
                         height: 38,
                         child: ElevatedButton.icon(
                           onPressed: _showCreatePackageForm,
-                          icon: const Icon(Icons.add_rounded,
-                              size: 16, color: Colors.white),
+                          icon: const Icon(
+                            Icons.add_rounded,
+                            size: 16,
+                            color: Colors.white,
+                          ),
                           label: Text(
                             'Add New',
                             style: GoogleFonts.poppins(
@@ -339,7 +368,7 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
                             crossAxisCount: 2,
                             crossAxisSpacing: 10,
                             mainAxisSpacing: 10,
-                            childAspectRatio: 2.6,
+                            childAspectRatio: 2.0,
                             children: [
                               _buildStatCard(
                                 emoji: '🏷️',
@@ -373,9 +402,13 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
                             Padding(
                               padding: const EdgeInsets.symmetric(vertical: 40),
                               child: Center(
-                                child: Text('No packages found',
-                                    style: GoogleFonts.poppins(
-                                        color: Colors.grey, fontSize: 12)),
+                                child: Text(
+                                  'No packages found',
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.grey,
+                                    fontSize: 12,
+                                  ),
+                                ),
                               ),
                             )
                           else
@@ -432,7 +465,10 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
                 Text(
                   label,
                   style: GoogleFonts.poppins(
-                      fontSize: 10, color: Colors.grey.shade500, height: 1.3),
+                    fontSize: 10,
+                    color: Colors.grey.shade500,
+                    height: 1.3,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -457,8 +493,10 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
   Widget _buildPackageCard(WeddingPackage pkg) {
     final staffIds = pkg.assignedStaff ?? [];
     final firstStaff = staffIds.isNotEmpty
-        ? _allStaff.firstWhere((s) => s.id == staffIds.first,
-            orElse: () => StaffMember(fullName: 'Unknown'))
+        ? _allStaff.firstWhere(
+            (s) => s.id == staffIds.first,
+            orElse: () => StaffMember(fullName: 'Unknown'),
+          )
         : null;
     final extraStaffCount = staffIds.length > 1 ? staffIds.length - 1 : 0;
 
@@ -479,8 +517,9 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
 
     final durationH = (pkg.duration ?? 0) ~/ 60;
     final durationM = (pkg.duration ?? 0) % 60;
-    final durationStr =
-        durationM == 0 ? '${durationH}hr' : '${durationH}hr ${durationM}min';
+    final durationStr = durationM == 0
+        ? '${durationH}hr'
+        : '${durationH}hr ${durationM}min';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -512,14 +551,20 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
                     height: 52,
                     color: Colors.grey.shade200,
                     child: pkg.image != null
-                        ? Image.network(pkg.image!,
+                        ? Image.network(
+                            pkg.image!,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => Icon(
-                                Icons.image_outlined,
-                                size: 22,
-                                color: Colors.grey.shade400))
-                        : Icon(Icons.image_outlined,
-                            size: 22, color: Colors.grey.shade400),
+                              Icons.image_outlined,
+                              size: 22,
+                              color: Colors.grey.shade400,
+                            ),
+                          )
+                        : Icon(
+                            Icons.image_outlined,
+                            size: 22,
+                            color: Colors.grey.shade400,
+                          ),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -556,7 +601,9 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
                       Text(
                         serviceSubtitle,
                         style: GoogleFonts.poppins(
-                            fontSize: 11, color: Colors.grey.shade500),
+                          fontSize: 11,
+                          color: Colors.grey.shade500,
+                        ),
                       ),
                     ],
                   ),
@@ -581,7 +628,9 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
                 Text(
                   durationStr,
                   style: GoogleFonts.poppins(
-                      fontSize: 11, color: Colors.grey.shade600),
+                    fontSize: 11,
+                    color: Colors.grey.shade600,
+                  ),
                 ),
                 const Spacer(),
                 // Toggle
@@ -615,85 +664,384 @@ class _WeddingPackagePageState extends State<WeddingPackagePage> {
                   Text(
                     firstStaff.fullName ?? '',
                     style: GoogleFonts.poppins(
-                        fontSize: 11, color: Colors.grey.shade600),
+                      fontSize: 11,
+                      color: Colors.grey.shade600,
+                    ),
                   ),
                   if (extraStaffCount > 0)
                     Text(
                       ' +$extraStaffCount',
                       style: GoogleFonts.poppins(
-                          fontSize: 11, color: Colors.grey.shade500),
+                        fontSize: 11,
+                        color: Colors.grey.shade500,
+                      ),
                     ),
                 ] else
                   Text(
-                    '0 staff',
+                    '${pkg.staffCount ?? 1} staf required',
                     style: GoogleFonts.poppins(
-                        fontSize: 11, color: Colors.grey.shade400),
+                      fontSize: 11,
+                      color: Colors.grey.shade400,
+                    ),
                   ),
                 const Spacer(),
                 // Eye icon
-                _iconBtn(Icons.remove_red_eye_outlined, () {},
-                    color: Colors.grey.shade500),
-                // Edit icon
                 _iconBtn(
-                  Icons.edit_outlined,
-                  () async {
-                    final result = await showDialog<bool>(
-                      context: context,
-                      builder: (context) =>
-                          CreateWeddingPackageDialog(package: pkg),
-                    );
-                    if (result == true) _loadData();
-                  },
+                  Icons.remove_red_eye_outlined,
+                  () => _showViewPackageDialog(context, pkg),
                   color: Colors.grey.shade500,
                 ),
+                // Edit icon
+                _iconBtn(Icons.edit_outlined, () async {
+                  final result = await showDialog<bool>(
+                    context: context,
+                    builder: (context) =>
+                        CreateWeddingPackageDialog(package: pkg),
+                  );
+                  if (result == true) _loadData();
+                }, color: Colors.grey.shade500),
                 // Delete icon
-                _iconBtn(
-                  Icons.delete_outline,
-                  () async {
-                    final confirm = await showDialog<bool>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Delete Package'),
-                        content: const Text(
-                            'Are you sure you want to delete this wedding package?'),
-                        actions: [
-                          TextButton(
-                              onPressed: () => Navigator.pop(context, false),
-                              child: const Text('Cancel')),
-                          TextButton(
-                              onPressed: () => Navigator.pop(context, true),
-                              child: const Text('Delete',
-                                  style: TextStyle(color: Colors.red))),
-                        ],
+                _iconBtn(Icons.delete_outline, () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Delete Package'),
+                      content: const Text(
+                        'Are you sure you want to delete this wedding package?',
                       ),
-                    );
-                    if (confirm == true) {
-                      try {
-                        final success =
-                            await ApiService.deleteWeddingPackage(pkg.id!);
-                        if (success && context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text(
-                                    'Wedding package deleted successfully')),
-                          );
-                          _loadData();
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Failed to delete: $e')),
-                          );
-                        }
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text(
+                            'Delete',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirm == true) {
+                    try {
+                      final success = await ApiService.deleteWeddingPackage(
+                        pkg.id!,
+                      );
+                      if (success && context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Wedding package deleted successfully',
+                            ),
+                          ),
+                        );
+                        _loadData();
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Failed to delete: $e')),
+                        );
                       }
                     }
-                  },
-                  color: Colors.red.shade300,
-                ),
+                  }
+                }, color: Colors.red.shade300),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showViewPackageDialog(BuildContext context, WeddingPackage pkg) {
+    final staffIds = pkg.assignedStaff ?? [];
+    final assignedStaffList = _allStaff
+        .where((s) => staffIds.contains(s.id))
+        .toList();
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header image or fallback
+                ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
+                  child: Container(
+                    height: 180,
+                    width: double.infinity,
+                    color: Colors.grey.shade100,
+                    child: pkg.image != null
+                        ? Image.network(
+                            pkg.image!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Center(
+                              child: Icon(
+                                Icons.image_outlined,
+                                size: 50,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          )
+                        : const Center(
+                            child: Icon(
+                              Icons.image_outlined,
+                              size: 50,
+                              color: Colors.grey,
+                            ),
+                          ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title & Status
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              pkg.name ?? 'Unnamed Package',
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          _StatusBadge(status: pkg.status ?? 'pending'),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      // Price and Duration
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          // Price
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Price',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 10,
+                                  color: Colors.grey.shade500,
+                                ),
+                              ),
+                              Row(
+                                children: [
+                                  if (pkg.discountedPrice != null &&
+                                      pkg.discountedPrice !=
+                                          pkg.totalPrice) ...[
+                                    Text(
+                                      '₹${pkg.totalPrice?.toStringAsFixed(0) ?? '0'}',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 12,
+                                        color: Colors.grey,
+                                        decoration: TextDecoration.lineThrough,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                  ],
+                                  Text(
+                                    '₹${(pkg.discountedPrice ?? pkg.totalPrice ?? 0).toStringAsFixed(0)}',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFF6B4E71),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          // Duration
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                'Duration',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 10,
+                                  color: Colors.grey.shade500,
+                                ),
+                              ),
+                              Text(
+                                '${pkg.duration ?? 0} mins',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 24),
+                      // Description
+                      if (pkg.description != null &&
+                          pkg.description!.isNotEmpty) ...[
+                        Text(
+                          'Description',
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          pkg.description!,
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            color: Colors.grey.shade600,
+                            height: 1.4,
+                          ),
+                        ),
+                        const Divider(height: 24),
+                      ],
+                      // Services Included
+                      Text(
+                        'Services Included',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      if (pkg.services == null || pkg.services!.isEmpty)
+                        Text(
+                          'No services included',
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            color: Colors.grey,
+                          ),
+                        )
+                      else
+                        ...pkg.services!.map((s) {
+                          String serviceName = 'Service';
+                          int qty = 1;
+                          double priceVal = 0.0;
+                          if (s is Map) {
+                            serviceName = s['serviceName'] ?? 'Service';
+                            qty = s['quantity'] ?? 1;
+                            priceVal = (s['price'] as num?)?.toDouble() ?? 0.0;
+                          } else {
+                            serviceName = s.toString();
+                          }
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.check_circle_outline,
+                                  size: 14,
+                                  color: Theme.of(context).primaryColor,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    '$serviceName x$qty',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 11,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  '₹${priceVal.toStringAsFixed(0)}',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      const Divider(height: 24),
+                      // Assigned Staff
+                      Text(
+                        'Assigned Staff',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      if (assignedStaffList.isEmpty)
+                        Text(
+                          '${pkg.staffCount ?? 1} staf required',
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            color: Colors.grey.shade600,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        )
+                      else
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 4,
+                          children: assignedStaffList.map((s) {
+                            return Chip(
+                              label: Text(
+                                s.fullName ?? 'Unknown',
+                                style: GoogleFonts.poppins(fontSize: 10),
+                              ),
+                              backgroundColor: Colors.grey.shade100,
+                              side: BorderSide(color: Colors.grey.shade300),
+                              padding: EdgeInsets.zero,
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                            );
+                          }).toList(),
+                        ),
+                      const SizedBox(height: 20),
+                      // Close button
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(context).primaryColor,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: Text(
+                            'Close',
+                            style: GoogleFonts.poppins(color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

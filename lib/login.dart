@@ -12,6 +12,7 @@ import 'Suppliers/supp_register.dart';
 import 'services/api_service.dart';
 import 'forgot_password.dart';
 import 'services/notification_service.dart';
+import 'utils/validators.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -196,14 +197,7 @@ class _LoginPageState extends State<Login> {
                         keyboardType: TextInputType.emailAddress,
                         suffixIcon: Icon(Icons.email_outlined,
                             color: Colors.grey.shade400, size: 14.sp),
-                        validator: (v) {
-                          if (v == null || v.isEmpty)
-                            return 'Please enter your email';
-                          if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                              .hasMatch(v))
-                            return 'Enter a valid email address';
-                          return null;
-                        },
+                        validator: Validators.validateEmail,
                       ),
 
                       SizedBox(height: 10.h),
@@ -225,13 +219,7 @@ class _LoginPageState extends State<Login> {
                             size: 14.sp,
                           ),
                         ),
-                        validator: (v) {
-                          if (v == null || v.isEmpty)
-                            return 'Please enter your password';
-                          if (v.length < 6)
-                            return 'Password must be at least 6 characters';
-                          return null;
-                        },
+                        validator: Validators.validatePassword,
                       ),
 
                       // ── Forgot password ───────────────────

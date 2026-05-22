@@ -6,12 +6,14 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 import '../vendor_model.dart';
+import 'utils/validators.dart';
 
 class AddStaffDialog extends StatefulWidget {
   final Map? existing;
   final VoidCallback? onRefresh;
 
-  const AddStaffDialog({Key? key, this.existing, this.onRefresh}) : super(key: key);
+  const AddStaffDialog({Key? key, this.existing, this.onRefresh})
+    : super(key: key);
 
   @override
   State<AddStaffDialog> createState() => _AddStaffDialogState();
@@ -28,6 +30,8 @@ class _AddStaffDialogState extends State<AddStaffDialog>
   final _password = TextEditingController();
   final _confirmPassword = TextEditingController();
   final _description = TextEditingController();
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   // Employment
   final _salary = TextEditingController();
@@ -280,7 +284,6 @@ class _AddStaffDialogState extends State<AddStaffDialog>
         }
       }
 
-
       // Photo
       if (m['photo'] != null && m['photo'].toString().isNotEmpty) {
         _imagePath = m['photo'].toString();
@@ -308,7 +311,10 @@ class _AddStaffDialogState extends State<AddStaffDialog>
   }
 
   bool _isTimeWithinSalonHours(
-      String day, TimeOfDay staffStart, TimeOfDay staffEnd) {
+    String day,
+    TimeOfDay staffStart,
+    TimeOfDay staffEnd,
+  ) {
     if (_vendorProfile == null) return true; // Fallback if profile not loaded
 
     final fullDay = day.toLowerCase();
@@ -406,22 +412,12 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       return false;
     }
 
-    // Extra password checks for new staff
+    // Extra password checks
     if (widget.existing == null) {
-      if (_password.text.trim().isEmpty) {
+      final passErr = Validators.validatePassword(_password.text);
+      if (passErr != null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Password is required for new staff'),
-              backgroundColor: Colors.red),
-        );
-        _tabController.animateTo(0);
-        return false;
-      }
-      if (_password.text.trim().length < 6) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Password must be at least 6 characters'),
-              backgroundColor: Colors.red),
+          SnackBar(content: Text(passErr), backgroundColor: Colors.red),
         );
         _tabController.animateTo(0);
         return false;
@@ -429,20 +425,19 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       if (_confirmPassword.text != _password.text) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Passwords do not match'),
-              backgroundColor: Colors.red),
+            content: Text('Passwords do not match'),
+            backgroundColor: Colors.red,
+          ),
         );
         _tabController.animateTo(0);
         return false;
       }
     } else {
-      // On edit, password is optional; if user enters it, validate it
-      if (_password.text.trim().isNotEmpty) {
-        if (_password.text.trim().length < 6) {
+      if (_password.text.isNotEmpty) {
+        final passErr = Validators.validatePassword(_password.text);
+        if (passErr != null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Password must be at least 6 characters'),
-                backgroundColor: Colors.red),
+            SnackBar(content: Text(passErr), backgroundColor: Colors.red),
           );
           _tabController.animateTo(0);
           return false;
@@ -450,8 +445,9 @@ class _AddStaffDialogState extends State<AddStaffDialog>
         if (_confirmPassword.text != _password.text) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-                content: Text('Passwords do not match'),
-                backgroundColor: Colors.red),
+              content: Text('Passwords do not match'),
+              backgroundColor: Colors.red,
+            ),
           );
           _tabController.animateTo(0);
           return false;
@@ -473,8 +469,8 @@ class _AddStaffDialogState extends State<AddStaffDialog>
 
     debugPrint('Status: Validation passed, processing staff data');
 
-    final fullName =
-        '${_firstName.text.trim()} ${_lastName.text.trim()}'.trim();
+    final fullName = '${_firstName.text.trim()} ${_lastName.text.trim()}'
+        .trim();
     debugPrint('Activities: Full name constructed: $fullName');
 
     // Permissions -> API list
@@ -508,7 +504,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
               "endTime": endTime,
               "startMinutes": _timeToMinutes(startTime),
               "endMinutes": _timeToMinutes(endTime),
-            }
+            },
           ];
         } else {
           availabilityFields['${fullDay}Slots'] = [];
@@ -539,16 +535,19 @@ class _AddStaffDialogState extends State<AddStaffDialog>
     final int yearOfExperience = int.tryParse(_experience.text.trim()) ?? 0;
     final int clientsServed = int.tryParse(_clients.text.trim()) ?? 0;
     debugPrint(
-        'Activities: Numeric values - Salary: $salary, Experience: $yearOfExperience, Clients: $clientsServed');
+      'Activities: Numeric values - Salary: $salary, Experience: $yearOfExperience, Clients: $clientsServed',
+    );
 
     // Dates
     final String? startDate = _startDate != null
         ? DateFormat('yyyy-MM-dd').format(_startDate!)
         : null;
-    final String? endDate =
-        _endDate != null ? DateFormat('yyyy-MM-dd').format(_endDate!) : null;
+    final String? endDate = _endDate != null
+        ? DateFormat('yyyy-MM-dd').format(_endDate!)
+        : null;
     debugPrint(
-        'Activities: Employment dates - Start: $startDate, End: $endDate');
+      'Activities: Employment dates - Start: $startDate, End: $endDate',
+    );
 
     // Password (optional on edit)
     String? password;
@@ -614,8 +613,9 @@ class _AddStaffDialogState extends State<AddStaffDialog>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-                content: Text('Staff details updated successfully'),
-                backgroundColor: Colors.green),
+              content: Text('Staff details updated successfully'),
+              backgroundColor: Colors.green,
+            ),
           );
         }
       } else {
@@ -628,8 +628,9 @@ class _AddStaffDialogState extends State<AddStaffDialog>
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                  content: Text('Staff created successfully'),
-                  backgroundColor: Colors.green),
+                content: Text('Staff created successfully'),
+                backgroundColor: Colors.green,
+              ),
             );
           }
         }
@@ -639,8 +640,9 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Error saving staff: $e'),
-              backgroundColor: Colors.red),
+            content: Text('Error saving staff: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -673,7 +675,9 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                   Text(
                     widget.existing == null ? 'Add New Staff' : 'Edit Staff',
                     style: GoogleFonts.poppins(
-                        fontSize: 14, fontWeight: FontWeight.w600),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const Spacer(),
                   IconButton(
@@ -689,7 +693,9 @@ class _AddStaffDialogState extends State<AddStaffDialog>
               controller: _tabController,
               isScrollable: true,
               labelStyle: GoogleFonts.poppins(
-                  fontSize: 10, fontWeight: FontWeight.w600),
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              ),
               unselectedLabelStyle: GoogleFonts.poppins(fontSize: 10),
               labelColor: Theme.of(context).primaryColor,
               unselectedLabelColor: Colors.grey,
@@ -724,32 +730,36 @@ class _AddStaffDialogState extends State<AddStaffDialog>
   }
 
   Widget _saveButton() => Padding(
-        padding: const EdgeInsets.only(top: 24, bottom: 8),
-        child: SizedBox(
-          width: double.infinity,
-          height: 40,
-          child: ElevatedButton(
-            onPressed: _isSaving ? null : _save,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4A2C40),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            child: _isSaving
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                        color: Colors.white, strokeWidth: 2))
-                : Text(
-                    _localExisting == null ? 'Save Staff' : 'Update Staff',
-                    style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600),
-                  ),
-          ),
+    padding: const EdgeInsets.only(top: 24, bottom: 8),
+    child: SizedBox(
+      width: double.infinity,
+      height: 40,
+      child: ElevatedButton(
+        onPressed: _isSaving ? null : _save,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF4A2C40),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
-      );
+        child: _isSaving
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : Text(
+                _localExisting == null ? 'Save Staff' : 'Update Staff',
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+      ),
+    ),
+  );
 
   Widget _buildPersonalTab() {
     return Form(
@@ -765,25 +775,35 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                     'First Name',
                     TextFormField(
                       controller: _firstName,
-                      validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'First name is required'
-                          : null,
+                      validator: (v) =>
+                          Validators.validateName(v, 'First name'),
                     ),
                   ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
-                    child: _labeled(
-                        'Last Name', TextFormField(controller: _lastName))),
+                  child: _labeled(
+                    'Last Name',
+                    TextFormField(
+                      controller: _lastName,
+                      validator: (v) {
+                        if (v != null && v.trim().isNotEmpty) {
+                          if (!RegExp(r'^[a-zA-Z\s]+$').hasMatch(v.trim())) {
+                            return 'Only alphabets and spaces are allowed';
+                          }
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                ),
               ],
             ),
             _labeled(
               'Position',
               TextFormField(
                 controller: _position,
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? 'Position is required'
-                    : null,
+                validator: (v) => Validators.validateName(v, 'Position'),
               ),
             ),
             _labeled(
@@ -791,13 +811,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
               TextFormField(
                 controller: _mobile,
                 keyboardType: TextInputType.phone,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty)
-                    return 'Mobile number is required';
-                  if (v.trim().length < 10)
-                    return 'Enter a valid mobile number';
-                  return null;
-                },
+                validator: Validators.validatePhone,
               ),
             ),
             _labeled(
@@ -805,13 +819,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
               TextFormField(
                 controller: _email,
                 keyboardType: TextInputType.emailAddress,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'Email is required';
-                  final ok = RegExp(r'^[\w\-.]+@([\w-]+\.)+[\w-]{2,4}$')
-                      .hasMatch(v.trim());
-                  if (!ok) return 'Enter a valid email address';
-                  return null;
-                },
+                validator: Validators.validateEmail,
               ),
             ),
             // Password always shown; on edit it's optional
@@ -819,18 +827,28 @@ class _AddStaffDialogState extends State<AddStaffDialog>
               'Password ${widget.existing == null ? "(Required)" : "(Optional)"}',
               TextFormField(
                 controller: _password,
-                obscureText: true,
+                obscureText: _obscurePassword,
+                decoration: InputDecoration(
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                      size: 16,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscurePassword = !_obscurePassword;
+                      });
+                    },
+                  ),
+                ),
                 validator: (v) {
                   if (widget.existing == null) {
-                    if (v == null || v.trim().isEmpty)
-                      return 'Password is required';
-                    if (v.trim().length < 6)
-                      return 'Password must be at least 6 characters';
+                    return Validators.validatePassword(v);
                   } else {
-                    if (v != null &&
-                        v.trim().isNotEmpty &&
-                        v.trim().length < 6) {
-                      return 'Password must be at least 6 characters';
+                    if (v != null && v.isNotEmpty) {
+                      return Validators.validatePassword(v);
                     }
                   }
                   return null;
@@ -841,11 +859,27 @@ class _AddStaffDialogState extends State<AddStaffDialog>
               'Confirm Password ${widget.existing == null ? "(Required)" : "(If changing password)"}',
               TextFormField(
                 controller: _confirmPassword,
-                obscureText: true,
+                obscureText: _obscureConfirmPassword,
+                decoration: InputDecoration(
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureConfirmPassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                      size: 16,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscureConfirmPassword = !_obscureConfirmPassword;
+                      });
+                    },
+                  ),
+                ),
                 validator: (v) {
                   if (widget.existing == null) {
-                    if (v == null || v.isEmpty)
+                    if (v == null || v.isEmpty) {
                       return 'Confirm password is required';
+                    }
                     if (v != _password.text) return 'Passwords do not match';
                   } else {
                     if (_password.text.trim().isNotEmpty) {
@@ -856,8 +890,10 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                 },
               ),
             ),
-            _labeled('Description',
-                TextFormField(controller: _description, maxLines: 3)),
+            _labeled(
+              'Description',
+              TextFormField(controller: _description, maxLines: 3),
+            ),
             const SizedBox(height: 16),
             Row(
               children: [
@@ -876,29 +912,41 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                     ElevatedButton.icon(
                       onPressed: _pickImage,
                       icon: const Icon(Icons.add_a_photo_outlined, size: 16),
-                      label: Text('Upload Photo',
-                          style: GoogleFonts.poppins(fontSize: 11)),
+                      label: Text(
+                        'Upload Photo',
+                        style: GoogleFonts.poppins(fontSize: 11),
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF4A2C40),
                         foregroundColor: Colors.white,
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                     ),
                     if (_imagePath != null)
                       TextButton.icon(
                         onPressed: () => setState(() => _imagePath = null),
-                        icon: const Icon(Icons.delete_outline,
-                            size: 14, color: Colors.red),
-                        label: Text('Remove',
-                            style: GoogleFonts.poppins(
-                                fontSize: 10, color: Colors.red)),
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          size: 14,
+                          color: Colors.red,
+                        ),
+                        label: Text(
+                          'Remove',
+                          style: GoogleFonts.poppins(
+                            fontSize: 10,
+                            color: Colors.red,
+                          ),
+                        ),
                       ),
                   ],
-                )
+                ),
               ],
             ),
             _saveButton(),
@@ -983,9 +1031,13 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                             onChanged: (v) =>
                                 setState(() => _commissionEnabled = v),
                           ),
-                          Text('Staff Commission',
-                              style: GoogleFonts.poppins(
-                                  fontSize: 10, fontWeight: FontWeight.w500)),
+                          Text(
+                            'Staff \n Commission',
+                            style: GoogleFonts.poppins(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ],
                       ),
                     ],
@@ -998,14 +1050,19 @@ class _AddStaffDialogState extends State<AddStaffDialog>
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Commission Percentage (%)',
-                      style: GoogleFonts.poppins(
-                          fontSize: 13, fontWeight: FontWeight.w600)),
+                  Text(
+                    'Commission Percentage (%)',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _commissionPercentage,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: InputDecoration(
                       hintText: '10',
                       suffixText: '%',
@@ -1020,10 +1077,14 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: const BorderSide(
-                            color: Color(0xFF4A2C40), width: 2),
+                          color: Color(0xFF4A2C40),
+                          width: 2,
+                        ),
                       ),
                       contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                     ),
                     validator: (v) {
                       if (_commissionEnabled) {
@@ -1038,13 +1099,18 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      const Icon(Icons.auto_graph,
-                          size: 14, color: Colors.grey),
+                      const Icon(
+                        Icons.auto_graph,
+                        size: 14,
+                        color: Colors.grey,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         'Staff will earn ${_commissionPercentage.text.isEmpty ? '0' : _commissionPercentage.text}% on all completed appointments.',
                         style: GoogleFonts.poppins(
-                            fontSize: 11, color: Colors.grey[600]),
+                          fontSize: 11,
+                          color: Colors.grey[600],
+                        ),
                       ),
                     ],
                   ),
@@ -1054,16 +1120,20 @@ class _AddStaffDialogState extends State<AddStaffDialog>
             Row(
               children: [
                 Expanded(
-                    child: _DateField(
-                        label: 'Start Date',
-                        date: _startDate,
-                        onTap: () => _pickDate(start: true))),
+                  child: _DateField(
+                    label: 'Start Date',
+                    date: _startDate,
+                    onTap: () => _pickDate(start: true),
+                  ),
+                ),
                 const SizedBox(width: 16),
                 Expanded(
-                    child: _DateField(
-                        label: 'End Date (Optional)',
-                        date: _endDate,
-                        onTap: () => _pickDate(start: false))),
+                  child: _DateField(
+                    label: 'End Date (Optional)',
+                    date: _endDate,
+                    onTap: () => _pickDate(start: false),
+                  ),
+                ),
               ],
             ),
             _saveButton(),
@@ -1191,7 +1261,9 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                   child: Text(
                     'Set staff working hours within salon opening hours.',
                     style: GoogleFonts.poppins(
-                        fontSize: 10, color: Colors.blue.shade800),
+                      fontSize: 10,
+                      color: Colors.blue.shade800,
+                    ),
                   ),
                 ),
               ],
@@ -1206,7 +1278,11 @@ class _AddStaffDialogState extends State<AddStaffDialog>
             final oh = _vendorProfile?.openingHours.firstWhere(
               (h) => h.day.toLowerCase() == fullDay.toLowerCase(),
               orElse: () => OpeningHour(
-                  day: fullDay, open: '00:00', close: '23:59', isOpen: true),
+                day: fullDay,
+                open: '00:00',
+                close: '23:59',
+                isOpen: true,
+              ),
             );
 
             return Padding(
@@ -1220,7 +1296,9 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                         child: Text(
                           fullDay[0].toUpperCase() + fullDay.substring(1),
                           style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.w600, fontSize: 11),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 11,
+                          ),
                         ),
                       ),
                       Switch(
@@ -1269,12 +1347,16 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                               ),
                               if (oh != null && oh.isOpen)
                                 Padding(
-                                  padding:
-                                      const EdgeInsets.only(top: 4, left: 4),
+                                  padding: const EdgeInsets.only(
+                                    top: 4,
+                                    left: 4,
+                                  ),
                                   child: Text(
                                     'Salon Hours: ${oh.open} - ${oh.close}',
                                     style: GoogleFonts.poppins(
-                                        fontSize: 10, color: Colors.grey[600]),
+                                      fontSize: 10,
+                                      color: Colors.grey[600],
+                                    ),
                                   ),
                                 ),
                             ],
@@ -1295,52 +1377,56 @@ class _AddStaffDialogState extends State<AddStaffDialog>
   }
 
   Widget _labeled(String label, Widget field) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label,
-                style: GoogleFonts.poppins(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[700])),
-            const SizedBox(height: 4),
-            Theme(
-              data: Theme.of(context).copyWith(
-                inputDecorationTheme: InputDecorationTheme(
-                  isDense: true,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: Colors.grey.shade300)),
-                  enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: Colors.grey.shade200)),
-                  focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide:
-                          BorderSide(color: Theme.of(context).primaryColor)),
-                  labelStyle: GoogleFonts.poppins(fontSize: 11),
-                  hintStyle:
-                      GoogleFonts.poppins(fontSize: 11, color: Colors.grey),
-                  errorStyle: GoogleFonts.poppins(fontSize: 9),
-                ),
-              ),
-              child: field,
-            ),
-          ],
+    padding: const EdgeInsets.symmetric(vertical: 6),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.poppins(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey[700],
+          ),
         ),
-      );
+        const SizedBox(height: 4),
+        Theme(
+          data: Theme.of(context).copyWith(
+            inputDecorationTheme: InputDecorationTheme(
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.grey.shade200),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Theme.of(context).primaryColor),
+              ),
+              labelStyle: GoogleFonts.poppins(fontSize: 11),
+              hintStyle: GoogleFonts.poppins(fontSize: 11, color: Colors.grey),
+              errorStyle: GoogleFonts.poppins(fontSize: 9),
+            ),
+          ),
+          child: field,
+        ),
+      ],
+    ),
+  );
 
   Widget _buildBlockTimeTab() {
     return Container();
   }
 
   Widget _buildNoData(String s) {
-    return Center(
-      child: Text(s, style: GoogleFonts.poppins(fontSize: 11)),
-    );
+    return Center(child: Text(s, style: GoogleFonts.poppins(fontSize: 11)));
   }
 }
 
@@ -1349,35 +1435,44 @@ class _DateField extends StatelessWidget {
   final DateTime? date;
   final VoidCallback onTap;
 
-  const _DateField(
-      {required this.label, required this.date, required this.onTap});
+  const _DateField({
+    required this.label,
+    required this.date,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: GoogleFonts.poppins(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[700])),
+        Text(
+          label,
+          style: GoogleFonts.poppins(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey[700],
+          ),
+        ),
         const SizedBox(height: 4),
         InkWell(
           onTap: onTap,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade200),
-                borderRadius: BorderRadius.circular(8)),
+              border: Border.all(color: Colors.grey.shade200),
+              borderRadius: BorderRadius.circular(8),
+            ),
             child: Row(
               children: [
                 Expanded(
-                    child: Text(
-                        date == null
-                            ? 'Not set'
-                            : DateFormat('dd/MM/yyyy').format(date!),
-                        style: GoogleFonts.poppins(fontSize: 11))),
+                  child: Text(
+                    date == null
+                        ? 'Not set'
+                        : DateFormat('dd/MM/yyyy').format(date!),
+                    style: GoogleFonts.poppins(fontSize: 11),
+                  ),
+                ),
                 Icon(Icons.calendar_today, size: 14, color: Colors.grey[600]),
               ],
             ),
@@ -1429,9 +1524,22 @@ class _TimeRangePickerState extends State<_TimeRangePicker> {
     if (start != null && end != null) {
       // Use 12h format with AM/PM for display
       final now = DateTime.now();
-      final dtStart = DateTime(now.year, now.month, now.day, start!.hour, start!.minute);
-      final dtEnd = DateTime(now.year, now.month, now.day, end!.hour, end!.minute);
-      widget.controller.text = '${DateFormat.jm().format(dtStart)} - ${DateFormat.jm().format(dtEnd)}';
+      final dtStart = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        start!.hour,
+        start!.minute,
+      );
+      final dtEnd = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        end!.hour,
+        end!.minute,
+      );
+      widget.controller.text =
+          '${DateFormat.jm().format(dtStart)} - ${DateFormat.jm().format(dtEnd)}';
     } else {
       widget.controller.text = '';
     }
@@ -1457,7 +1565,8 @@ class _TimeRangePickerState extends State<_TimeRangePicker> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                  'Selected time must be within salon hours (${widget.salonHours!.open} - ${widget.salonHours!.close})'),
+                'Selected time must be within salon hours (${widget.salonHours!.open} - ${widget.salonHours!.close})',
+              ),
               backgroundColor: Colors.red,
             ),
           );
@@ -1500,8 +1609,9 @@ class _TimeRangePickerState extends State<_TimeRangePicker> {
         // Fallback to 24h
         final pts = time.split(':');
         return TimeOfDay(
-            hour: int.parse(pts[0].trim()),
-            minute: int.parse(pts[1].trim().split(' ')[0]));
+          hour: int.parse(pts[0].trim()),
+          minute: int.parse(pts[1].trim().split(' ')[0]),
+        );
       }
     } catch (e) {
       debugPrint('Error parsing time string ($time): $e');
@@ -1523,15 +1633,18 @@ class _TimeRangePickerState extends State<_TimeRangePicker> {
                 borderRadius: BorderRadius.circular(8),
                 color: Theme.of(context).primaryColor.withOpacity(0.05),
               ),
-              child: Text(start?.format(context) ?? 'Start',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(fontSize: 10)),
+              child: Text(
+                start?.format(context) ?? 'Start',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(fontSize: 10),
+              ),
             ),
           ),
         ),
         const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8),
-            child: Text('-', style: TextStyle(color: Colors.grey))),
+          padding: EdgeInsets.symmetric(horizontal: 8),
+          child: Text('-', style: TextStyle(color: Colors.grey)),
+        ),
         Expanded(
           child: InkWell(
             onTap: () => _pick(false),
@@ -1542,9 +1655,11 @@ class _TimeRangePickerState extends State<_TimeRangePicker> {
                 borderRadius: BorderRadius.circular(8),
                 color: Theme.of(context).primaryColor.withOpacity(0.02),
               ),
-              child: Text(end?.format(context) ?? 'End',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(fontSize: 10)),
+              child: Text(
+                end?.format(context) ?? 'End',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(fontSize: 10),
+              ),
             ),
           ),
         ),

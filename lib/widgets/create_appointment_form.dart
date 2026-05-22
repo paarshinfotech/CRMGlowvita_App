@@ -48,7 +48,7 @@ class QueuedService {
 
 class CreateAppointmentForm extends StatefulWidget {
   final List<Appointments>
-      dailyAppointments; // New field for conflict detection
+  dailyAppointments; // New field for conflict detection
   final Function(List<Appointments>)? onAppointmentCreated;
   final AppointmentModel? existingAppointment;
 
@@ -139,8 +139,10 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
       _selectedDate = appt.date ?? DateTime.now();
       if (appt.startTime != null && appt.startTime!.contains(':')) {
         final parts = appt.startTime!.split(':');
-        _startTime =
-            TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+        _startTime = TimeOfDay(
+          hour: int.parse(parts[0]),
+          minute: int.parse(parts[1]),
+        );
       }
 
       _notesCtrl.text = appt.notes ?? '';
@@ -152,8 +154,9 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
       // Prefill Client
       if (appt.client != null) {
         _selectedClient = _clients.cast<FormClient?>().firstWhere(
-            (c) => c?.customer.id == appt.client!.id,
-            orElse: () => null);
+          (c) => c?.customer.id == appt.client!.id,
+          orElse: () => null,
+        );
       }
       _clientSearchCtrl.text = appt.clientName ?? '';
 
@@ -172,27 +175,32 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
           );
           final staff = _staff.firstWhere(
             (s) => s.fullName == item.staffName,
-            orElse: () => StaffMember(
-              id: '',
-              fullName: item.staffName ?? 'Unknown',
-            ),
+            orElse: () =>
+                StaffMember(id: '', fullName: item.staffName ?? 'Unknown'),
           );
 
           DateTime sTime;
           if (item.startTime != null && item.startTime!.contains(':')) {
             final p = item.startTime!.split(':');
-            sTime = DateTime(_selectedDate.year, _selectedDate.month,
-                _selectedDate.day, int.parse(p[0]), int.parse(p[1]));
+            sTime = DateTime(
+              _selectedDate.year,
+              _selectedDate.month,
+              _selectedDate.day,
+              int.parse(p[0]),
+              int.parse(p[1]),
+            );
           } else {
             sTime = _combine(_selectedDate, _startTime);
           }
 
-          _queuedServices.add(QueuedService(
-            service: service,
-            staff: staff,
-            startTime: sTime,
-            endTime: sTime.add(Duration(minutes: item.duration ?? 0)),
-          ));
+          _queuedServices.add(
+            QueuedService(
+              service: service,
+              staff: staff,
+              startTime: sTime,
+              endTime: sTime.add(Duration(minutes: item.duration ?? 0)),
+            ),
+          );
         }
       } else {
         // Single service fallback
@@ -206,19 +214,19 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
         );
         final staff = _staff.firstWhere(
           (s) => s.fullName == appt.staffName,
-          orElse: () => StaffMember(
-            id: '',
-            fullName: appt.staffName ?? 'Unknown staff',
-          ),
+          orElse: () =>
+              StaffMember(id: '', fullName: appt.staffName ?? 'Unknown staff'),
         );
         final sTime = _combine(_selectedDate, _startTime);
 
-        _queuedServices.add(QueuedService(
-          service: service,
-          staff: staff,
-          startTime: sTime,
-          endTime: sTime.add(Duration(minutes: appt.duration ?? 0)),
-        ));
+        _queuedServices.add(
+          QueuedService(
+            service: service,
+            staff: staff,
+            startTime: sTime,
+            endTime: sTime.add(Duration(minutes: appt.duration ?? 0)),
+          ),
+        );
       }
     });
 
@@ -231,21 +239,23 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
       final apiCustomers = await ApiService.getClients();
       setState(() {
         _clients = apiCustomers
-            .map((customer) => FormClient(
-                  name: customer.fullName,
-                  email: customer.email ?? '',
-                  mobile: customer.mobile,
-                  customer: customer,
-                ))
+            .map(
+              (customer) => FormClient(
+                name: customer.fullName,
+                email: customer.email ?? '',
+                mobile: customer.mobile,
+                customer: customer,
+              ),
+            )
             .toList();
       });
     } catch (e) {
       print('Error loading clients: $e');
       // Show error message to user
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading clients: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading clients: $e')));
       }
     }
   }
@@ -266,8 +276,9 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Failed to load staff'),
-              backgroundColor: Colors.red),
+            content: Text('Failed to load staff'),
+            backgroundColor: Colors.red,
+          ),
         );
         setState(() => _isLoadingStaff = false);
       }
@@ -289,8 +300,9 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Failed to load services'),
-              backgroundColor: Colors.red),
+            content: Text('Failed to load services'),
+            backgroundColor: Colors.red,
+          ),
         );
         setState(() => _isLoadingServices = false);
       }
@@ -388,7 +400,7 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
           totalDuration += addon.duration ?? 0;
         }
       }
-    } 
+    }
     // Otherwise, if a service is selected in the dropdown, calculate for it
     else if (_selectedService != null) {
       totalAmount += (_selectedService!.price ?? 0).toDouble();
@@ -438,8 +450,9 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
     _durationCtrl.text = totalDuration == 0 ? '' : '$totalDuration min';
 
     if (_queuedServices.isNotEmpty) {
-      _endTimeCtrl.text =
-          _formatTime(TimeOfDay.fromDateTime(_queuedServices.last.endTime));
+      _endTimeCtrl.text = _formatTime(
+        TimeOfDay.fromDateTime(_queuedServices.last.endTime),
+      );
     } else {
       _endTimeCtrl.text = '';
     }
@@ -456,8 +469,10 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
     for (var qs in _queuedServices) {
       // Calculate total duration including add-ons
       final serviceDuration = qs.service.duration ?? 0;
-      final addOnsDuration = qs.selectedAddOns
-          .fold<int>(0, (sum, addon) => sum + (addon.duration ?? 0));
+      final addOnsDuration = qs.selectedAddOns.fold<int>(
+        0,
+        (sum, addon) => sum + (addon.duration ?? 0),
+      );
       final totalDuration = serviceDuration + addOnsDuration;
 
       final endTime = currentStartTime.add(Duration(minutes: totalDuration));
@@ -470,13 +485,15 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
         // Or we could stop here.
       }
 
-      updatedQueue.add(QueuedService(
-        service: qs.service,
-        staff: qs.staff,
-        startTime: currentStartTime,
-        endTime: endTime,
-        selectedAddOns: qs.selectedAddOns, // Preserve add-ons
-      ));
+      updatedQueue.add(
+        QueuedService(
+          service: qs.service,
+          staff: qs.staff,
+          startTime: currentStartTime,
+          endTime: endTime,
+          selectedAddOns: qs.selectedAddOns, // Preserve add-ons
+        ),
+      );
 
       currentStartTime = endTime;
     }
@@ -539,7 +556,10 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
 
   /// Returns the blocked slot that overlaps, or null
   Map<String, dynamic>? _getBlockedSlot(
-      DateTime start, DateTime end, StaffMember staff) {
+    DateTime start,
+    DateTime end,
+    StaffMember staff,
+  ) {
     final blockedTimes = staff.blockedTimes ?? [];
     final startMinutes = start.hour * 60 + start.minute;
     final endMinutes = end.hour * 60 + end.minute;
@@ -548,7 +568,8 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
     debugPrint('  Staff: ${staff.fullName} (id: ${staff.id})');
     debugPrint('  blockedTimes count: ${blockedTimes.length}');
     debugPrint(
-        '  Appointment window: ${start.hour}:${start.minute.toString().padLeft(2, '0')} – ${end.hour}:${end.minute.toString().padLeft(2, '0')} on ${start.year}-${start.month}-${start.day}');
+      '  Appointment window: ${start.hour}:${start.minute.toString().padLeft(2, '0')} – ${end.hour}:${end.minute.toString().padLeft(2, '0')} on ${start.year}-${start.month}-${start.day}',
+    );
 
     for (int i = 0; i < blockedTimes.length; i++) {
       final raw = blockedTimes[i];
@@ -615,20 +636,30 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
   }
 
   void _showConflictDialog(
-      StaffMember staff, Service service, DateTime start, DateTime end) {
+    StaffMember staff,
+    Service service,
+    DateTime start,
+    DateTime end,
+  ) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-        title: Row(children: [
-          Icon(Icons.event_busy, color: Colors.red.shade600, size: 18.sp),
-          SizedBox(width: 8.w),
-          Text('Slot Unavailable',
-              style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w700)),
-        ]),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.r),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.event_busy, color: Colors.red.shade600, size: 18.sp),
+            SizedBox(width: 8.w),
+            Text(
+              'Slot Unavailable',
+              style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
         content: Text(
-            '${staff.fullName} is already booked between ${DateFormat('HH:mm').format(start)} and ${DateFormat('HH:mm').format(end)}.'),
+          '${staff.fullName} is already booked between ${DateFormat('HH:mm').format(start)} and ${DateFormat('HH:mm').format(end)}.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
@@ -639,25 +670,35 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
     );
   }
 
-  void _showBlockedTimeDialog(StaffMember staff, DateTime start, DateTime end,
-      Map<String, dynamic> blockedSlot) {
+  void _showBlockedTimeDialog(
+    StaffMember staff,
+    DateTime start,
+    DateTime end,
+    Map<String, dynamic> blockedSlot,
+  ) {
     final blockStart = blockedSlot['startTime'] ?? '';
     final blockEnd = blockedSlot['endTime'] ?? '';
     final reason = blockedSlot['reason']?.toString();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-        title: Row(children: [
-          Icon(Icons.block, color: Colors.red.shade700, size: 18.sp),
-          SizedBox(width: 8.w),
-          Text('Time is Blocked',
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.r),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.block, color: Colors.red.shade700, size: 18.sp),
+            SizedBox(width: 8.w),
+            Text(
+              'Time is Blocked',
               style: TextStyle(
-                  fontSize: 11.sp,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.red.shade700)),
-        ]),
+                fontSize: 11.sp,
+                fontWeight: FontWeight.w700,
+                color: Colors.red.shade700,
+              ),
+            ),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -675,18 +716,25 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                   borderRadius: BorderRadius.circular(6.r),
                   border: Border.all(color: Colors.red.shade200),
                 ),
-                child: Row(children: [
-                  Icon(Icons.info_outline,
-                      size: 12.sp, color: Colors.red.shade400),
-                  SizedBox(width: 6.w),
-                  Expanded(
-                    child: Text(
-                      'Reason: $reason',
-                      style:
-                          TextStyle(fontSize: 9.sp, color: Colors.red.shade700),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      size: 12.sp,
+                      color: Colors.red.shade400,
                     ),
-                  ),
-                ]),
+                    SizedBox(width: 6.w),
+                    Expanded(
+                      child: Text(
+                        'Reason: $reason',
+                        style: TextStyle(
+                          fontSize: 9.sp,
+                          color: Colors.red.shade700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
             SizedBox(height: 8.h),
@@ -699,9 +747,13 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: Text('OK',
-                style: TextStyle(
-                    color: Colors.red.shade600, fontWeight: FontWeight.bold)),
+            child: Text(
+              'OK',
+              style: TextStyle(
+                color: Colors.red.shade600,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
@@ -725,41 +777,57 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
 
     final serviceDuration = _selectedService!.duration ?? 0;
     final addOnsDuration = _selectedAddOns.fold<int>(
-        0, (sum, addon) => sum + (addon.duration ?? 0));
+      0,
+      (sum, addon) => sum + (addon.duration ?? 0),
+    );
     final totalDuration = serviceDuration + addOnsDuration;
     final endTime = currentStartTime.add(Duration(minutes: totalDuration));
 
     debugPrint('══ _addToQueue ══');
     debugPrint('  selectedStaff: ${_selectedStaff!.fullName}');
     debugPrint(
-        '  blockedTimes on staff: ${_selectedStaff!.blockedTimes?.length ?? 0} entries');
+      '  blockedTimes on staff: ${_selectedStaff!.blockedTimes?.length ?? 0} entries',
+    );
     debugPrint('  selectedDate: $_selectedDate');
     debugPrint('  currentStartTime: $currentStartTime  endTime: $endTime');
 
     // Check blocked time FIRST (takes priority over appointment conflict)
-    final blockedSlot =
-        _getBlockedSlot(currentStartTime, endTime, _selectedStaff!);
+    final blockedSlot = _getBlockedSlot(
+      currentStartTime,
+      endTime,
+      _selectedStaff!,
+    );
     if (blockedSlot != null) {
       _showBlockedTimeDialog(
-          _selectedStaff!, currentStartTime, endTime, blockedSlot);
+        _selectedStaff!,
+        currentStartTime,
+        endTime,
+        blockedSlot,
+      );
       return;
     }
 
     // Then check appointment conflict
     if (_hasConflict(currentStartTime, endTime, _selectedStaff!)) {
       _showConflictDialog(
-          _selectedStaff!, _selectedService!, currentStartTime, endTime);
+        _selectedStaff!,
+        _selectedService!,
+        currentStartTime,
+        endTime,
+      );
       return;
     }
 
     setState(() {
-      _queuedServices.add(QueuedService(
-        service: _selectedService!,
-        staff: _selectedStaff!,
-        startTime: currentStartTime,
-        endTime: endTime,
-        selectedAddOns: List.from(_selectedAddOns),
-      ));
+      _queuedServices.add(
+        QueuedService(
+          service: _selectedService!,
+          staff: _selectedStaff!,
+          startTime: currentStartTime,
+          endTime: endTime,
+          selectedAddOns: List.from(_selectedAddOns),
+        ),
+      );
       _selectedService = null;
       _selectedAddOns = [];
       _availableAddOns = [];
@@ -791,11 +859,12 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
 
   int _calculateTotalDuration() {
     int duration = _queuedServices.fold<int>(
-        0,
-        (sum, item) =>
-            sum +
-            (item.service.duration ?? 0) +
-            item.selectedAddOns.fold<int>(0, (s, a) => s + (a.duration ?? 0)));
+      0,
+      (sum, item) =>
+          sum +
+          (item.service.duration ?? 0) +
+          item.selectedAddOns.fold<int>(0, (s, a) => s + (a.duration ?? 0)),
+    );
 
     return duration;
   }
@@ -846,8 +915,10 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                     backgroundColor: Theme.of(context).primaryColor,
                     minimumSize: Size(double.infinity, 30.h),
                   ),
-                  child: Text('Done',
-                      style: TextStyle(color: Colors.white, fontSize: 10.sp)),
+                  child: Text(
+                    'Done',
+                    style: TextStyle(color: Colors.white, fontSize: 10.sp),
+                  ),
                 ),
               ),
             ],
@@ -886,7 +957,9 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                   onDateTimeChanged: (DateTime newDateTime) {
                     setState(() {
                       _startTime = TimeOfDay(
-                          hour: newDateTime.hour, minute: newDateTime.minute);
+                        hour: newDateTime.hour,
+                        minute: newDateTime.minute,
+                      );
                     });
                     _recalculateQueue();
                   },
@@ -900,8 +973,10 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                     backgroundColor: Theme.of(context).primaryColor,
                     minimumSize: Size(double.infinity, 30.h),
                   ),
-                  child: Text('Done',
-                      style: TextStyle(color: Colors.white, fontSize: 10.sp)),
+                  child: Text(
+                    'Done',
+                    style: TextStyle(color: Colors.white, fontSize: 10.sp),
+                  ),
                 ),
               ),
             ],
@@ -916,9 +991,7 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
   Future<void> _openAddClientDialog() async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const AddCustomer(),
-      ),
+      MaterialPageRoute(builder: (context) => const AddCustomer()),
     );
 
     if (result == null) return;
@@ -947,16 +1020,17 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
 
   Future<void> _saveAppointment() async {
     if (_selectedClient == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a client')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select a client')));
       return;
     }
 
     if (_queuedServices.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Please add at least one service to the queue')),
+          content: Text('Please add at least one service to the queue'),
+        ),
       );
       return;
     }
@@ -968,9 +1042,11 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
       final qs = _queuedServices.first;
 
       final appointmentData = {
-        "client": _selectedClient?.customer.id ??
+        "client":
+            _selectedClient?.customer.id ??
             widget.existingAppointment?.client?.id,
-        "clientName": _selectedClient?.name ??
+        "clientName":
+            _selectedClient?.name ??
             widget.existingAppointment?.clientName ??
             '',
         "service": qs.service.id,
@@ -986,8 +1062,9 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
         "tax": _parseMoney(_taxCtrl.text),
         "totalAmount": _calculateTotalAmount(),
         "finalAmount": _parseMoney(_totalCtrl.text),
-        "paymentStatus":
-            widget.existingAppointment?.status == 'paid' ? 'paid' : 'pending',
+        "paymentStatus": widget.existingAppointment?.status == 'paid'
+            ? 'paid'
+            : 'pending',
         "status": "scheduled",
         "mode": 'offline',
         "appointmentType": 'regular',
@@ -1014,12 +1091,14 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
             "duration": item.service.duration,
             "amount": item.service.price,
             "addOns": item.selectedAddOns
-                .map((a) => {
-                      "id": a.id ?? '',
-                      "name": a.name ?? '',
-                      "price": a.price ?? 0.0,
-                      "duration": a.duration ?? 0,
-                    })
+                .map(
+                  (a) => {
+                    "id": a.id ?? '',
+                    "name": a.name ?? '',
+                    "price": a.price ?? 0.0,
+                    "duration": a.duration ?? 0,
+                  },
+                )
                 .toList(),
           };
         }).toList(),
@@ -1028,7 +1107,9 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
       Map<String, dynamic> result;
       if (widget.existingAppointment != null) {
         result = await ApiService.updateAppointment(
-            widget.existingAppointment!.id!, appointmentData);
+          widget.existingAppointment!.id!,
+          appointmentData,
+        );
       } else {
         result = await ApiService.createAppointment(appointmentData);
       }
@@ -1043,7 +1124,8 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
         appointmentDetails = result['appointment'];
       }
 
-      final String newId = appointmentDetails['_id'] ??
+      final String newId =
+          appointmentDetails['_id'] ??
           appointmentDetails['id'] ??
           widget.existingAppointment?.id ??
           '';
@@ -1051,19 +1133,23 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(widget.existingAppointment != null
-                ? 'Appointment updated successfully'
-                : 'Appointment created successfully'),
+            content: Text(
+              widget.existingAppointment != null
+                  ? 'Appointment updated successfully'
+                  : 'Appointment created successfully',
+            ),
             backgroundColor: Colors.green,
           ),
         );
 
-        final List<Appointments> createdAppointments =
-            _queuedServices.map((qs) {
+        final List<Appointments> createdAppointments = _queuedServices.map((
+          qs,
+        ) {
           return Appointments(
             startTime: qs.startTime,
             duration: Duration(minutes: qs.service.duration ?? 0),
-            clientName: _selectedClient?.name ??
+            clientName:
+                _selectedClient?.name ??
                 widget.existingAppointment?.clientName ??
                 'Unknown',
             serviceName: qs.service.name ?? 'Unknown',
@@ -1090,7 +1176,8 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
           builder: (ctx) => AlertDialog(
             title: const Text('Error'),
             content: Text(
-                'Error ${widget.existingAppointment != null ? 'updating' : 'creating'} appointment: $e'),
+              'Error ${widget.existingAppointment != null ? 'updating' : 'creating'} appointment: $e',
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
@@ -1117,22 +1204,28 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
     return InputDecoration(
       labelText: label,
       labelStyle: GoogleFonts.poppins(fontSize: 8.sp), // Reduced font size
-      prefixIcon:
-          prefix != null ? Transform.scale(scale: 0.7, child: prefix) : null,
-      suffixIcon:
-          suffix != null ? Transform.scale(scale: 0.7, child: suffix) : null,
+      prefixIcon: prefix != null
+          ? Transform.scale(scale: 0.7, child: prefix)
+          : null,
+      suffixIcon: suffix != null
+          ? Transform.scale(scale: 0.7, child: suffix)
+          : null,
       isDense: true,
       border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6.r)), // Reduced radius
+        borderRadius: BorderRadius.circular(6.r),
+      ), // Reduced radius
       contentPadding: EdgeInsets.symmetric(
-          horizontal: 8.w, vertical: 4.h), // Further reduced padding
+        horizontal: 8.w,
+        vertical: 4.h,
+      ), // Further reduced padding
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final dateText = DateFormat('dd/MM/yyyy')
-        .format(_selectedDate); // Changed format to match calendar
+    final dateText = DateFormat(
+      'dd/MM/yyyy',
+    ).format(_selectedDate); // Changed format to match calendar
     final startText = _formatTime(_startTime);
 
     return Dialog(
@@ -1157,7 +1250,9 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                       child: Text(
                         'New Appointment',
                         style: GoogleFonts.poppins(
-                            fontSize: 12.sp, fontWeight: FontWeight.w600),
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                     IconButton(
@@ -1171,14 +1266,20 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                 Text(
                   'Create a new appointment',
                   style: GoogleFonts.poppins(
-                      fontSize: 8.sp, color: Colors.grey[700]),
+                    fontSize: 8.sp,
+                    color: Colors.grey[700],
+                  ),
                 ),
                 SizedBox(height: 12.h),
 
                 // Client (search + add)
-                Text('Client *',
-                    style: GoogleFonts.poppins(
-                        fontSize: 8.sp, fontWeight: FontWeight.w600)),
+                Text(
+                  'Client *',
+                  style: GoogleFonts.poppins(
+                    fontSize: 8.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 SizedBox(height: 6.h),
                 Row(
                   children: [
@@ -1187,10 +1288,12 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                         optionsBuilder: (value) {
                           final q = value.text.trim().toLowerCase();
                           if (q.isEmpty) return _clients;
-                          return _clients.where((c) =>
-                              c.name.toLowerCase().contains(q) ||
-                              c.email.toLowerCase().contains(q) ||
-                              c.mobile.toLowerCase().contains(q));
+                          return _clients.where(
+                            (c) =>
+                                c.name.toLowerCase().contains(q) ||
+                                c.email.toLowerCase().contains(q) ||
+                                c.mobile.toLowerCase().contains(q),
+                          );
                         },
                         displayStringForOption: (c) => c.name,
                         optionsViewBuilder: (context, onSelected, options) {
@@ -1214,23 +1317,32 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                                   itemBuilder: (context, index) {
                                     final client = options.elementAt(index);
                                     return ListTile(
-                                      title: Text(client.name,
-                                          style: GoogleFonts.poppins(
-                                              fontSize: 9.sp,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.black)),
+                                      title: Text(
+                                        client.name,
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 9.sp,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black,
+                                        ),
+                                      ),
                                       subtitle: Column(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          Text(client.email,
-                                              style: TextStyle(
-                                                  fontSize: 8.sp,
-                                                  color: Colors.grey[600])),
-                                          Text(client.mobile,
-                                              style: TextStyle(
-                                                  fontSize: 8.sp,
-                                                  color: Colors.grey[600])),
+                                          Text(
+                                            client.email,
+                                            style: TextStyle(
+                                              fontSize: 8.sp,
+                                              color: Colors.grey[600],
+                                            ),
+                                          ),
+                                          Text(
+                                            client.mobile,
+                                            style: TextStyle(
+                                              fontSize: 8.sp,
+                                              color: Colors.grey[600],
+                                            ),
+                                          ),
                                         ],
                                       ),
                                       onTap: () => onSelected(client),
@@ -1245,27 +1357,28 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                         },
                         fieldViewBuilder:
                             (context, textCtrl, focusNode, onSubmit) {
-                          // Sync initial text if needed
-                          if (_clientSearchCtrl.text != textCtrl.text &&
-                              textCtrl.text.isEmpty) {
-                            textCtrl.text = _clientSearchCtrl.text;
-                          }
+                              // Sync initial text if needed
+                              if (_clientSearchCtrl.text != textCtrl.text &&
+                                  textCtrl.text.isEmpty) {
+                                textCtrl.text = _clientSearchCtrl.text;
+                              }
 
-                          return TextFormField(
-                            controller: textCtrl,
-                            focusNode: focusNode,
-                            readOnly: widget.existingAppointment != null,
-                            decoration: _inputDecoration(
-                              label: 'Search for a client...',
-                              prefix: const Icon(Icons.search, size: 18),
-                            ),
-                            style: GoogleFonts.poppins(fontSize: 9.sp),
-                            validator: (_) => (_selectedClient == null &&
-                                    widget.existingAppointment == null)
-                                ? 'Select a client'
-                                : null,
-                          );
-                        },
+                              return TextFormField(
+                                controller: textCtrl,
+                                focusNode: focusNode,
+                                readOnly: widget.existingAppointment != null,
+                                decoration: _inputDecoration(
+                                  label: 'Search for a client...',
+                                  prefix: const Icon(Icons.search, size: 18),
+                                ),
+                                style: GoogleFonts.poppins(fontSize: 9.sp),
+                                validator: (_) =>
+                                    (_selectedClient == null &&
+                                        widget.existingAppointment == null)
+                                    ? 'Select a client'
+                                    : null,
+                              );
+                            },
                         onSelected: (c) => setState(() => _selectedClient = c),
                       ),
                     ),
@@ -1280,7 +1393,8 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                         style: OutlinedButton.styleFrom(
                           padding: EdgeInsets.zero,
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8.r)),
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
                         ),
                         child: const Icon(Icons.add, size: 18),
                       ),
@@ -1297,9 +1411,13 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Date *',
-                              style: GoogleFonts.poppins(
-                                  fontSize: 8.sp, fontWeight: FontWeight.w600)),
+                          Text(
+                            'Date *',
+                            style: GoogleFonts.poppins(
+                              fontSize: 8.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                           SizedBox(height: 4.h),
                           InkWell(
                             onTap: _pickDate,
@@ -1307,11 +1425,14 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                               decoration: _inputDecoration(
                                 label: '',
                                 suffix: const Icon(
-                                    Icons.calendar_month_outlined,
-                                    size: 14),
+                                  Icons.calendar_month_outlined,
+                                  size: 14,
+                                ),
                               ),
-                              child: Text(dateText,
-                                  style: GoogleFonts.poppins(fontSize: 8.sp)),
+                              child: Text(
+                                dateText,
+                                style: GoogleFonts.poppins(fontSize: 8.sp),
+                              ),
                             ),
                           ),
                         ],
@@ -1322,9 +1443,13 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Start Time *',
-                              style: GoogleFonts.poppins(
-                                  fontSize: 8.sp, fontWeight: FontWeight.w600)),
+                          Text(
+                            'Start Time *',
+                            style: GoogleFonts.poppins(
+                              fontSize: 8.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                           SizedBox(height: 4.h),
                           InkWell(
                             onTap: _pickStartTime,
@@ -1333,8 +1458,10 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                                 label: '',
                                 suffix: const Icon(Icons.access_time, size: 14),
                               ),
-                              child: Text(startText,
-                                  style: TextStyle(fontSize: 9.sp)),
+                              child: Text(
+                                startText,
+                                style: TextStyle(fontSize: 9.sp),
+                              ),
                             ),
                           ),
                         ],
@@ -1345,21 +1472,28 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('End Time *',
-                              style: GoogleFonts.poppins(
-                                  fontSize: 8.sp, fontWeight: FontWeight.w600)),
+                          Text(
+                            'End Time *',
+                            style: GoogleFonts.poppins(
+                              fontSize: 8.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                           SizedBox(height: 4.h),
                           InputDecorator(
                             decoration: _inputDecoration(
                               label: '',
-                              suffix: const Icon(Icons.timer_off_outlined,
-                                  size: 14),
+                              suffix: const Icon(
+                                Icons.timer_off_outlined,
+                                size: 14,
+                              ),
                             ),
                             child: Text(
-                                _endTimeCtrl.text.isEmpty
-                                    ? '--:--'
-                                    : _endTimeCtrl.text,
-                                style: TextStyle(fontSize: 9.sp)),
+                              _endTimeCtrl.text.isEmpty
+                                  ? '--:--'
+                                  : _endTimeCtrl.text,
+                              style: TextStyle(fontSize: 9.sp),
+                            ),
                           ),
                         ],
                       ),
@@ -1374,11 +1508,14 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Staff Selection
-                    Text('Staff *',
-                        style: TextStyle(
-                            fontSize: 10.sp,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey[600])),
+                    Text(
+                      'Staff *',
+                      style: TextStyle(
+                        fontSize: 10.sp,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey[600],
+                      ),
+                    ),
                     SizedBox(height: 6.h),
                     DropdownButtonFormField<StaffMember>(
                       value: _selectedStaff,
@@ -1389,14 +1526,16 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                             : 'Select staff',
                       ),
                       items: _staff
-                          .map((staff) => DropdownMenuItem(
-                                value: staff,
-                                child: Text(
-                                  staff.fullName ?? 'Unknown',
-                                  style: TextStyle(fontSize: 10.sp),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ))
+                          .map(
+                            (staff) => DropdownMenuItem(
+                              value: staff,
+                              child: Text(
+                                staff.fullName ?? 'Unknown',
+                                style: TextStyle(fontSize: 10.sp),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          )
                           .toList(),
                       onChanged: (staff) {
                         setState(() {
@@ -1416,11 +1555,14 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                     SizedBox(height: 12.h),
 
                     // Service Selection
-                    Text('Service *',
-                        style: TextStyle(
-                            fontSize: 10.sp,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey[600])),
+                    Text(
+                      'Service *',
+                      style: TextStyle(
+                        fontSize: 10.sp,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey[600],
+                      ),
+                    ),
                     SizedBox(height: 6.h),
                     Row(
                       children: [
@@ -1434,28 +1576,31 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                                   : 'Pick a service',
                             ),
                             items: _availableServices
-                                .map((s) => DropdownMenuItem(
-                                      value: s,
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              s.name ?? 'Unknown',
-                                              style: TextStyle(fontSize: 10.sp),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
+                                .map(
+                                  (s) => DropdownMenuItem(
+                                    value: s,
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            s.name ?? 'Unknown',
+                                            style: TextStyle(fontSize: 10.sp),
+                                            overflow: TextOverflow.ellipsis,
                                           ),
-                                          Text(
-                                            '₹${s.price}',
-                                            style: TextStyle(
-                                                fontSize: 9.sp,
-                                                color: Colors.grey[500]),
+                                        ),
+                                        Text(
+                                          '₹${s.price}',
+                                          style: TextStyle(
+                                            fontSize: 9.sp,
+                                            color: Colors.grey[500],
                                           ),
-                                        ],
-                                      ),
-                                    ))
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )
                                 .toList(),
                             onChanged: (s) {
                               setState(() {
@@ -1463,8 +1608,9 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                                 _selectedAddOns = [];
                                 if (s != null) {
                                   _availableAddOns = _allAddOns.where((addon) {
-                                    return addon.mappedServices
-                                            ?.contains(s.id ?? '') ??
+                                    return addon.mappedServices?.contains(
+                                          s.id ?? '',
+                                        ) ??
                                         false;
                                   }).toList();
                                 } else {
@@ -1535,8 +1681,11 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.add_circle_outline,
-                                  color: const Color(0xFF9145EE), size: 16.sp),
+                              Icon(
+                                Icons.add_circle_outline,
+                                color: const Color(0xFF9145EE),
+                                size: 16.sp,
+                              ),
                               SizedBox(width: 8.w),
                               Text(
                                 'Available Add-ons (Optional)',
@@ -1553,8 +1702,9 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                             spacing: 8.w,
                             runSpacing: 8.h,
                             children: _availableAddOns.map((addon) {
-                              final isSelected =
-                                  _selectedAddOns.contains(addon);
+                              final isSelected = _selectedAddOns.contains(
+                                addon,
+                              );
                               return InkWell(
                                 onTap: () {
                                   setState(() {
@@ -1568,7 +1718,9 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                                 },
                                 child: Container(
                                   padding: EdgeInsets.symmetric(
-                                      horizontal: 10.w, vertical: 6.h),
+                                    horizontal: 10.w,
+                                    vertical: 6.h,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
                                     borderRadius: BorderRadius.circular(6.r),
@@ -1619,7 +1771,9 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                       return Container(
                         margin: EdgeInsets.only(bottom: 8.h),
                         padding: EdgeInsets.symmetric(
-                            horizontal: 10.w, vertical: 8.h),
+                          horizontal: 10.w,
+                          vertical: 8.h,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFF6F0F2), // Light brand maroon
                           borderRadius: BorderRadius.circular(8.r),
@@ -1638,9 +1792,10 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                                 child: Text(
                                   '${index + 1}',
                                   style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 9.sp,
-                                      fontWeight: FontWeight.bold),
+                                    color: Colors.white,
+                                    fontSize: 9.sp,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ),
@@ -1656,16 +1811,18 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                                       Text(
                                         qs.service.name ?? 'Unknown',
                                         style: TextStyle(
-                                            color: Colors.black,
-                                            fontSize: 11.sp,
-                                            fontWeight: FontWeight.w600),
+                                          color: Colors.black,
+                                          fontSize: 11.sp,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
                                       Text(
                                         '₹${qs.service.price}',
                                         style: TextStyle(
-                                            color: Colors.black87,
-                                            fontSize: 10.sp,
-                                            fontWeight: FontWeight.bold),
+                                          color: Colors.black87,
+                                          fontSize: 10.sp,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -1673,37 +1830,40 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                                   Text(
                                     '${qs.staff.fullName} · $start - $end (${qs.service.duration} min)',
                                     style: TextStyle(
-                                        color: Colors.grey[600],
-                                        fontSize: 9.sp),
+                                      color: Colors.grey[600],
+                                      fontSize: 9.sp,
+                                    ),
                                   ),
                                   // Display add-ons if any
                                   if (qs.selectedAddOns.isNotEmpty) ...[
                                     SizedBox(height: 4.h),
-                                    ...qs.selectedAddOns.map((addon) => Padding(
-                                          padding: EdgeInsets.only(top: 2.h),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                '  + ${addon.name}',
-                                                style: TextStyle(
-                                                    color: Colors.grey[700],
-                                                    fontSize: 9.sp,
-                                                    fontStyle:
-                                                        FontStyle.italic),
+                                    ...qs.selectedAddOns.map(
+                                      (addon) => Padding(
+                                        padding: EdgeInsets.only(top: 2.h),
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Text(
+                                              '  + ${addon.name}',
+                                              style: TextStyle(
+                                                color: Colors.grey[700],
+                                                fontSize: 9.sp,
+                                                fontStyle: FontStyle.italic,
                                               ),
-                                              Text(
-                                                '+₹${addon.price} · ${addon.duration}m',
-                                                style: TextStyle(
-                                                    color: Colors.grey[700],
-                                                    fontSize: 9.sp,
-                                                    fontStyle:
-                                                        FontStyle.italic),
+                                            ),
+                                            Text(
+                                              '+₹${addon.price} · ${addon.duration}m',
+                                              style: TextStyle(
+                                                color: Colors.grey[700],
+                                                fontSize: 9.sp,
+                                                fontStyle: FontStyle.italic,
                                               ),
-                                            ],
-                                          ),
-                                        )),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                 ],
                               ),
@@ -1711,8 +1871,11 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                             SizedBox(width: 8.w),
                             IconButton(
                               onPressed: () => _removeFromQueue(index),
-                              icon: const Icon(Icons.remove_circle_outline,
-                                  color: Colors.grey, size: 16),
+                              icon: const Icon(
+                                Icons.remove_circle_outline,
+                                color: Colors.grey,
+                                size: 16,
+                              ),
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
                             ),
@@ -1747,9 +1910,9 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                               gradient: LinearGradient(
                                 colors: [
                                   Theme.of(context).primaryColor,
-                                  Theme.of(context)
-                                      .primaryColor
-                                      .withValues(alpha: 0.5)
+                                  Theme.of(
+                                    context,
+                                  ).primaryColor.withValues(alpha: 0.5),
                                 ],
                                 begin: Alignment.centerLeft,
                                 end: Alignment.centerRight,
@@ -1780,16 +1943,18 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                             Text(
                               'Total Services (${_queuedServices.length})',
                               style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 8.sp,
-                                  fontWeight: FontWeight.w600),
+                                color: Colors.grey[600],
+                                fontSize: 8.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                             Text(
                               '₹${_calculateTotalAmount().toStringAsFixed(2)}',
                               style: TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 9.sp,
-                                  fontWeight: FontWeight.bold),
+                                color: Colors.black,
+                                fontSize: 9.sp,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ],
                         ),
@@ -1802,16 +1967,18 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                             Text(
                               'Total Duration',
                               style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 8.sp,
-                                  fontWeight: FontWeight.w600),
+                                color: Colors.grey[600],
+                                fontSize: 8.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                             Text(
                               '${_calculateTotalDuration()} min',
                               style: TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 8.sp,
-                                  fontWeight: FontWeight.w600),
+                                color: Colors.black,
+                                fontSize: 8.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ],
                         ),
@@ -1822,16 +1989,18 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                             Text(
                               'Time Slot',
                               style: GoogleFonts.poppins(
-                                  color: Colors.grey[600],
-                                  fontSize: 8.sp,
-                                  fontWeight: FontWeight.w600),
+                                color: Colors.grey[600],
+                                fontSize: 8.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                             Text(
                               '${DateFormat('HH:mm').format(_queuedServices.first.startTime)} - ${DateFormat('HH:mm').format(_queuedServices.last.endTime)}',
                               style: GoogleFonts.poppins(
-                                  color: Theme.of(context).primaryColor,
-                                  fontSize: 9.sp,
-                                  fontWeight: FontWeight.bold),
+                                color: Theme.of(context).primaryColor,
+                                fontSize: 9.sp,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ],
                         ),
@@ -1853,9 +2022,13 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Amount (₹)',
-                              style: GoogleFonts.poppins(
-                                  fontSize: 8.sp, fontWeight: FontWeight.w600)),
+                          Text(
+                            'Amount (₹)',
+                            style: GoogleFonts.poppins(
+                              fontSize: 8.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                           SizedBox(height: 4.h),
                           TextFormField(
                             controller: _amountCtrl,
@@ -1871,9 +2044,13 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Discount (₹)',
-                              style: GoogleFonts.poppins(
-                                  fontSize: 8.sp, fontWeight: FontWeight.w600)),
+                          Text(
+                            'Discount (₹)',
+                            style: GoogleFonts.poppins(
+                              fontSize: 8.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                           SizedBox(height: 4.h),
                           TextFormField(
                             controller: _discountCtrl,
@@ -1897,9 +2074,13 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Tax (₹)',
-                              style: GoogleFonts.poppins(
-                                  fontSize: 8.sp, fontWeight: FontWeight.w600)),
+                          Text(
+                            'Tax (₹)',
+                            style: GoogleFonts.poppins(
+                              fontSize: 8.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                           SizedBox(height: 4.h),
                           TextFormField(
                             controller: _taxCtrl,
@@ -1916,9 +2097,13 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Total Amount (₹)',
-                              style: GoogleFonts.poppins(
-                                  fontSize: 8.sp, fontWeight: FontWeight.w600)),
+                          Text(
+                            'Total Amount (₹)',
+                            style: GoogleFonts.poppins(
+                              fontSize: 8.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                           SizedBox(height: 4.h),
                           TextFormField(
                             controller: _totalCtrl,
@@ -1928,7 +2113,9 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                               filled: true,
                             ),
                             style: GoogleFonts.poppins(
-                                fontSize: 9.sp, fontWeight: FontWeight.bold),
+                              fontSize: 9.sp,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
                       ),
@@ -1973,14 +2160,18 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                           padding: EdgeInsets.symmetric(vertical: 12.h),
                           side: BorderSide(color: Colors.grey[300]!),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8.r)),
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
                         ),
                         onPressed: () => Navigator.of(context).pop(),
-                        child: Text('Cancel',
-                            style: GoogleFonts.poppins(
-                                fontSize: 10.sp,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.grey[700])),
+                        child: Text(
+                          'Cancel',
+                          style: GoogleFonts.poppins(
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey[700],
+                          ),
+                        ),
                       ),
                     ),
                     SizedBox(width: 12.w),
@@ -1990,7 +2181,8 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                           backgroundColor: const Color(0xFF2E66E7),
                           padding: EdgeInsets.symmetric(vertical: 12.h),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8.r)),
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
                           elevation: 0,
                         ),
                         onPressed: _isSaving ? null : _saveAppointment,
@@ -2003,11 +2195,14 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : Text('Create',
+                            : Text(
+                                'Create',
                                 style: GoogleFonts.poppins(
-                                    color: Colors.white,
-                                    fontSize: 10.sp,
-                                    fontWeight: FontWeight.w600)),
+                                  color: Colors.white,
+                                  fontSize: 10.sp,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                       ),
                     ),
                   ],

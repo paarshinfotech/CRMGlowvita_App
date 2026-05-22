@@ -212,11 +212,24 @@ class _AddSuppProductPageState extends State<AddSuppProductPage> {
           ),
           ElevatedButton(
             onPressed: () async {
-              if (nameController.text.isNotEmpty) {
+              final name = nameController.text.trim();
+              if (name.isNotEmpty) {
+                final exists = _categories.any((cat) =>
+                    cat['name']?.toString().toLowerCase().trim() ==
+                    name.toLowerCase());
+                if (exists) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('product category already exist'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
                 try {
                   final newCat = await ApiService.addCRMProductCategory(
-                    nameController.text,
-                    descController.text,
+                    name,
+                    descController.text.trim(),
                   );
                   await _fetchCategories();
                   setState(() {
@@ -226,7 +239,7 @@ class _AddSuppProductPageState extends State<AddSuppProductPage> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                          'Category "${nameController.text}" added successfully!'),
+                          'Category "${name}" added successfully!'),
                       backgroundColor: Colors.green,
                     ),
                   );

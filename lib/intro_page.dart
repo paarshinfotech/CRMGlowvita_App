@@ -118,7 +118,7 @@ class _IntroPageState extends State<IntroPage> {
 
           // Bottom buttons
           Positioned(
-            bottom: 0,
+            bottom: 22,
             left: 0,
             right: 0,
             child: _BottomBar(

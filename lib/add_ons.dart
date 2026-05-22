@@ -763,219 +763,242 @@ class _AddEditAddOnDialogState extends State<AddEditAddOnDialog> {
           padding: const EdgeInsets.all(28),
           child: Form(
             key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      widget.addOn == null ? 'Create Add-On' : 'Edit Add-On',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        widget.addOn == null ? 'Create Add-On' : 'Edit Add-On',
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded, size: 20),
-                      onPressed: () => Navigator.pop(context),
-                    )
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Add extra services your customers can choose',
-                  style: GoogleFonts.poppins(
-                    color: Colors.grey.shade600,
-                    fontSize: 11,
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, size: 20),
+                        onPressed: () => Navigator.pop(context),
+                      )
+                    ],
                   ),
-                ),
-                const SizedBox(height: 20),
-                _label('Add-on Name'),
-                const SizedBox(height: 6),
-                TextFormField(
-                  controller: _name,
-                  style: GoogleFonts.poppins(fontSize: 12),
-                  decoration: _inputDecoration(),
-                  validator: (v) =>
-                      v?.trim().isEmpty ?? true ? 'Required' : null,
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _label('Price (₹)'),
-                          const SizedBox(height: 6),
-                          TextFormField(
-                            controller: _price,
-                            keyboardType: TextInputType.number,
-                            style: GoogleFonts.poppins(fontSize: 12),
-                            decoration: _inputDecoration(),
-                            validator: (v) =>
-                                v?.trim().isEmpty ?? true ? 'Required' : null,
-                          ),
-                        ],
-                      ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Add extra services your customers can choose',
+                    style: GoogleFonts.poppins(
+                      color: Colors.grey.shade600,
+                      fontSize: 11,
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _label('Duration (min)'),
-                          const SizedBox(height: 6),
-                          TextFormField(
-                            controller: _duration,
-                            keyboardType: TextInputType.number,
-                            style: GoogleFonts.poppins(fontSize: 12),
-                            decoration: _inputDecoration(),
-                            validator: (v) =>
-                                v?.trim().isEmpty ?? true ? 'Required' : null,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                _label('Mapped Services'),
-                const SizedBox(height: 8),
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade200),
-                    borderRadius: BorderRadius.circular(12),
-                    color: Colors.grey.shade50.withOpacity(0.5),
                   ),
-                  padding: const EdgeInsets.all(12),
-                  constraints: const BoxConstraints(maxHeight: 220),
-                  child: _isLoadingServices
-                      ? const Center(
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        )
-                      : _availableServices.isEmpty
-                          ? Center(
-                              child: Text("No services available",
-                                  style: GoogleFonts.poppins(fontSize: 11)))
-                          : GridView.builder(
-                              shrinkWrap: true,
-                              physics: const ClampingScrollPhysics(),
-                              gridDelegate:
-                                  const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                childAspectRatio: 4.5,
-                                crossAxisSpacing: 10,
-                                mainAxisSpacing: 0,
-                              ),
-                              itemCount: _availableServices.length,
-                              itemBuilder: (context, index) {
-                                final s = _availableServices[index];
-                                return InkWell(
-                                  onTap: () {
-                                    setState(() {
-                                      if (_selected.contains(s.id)) {
-                                        _selected.remove(s.id);
-                                      } else {
-                                        if (s.id != null) _selected.add(s.id!);
-                                      }
-                                    });
-                                  },
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: Checkbox(
-                                          value: _selected.contains(s.id),
-                                          onChanged: (v) {
-                                            setState(() {
-                                              if (v == true) {
-                                                if (s.id != null)
-                                                  _selected.add(s.id!);
-                                              } else {
-                                                _selected.remove(s.id);
-                                              }
-                                            });
-                                          },
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(3),
-                                          ),
-                                          side: BorderSide(
-                                            color: Colors.grey.shade400,
-                                            width: 1.5,
-                                          ),
-                                          activeColor:
-                                              Theme.of(context).primaryColor,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: Text(
-                                          s.name ?? 'Unknown',
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 11,
-                                            color: Colors.black87,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
+                  const SizedBox(height: 20),
+                  _label('Add-on Name'),
+                  const SizedBox(height: 6),
+                  TextFormField(
+                    controller: _name,
+                    style: GoogleFonts.poppins(fontSize: 12),
+                    decoration: _inputDecoration(),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) {
+                        return 'Required';
+                      }
+                      if (!RegExp(r'^[a-zA-Z\s]+$').hasMatch(v.trim())) {
+                        return 'Please enter alphabets only';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _label('Price (₹)'),
+                            const SizedBox(height: 6),
+                            TextFormField(
+                              controller: _price,
+                              keyboardType: TextInputType.number,
+                              style: GoogleFonts.poppins(fontSize: 12),
+                              decoration: _inputDecoration(),
+                              validator: (v) {
+                                if (v == null || v.trim().isEmpty) {
+                                  return 'Required';
+                                }
+                                if (!RegExp(r'^\d+$').hasMatch(v.trim())) {
+                                  return 'Please enter digits only';
+                                  }
+                                return null;
                               },
                             ),
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text(
-                        'Cancel',
-                        style: GoogleFonts.poppins(
-                            color: Colors.grey.shade800, fontSize: 12),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    FilledButton(
-                      onPressed: _isSaving ? null : _save,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: Theme.of(context).primaryColor,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 28, vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: _isSaving
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white))
-                          : Text(
-                              'Save Add-On',
-                              style: GoogleFonts.poppins(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w500,
-                                fontSize: 12,
-                              ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _label('Duration (min)'),
+                            const SizedBox(height: 6),
+                            TextFormField(
+                              controller: _duration,
+                              keyboardType: TextInputType.number,
+                              style: GoogleFonts.poppins(fontSize: 12),
+                              decoration: _inputDecoration(),
+                              validator: (v) {
+                                if (v == null || v.trim().isEmpty) {
+                                  return 'Required';
+                                }
+                                if (!RegExp(r'^\d+$').hasMatch(v.trim())) {
+                                  return 'Please enter digits only';
+                                }
+                                return null;
+                              },
                             ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  _label('Mapped Services'),
+                  const SizedBox(height: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade200),
+                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.grey.shade50.withOpacity(0.5),
                     ),
-                  ],
-                ),
-              ],
+                    padding: const EdgeInsets.all(12),
+                    constraints: const BoxConstraints(maxHeight: 220),
+                    child: _isLoadingServices
+                        ? const Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          )
+                        : _availableServices.isEmpty
+                            ? Center(
+                                child: Text("No services available",
+                                    style: GoogleFonts.poppins(fontSize: 11)))
+                            : GridView.builder(
+                                shrinkWrap: true,
+                                physics: const ClampingScrollPhysics(),
+                                gridDelegate:
+                                    const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  childAspectRatio: 4.5,
+                                  crossAxisSpacing: 10,
+                                  mainAxisSpacing: 0,
+                                ),
+                                itemCount: _availableServices.length,
+                                itemBuilder: (context, index) {
+                                  final s = _availableServices[index];
+                                  return InkWell(
+                                    onTap: () {
+                                      setState(() {
+                                        if (_selected.contains(s.id)) {
+                                          _selected.remove(s.id);
+                                        } else {
+                                          if (s.id != null) _selected.add(s.id!);
+                                        }
+                                      });
+                                    },
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: Checkbox(
+                                            value: _selected.contains(s.id),
+                                            onChanged: (v) {
+                                              setState(() {
+                                                if (v == true) {
+                                                  if (s.id != null)
+                                                    _selected.add(s.id!);
+                                                } else {
+                                                  _selected.remove(s.id);
+                                                }
+                                              });
+                                            },
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(3),
+                                            ),
+                                            side: BorderSide(
+                                              color: Colors.grey.shade400,
+                                              width: 1.5,
+                                            ),
+                                            activeColor:
+                                                Theme.of(context).primaryColor,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Text(
+                                            s.name ?? 'Unknown',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 11,
+                                              color: Colors.black87,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text(
+                          'Cancel',
+                          style: GoogleFonts.poppins(
+                              color: Colors.grey.shade800, fontSize: 12),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      FilledButton(
+                        onPressed: _isSaving ? null : _save,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Theme.of(context).primaryColor,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 28, vertical: 14),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: _isSaving
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white))
+                            : Text(
+                                'Save Add-On',
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 12,
+                                ),
+                              ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'services/api_service.dart';
+import 'utils/validators.dart';
 import 'dart:convert';
 
 class ForgotPasswordPage extends StatefulWidget {
@@ -22,14 +23,18 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     setState(() => _isLoading = true);
 
     try {
-      final response = await ApiService.forgotPassword(emailController.text.trim());
+      final response = await ApiService.forgotPassword(
+        emailController.text.trim(),
+      );
       final data = json.decode(response.body);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(data['message'] ?? "Reset instructions sent to your email"),
+              content: Text(
+                data['message'] ?? "Reset instructions sent to your email",
+              ),
               backgroundColor: Colors.green,
             ),
           );
@@ -40,7 +45,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(data['message'] ?? "Failed to send reset instructions"),
+              content: Text(
+                data['message'] ?? "Failed to send reset instructions",
+              ),
               backgroundColor: Colors.red,
             ),
           );
@@ -167,19 +174,17 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12.r),
-                        borderSide: const BorderSide(color: Color(0xFF4C51F5), width: 1.5),
+                        borderSide: const BorderSide(
+                          color: Color(0xFF4C51F5),
+                          width: 1.5,
+                        ),
                       ),
-                      contentPadding: EdgeInsets.symmetric(vertical: 16.h, horizontal: 16.w),
+                      contentPadding: EdgeInsets.symmetric(
+                        vertical: 16.h,
+                        horizontal: 16.w,
+                      ),
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your email';
-                      }
-                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                        return 'Enter a valid email address';
-                      }
-                      return null;
-                    },
+                    validator: Validators.validateEmail,
                   ),
                   SizedBox(height: 24.h),
 
