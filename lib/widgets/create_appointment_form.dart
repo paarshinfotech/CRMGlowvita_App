@@ -391,7 +391,10 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
     if (_queuedServices.isNotEmpty) {
       for (var qs in _queuedServices) {
         if (!qs.isFromPackage) {
-          totalAmount += (qs.service.price ?? 0).toDouble();
+          final sPrice = (qs.service.discountedPrice != null && qs.service.discountedPrice! > 0)
+              ? qs.service.discountedPrice!
+              : (qs.service.price ?? 0);
+          totalAmount += sPrice.toDouble();
           totalDuration += qs.service.duration ?? 0;
         }
 
@@ -403,7 +406,10 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
     }
     // Otherwise, if a service is selected in the dropdown, calculate for it
     else if (_selectedService != null) {
-      totalAmount += (_selectedService!.price ?? 0).toDouble();
+      final sPrice = (_selectedService!.discountedPrice != null && _selectedService!.discountedPrice! > 0)
+          ? _selectedService!.discountedPrice!
+          : (_selectedService!.price ?? 0);
+      totalAmount += sPrice.toDouble();
       totalDuration += _selectedService!.duration ?? 0;
       for (var addon in _selectedAddOns) {
         totalAmount += (addon.price ?? 0).toDouble();
@@ -846,7 +852,10 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
   double _calculateTotalAmount() {
     double total = _queuedServices.fold(0.0, (sum, item) {
       // Add service price
-      double sTotal = sum + (item.service.price ?? 0).toDouble();
+      final sPrice = (item.service.discountedPrice != null && item.service.discountedPrice! > 0)
+          ? item.service.discountedPrice!
+          : (item.service.price ?? 0);
+      double sTotal = sum + sPrice.toDouble();
       // Add add-on prices
       for (var addon in item.selectedAddOns) {
         sTotal += (addon.price ?? 0).toDouble();
@@ -1089,7 +1098,9 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
             "startTime": DateFormat('HH:mm').format(item.startTime),
             "endTime": DateFormat('HH:mm').format(item.endTime),
             "duration": item.service.duration,
-            "amount": item.service.price,
+            "amount": (item.service.discountedPrice != null && item.service.discountedPrice! > 0)
+                ? item.service.discountedPrice
+                : item.service.price,
             "addOns": item.selectedAddOns
                 .map(
                   (a) => {
@@ -1817,7 +1828,7 @@ class _CreateAppointmentFormState extends State<CreateAppointmentForm> {
                                         ),
                                       ),
                                       Text(
-                                        '₹${qs.service.price}',
+                                        '₹${qs.service.discountedPrice != null ? qs.service.discountedPrice : qs.service.price}',
                                         style: TextStyle(
                                           color: Colors.black87,
                                           fontSize: 10.sp,

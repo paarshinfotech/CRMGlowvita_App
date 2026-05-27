@@ -533,14 +533,7 @@ class _SuppSalesPageState extends State<SuppSalesPage> {
         _clearBilling();
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error saving order: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      debugPrint('Error saving order: $e');
     } finally {
       onFinally();
     }

@@ -8,7 +8,6 @@ import 'vendor_model.dart';
 import 'models/shipping_model.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-
 class ShippingPage extends StatefulWidget {
   const ShippingPage({super.key});
 
@@ -25,7 +24,6 @@ class _ShippingConfigPageState extends State<ShippingPage> {
   VendorProfile? _profile;
   ShippingSettings? _settings;
   bool _isLoading = false;
-
 
   @override
   void initState() {
@@ -52,7 +50,6 @@ class _ShippingConfigPageState extends State<ShippingPage> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
-
 
   Future<void> _fetchProfile() async {
     try {
@@ -113,7 +110,6 @@ class _ShippingConfigPageState extends State<ShippingPage> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -254,9 +250,9 @@ class _ShippingConfigPageState extends State<ShippingPage> {
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        _buildRadioOption('Fixed Amount', ChargeType.fixed),
+                        _buildRadioOption('Fixed(₹)', ChargeType.fixed),
                         const SizedBox(width: 24),
-                        _buildRadioOption('Percentage (%)', ChargeType.percent),
+                        _buildRadioOption('Percentage(%)', ChargeType.percent),
                       ],
                     ),
                     const SizedBox(height: 24),
@@ -302,7 +298,9 @@ class _ShippingConfigPageState extends State<ShippingPage> {
                       child: SizedBox(
                         width: 160,
                         child: ElevatedButton(
-                          onPressed: (enableShipping && !_isLoading) ? _save : null,
+                          onPressed: (enableShipping && !_isLoading)
+                              ? _save
+                              : null,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF4A2C3C),
                             foregroundColor: Colors.white,
@@ -331,7 +329,6 @@ class _ShippingConfigPageState extends State<ShippingPage> {
                         ),
                       ),
                     ),
-
                   ],
                 ),
               ),

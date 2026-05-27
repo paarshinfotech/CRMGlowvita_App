@@ -159,7 +159,10 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
             taxRate: 0,
             taxAmount: appt.serviceTax ?? 0.0,
             platformFee: appt.platformFee ?? 0.0,
-            totalAmount: appt.totalAmount ?? appt.finalAmount ?? 0.0,
+            totalAmount:
+                (appt.amount ?? 0.0) +
+                (appt.serviceTax ?? 0.0) +
+                (appt.platformFee ?? 0.0),
             balance: appt.amountRemaining ?? 0.0,
             paymentMethod: appt.paymentMethod ?? 'N/A',
             paymentStatus: finalStatus,

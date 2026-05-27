@@ -66,6 +66,7 @@ class _DashboardPageState extends State<DashboardPage>
   List<BillingInvoice> _allInvoices = [];
   List<Map<String, dynamic>> _allExpenses = [];
   bool _isLoading = true;
+  List<Map<String, dynamic>> _salesByProductData = [];
 
   // KPI Values
   double _totalRevenue = 0;
@@ -127,10 +128,12 @@ class _DashboardPageState extends State<DashboardPage>
         ApiService.getReviews(),
         ApiService.getInvoices(),
         ApiService.getExpenses(),
+        ApiService.getSalesByProductReport(),
       ]);
 
       if (mounted) {
         final appointmentData = results[0] as Map<String, dynamic>;
+        final salesReportData = results[6] as Map<String, dynamic>;
         setState(() {
           _allAppointments = appointmentData['data'] ?? [];
           _allServices = results[1] as List<Service>;
@@ -138,6 +141,7 @@ class _DashboardPageState extends State<DashboardPage>
           _allReviews = results[3] as List<Map<String, dynamic>>;
           _allInvoices = results[4] as List<BillingInvoice>;
           _allExpenses = results[5] as List<Map<String, dynamic>>;
+          _salesByProductData = (salesReportData['data']?['salesByProduct'] as List?)?.cast<Map<String, dynamic>>() ?? [];
           _calculateKpis();
           _isLoading = false;
         });
@@ -202,9 +206,13 @@ class _DashboardPageState extends State<DashboardPage>
       }
 
       // Check for upcoming
-      if (appt.date != null && appt.date!.isAfter(now)) {
-        if (appt.status?.toLowerCase() != 'cancelled') {
-          _upcomingAppts++;
+      if (appt.date != null) {
+        final apptDate = DateTime(appt.date!.year, appt.date!.month, appt.date!.day);
+        final todayDate = DateTime(now.year, now.month, now.day);
+        if (apptDate.isAfter(todayDate) || apptDate.isAtSameMomentAs(todayDate)) {
+          if (appt.status?.toLowerCase() != 'cancelled' && appt.status?.toLowerCase() != 'completed') {
+            _upcomingAppts++;
+          }
         }
       }
     }
@@ -271,8 +279,8 @@ class _DashboardPageState extends State<DashboardPage>
           appt.invoiceNumber != null && appt.invoiceNumber!.isNotEmpty;
       if ((isPaid || hasInvoice) && appt.date != null) {
         // Calculate difference in months
-        int monthsDiff = (now.year - appt.date!.year) * 12 +
-            (now.month - appt.date!.month);
+        int monthsDiff =
+            (now.year - appt.date!.year) * 12 + (now.month - appt.date!.month);
         if (monthsDiff >= 0 && monthsDiff < 7) {
           int index = 6 - monthsDiff; // 0 is 6 months ago, 6 is current month
           double amt = appt.totalAmount ?? appt.finalAmount ?? 0.0;
@@ -288,41 +296,59 @@ class _DashboardPageState extends State<DashboardPage>
     }
 
     // Top Products
-    Map<String, int> productSales = {};
-    for (var invoice in _allInvoices) {
-      for (var item in invoice.items) {
-        if (item.itemType == 'product') {
-          productSales[item.name] =
-              (productSales[item.name] ?? 0) + item.quantity;
+    if (_salesByProductData.isNotEmpty) {
+      var sortedProducts = List<Map<String, dynamic>>.from(_salesByProductData)
+        ..sort((a, b) {
+          final qtyA = (a['quantitySold'] as num?)?.toInt() ?? 0;
+          final qtyB = (b['quantitySold'] as num?)?.toInt() ?? 0;
+          return qtyB.compareTo(qtyA);
+        });
+
+      _topProductNames = [];
+      _topProductValues = [];
+      final top5Products = sortedProducts.take(5).toList();
+      int maxProd = top5Products.isNotEmpty ? ((top5Products[0]['quantitySold'] as num?)?.toInt() ?? 1) : 1;
+      if (maxProd == 0) maxProd = 1;
+      for (var p in top5Products) {
+        _topProductNames.add(p['productName']?.toString() ?? 'N/A');
+        _topProductValues.add(((p['quantitySold'] as num?)?.toDouble() ?? 0.0) / maxProd);
+      }
+    } else {
+      Map<String, int> productSales = {};
+      for (var invoice in _allInvoices) {
+        for (var item in invoice.items) {
+          if (item.itemType == 'product') {
+            productSales[item.name] =
+                (productSales[item.name] ?? 0) + item.quantity;
+          }
         }
       }
-    }
-    var sortedProducts = productSales.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+      var sortedProducts = productSales.entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
 
-    _topProductNames = [];
-    _topProductValues = [];
-    final top5Products = sortedProducts.take(5).toList();
-    int maxProd = top5Products.isNotEmpty ? top5Products[0].value : 1;
-    for (var p in top5Products) {
-      _topProductNames.add(p.key);
-      _topProductValues.add(p.value / maxProd);
+      _topProductNames = [];
+      _topProductValues = [];
+      final top5Products = sortedProducts.take(5).toList();
+      int maxProd = top5Products.isNotEmpty ? top5Products[0].value : 1;
+      for (var p in top5Products) {
+        _topProductNames.add(p.key);
+        _topProductValues.add(p.value / maxProd);
+      }
     }
 
     // Feedback
-    // Assuming reviews have a 'category' or similar, else average all
     double totalSalon = 0, totalProd = 0, totalServ = 0;
     int cSalon = 0, cProd = 0, cServ = 0;
     for (var rev in _allReviews) {
       double rating = (rev['rating'] as num?)?.toDouble() ?? 0;
-      String cat = (rev['category'] ?? '').toString().toLowerCase();
-      if (cat.contains('salon')) {
+      String type = (rev['entityType'] ?? rev['category'] ?? '').toString().toLowerCase();
+      if (type.contains('salon')) {
         totalSalon += rating;
         cSalon++;
-      } else if (cat.contains('product')) {
+      } else if (type.contains('product')) {
         totalProd += rating;
         cProd++;
-      } else {
+      } else if (type.contains('service')) {
         totalServ += rating;
         cServ++;
       }
@@ -386,6 +412,16 @@ class _DashboardPageState extends State<DashboardPage>
       default:
         return 'All Time';
     }
+  }
+
+  bool _isUpcoming(AppointmentModel a) {
+    if (a.date == null) return false;
+    if (a.status?.toLowerCase() == 'cancelled') return false;
+    if (a.status?.toLowerCase() == 'completed') return false;
+    final now = DateTime.now();
+    final apptDate = DateTime(a.date!.year, a.date!.month, a.date!.day);
+    final todayDate = DateTime(now.year, now.month, now.day);
+    return apptDate.isAfter(todayDate) || apptDate.isAtSameMomentAs(todayDate);
   }
 
   @override
@@ -896,13 +932,12 @@ class _DashboardPageState extends State<DashboardPage>
                                 ),
                                 const Divider(height: 1),
                                 ..._allAppointments
-                                    .where(
-                                      (a) =>
-                                          a.date != null &&
-                                          a.date!.isAfter(DateTime.now()) &&
-                                          a.status?.toLowerCase() !=
-                                              'cancelled',
-                                    )
+                                    .where(_isUpcoming)
+                                    // (a) =>
+                                    //     a.date != null &&
+                                    //     a.date!.isAfter(DateTime.now()) &&
+                                    //     a.status?.toLowerCase() !=
+                                    //         'cancelled',
                                     .take(4)
                                     .map(
                                       (a) => Padding(
@@ -1315,7 +1350,10 @@ class _SalesOverviewChart extends StatelessWidget {
                     SizedBox(
                       height: chartH,
                       child: CustomPaint(
-                        painter: _SalesLinePainter(data: data, totalRevenue: totalRevenue),
+                        painter: _SalesLinePainter(
+                          data: data,
+                          totalRevenue: totalRevenue,
+                        ),
                         size: Size(slotW * _months.length, chartH),
                       ),
                     ),

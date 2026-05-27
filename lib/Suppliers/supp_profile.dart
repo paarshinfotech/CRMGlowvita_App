@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../services/api_service.dart';
@@ -10,8 +11,12 @@ import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/razorpay_service.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
+import 'supp_wallet.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SuppProfilePage extends StatefulWidget {
   const SuppProfilePage({super.key});
@@ -58,12 +63,35 @@ class _SuppProfilePageState extends State<SuppProfilePage>
   List<String> _newGalleryBase64 = [];
   Map<String, String?> _newDocumentsBase64 = {};
 
+  // Travel settings (local storage for supplier)
+  String _travelType = "Shop Only (No travel)";
+  final _radiusController = TextEditingController();
+  final _speedController = TextEditingController();
+  final _latController = TextEditingController();
+  final _lngController = TextEditingController();
+
+  // Opening hours (local storage for supplier)
+  Map<String, bool> openDays = {};
+  Map<String, String> openTimes = {};
+  Map<String, String> closeTimes = {};
+
   final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 7, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.index == 1 && !_tabController.indexIsChanging) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const SuppWalletPage()),
+        ).then((_) {
+          _tabController.animateTo(0);
+        });
+      }
+    });
+    _loadLocalSupplierSettings();
     _fetchProfileData();
   }
 
@@ -181,14 +209,13 @@ class _SuppProfilePageState extends State<SuppProfilePage>
 
     setState(() => _isSaving = true);
     try {
-      final payload = {
-        'bankDetails': {
-          'accountHolder': _accountHolderController.text,
-          'accountNumber': _accountNumberController.text,
-          'bankName': _bankNameController.text,
-          'ifscCode': _ifscCodeController.text,
-          'upiId': _upiIdController.text,
-        },
+      final payload = _profile!.toJson();
+      payload['bankDetails'] = {
+        'accountHolder': _accountHolderController.text.trim(),
+        'accountNumber': _accountNumberController.text.trim(),
+        'bankName': _bankNameController.text.trim(),
+        'ifscCode': _ifscCodeController.text.trim(),
+        'upiId': _upiIdController.text.trim(),
       };
 
       await ApiService.updateSupplierProfile(payload);
@@ -297,7 +324,67 @@ class _SuppProfilePageState extends State<SuppProfilePage>
     _ifscCodeController.dispose();
     _upiIdController.dispose();
     _taxValueController.dispose();
+    _radiusController.dispose();
+    _speedController.dispose();
+    _latController.dispose();
+    _lngController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadLocalSupplierSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _radiusController.text = prefs.getString('supp_travel_radius') ?? '10';
+      _speedController.text = prefs.getString('supp_travel_speed') ?? '30';
+      _latController.text = prefs.getString('supp_lat') ?? '';
+      _lngController.text = prefs.getString('supp_lng') ?? '';
+      _travelType =
+          prefs.getString('supp_travel_type') ?? 'Shop Only (No travel)';
+
+      // Opening hours
+      final days = [
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday',
+      ];
+      for (var day in days) {
+        openDays[day] = prefs.getBool('supp_open_$day') ?? true;
+        openTimes[day] = prefs.getString('supp_open_time_$day') ?? '09:00';
+        closeTimes[day] = prefs.getString('supp_close_time_$day') ?? '18:30';
+      }
+    });
+  }
+
+  Future<void> _saveLocalSupplierTravelSettings() async {
+    setState(() => _isSaving = true);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('supp_travel_radius', _radiusController.text);
+    await prefs.setString('supp_travel_speed', _speedController.text);
+    await prefs.setString('supp_lat', _latController.text);
+    await prefs.setString('supp_lng', _lngController.text);
+    await prefs.setString('supp_travel_type', _travelType);
+    setState(() => _isSaving = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Travel settings updated successfully')),
+    );
+  }
+
+  Future<void> _saveLocalSupplierOpeningHours() async {
+    setState(() => _isSaving = true);
+    final prefs = await SharedPreferences.getInstance();
+    for (var day in openDays.keys) {
+      await prefs.setBool('supp_open_$day', openDays[day] ?? false);
+      await prefs.setString('supp_open_time_$day', openTimes[day] ?? '09:00');
+      await prefs.setString('supp_close_time_$day', closeTimes[day] ?? '18:30');
+    }
+    setState(() => _isSaving = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Opening hours updated successfully')),
+    );
   }
 
   @override
@@ -343,7 +430,7 @@ class _SuppProfilePageState extends State<SuppProfilePage>
                 style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.red),
               ),
               SizedBox(height: 24.h),
-              _buildButton("Try Again", _fetchProfileData, width: 140.w),
+              _modernButton("Try Again", _fetchProfileData, width: 140.w),
             ],
           ),
         ),
@@ -379,22 +466,44 @@ class _SuppProfilePageState extends State<SuppProfilePage>
                   tabBar: TabBar(
                     controller: _tabController,
                     isScrollable: true,
-                    labelColor: Colors.black87,
-                    unselectedLabelColor: Colors.grey.shade600,
-                    indicatorColor: Colors.black87,
-                    indicatorWeight: 2.4,
-                    labelStyle: GoogleFonts.inter(
-                      fontSize: 11.sp,
-                      fontWeight: FontWeight.w600,
+
+                    dividerColor: Colors.transparent,
+                    indicatorSize: TabBarIndicatorSize.tab,
+
+                    splashFactory: NoSplash.splashFactory,
+                    overlayColor: MaterialStateProperty.all(Colors.transparent),
+
+                    labelPadding: EdgeInsets.symmetric(horizontal: 10.w),
+
+                    indicator: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(6.r),
+                      border: Border.all(
+                        color: const Color(0xFF5B3A4A),
+                        width: 1,
+                      ),
                     ),
-                    unselectedLabelStyle: GoogleFonts.inter(fontSize: 11.sp),
+
+                    labelColor: const Color(0xFF3F2A36),
+                    unselectedLabelColor: Colors.grey.shade700,
+
+                    labelStyle: GoogleFonts.inter(
+                      fontSize: 9.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+
+                    unselectedLabelStyle: GoogleFonts.inter(
+                      fontSize: 9.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+
                     tabs: const [
                       Tab(text: "Profile"),
+                      Tab(text: "Wallet"),
                       Tab(text: "Subscription"),
-                      Tab(text: "Gallery"),
                       Tab(text: "Bank Details"),
                       Tab(text: "Documents"),
-                      Tab(text: "SMS Package"),
+                      Tab(text: "SMS Packages"),
                       Tab(text: "Taxes"),
                     ],
                   ),
@@ -405,8 +514,8 @@ class _SuppProfilePageState extends State<SuppProfilePage>
               controller: _tabController,
               children: [
                 _buildProfileTab(),
+                const SizedBox.shrink(), // Wallet navigation placeholder
                 _buildSubscriptionTab(),
-                _buildGalleryTab(),
                 _buildBankDetailsTab(),
                 _buildDocumentsTab(),
                 _buildSmsPackageTab(),
@@ -428,193 +537,303 @@ class _SuppProfilePageState extends State<SuppProfilePage>
 
   Widget _buildHeader() {
     return Padding(
-      padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 24.h),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              GestureDetector(
-                onTap: () {
-                  showModalBottomSheet(
-                    context: context,
-                    builder: (context) => SafeArea(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
+      padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 16.h),
+      child: Container(
+        padding: EdgeInsets.all(16.w),
+        decoration: BoxDecoration(
+          color: const Color(0xFF432C39),
+          borderRadius: BorderRadius.circular(16.r),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF432C39).withOpacity(0.2),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            GestureDetector(
+              onTap: () {
+                showModalBottomSheet(
+                  context: context,
+                  builder: (context) => SafeArea(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ListTile(
+                          leading: const Icon(Icons.photo_library),
+                          title: const Text('Choose from Gallery'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            _pickImage(true);
+                          },
+                        ),
+                        if (_profile?.profileImage.isNotEmpty == true ||
+                            _newProfileImageBase64 != null)
                           ListTile(
-                            leading: const Icon(Icons.photo_library),
-                            title: const Text('Choose from Gallery'),
+                            leading: const Icon(Icons.visibility),
+                            title: const Text('View Profile Image'),
                             onTap: () {
                               Navigator.pop(context);
-                              _pickImage(true);
+                              _viewMedia(
+                                _newProfileImageBase64 ??
+                                    _profile?.profileImage,
+                                "Profile Image",
+                              );
                             },
                           ),
-                          if (_profile?.profileImage.isNotEmpty == true ||
-                              _newProfileImageBase64 != null)
-                            ListTile(
-                              leading: const Icon(Icons.visibility),
-                              title: const Text('View Profile Image'),
-                              onTap: () {
-                                Navigator.pop(context);
-                                _viewMedia(
-                                  _newProfileImageBase64 ??
-                                      _profile?.profileImage,
-                                  "Profile Image",
-                                );
-                              },
-                            ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-                child: Hero(
-                  tag: 'profile_image',
-                  child: Container(
-                    width: 70.w,
-                    height: 70.w,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 3),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.08),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
                       ],
-                      image: DecorationImage(
-                        image: _newProfileImageBase64 != null
-                            ? MemoryImage(
-                                base64Decode(
-                                  _newProfileImageBase64!.split(',').last,
-                                ),
-                              )
-                            : (_profile?.profileImage.isNotEmpty == true
-                                      ? NetworkImage(_profile!.profileImage)
-                                      : const AssetImage(
-                                          'assets/images/user.png',
-                                        ))
-                                  as ImageProvider,
-                        fit: BoxFit.cover,
+                    ),
+                  ),
+                );
+              },
+              child: Hero(
+                tag: 'profile_image',
+                child: Container(
+                  width: 70.w,
+                  height: 70.w,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 3),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
+                    ],
+                    image: DecorationImage(
+                      image: _newProfileImageBase64 != null
+                          ? MemoryImage(
+                              base64Decode(
+                                _newProfileImageBase64!.split(',').last,
+                              ),
+                            )
+                          : (_profile?.profileImage.isNotEmpty == true
+                                    ? NetworkImage(_profile!.profileImage)
+                                    : const AssetImage(
+                                        'assets/images/user.png',
+                                      ))
+                                as ImageProvider,
+                      fit: BoxFit.cover,
                     ),
                   ),
                 ),
               ),
-              SizedBox(width: 16.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _profile?.shopName ?? "GlowVita Supplier",
-                      style: GoogleFonts.inter(
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w700,
-                      ),
+            ),
+            SizedBox(width: 16.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _profile?.shopName ?? "GlowVita Supplier",
+                    style: GoogleFonts.inter(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
                     ),
-                    SizedBox(height: 4.h),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.location_on_outlined,
-                          size: 14.sp,
-                          color: Colors.grey.shade600,
-                        ),
-                        SizedBox(width: 4.w),
-                        Expanded(
-                          child: Text(
-                            _profile?.address ?? "Location not set",
-                            style: GoogleFonts.inter(
-                              fontSize: 10.5.sp,
-                              color: Colors.grey.shade600,
-                            ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                  SizedBox(height: 4.h),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.location_on_outlined,
+                        size: 12.sp,
+                        color: Colors.white70,
+                      ),
+                      SizedBox(width: 4.w),
+                      Expanded(
+                        child: Text(
+                          "Manage your supplier profile and settings",
+                          style: GoogleFonts.inter(
+                            fontSize: 9.5.sp,
+                            color: Colors.white70,
                           ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
-                      ],
-                    ),
-                    SizedBox(height: 6.h),
-                    Text(
-                      "Supplier ID • ${_profile?.id.substring(0, 8).toUpperCase() ?? "N/A"}",
-                      style: GoogleFonts.inter(
-                        fontSize: 9.5.sp,
-                        color: Colors.grey.shade500,
                       ),
+                    ],
+                  ),
+                  SizedBox(height: 6.h),
+                  Text(
+                    "Supplier ID : ${_profile?.id.substring(0, 8).toUpperCase() ?? "N/A"}",
+                    style: GoogleFonts.inter(
+                      fontSize: 9.5.sp,
+                      color: Colors.white70,
                     ),
-                  ],
-                ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                ],
               ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildProfileTab() {
     return SingleChildScrollView(
-      padding: EdgeInsets.all(20.w),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionTitle("Personal Information"),
-          SizedBox(height: 16.h),
+          // PERSONAL INFORMATION
+          _modernSectionTitle(
+            "Personal Information",
+            "Manage your personal and contact details.",
+          ),
+
+          SizedBox(height: 18.h),
+
           Row(
             children: [
-              Expanded(child: _buildField("First Name", _firstNameController)),
-              SizedBox(width: 16.w),
-              Expanded(child: _buildField("Last Name", _lastNameController)),
+              Expanded(
+                child: _modernField(
+                  "First Name",
+                  _firstNameController,
+                  hint: "Enter First Name",
+                ),
+              ),
+
+              SizedBox(width: 12.w),
+
+              Expanded(
+                child: _modernField(
+                  "Last Name",
+                  _lastNameController,
+                  hint: "Enter Last Name",
+                ),
+              ),
             ],
           ),
-          _buildField(
+
+          _modernField(
             "Email",
             _emailController,
+            hint: "Enter Email",
             keyboardType: TextInputType.emailAddress,
             enabled: false,
           ),
-          _buildField(
+
+          _modernField(
             "Mobile",
             _mobileController,
+            hint: "Enter Mobile Number",
             keyboardType: TextInputType.phone,
           ),
-          SizedBox(height: 24.h),
-          _sectionTitle("Business Information"),
-          SizedBox(height: 16.h),
-          _buildField("Shop Name", _shopNameController),
-          _buildField("Description", _descriptionController, maxLines: 3),
-          _buildField(
+
+          SizedBox(height: 8.h),
+
+          // BUSINESS INFORMATION
+          _modernSectionTitle(
+            "Business Information",
+            "Manage your business and registration details.",
+          ),
+
+          SizedBox(height: 18.h),
+
+          _modernField(
+            "Shop Name",
+            _shopNameController,
+            hint: "Enter Shop Name",
+          ),
+
+          _modernField(
+            "Description",
+            _descriptionController,
+            hint: "Enter Description",
+            maxLines: 3,
+          ),
+
+          _modernField(
             "Minimum Order Value",
             _minOrderValueController,
+            hint: "Enter Minimum Order Value",
             keyboardType: TextInputType.number,
           ),
-          _buildDropdownField("Supplier Type", [
+
+          _modernDropdownField("Supplier Type", [
             "Manufacturer",
             "Distributor",
             "Wholesaler",
           ], _supplierTypeController),
-          _buildField("Business Registration No", _businessRegNoController),
-          _buildField("GST Number", _gstNoController),
-          SizedBox(height: 24.h),
-          _sectionTitle("Address Details"),
-          SizedBox(height: 16.h),
-          _buildField("Street Address", _addressController, maxLines: 2),
+
+          _modernField(
+            "Business Registration No",
+            _businessRegNoController,
+            hint: "Enter Registration Number",
+          ),
+
+          _modernField(
+            "GST Number",
+            _gstNoController,
+            hint: "Enter GST Number",
+          ),
+
+          SizedBox(height: 8.h),
+
+          // ADDRESS DETAILS
+          _modernSectionTitle(
+            "Address Details",
+            "Manage your business address information.",
+          ),
+
+          SizedBox(height: 18.h),
+
+          _modernField(
+            "Street Address",
+            _addressController,
+            hint: "Enter Street Address",
+            maxLines: 2,
+          ),
+
           Row(
             children: [
-              Expanded(child: _buildField("City", _cityController)),
-              SizedBox(width: 16.w),
-              Expanded(child: _buildField("State", _stateController)),
+              Expanded(
+                child: _modernField(
+                  "City",
+                  _cityController,
+                  hint: "Enter City",
+                ),
+              ),
+
+              SizedBox(width: 12.w),
+
+              Expanded(
+                child: _modernField(
+                  "State",
+                  _stateController,
+                  hint: "Enter State",
+                ),
+              ),
             ],
           ),
-          _buildField(
+
+          _modernField(
             "Pincode",
             _pincodeController,
+            hint: "Enter Pincode",
             keyboardType: TextInputType.number,
           ),
-          SizedBox(height: 32.h),
-          _buildButton("Save Profile Information", _saveProfile),
-          SizedBox(height: 32.h),
+
+          SizedBox(height: 22.h),
+
+          Center(
+            child: _modernButton(
+              "Save Profile Information",
+              _saveProfile,
+              width: 190.w,
+            ),
+          ),
+
+          SizedBox(height: 24.h),
         ],
       ),
     );
@@ -622,219 +841,324 @@ class _SuppProfilePageState extends State<SuppProfilePage>
 
   Widget _buildSubscriptionTab() {
     if (_isLoading) return _buildLoading();
+
     final sub = _profile?.subscription;
-    if (sub == null) return _buildNoData("No active subscription");
+
+    if (sub == null) {
+      return _buildNoData("No active subscription");
+    }
 
     final startDateStr = sub.startDate != null
-        ? DateFormat('dd MMM yyyy').format(sub.startDate!)
+        ? DateFormat('MMMM dd, yyyy').format(sub.startDate!)
         : "N/A";
+
     final endDateStr = sub.endDate != null
-        ? DateFormat('dd MMM yyyy').format(sub.endDate!)
+        ? DateFormat('MMMM dd, yyyy').format(sub.endDate!)
         : "N/A";
 
     final totalDays =
         (sub.endDate?.difference(sub.startDate ?? DateTime.now()).inDays ??
             29) +
         1;
+
     final daysRemaining =
         (sub.endDate?.difference(DateTime.now()).inDays ?? 0) + 1;
+
     final progress = totalDays > 1
         ? (1 - (daysRemaining / totalDays)).clamp(0.0, 1.0)
         : 1.0;
 
     return SingleChildScrollView(
-      padding: EdgeInsets.all(16.w),
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "My Subscription",
-                style: GoogleFonts.inter(
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                decoration: BoxDecoration(
-                  color: sub.status.toLowerCase() == 'active'
-                      ? Colors.green.shade50
-                      : Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(6.r),
-                ),
-                child: Text(
-                  sub.status.toUpperCase(),
-                  style: GoogleFonts.inter(
-                    fontSize: 8.sp,
-                    fontWeight: FontWeight.w800,
-                    color: sub.status.toLowerCase() == 'active'
-                        ? Colors.green.shade700
-                        : Colors.red.shade700,
-                  ),
-                ),
-              ),
-            ],
+          Text(
+            "Subscription",
+            style: GoogleFonts.inter(
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
           ),
+
+          SizedBox(height: 2.h),
+
+          Text(
+            "Details about your current plan and billing.",
+            style: GoogleFonts.inter(
+              fontSize: 9.sp,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+
           SizedBox(height: 12.h),
+
+          // MAIN CARD
           Container(
-            padding: EdgeInsets.all(16.w),
+            width: double.infinity,
+            padding: EdgeInsets.all(12.w),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8F8F8),
-              borderRadius: BorderRadius.circular(12.r),
-              border: Border.all(color: Colors.grey.shade100),
+              color: const Color(0xFFDDE9F6),
+              borderRadius: BorderRadius.circular(10.r),
+              border: Border.all(color: Colors.grey.shade300, width: 0.5),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // TOP ROW
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _buildSubDetailItem(
-                      "Plan Name",
-                      _getPlanName(sub.plan),
-                      isBold: true,
-                    ),
-                    _buildSubDetailItem(
-                      "Days Remaining",
-                      "$daysRemaining days left",
-                      isBold: true,
-                      statusColor: Colors.purple.shade700,
-                    ),
-                  ],
-                ),
-                SizedBox(height: 16.h),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _buildSubDetailItem("Start Date", startDateStr),
-                    _buildSubDetailItem("End Date", endDateStr),
-                  ],
-                ),
-                SizedBox(height: 20.h),
-                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Subscription Progress",
+                          _getPlanName(sub.plan),
                           style: GoogleFonts.inter(
-                            fontSize: 9.sp,
-                            color: Colors.grey.shade600,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 15.sp,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black87,
                           ),
                         ),
+
+                        SizedBox(height: 2.h),
+
                         Text(
-                          "$daysRemaining days left",
+                          "Expires on $endDateStr",
                           style: GoogleFonts.inter(
-                            fontSize: 9.sp,
-                            color: Colors.grey.shade600,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 8.sp,
+                            color: Colors.grey.shade700,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
                     ),
-                    SizedBox(height: 6.h),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4.r),
-                      child: LinearProgressIndicator(
-                        value: progress,
-                        minHeight: 6.h,
-                        backgroundColor: Colors.grey.shade200,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          progress > 0.8
-                              ? Colors.orange
-                              : const Color(0xFF432C39),
-                        ),
+
+                    // STATUS BADGE
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12.w,
+                        vertical: 4.h,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD6F5D6),
+                        borderRadius: BorderRadius.circular(20.r),
+                        border: Border.all(color: Colors.green.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 5.w,
+                            height: 5.w,
+                            decoration: const BoxDecoration(
+                              color: Colors.green,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+
+                          SizedBox(width: 4.w),
+
+                          Text(
+                            sub.status,
+                            style: GoogleFonts.inter(
+                              fontSize: 8.sp,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.green.shade800,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-                SizedBox(height: 24.h),
+
+                SizedBox(height: 18.h),
+
+                // DATE ROW
                 Row(
                   children: [
                     Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          showDialog(
-                            context: context,
-                            builder: (context) => ChangePlanDialog(
-                              currentPlanName: sub.plan,
-                              onPlanChanged: () {
-                                _fetchProfileData();
-                              },
-                              email: _profile?.email,
-                              phone: _profile?.mobile,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "START DATE",
+                            style: GoogleFonts.inter(
+                              fontSize: 7.sp,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.grey.shade700,
+                              letterSpacing: 0.5,
                             ),
-                          );
-                        },
-                        icon: Icon(
-                          Icons.sync_rounded,
-                          size: 14.sp,
-                          color: Colors.white,
-                        ),
-                        label: Text(
-                          "Change Plan",
-                          style: GoogleFonts.inter(
-                            fontSize: 10.sp,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
                           ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF432C39),
-                          elevation: 0,
-                          padding: EdgeInsets.symmetric(vertical: 12.h),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8.r),
+
+                          SizedBox(height: 3.h),
+
+                          Text(
+                            startDateStr,
+                            style: GoogleFonts.inter(
+                              fontSize: 9.sp,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black87,
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     ),
-                    SizedBox(width: 12.w),
+
                     Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () async {
-                          await _fetchProfileData();
-                          if (mounted && _profile?.subscription != null) {
-                            showDialog(
-                              context: context,
-                              builder: (context) => _SubscriptionHistoryDialog(
-                                history: _profile?.subscription?.history ?? [],
-                                planIdToName: _planIdToName,
-                              ),
-                            );
-                          }
-                        },
-                        icon: Icon(
-                          Icons.history_rounded,
-                          size: 14.sp,
-                          color: Colors.black87,
-                        ),
-                        label: Text(
-                          "View History",
-                          style: GoogleFonts.inter(
-                            fontSize: 10.sp,
-                            color: Colors.black87,
-                            fontWeight: FontWeight.w600,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "END DATE",
+                            style: GoogleFonts.inter(
+                              fontSize: 7.sp,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.grey.shade700,
+                              letterSpacing: 0.5,
+                            ),
                           ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(color: Colors.grey.shade300),
-                          padding: EdgeInsets.symmetric(vertical: 12.h),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8.r),
+
+                          SizedBox(height: 3.h),
+
+                          Text(
+                            endDateStr,
+                            style: GoogleFonts.inter(
+                              fontSize: 9.sp,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black87,
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     ),
                   ],
                 ),
+
+                SizedBox(height: 16.h),
+
+                // DAYS REMAINING
+                Text(
+                  "$daysRemaining Days Remaining",
+                  style: GoogleFonts.inter(
+                    fontSize: 7.sp,
+                    color: Colors.grey.shade700,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+
+                SizedBox(height: 6.h),
+
+                // PROGRESS BAR
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10.r),
+                  child: Stack(
+                    children: [
+                      Container(
+                        height: 6.h,
+                        width: double.infinity,
+                        color: const Color(0xFFD7CFF8),
+                      ),
+
+                      FractionallySizedBox(
+                        widthFactor: progress,
+                        child: Container(
+                          height: 6.h,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF4B2637),
+                            borderRadius: BorderRadius.circular(10.r),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
+            ),
+          ),
+
+          SizedBox(height: 16.h),
+
+          // CHANGE PLAN BUTTON
+          SizedBox(
+            width: double.infinity,
+            height: 36.h,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => ChangePlanDialog(
+                    currentPlanName: sub.plan,
+                    onPlanChanged: () {
+                      _fetchProfileData();
+                    },
+                    email: _profile?.email,
+                    phone: _profile?.mobile,
+                  ),
+                );
+              },
+              icon: Icon(Icons.sync_rounded, size: 14.sp, color: Colors.white),
+              label: Text(
+                "Change Plan",
+                style: GoogleFonts.inter(
+                  fontSize: 10.sp,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4B2637),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+              ),
+            ),
+          ),
+
+          SizedBox(height: 10.h),
+
+          // VIEW HISTORY BUTTON
+          SizedBox(
+            width: double.infinity,
+            height: 36.h,
+            child: OutlinedButton.icon(
+              onPressed: () async {
+                await _fetchProfileData();
+
+                if (mounted && _profile?.subscription != null) {
+                  showDialog(
+                    context: context,
+                    builder: (context) => _SubscriptionHistoryDialog(
+                      history: _profile?.subscription?.history ?? [],
+                      planIdToName: _planIdToName,
+                    ),
+                  );
+                }
+              },
+              icon: Icon(
+                Icons.history_rounded,
+                size: 14.sp,
+                color: Colors.black87,
+              ),
+              label: Text(
+                "View History",
+                style: GoogleFonts.inter(
+                  fontSize: 10.sp,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                backgroundColor: Colors.white,
+                side: BorderSide(color: Colors.grey.shade400),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+              ),
             ),
           ),
         ],
@@ -903,177 +1227,219 @@ class _SuppProfilePageState extends State<SuppProfilePage>
     ),
   );
 
-  Widget _buildGalleryTab() {
-    final gallery = _profile?.gallery ?? [];
-    final allGallery = [...gallery, ..._newGalleryBase64];
-
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(20.w),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _sectionTitle("Photo Gallery"),
-          SizedBox(height: 4.h),
-          Text(
-            "Manage your business and product showcase photos.",
-            style: GoogleFonts.inter(
-              fontSize: 10.5.sp,
-              color: Colors.grey.shade500,
-            ),
-          ),
-          SizedBox(height: 20.h),
-          GestureDetector(
-            onTap: () => _pickImage(false),
-            child: Container(
-              height: 120.h,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12.r),
-                border: Border.all(color: Colors.grey.shade200, width: 1.5),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.add_photo_alternate_outlined,
-                    size: 32.sp,
-                    color: Colors.grey.shade400,
-                  ),
-                  SizedBox(height: 8.h),
-                  Text(
-                    "Add New Photo",
-                    style: GoogleFonts.inter(
-                      fontSize: 11.sp,
-                      color: Colors.grey.shade600,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(height: 24.h),
-          if (allGallery.isEmpty)
-            _buildNoData("Your gallery is empty")
-          else
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 10.w,
-                mainAxisSpacing: 10.h,
-                childAspectRatio: 1,
-              ),
-              itemCount: allGallery.length,
-              itemBuilder: (context, index) {
-                final img = allGallery[index];
-                final bool isNew = index >= gallery.length;
-
-                return GestureDetector(
-                  onTap: () => _viewMedia(img, "Gallery Image"),
-                  child: Stack(
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10.r),
-                          image: DecorationImage(
-                            image: isNew
-                                ? MemoryImage(base64Decode(img.split(',').last))
-                                : NetworkImage(img) as ImageProvider,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        top: 6,
-                        right: 6,
-                        child: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              if (isNew) {
-                                _newGalleryBase64.removeAt(
-                                  index - gallery.length,
-                                );
-                              } else {
-                                gallery.removeAt(index);
-                              }
-                            });
-                          },
-                          child: Container(
-                            padding: EdgeInsets.all(4.w),
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.close,
-                              size: 14.sp,
-                              color: Colors.red,
-                            ),
-                          ),
-                        ),
-                      ),
-                      if (isNew)
-                        Positioned(
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          child: Container(
-                            padding: EdgeInsets.symmetric(vertical: 2.h),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.5),
-                              borderRadius: BorderRadius.vertical(
-                                bottom: Radius.circular(10.r),
-                              ),
-                            ),
-                            child: Text(
-                              "New",
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.inter(
-                                fontSize: 8.sp,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          if (_newGalleryBase64.isNotEmpty ||
-              gallery.length != (_profile?.gallery.length ?? 0)) ...[
-            SizedBox(height: 32.h),
-            _buildButton("Update Gallery", _saveGallery),
-          ],
-          SizedBox(height: 32.h),
-        ],
-      ),
-    );
-  }
-
   Widget _buildBankDetailsTab() {
     return SingleChildScrollView(
-      padding: EdgeInsets.all(20.w),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionTitle("Banking Information"),
-          SizedBox(height: 16.h),
-          _buildField("Account Holder Name", _accountHolderController),
-          _buildField(
+          _modernSectionTitle(
+            "Bank Details",
+            "Manage your bank account for payouts.",
+          ),
+
+          SizedBox(height: 18.h),
+
+          _modernField(
+            "Account Holder Name",
+            _accountHolderController,
+            hint: "Enter Account Holder Name",
+          ),
+
+          _modernField(
             "Account Number",
             _accountNumberController,
+            hint: "Enter Account Number",
             keyboardType: TextInputType.number,
           ),
-          _buildField("Bank Name", _bankNameController),
-          _buildField("IFSC Code", _ifscCodeController),
-          _buildField("UPI ID", _upiIdController),
-          SizedBox(height: 32.h),
-          _buildButton("Update Bank Details", _saveBankDetails),
-          SizedBox(height: 32.h),
+
+          _modernField(
+            "Bank Name",
+            _bankNameController,
+            hint: "Enter Bank Name",
+          ),
+
+          // ───────────────── IFSC CODE ─────────────────
+          Padding(
+            padding: EdgeInsets.only(bottom: 14.h),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "IFSC Code",
+                  style: GoogleFonts.inter(
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black87,
+                  ),
+                ),
+
+                SizedBox(height: 6.h),
+
+                TextField(
+                  controller: _ifscCodeController,
+                  textCapitalization: TextCapitalization.characters,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+                    LengthLimitingTextInputFormatter(11),
+                  ],
+                  style: GoogleFonts.inter(
+                    fontSize: 10.sp,
+                    color: Colors.black87,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: "Enter IFSC Code",
+
+                    hintStyle: GoogleFonts.inter(
+                      fontSize: 9.sp,
+                      color: Colors.grey.shade500,
+                    ),
+
+                    filled: true,
+                    fillColor: Colors.white,
+
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12.w,
+                      vertical: 11.h,
+                    ),
+
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade500,
+                        width: 0.8,
+                      ),
+                    ),
+
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade500,
+                        width: 0.8,
+                      ),
+                    ),
+
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                      borderSide: const BorderSide(
+                        color: Color(0xFF4B2D3B),
+                        width: 1,
+                      ),
+                    ),
+
+                    errorText:
+                        _ifscCodeController.text.isNotEmpty &&
+                            !RegExp(r'^[A-Z]{4}0[A-Z0-9]{6}$').hasMatch(
+                              _ifscCodeController.text.trim().toUpperCase(),
+                            )
+                        ? "Enter valid IFSC Code"
+                        : null,
+                  ),
+                  onChanged: (value) {
+                    setState(() {
+                      _ifscCodeController.text = value.toUpperCase();
+
+                      _ifscCodeController
+                          .selection = TextSelection.fromPosition(
+                        TextPosition(offset: _ifscCodeController.text.length),
+                      );
+                    });
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          // ───────────────── UPI ─────────────────
+          Padding(
+            padding: EdgeInsets.only(bottom: 14.h),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      "UPI ID",
+                      style: GoogleFonts.inter(
+                        fontSize: 10.sp,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black87,
+                      ),
+                    ),
+
+                    SizedBox(width: 4.w),
+
+                    Text(
+                      "(Optional)",
+                      style: GoogleFonts.inter(
+                        fontSize: 8.sp,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+
+                SizedBox(height: 6.h),
+
+                _modernInput(
+                  controller: _upiIdController,
+                  hint: "Enter UPI ID (e.g., yourname@upi)",
+                ),
+              ],
+            ),
+          ),
+
+          SizedBox(height: 22.h),
+
+          Center(
+            child: _modernButton("Update Bank Details", () {
+              final accountHolder = _accountHolderController.text.trim();
+              if (accountHolder.isEmpty ||
+                  !RegExp(r'^[A-Za-z\s]+$').hasMatch(accountHolder)) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Account holder name must contain only alphabets and spaces.',
+                    ),
+                  ),
+                );
+                return;
+              }
+
+              final bankName = _bankNameController.text.trim();
+              if (bankName.isEmpty ||
+                  !RegExp(r'^[A-Za-z\s]+$').hasMatch(bankName)) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Bank name must contain only alphabets and spaces.',
+                    ),
+                  ),
+                );
+                return;
+              }
+
+              final ifsc = _ifscCodeController.text.trim().toUpperCase();
+
+              final ifscRegex = RegExp(r'^[A-Z]{4}0[A-Z0-9]{6}$');
+
+              if (!ifscRegex.hasMatch(ifsc)) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      "Please enter a valid IFSC Code",
+                      style: GoogleFonts.inter(),
+                    ),
+                  ),
+                );
+                return;
+              }
+
+              _saveBankDetails();
+            }, width: 170.w),
+          ),
+
+          SizedBox(height: 24.h),
         ],
       ),
     );
@@ -1086,14 +1452,9 @@ class _SuppProfilePageState extends State<SuppProfilePage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionTitle("Verification Documents"),
-          SizedBox(height: 4.h),
-          Text(
-            "Manage your uploaded business documents.",
-            style: GoogleFonts.inter(
-              fontSize: 10.5.sp,
-              color: Colors.grey.shade500,
-            ),
+          _modernSectionTitle(
+            "Verification Documents",
+            "Manage your uploaded business document",
           ),
           SizedBox(height: 20.h),
           _buildDocRow("Aadhar Card", "aadharCard", docs?.aadharCard),
@@ -1102,7 +1463,7 @@ class _SuppProfilePageState extends State<SuppProfilePage>
           _buildDocRow("Udyam Certificate", "udhayamCert", docs?.udhayamCert),
           _buildDocRow("Shop License", "shopLicense", docs?.shopLicense),
           SizedBox(height: 32.h),
-          _buildButton("Save Documents", _saveDocuments),
+          _modernButton("Save Documents", _saveDocuments),
           SizedBox(height: 32.h),
         ],
       ),
@@ -1110,9 +1471,12 @@ class _SuppProfilePageState extends State<SuppProfilePage>
   }
 
   Widget _buildSmsPackageTab() {
-    if (_isLoading) return const Center(child: CircularProgressIndicator(color: Colors.black87));
+    if (_isLoading)
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.black87),
+      );
     final balance = _profile?.currentSmsBalance ?? 0;
-    
+
     // Formatting currency and numbers
     final NumberFormat currencyFormatter = NumberFormat.currency(
       locale: 'en_IN',
@@ -1183,7 +1547,9 @@ class _SuppProfilePageState extends State<SuppProfilePage>
             width: double.infinity,
             padding: EdgeInsets.all(20.w),
             decoration: BoxDecoration(
-              color: const Color(0xFFF2EFF4), // Premium light lavender/grey background
+              color: const Color(
+                0xFFF2EFF4,
+              ), // Premium light lavender/grey background
               borderRadius: BorderRadius.circular(16.r),
             ),
             child: Row(
@@ -1228,7 +1594,9 @@ class _SuppProfilePageState extends State<SuppProfilePage>
                   child: Icon(
                     Icons.chat_bubble_outline_rounded,
                     size: 26.sp,
-                    color: const Color(0xFF6B4B9C), // Premium primary color theme
+                    color: const Color(
+                      0xFF6B4B9C,
+                    ), // Premium primary color theme
                   ),
                 ),
               ],
@@ -1252,13 +1620,15 @@ class _SuppProfilePageState extends State<SuppProfilePage>
               ? SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Theme(
-                    data: Theme.of(context).copyWith(
-                      dividerColor: Colors.transparent,
-                    ),
+                    data: Theme.of(
+                      context,
+                    ).copyWith(dividerColor: Colors.transparent),
                     child: DataTable(
                       horizontalMargin: 8.w,
                       columnSpacing: 24.w,
-                      headingRowColor: MaterialStateProperty.all(Colors.grey.shade50),
+                      headingRowColor: MaterialStateProperty.all(
+                        Colors.grey.shade50,
+                      ),
                       headingRowHeight: 40.h,
                       dataRowHeight: 48.h,
                       columns: [
@@ -1347,7 +1717,9 @@ class _SuppProfilePageState extends State<SuppProfilePage>
                                   ),
                                   SizedBox(width: 4.w),
                                   Text(
-                                    numberFormatter.format(matchingPackage['smsCount']),
+                                    numberFormatter.format(
+                                      matchingPackage['smsCount'],
+                                    ),
                                     style: GoogleFonts.inter(
                                       fontSize: 11.sp,
                                       fontWeight: FontWeight.w500,
@@ -1359,7 +1731,9 @@ class _SuppProfilePageState extends State<SuppProfilePage>
                             ),
                             DataCell(
                               Text(
-                                currencyFormatter.format(matchingPackage['price']),
+                                currencyFormatter.format(
+                                  matchingPackage['price'],
+                                ),
                                 style: GoogleFonts.inter(
                                   fontSize: 11.sp,
                                   fontWeight: FontWeight.w500,
@@ -1387,7 +1761,9 @@ class _SuppProfilePageState extends State<SuppProfilePage>
                                   ),
                                   SizedBox(width: 4.w),
                                   Text(
-                                    DateFormat('dd MMM yyyy').format(expiryDate!),
+                                    DateFormat(
+                                      'dd MMM yyyy',
+                                    ).format(expiryDate!),
                                     style: GoogleFonts.inter(
                                       fontSize: 11.sp,
                                       color: Colors.grey.shade600,
@@ -1398,9 +1774,14 @@ class _SuppProfilePageState extends State<SuppProfilePage>
                             ),
                             DataCell(
                               Container(
-                                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 8.w,
+                                  vertical: 3.h,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFE8F5E9), // Premium light green background
+                                  color: const Color(
+                                    0xFFE8F5E9,
+                                  ), // Premium light green background
                                   borderRadius: BorderRadius.circular(12.r),
                                 ),
                                 child: Row(
@@ -1477,11 +1858,14 @@ class _SuppProfilePageState extends State<SuppProfilePage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionTitle("Tax & Billing"),
+          _modernSectionTitle(
+            "Tax & Billing",
+            "Update your tax and billing information",
+          ),
           SizedBox(height: 16.h),
-          _buildDropdownField(
+          _modernDropdownField(
             "Tax Type",
-            ["percentage", "fixed value"],
+            ["percentage", "fixed"],
             null, // Using custom logic for this field
             initialValue: _profile?.taxes?.taxType ?? "percentage",
             onChanged: (val) {
@@ -1490,13 +1874,13 @@ class _SuppProfilePageState extends State<SuppProfilePage>
               _updateTax(val!, value);
             },
           ),
-          _buildField(
+          _modernField(
             "Tax Value",
             _taxValueController,
             keyboardType: TextInputType.number,
           ),
           SizedBox(height: 32.h),
-          _buildButton("Update Tax Settings", () {
+          _modernButton("Update Tax Settings", () {
             final double value =
                 double.tryParse(_taxValueController.text) ?? 0.0;
             final type = _profile?.taxes?.taxType ?? "percentage";
@@ -1524,34 +1908,7 @@ class _SuppProfilePageState extends State<SuppProfilePage>
     } catch (e) {
       debugPrint("Error updating profile: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Error: Update failed. Check console for details."),
-        ),
-      );
-    } finally {
-      setState(() => _isSaving = false);
-    }
-  }
-
-  Future<void> _saveGallery() async {
-    if (_profile == null) return;
-    setState(() => _isSaving = true);
-    try {
-      final payload = {
-        'gallery': [...(_profile!.gallery), ..._newGalleryBase64],
-      };
-      await ApiService.updateSupplierProfile(payload);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Gallery updated successfully")),
-      );
-      _newGalleryBase64.clear();
-      _fetchProfileData();
-    } catch (e) {
-      debugPrint("Error updating profile: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Error: Update failed. Check console for details."),
-        ),
+        const SnackBar(content: Text("Error: Update failed")), // Check console
       );
     } finally {
       setState(() => _isSaving = false);
@@ -1562,26 +1919,42 @@ class _SuppProfilePageState extends State<SuppProfilePage>
   //  Helper Widgets
   // ──────────────────────────────────────────────
 
-  Widget _sectionTitle(String title) {
-    return Text(
-      title,
-      style: GoogleFonts.inter(
-        fontSize: 12.sp,
-        fontWeight: FontWeight.w700,
-        color: Colors.black87,
-      ),
+  Widget _modernSectionTitle(String title, String subtitle) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.inter(
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+
+        SizedBox(height: 2.h),
+
+        Text(
+          subtitle,
+          style: GoogleFonts.inter(fontSize: 9.sp, color: Colors.grey.shade600),
+        ),
+      ],
     );
   }
 
-  Widget _buildField(
+  // ──────────────────────────────────────────────
+  // MODERN FIELD
+  // ──────────────────────────────────────────────
+  Widget _modernField(
     String label,
     TextEditingController controller, {
+    String? hint,
     int maxLines = 1,
     TextInputType keyboardType = TextInputType.text,
     bool enabled = true,
   }) {
     return Padding(
-      padding: EdgeInsets.only(bottom: 16.h),
+      padding: EdgeInsets.only(bottom: 14.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1589,63 +1962,94 @@ class _SuppProfilePageState extends State<SuppProfilePage>
             label,
             style: GoogleFonts.inter(
               fontSize: 10.sp,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey.shade700,
+              fontWeight: FontWeight.w500,
+              color: Colors.black87,
             ),
           ),
-          SizedBox(height: 8.h),
-          TextField(
+
+          SizedBox(height: 6.h),
+
+          _modernInput(
             controller: controller,
+            hint: hint,
             maxLines: maxLines,
             keyboardType: keyboardType,
             enabled: enabled,
-            style: GoogleFonts.inter(fontSize: 11.5.sp),
-            decoration: InputDecoration(
-              isDense: true,
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 16.w,
-                vertical: 14.h,
-              ),
-              filled: true,
-              fillColor: enabled ? Colors.white : Colors.grey.shade100,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8.r),
-                borderSide: BorderSide(color: Colors.grey.shade200),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8.r),
-                borderSide: BorderSide(color: Colors.grey.shade200),
-              ),
-              disabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8.r),
-                borderSide: BorderSide(color: Colors.grey.shade100),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8.r),
-                borderSide: const BorderSide(color: Colors.black87),
-              ),
-            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDropdownField(
+  // ──────────────────────────────────────────────
+  // MODERN INPUT
+  // ──────────────────────────────────────────────
+  Widget _modernInput({
+    TextEditingController? controller,
+    String? hint,
+    int maxLines = 1,
+    TextInputType keyboardType = TextInputType.text,
+    bool enabled = true,
+  }) {
+    return TextField(
+      controller: controller,
+      maxLines: maxLines,
+      keyboardType: keyboardType,
+      enabled: enabled,
+      style: GoogleFonts.inter(fontSize: 10.sp, color: Colors.black87),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: GoogleFonts.inter(
+          fontSize: 9.sp,
+          color: Colors.grey.shade500,
+        ),
+
+        filled: true,
+        fillColor: enabled ? Colors.white : Colors.grey.shade100,
+
+        contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 11.h),
+
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.r),
+          borderSide: BorderSide(color: Colors.grey.shade500, width: 0.8),
+        ),
+
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.r),
+          borderSide: BorderSide(color: Colors.grey.shade500, width: 0.8),
+        ),
+
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.r),
+          borderSide: BorderSide(color: Colors.grey.shade300, width: 0.8),
+        ),
+
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.r),
+          borderSide: const BorderSide(color: Color(0xFF4B2D3B), width: 1),
+        ),
+      ),
+    );
+  }
+
+  // ──────────────────────────────────────────────
+  // MODERN DROPDOWN
+  // ──────────────────────────────────────────────
+  Widget _modernDropdownField(
     String label,
     List<String> items,
     TextEditingController? controller, {
     String? initialValue,
     Function(String?)? onChanged,
   }) {
-    String? currentVal = initialValue ?? controller?.text;
-    if (currentVal != null && !items.contains(currentVal)) {
-      currentVal = items.first;
-      if (controller != null) controller.text = items.first;
+    String? currentValue = initialValue ?? controller?.text;
+
+    if (currentValue != null && !items.contains(currentValue)) {
+      currentValue = items.first;
     }
 
     return Padding(
-      padding: EdgeInsets.only(bottom: 16.h),
+      padding: EdgeInsets.only(bottom: 14.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1653,37 +2057,59 @@ class _SuppProfilePageState extends State<SuppProfilePage>
             label,
             style: GoogleFonts.inter(
               fontSize: 10.sp,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey.shade700,
+              fontWeight: FontWeight.w500,
+              color: Colors.black87,
             ),
           ),
-          SizedBox(height: 8.h),
+
+          SizedBox(height: 6.h),
+
           Container(
-            padding: EdgeInsets.symmetric(horizontal: 16.w),
+            padding: EdgeInsets.symmetric(horizontal: 12.w),
             decoration: BoxDecoration(
-              color: Colors.white,
               borderRadius: BorderRadius.circular(8.r),
-              border: Border.all(color: Colors.grey.shade200),
+              border: Border.all(color: Colors.grey.shade500, width: 0.8),
+              color: Colors.white,
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
-                value: currentVal,
+                value: currentValue,
                 isExpanded: true,
-                style: GoogleFonts.inter(
-                  fontSize: 11.5.sp,
-                  color: Colors.black87,
+
+                hint: Text(
+                  "Select Option",
+                  style: GoogleFonts.inter(
+                    fontSize: 9.sp,
+                    color: Colors.grey.shade500,
+                  ),
                 ),
+
                 icon: Icon(
                   Icons.keyboard_arrow_down_rounded,
-                  color: Colors.grey.shade600,
+                  size: 18.sp,
+                  color: Colors.black87,
                 ),
-                onChanged: (val) {
-                  if (controller != null) controller.text = val!;
-                  if (onChanged != null) onChanged(val);
+
+                style: GoogleFonts.inter(
+                  fontSize: 10.sp,
+                  color: Colors.black87,
+                ),
+
+                items: items.map((e) {
+                  return DropdownMenuItem(value: e, child: Text(e));
+                }).toList(),
+
+                onChanged: (value) {
+                  if (controller != null) {
+                    controller.text = value ?? "";
+                  }
+
+                  if (onChanged != null) {
+                    onChanged(value);
+                  }
+
+                  setState(() {});
                 },
-                items: items
-                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                    .toList(),
               ),
             ),
           ),
@@ -1692,25 +2118,28 @@ class _SuppProfilePageState extends State<SuppProfilePage>
     );
   }
 
-  Widget _buildButton(String label, VoidCallback onPressed, {double? width}) {
+  // ──────────────────────────────────────────────
+  // MODERN BUTTON
+  // ──────────────────────────────────────────────
+  Widget _modernButton(String text, VoidCallback onTap, {double? width}) {
     return SizedBox(
       width: width ?? double.infinity,
-      height: 48.h,
+      height: 36.h,
       child: ElevatedButton(
-        onPressed: onPressed,
+        onPressed: onTap,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.black87,
-          foregroundColor: Colors.white,
+          backgroundColor: const Color(0xFF4B2D3B),
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8.r),
+            borderRadius: BorderRadius.circular(6.r),
           ),
         ),
         child: Text(
-          label,
+          text,
           style: GoogleFonts.inter(
-            fontSize: 12.sp,
+            fontSize: 10.sp,
             fontWeight: FontWeight.w600,
+            color: Colors.white,
           ),
         ),
       ),
@@ -1835,14 +2264,58 @@ class _SuppProfilePageState extends State<SuppProfilePage>
   Future<void> _viewMedia(String? path, String title) async {
     if (path == null || path.isEmpty) return;
 
-    if (path.startsWith('data:image')) {
-      _showImageViewer(path, title);
-    } else if (path.startsWith('http')) {
-      _showImageViewer(path, title);
+    String mediaPath = path.trim();
+    if (mediaPath.startsWith('JVBER')) {
+      mediaPath = 'data:application/pdf;base64,' + mediaPath;
+    } else if (mediaPath.startsWith('iVBORw0KGgo')) {
+      mediaPath = 'data:image/png;base64,' + mediaPath;
+    } else if (mediaPath.startsWith('/9j/')) {
+      mediaPath = 'data:image/jpeg;base64,' + mediaPath;
+    }
+
+    if (mediaPath.startsWith('data:image')) {
+      _showImageViewer(mediaPath, title);
+    } else if (mediaPath.startsWith('http')) {
+      _showImageViewer(mediaPath, title);
+    } else if (mediaPath.startsWith('data:application/pdf')) {
+      try {
+        final base64Str = mediaPath.split(',').last;
+        final bytes = base64Decode(base64Str);
+        final dir = await getTemporaryDirectory();
+        final file = File(
+          '${dir.path}/temp_${DateTime.now().millisecondsSinceEpoch}.pdf',
+        );
+        await file.writeAsBytes(bytes);
+        final uri = Uri.file(file.path);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not open PDF file')),
+          );
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error opening PDF: $e')));
+      }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Cannot preview this file type directly")),
-      );
+      try {
+        final uri = Uri.parse(mediaPath);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Cannot preview this file type directly"),
+            ),
+          );
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error opening media: $e')));
+      }
     }
   }
 
@@ -1920,13 +2393,15 @@ class _SuppProfilePageState extends State<SuppProfilePage>
 }
 
 class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
-  _SliverTabBarDelegate({required this.tabBar});
   final TabBar tabBar;
 
+  _SliverTabBarDelegate({required this.tabBar});
+
   @override
-  double get minExtent => tabBar.preferredSize.height;
+  double get minExtent => 58.h;
+
   @override
-  double get maxExtent => tabBar.preferredSize.height;
+  double get maxExtent => 58.h;
 
   @override
   Widget build(
@@ -1934,7 +2409,19 @@ class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    return Container(color: Colors.white, child: tabBar);
+    return Container(
+      color: Colors.white,
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+      child: Container(
+        padding: EdgeInsets.all(4.w),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE9E7EF),
+          borderRadius: BorderRadius.circular(8.r),
+          border: Border.all(color: Colors.grey.shade300, width: 0.6),
+        ),
+        child: tabBar,
+      ),
+    );
   }
 
   @override
@@ -2012,7 +2499,8 @@ class _ChangePlanDialogState extends State<ChangePlanDialog> {
     if (_selectedPlanId == null) return;
 
     final selectedPlan = _plans.firstWhere((p) => p.id == _selectedPlanId);
-    final amount = (selectedPlan.discountedPrice > 0 &&
+    final amount =
+        (selectedPlan.discountedPrice > 0 &&
             selectedPlan.discountedPrice < selectedPlan.price)
         ? selectedPlan.discountedPrice
         : selectedPlan.price;
@@ -2022,9 +2510,9 @@ class _ChangePlanDialogState extends State<ChangePlanDialog> {
     _razorpayService.onSuccess = (PaymentSuccessResponse response) async {
       try {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Verifying payment...")),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text("Verifying payment...")));
         }
 
         final success = await ApiService.renewSubscription(
@@ -2070,9 +2558,9 @@ class _ChangePlanDialogState extends State<ChangePlanDialog> {
       );
     } catch (e) {
       setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error opening checkout: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error opening checkout: $e")));
     }
   }
 

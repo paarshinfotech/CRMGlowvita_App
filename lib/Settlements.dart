@@ -1585,7 +1585,7 @@ class _PayAdminDialogState extends State<_PayAdminDialog> {
                           ),
                         ),
                         Text(
-                          'Record your payment of platform fees owed to Admin for Pay at Salon appointments. Pending: ₹$pendingAmount',
+                          'Record your payment of platform fees owed \nto Admin for Pay at Salon appointments.\n Pending: ₹$pendingAmount',
                           style: GoogleFonts.poppins(
                             fontSize: 5.sp,
                             color: Colors.grey[600],

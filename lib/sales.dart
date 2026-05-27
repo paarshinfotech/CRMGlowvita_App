@@ -687,12 +687,7 @@ class _SalesPageState extends State<SalesPage>
                               _clearBilling();
                             }
                           } catch (e) {
-                            if (context.mounted)
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Error saving order: $e'),
-                                ),
-                              );
+                            debugPrint('Error saving order: $e');
                           } finally {
                             if (context.mounted)
                               setDialogState(() => isProcessing = false);
@@ -934,13 +929,7 @@ class _SalesPageState extends State<SalesPage>
         }
       }
     } catch (e) {
-      if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error processing sale: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+      debugPrint('Error processing sale: $e');
     }
   }
 
