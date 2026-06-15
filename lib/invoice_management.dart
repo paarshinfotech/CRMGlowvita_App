@@ -117,6 +117,66 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
             finalStatus = 'Completed Without Payment';
           }
 
+          List<BillingItem> items = [];
+          if (appt.isWeddingService == true &&
+              appt.weddingPackageDetails?.packageServices != null &&
+              appt.weddingPackageDetails!.packageServices!.isNotEmpty) {
+            items = appt.weddingPackageDetails!.packageServices!.map((ps) {
+              return BillingItem(
+                itemId: '',
+                itemType: 'Service',
+                name: ps.serviceName ?? 'Unknown',
+                description: '',
+                price: (ps.amount ?? 0.0).toDouble(),
+                quantity: 1,
+                totalPrice: (ps.amount ?? 0.0).toDouble(),
+                duration: 0,
+                addOns: [],
+                discount: 0.0,
+                discountType: 'flat',
+              );
+            }).toList();
+          } else if (appt.serviceItems != null && appt.serviceItems!.isNotEmpty) {
+            items = appt.serviceItems!.map((si) {
+              return BillingItem(
+                itemId: si.service ?? '',
+                itemType: 'Service',
+                name: si.serviceName ?? appt.serviceName ?? 'Service',
+                description: '',
+                price: (si.amount ?? appt.amount ?? 0.0).toDouble(),
+                quantity: 1,
+                totalPrice: (si.amount ?? appt.amount ?? 0.0).toDouble(),
+                duration: si.duration ?? appt.duration ?? 0,
+                addOns: (si.addOns ?? []).map((ao) => AddOnItem(
+                  id: ao.id ?? '',
+                  name: ao.name ?? '',
+                  price: (ao.price ?? 0).toDouble(),
+                  duration: ao.duration ?? 0,
+                )).toList(),
+                discount: 0.0,
+                discountType: 'flat',
+              );
+            }).toList();
+          } else {
+            items = [
+              BillingItem(
+                itemId: '',
+                itemType: 'Service',
+                name: appt.serviceName ?? 'Service',
+                description: '',
+                price: (appt.amount ?? 0.0).toDouble(),
+                quantity: 1,
+                totalPrice: (appt.amount ?? 0.0).toDouble(),
+                duration: appt.duration ?? 0,
+                addOns: [],
+                discount: 0.0,
+                discountType: 'flat',
+              )
+            ];
+          }
+
+          final double subtotalVal = items.fold(0.0, (sum, item) => sum + (item.price * item.quantity));
+
           return BillingInvoice(
             id: appt.id ?? '',
             invoiceNumber: appt.invoiceNumber ?? 'N/A',
@@ -125,50 +185,25 @@ class _InvoiceManagementPageState extends State<InvoiceManagementPage>
               email: appt.client?.email ?? '',
               phone: appt.client?.phone ?? '',
               profilePicture: '',
-              address: appt.venueAddress ?? '',
+              address: appt.isHomeService == true
+                  ? (appt.homeServiceLocation?.address ?? appt.venueAddress ?? '')
+                  : (appt.venueAddress ?? ''),
             ),
             vendorId: appt.vendorId ?? '',
             clientId: appt.client?.id ?? '',
-            items: (appt.serviceItems ?? [])
-                .map(
-                  (si) => BillingItem(
-                    itemId: si.service ?? '',
-                    itemType: 'Service',
-                    name: si.serviceName ?? appt.serviceName ?? 'Service',
-                    description: '',
-                    price: si.amount ?? appt.amount ?? 0.0,
-                    quantity: 1,
-                    totalPrice: si.amount ?? appt.amount ?? 0.0,
-                    duration: si.duration ?? appt.duration ?? 0,
-                    addOns: (si.addOns ?? [])
-                        .map(
-                          (ao) => AddOnItem(
-                            id: ao.id ?? '',
-                            name: ao.name ?? '',
-                            price: (ao.price ?? 0).toDouble(),
-                            duration: ao.duration ?? 0,
-                          ),
-                        )
-                        .toList(),
-                    discount: 0,
-                    discountType: 'flat',
-                  ),
-                )
-                .toList(),
-            subtotal: appt.amount ?? 0.0,
-            taxRate: 0,
+            items: items,
+            subtotal: subtotalVal,
+            taxRate: appt.taxRate ?? 18.0,
             taxAmount: appt.serviceTax ?? 0.0,
             platformFee: appt.platformFee ?? 0.0,
-            totalAmount:
-                (appt.amount ?? 0.0) +
-                (appt.serviceTax ?? 0.0) +
-                (appt.platformFee ?? 0.0),
+            totalAmount: appt.finalAmount ?? appt.totalAmount ?? appt.amount ?? 0.0,
             balance: appt.amountRemaining ?? 0.0,
             paymentMethod: appt.paymentMethod ?? 'N/A',
             paymentStatus: finalStatus,
             billingType: 'Appointment',
             createdAt: appt.date ?? DateTime.now(),
             updatedAt: appt.date ?? DateTime.now(),
+            staffName: appt.staffName ?? '',
           );
         })
         .toList();

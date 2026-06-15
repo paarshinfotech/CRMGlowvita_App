@@ -73,10 +73,12 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
   Future<void> _fetchAppointmentDetails() async {
     try {
       print('⏳ Fetching details for appointment: ${widget.appointmentId}');
-      final appointment =
-          await ApiService.getAppointmentById(widget.appointmentId);
+      final appointment = await ApiService.getAppointmentById(
+        widget.appointmentId,
+      );
       print(
-          '✨ Successfully loaded appointment: ${appointment.id} - ${appointment.clientName}');
+        '✨ Successfully loaded appointment: ${appointment.id} - ${appointment.clientName}',
+      );
       setState(() {
         _appointment = appointment;
         _isLoading = false;
@@ -96,14 +98,15 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
       final clientId = _appointment!.client?.id;
       final clientName = _appointment!.clientName?.toLowerCase().trim() ?? '';
 
-      final filtered = all.where((a) {
-        if (clientId != null && clientId.isNotEmpty) {
-          return a.client?.id == clientId;
-        }
-        return (a.clientName?.toLowerCase().trim() ?? '') == clientName;
-      }).toList()
-        ..sort(
-            (a, b) => (b.date ?? DateTime(0)).compareTo(a.date ?? DateTime(0)));
+      final filtered =
+          all.where((a) {
+            if (clientId != null && clientId.isNotEmpty) {
+              return a.client?.id == clientId;
+            }
+            return (a.clientName?.toLowerCase().trim() ?? '') == clientName;
+          }).toList()..sort(
+            (a, b) => (b.date ?? DateTime(0)).compareTo(a.date ?? DateTime(0)),
+          );
 
       if (mounted) {
         setState(() {
@@ -128,14 +131,14 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
       final apptDate = _appointment!.date;
 
       final matched = all.where((inv) {
-        final sameClient = inv.clientId == clientId ||
+        final sameClient =
+            inv.clientId == clientId ||
             inv.clientInfo.fullName.toLowerCase().trim() == clientName;
         if (!sameClient) return false;
         if (apptDate == null) return true;
         final diff = inv.createdAt.difference(apptDate).abs();
         return diff.inDays <= 1;
-      }).toList()
-        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      }).toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
       if (mounted) {
         setState(() {
@@ -218,7 +221,8 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
     final isCancelled = status.contains('cancelled');
 
     // Aggregate Team Members
-    final List<String> teamMembers = _appointment?.serviceItems
+    final List<String> teamMembers =
+        _appointment?.serviceItems
             ?.map((item) => item.staffName)
             .whereType<String>()
             .where((name) => name.isNotEmpty && name != '—')
@@ -242,13 +246,15 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
     final double amountPaid = _appointment?.amountPaid ?? 0;
     final bool isPaidFull = totalAmount > 0 && amountPaid >= totalAmount;
 
-    final isCompleted = status.contains('completed') ||
+    final isCompleted =
+        status.contains('completed') ||
         status.contains('paid') ||
         status.contains('collected') ||
         status.contains('success') ||
         isPaidFull;
 
-    final bool isCompletedWithoutPayment = status == 'completed_without_payment';
+    final bool isCompletedWithoutPayment =
+        status == 'completed_without_payment';
     final bool isPaymentPending = _appointment?.paymentStatus == 'pending';
     final bool isAmountRemaining = totalAmount > 0 && amountPaid < totalAmount;
 
@@ -302,8 +308,11 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close_rounded,
-                      size: 18, color: Colors.black87),
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    size: 18,
+                    color: Colors.black87,
+                  ),
                   onPressed: () => Navigator.pop(context),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
@@ -324,9 +333,13 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
             labelColor: Colors.black,
             unselectedLabelColor: Colors.grey.shade800,
             labelStyle: GoogleFonts.poppins(
-                fontSize: 12.5, fontWeight: FontWeight.w700),
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+            ),
             unselectedLabelStyle: GoogleFonts.poppins(
-                fontSize: 12.5, fontWeight: FontWeight.w500),
+              fontSize: 12.5,
+              fontWeight: FontWeight.w500,
+            ),
             padding: EdgeInsets.zero,
             labelPadding: const EdgeInsets.symmetric(vertical: 6),
             tabs: [
@@ -378,7 +391,10 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Action Buttons Row (Top)
-                      if (!isCompleted || isCompletedWithoutPayment || isPaymentPending || isAmountRemaining)
+                      if (!isCompleted ||
+                          isCompletedWithoutPayment ||
+                          isPaymentPending ||
+                          isAmountRemaining)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 8.0),
                           child: Row(
@@ -386,25 +402,30 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                               if (!isCancelled) ...[
                                 Expanded(
                                   child: _outlinedActionButton(
-                                      Icons.payments_outlined,
-                                      'Collect Payment', onTap: () {
-                                    _showCollectPaymentDialog();
-                                  }),
+                                    Icons.payments_outlined,
+                                    'Collect Payment',
+                                    onTap: () {
+                                      _showCollectPaymentDialog();
+                                    },
+                                  ),
                                 ),
                                 const SizedBox(width: 8),
                               ],
                               Expanded(
                                 child: _outlinedActionButton(
-                                    Icons.calendar_month_rounded, 'Reschedule',
-                                    onTap: () {
-                                  if (_appointment == null) return;
-                                  showDialog(
-                                    context: context,
-                                    builder: (context) => CreateAppointmentForm(
-                                      existingAppointment: _appointment,
-                                    ),
-                                  ).then((_) => _fetchAppointmentDetails());
-                                }),
+                                  Icons.calendar_month_rounded,
+                                  'Reschedule',
+                                  onTap: () {
+                                    if (_appointment == null) return;
+                                    showDialog(
+                                      context: context,
+                                      builder: (context) =>
+                                          CreateAppointmentForm(
+                                            existingAppointment: _appointment,
+                                          ),
+                                    ).then((_) => _fetchAppointmentDetails());
+                                  },
+                                ),
                               ),
                             ],
                           ),
@@ -416,8 +437,10 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                             children: [
                               Expanded(
                                 child: _outlinedActionButton(
-                                    Icons.receipt_long_outlined, 'View Invoice',
-                                    onTap: _showInvoice),
+                                  Icons.receipt_long_outlined,
+                                  'View Invoice',
+                                  onTap: _showInvoice,
+                                ),
                               ),
                             ],
                           ),
@@ -448,23 +471,28 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                                   extraContent: (_appointment?.client != null)
                                       ? Column(
                                           children: [
-                                            if (_appointment?.client?.phone
+                                            if (_appointment
+                                                    ?.client
+                                                    ?.phone
                                                     ?.isNotEmpty ??
                                                 false)
                                               Row(
                                                 children: [
-                                                  Icon(Icons.phone_outlined,
-                                                      size: 13,
-                                                      color:
-                                                          Colors.grey.shade600),
+                                                  Icon(
+                                                    Icons.phone_outlined,
+                                                    size: 13,
+                                                    color: Colors.grey.shade600,
+                                                  ),
                                                   const SizedBox(width: 6),
                                                   Text(
                                                     _appointment!
-                                                        .client!.phone!,
+                                                        .client!
+                                                        .phone!,
                                                     style: GoogleFonts.poppins(
-                                                        fontSize: 10,
-                                                        color: Colors
-                                                            .grey.shade700),
+                                                      fontSize: 10,
+                                                      color:
+                                                          Colors.grey.shade700,
+                                                    ),
                                                   ),
                                                 ],
                                               ),
@@ -498,14 +526,31 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                                 ),
                                 const SizedBox(height: 10),
                                 _statusCard(
-                                    _appointment?.status ?? 'Scheduled'),
+                                  _appointment?.status ?? 'Scheduled',
+                                ),
                                 if (_appointment?.isWeddingService == true) ...[
                                   const SizedBox(height: 10),
                                   _infoCard(
                                     Icons.location_on_outlined,
                                     'VENUE ADDRESS',
                                     'Wedding Service Venue',
-                                    subtitle: _appointment?.venueAddress ??
+                                    subtitle:
+                                        _appointment?.venueAddress ??
+                                        'Address not specified',
+                                    iconData: Icons.pin_drop,
+                                  ),
+                                ],
+                                if (_appointment?.isHomeService == true) ...[
+                                  const SizedBox(height: 10),
+                                  _infoCard(
+                                    Icons.home_outlined,
+                                    'HOME SERVICE ADDRESS',
+                                    'Home Service Location',
+                                    subtitle:
+                                        _appointment
+                                            ?.homeServiceLocation
+                                            ?.address ??
+                                        _appointment?.venueAddress ??
                                         'Address not specified',
                                     iconData: Icons.pin_drop,
                                   ),
@@ -532,15 +577,18 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                               Text(
                                 'Notes / Cancellation Reason:',
                                 style: GoogleFonts.poppins(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.amber.shade900),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.amber.shade900,
+                                ),
                               ),
                               const SizedBox(height: 4),
                               Text(
                                 _appointment!.notes!,
                                 style: GoogleFonts.poppins(
-                                    fontSize: 11, color: Colors.amber.shade900),
+                                  fontSize: 11,
+                                  color: Colors.amber.shade900,
+                                ),
                               ),
                             ],
                           ),
@@ -549,49 +597,75 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
 
                       const SizedBox(height: 20),
                       const Divider(
-                          height: 1, thickness: 1, color: Colors.black),
+                        height: 1,
+                        thickness: 1,
+                        color: Colors.black,
+                      ),
                       const SizedBox(height: 16),
 
                       // Payment Details Summary
                       Text(
                         'Payment Details',
                         style: GoogleFonts.poppins(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black,
+                        ),
                       ),
                       const SizedBox(height: 10),
                       _paymentDetailRow(
-                          'Service Amount:', _appointment?.amount ?? 0),
+                        'Service Amount:',
+                        _appointment?.amount ?? 0,
+                      ),
                       _paymentDetailRow(
-                          'Add-on Amount:', _appointment?.addOnsAmount ?? 0),
+                        'Add-on Amount:',
+                        _appointment?.addOnsAmount ?? 0,
+                      ),
                       _paymentDetailRow(
-                          'Service Tax (GST):', _appointment?.serviceTax ?? 0),
+                        'Service Tax (GST):',
+                        _appointment?.serviceTax ?? 0,
+                      ),
                       _paymentDetailRow(
-                          'Platform Fee:', _appointment?.platformFee ?? 0),
+                        'Platform Fee:',
+                        _appointment?.platformFee ?? 0,
+                      ),
                       _paymentDetailRow(
-                          'Discount:', -(_appointment?.discount ?? 0),
-                          color: Colors.red),
+                        'Discount:',
+                        -(_appointment?.discount ?? 0),
+                        color: Colors.red,
+                      ),
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 6),
                         child: Divider(
-                            height: 1, thickness: 1, color: Colors.black12),
+                          height: 1,
+                          thickness: 1,
+                          color: Colors.black12,
+                        ),
                       ),
                       _paymentDetailRow(
-                          'Total Amount:',
-                          _appointment?.finalAmount ??
-                              _appointment?.totalAmount ??
-                              _appointment?.amount ??
-                              0,
-                          bold: true),
+                        'Total Amount:',
+                        _appointment?.finalAmount ??
+                            _appointment?.totalAmount ??
+                            _appointment?.amount ??
+                            0,
+                        bold: true,
+                      ),
                       _paymentDetailRow(
-                          'Amount Paid:', _appointment?.amountPaid ?? 0),
-                      _paymentDetailRow('Amount Remaining:',
-                          _appointment?.amountRemaining ?? 0,
-                          color: Colors.red.shade800, bold: true),
-                      _paymentDetailRow('Payment Status:', 0,
-                          isStatusText: true,
-                          status: _getPaymentStatusText(_appointment!)),
+                        'Amount Paid:',
+                        _appointment?.amountPaid ?? 0,
+                      ),
+                      _paymentDetailRow(
+                        'Amount Remaining:',
+                        _appointment?.amountRemaining ?? 0,
+                        color: Colors.red.shade800,
+                        bold: true,
+                      ),
+                      _paymentDetailRow(
+                        'Payment Status:',
+                        0,
+                        isStatusText: true,
+                        status: _getPaymentStatusText(_appointment!),
+                      ),
 
                       const SizedBox(height: 20),
 
@@ -602,20 +676,26 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                           onPressed: () => Navigator.pop(context),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 8),
+                              horizontal: 20,
+                              vertical: 8,
+                            ),
                             side: BorderSide(
-                                color: Colors.grey.shade400, width: 1),
+                              color: Colors.grey.shade400,
+                              width: 1,
+                            ),
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8)),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                             minimumSize: const Size(0, 0),
                             backgroundColor: Colors.white,
                           ),
                           child: Text(
                             'Close',
                             style: GoogleFonts.poppins(
-                                fontSize: 12,
-                                color: Colors.black,
-                                fontWeight: FontWeight.w600),
+                              fontSize: 12,
+                              color: Colors.black,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),
@@ -716,16 +796,19 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                 child: GestureDetector(
                   onTap: () => setState(() => _historyFilter = f),
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: isSelected
                           ? const Color(0xFF3D1F3D)
                           : Colors.transparent,
                       border: Border.all(
-                          color: isSelected
-                              ? const Color(0xFF3D1F3D)
-                              : Colors.grey.shade300),
+                        color: isSelected
+                            ? const Color(0xFF3D1F3D)
+                            : Colors.grey.shade300,
+                      ),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -769,13 +852,17 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
               ? Center(
                   child: Text(
                     'No ${_historyFilter.toLowerCase()} appointments',
-                    style:
-                        GoogleFonts.poppins(fontSize: 11, color: Colors.grey),
+                    style: GoogleFonts.poppins(
+                      fontSize: 11,
+                      color: Colors.grey,
+                    ),
                   ),
                 )
               : ListView.separated(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   itemCount: filtered.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 8),
                   itemBuilder: (context, i) {
@@ -835,9 +922,7 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(
-          color: Colors.grey.shade200,
-        ),
+        border: Border.all(color: Colors.grey.shade200),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -901,14 +986,15 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
       'Sep',
       'Oct',
       'Nov',
-      'Dec'
+      'Dec',
     ];
     return months[month - 1];
   }
 
   Widget _buildInvoiceTab() {
     final status = (_appointment?.status ?? '').toLowerCase();
-    final isCompleted = status.contains('completed') ||
+    final isCompleted =
+        status.contains('completed') ||
         status.contains('paid') ||
         status.contains('collected') ||
         status.contains('success');
@@ -920,14 +1006,19 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.receipt_long_outlined,
-                  size: 40, color: Colors.grey.shade300),
+              Icon(
+                Icons.receipt_long_outlined,
+                size: 40,
+                color: Colors.grey.shade300,
+              ),
               const SizedBox(height: 12),
               Text(
                 'Invoice is only available for completed appointments.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.poppins(
-                    fontSize: 11, color: Colors.grey.shade500),
+                  fontSize: 11,
+                  color: Colors.grey.shade500,
+                ),
               ),
             ],
           ),
@@ -935,100 +1026,149 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
       );
     }
 
-    // Safely Build invoice from appointment for display
-    final inv = BillingInvoice(
-      id: _appointment!.id ?? '',
-      invoiceNumber: _appointment!.invoiceNumber ?? _appointment!.id ?? 'N/A',
-      vendorId: _appointment!.vendorId ?? '',
-      clientId: _appointment!.client?.id ?? '',
-      clientInfo: ClientInfo(
-        fullName: _appointment!.clientName ?? 'Customer',
-        email: _appointment!.client?.email ?? 'N/A',
-        phone: _appointment!.client?.phone ?? 'N/A',
-        profilePicture: '',
-        address: '',
-      ),
-      items: _appointment!.serviceItems
-              ?.map((s) => BillingItem(
-                    itemId: '',
-                    itemType: 'Service',
-                    name: s.serviceName ?? 'Unknown',
-                    description: '',
-                    price: (s.amount ?? 0.0).toDouble(),
-                    quantity: 1,
-                    totalPrice: (s.amount ?? 0.0).toDouble(),
-                    duration: s.duration ?? 0,
-                    addOns: s.addOns
-                            ?.map((a) => AddOnItem(
-                                  id: a.id ?? '',
-                                  name: a.name ?? 'Add-on',
-                                  price: (a.price ?? 0.0).toDouble(),
-                                  duration: a.duration ?? 0,
-                                ))
-                            .toList() ??
-                        [],
-                    discount: 0.0,
-                    discountType: 'flat',
-                  ))
-              .toList() ??
-          [
-            BillingItem(
-              itemId: '',
-              itemType: 'Service',
-              name: _appointment!.serviceName ?? 'Unknown',
-              description: '',
-              price: _appointment!.amount ?? 0.0,
-              quantity: 1,
-              totalPrice: _appointment!.amount ?? 0.0,
-              duration: _appointment!.duration ?? 0,
-              addOns: [],
-              discount: 0.0,
-              discountType: 'flat',
-            )
-          ],
-      subtotal: _appointment!.amount ?? _appointment!.totalAmount ?? 0.0,
-      taxRate: 0.0,
-      taxAmount: _appointment!.serviceTax ?? 0.0,
-      platformFee: _appointment!.platformFee ?? 0.0,
-      totalAmount: _appointment!.totalAmount ?? _appointment!.amount ?? 0.0,
-      balance: _appointment!.amountRemaining ?? 0.0,
-      paymentMethod: _appointment!.paymentMethod ?? 'Cash',
-      paymentStatus: _getPaymentStatusText(_appointment!),
-      billingType: 'Appointment',
-      createdAt: _appointment!.date ?? DateTime.now(),
-      updatedAt: DateTime.now(),
+    // Safely Build invoice from appointment for display using helper
+    final inv = _getBillingInvoiceFromAppointment(_appointment!);
+
+    return InvoiceView(invoice: inv, showCloseButton: false);
+  }
+
+  BillingInvoice _getBillingInvoiceFromAppointment(AppointmentModel appt) {
+    List<BillingItem> items = [];
+    if (appt.isWeddingService == true &&
+        appt.weddingPackageDetails?.packageServices != null &&
+        appt.weddingPackageDetails!.packageServices!.isNotEmpty) {
+      items = appt.weddingPackageDetails!.packageServices!.map((ps) {
+        return BillingItem(
+          itemId: '',
+          itemType: 'Service',
+          name: ps.serviceName ?? 'Unknown',
+          description: '',
+          price: (ps.amount ?? 0.0).toDouble(),
+          quantity: 1,
+          totalPrice: (ps.amount ?? 0.0).toDouble(),
+          duration: 0,
+          addOns: [],
+          discount: 0.0,
+          discountType: 'flat',
+        );
+      }).toList();
+    } else if (appt.serviceItems != null && appt.serviceItems!.isNotEmpty) {
+      items = appt.serviceItems!.map((s) {
+        return BillingItem(
+          itemId: '',
+          itemType: 'Service',
+          name: s.serviceName ?? 'Unknown',
+          description: '',
+          price: (s.amount ?? 0.0).toDouble(),
+          quantity: 1,
+          totalPrice: (s.amount ?? 0.0).toDouble(),
+          duration: s.duration ?? 0,
+          addOns:
+              s.addOns
+                  ?.map(
+                    (a) => AddOnItem(
+                      id: a.id ?? '',
+                      name: a.name ?? 'Add-on',
+                      price: (a.price ?? 0.0).toDouble(),
+                      duration: a.duration ?? 0,
+                    ),
+                  )
+                  .toList() ??
+              [],
+          discount: 0.0,
+          discountType: 'flat',
+        );
+      }).toList();
+    } else {
+      items = [
+        BillingItem(
+          itemId: '',
+          itemType: 'Service',
+          name: appt.serviceName ?? 'Unknown',
+          description: '',
+          price: appt.amount ?? 0.0,
+          quantity: 1,
+          totalPrice: appt.amount ?? 0.0,
+          duration: appt.duration ?? 0,
+          addOns: [],
+          discount: 0.0,
+          discountType: 'flat',
+        ),
+      ];
+    }
+
+    final double subtotalVal = items.fold(
+      0.0,
+      (sum, item) => sum + (item.price * item.quantity),
     );
 
-    return InvoiceView(
-      invoice: inv,
-      showCloseButton: false,
+    return BillingInvoice(
+      id: appt.id ?? '',
+      invoiceNumber: appt.invoiceNumber ?? appt.id ?? 'N/A',
+      vendorId: appt.vendorId ?? '',
+      clientId: appt.client?.id ?? '',
+      clientInfo: ClientInfo(
+        fullName: appt.clientName ?? 'Customer',
+        email: appt.client?.email ?? 'N/A',
+        phone: appt.client?.phone ?? 'N/A',
+        profilePicture: '',
+        address: appt.isHomeService == true
+            ? (appt.homeServiceLocation?.address ?? appt.venueAddress ?? '')
+            : '',
+      ),
+      items: items,
+      subtotal: subtotalVal,
+      taxRate: appt.taxRate ?? 18.0,
+      taxAmount: appt.serviceTax ?? 0.0,
+      platformFee: appt.platformFee ?? 0.0,
+      totalAmount: appt.finalAmount ?? appt.totalAmount ?? appt.amount ?? 0.0,
+      balance: appt.amountRemaining ?? 0.0,
+      paymentMethod: appt.paymentMethod ?? 'Cash',
+      paymentStatus: _getPaymentStatusText(appt),
+      billingType: 'Appointment',
+      createdAt: appt.date ?? DateTime.now(),
+      updatedAt: DateTime.now(),
+      staffName: appt.staffName ?? '',
     );
   }
 
-  Widget _invRowSummary(String label, double val,
-      {bool bold = false, Color? color}) {
+  Widget _invRowSummary(
+    String label,
+    double val, {
+    bool bold = false,
+    Color? color,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
-              style: GoogleFonts.poppins(
-                  fontSize: 11,
-                  color: color ?? (bold ? Colors.black : Colors.grey.shade600),
-                  fontWeight: bold ? FontWeight.bold : FontWeight.w500)),
-          Text('₹${val.toStringAsFixed(2)}',
-              style: GoogleFonts.poppins(
-                  fontSize: 11,
-                  color: color ?? Colors.black,
-                  fontWeight: bold ? FontWeight.w700 : FontWeight.w600)),
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontSize: 11,
+              color: color ?? (bold ? Colors.black : Colors.grey.shade600),
+              fontWeight: bold ? FontWeight.bold : FontWeight.w500,
+            ),
+          ),
+          Text(
+            '₹${val.toStringAsFixed(2)}',
+            style: GoogleFonts.poppins(
+              fontSize: 11,
+              color: color ?? Colors.black,
+              fontWeight: bold ? FontWeight.w700 : FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _outlinedActionButton(IconData icon, String label,
-      {required VoidCallback onTap}) {
+  Widget _outlinedActionButton(
+    IconData icon,
+    String label, {
+    required VoidCallback onTap,
+  }) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(6),
@@ -1044,11 +1184,14 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
           children: [
             Icon(icon, size: 14, color: Colors.black),
             const SizedBox(width: 6),
-            Text(label,
-                style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    color: Colors.black,
-                    fontWeight: FontWeight.w600)),
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                color: Colors.black,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
       ),
@@ -1088,10 +1231,10 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
 
     final bool isCompleted =
         currentStatus.toLowerCase().contains('completed') ||
-            currentStatus.toLowerCase().contains('paid') ||
-            currentStatus.toLowerCase().contains('collected') ||
-            currentStatus.toLowerCase().contains('success') ||
-            isPaidFull;
+        currentStatus.toLowerCase().contains('paid') ||
+        currentStatus.toLowerCase().contains('collected') ||
+        currentStatus.toLowerCase().contains('success') ||
+        isPaidFull;
 
     return Container(
       width: double.infinity,
@@ -1104,8 +1247,10 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
         ignoring: _isUpdatingStatus,
         child: isCompleted
             ? Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -1115,15 +1260,18 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                           width: 8,
                           height: 8,
                           decoration: BoxDecoration(
-                              color: color, shape: BoxShape.circle),
+                            color: color,
+                            shape: BoxShape.circle,
+                          ),
                         ),
                         const SizedBox(width: 8),
                         Text(
                           _formatStatus(currentStatus),
                           style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black,
+                          ),
                         ),
                       ],
                     ),
@@ -1140,16 +1288,22 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                   return _statusOptions.map((status) {
                     return PopupMenuItem(
                       value: status,
-                      child: Text(status,
-                          style: GoogleFonts.poppins(
-                              fontSize: 12, fontWeight: FontWeight.w500)),
+                      child: Text(
+                        status,
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     );
                   }).toList();
                 },
                 offset: const Offset(0, 40),
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   child: Row(
                     children: [
                       if (_isUpdatingStatus)
@@ -1157,28 +1311,36 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                           width: 12,
                           height: 12,
                           child: CircularProgressIndicator(
-                              strokeWidth: 1.5, color: Colors.black),
+                            strokeWidth: 1.5,
+                            color: Colors.black,
+                          ),
                         )
                       else
                         Container(
                           width: 8,
                           height: 8,
                           decoration: BoxDecoration(
-                              color: color, shape: BoxShape.circle),
+                            color: color,
+                            shape: BoxShape.circle,
+                          ),
                         ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           _formatStatus(currentStatus),
                           style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const Icon(Icons.unfold_more_rounded,
-                          size: 16, color: Colors.black),
+                      const Icon(
+                        Icons.unfold_more_rounded,
+                        size: 16,
+                        color: Colors.black,
+                      ),
                     ],
                   ),
                 ),
@@ -1188,7 +1350,8 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
   }
 
   Widget _paymentHistorySection() {
-    bool hasHistory = _appointment?.paymentHistory != null &&
+    bool hasHistory =
+        _appointment?.paymentHistory != null &&
         _appointment!.paymentHistory!.isNotEmpty;
 
     return Container(
@@ -1206,48 +1369,119 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
             children: [
               const Icon(Icons.history_rounded, size: 14, color: Colors.black),
               const SizedBox(width: 6),
-              Text('Payment History',
-                  style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black)),
+              Text(
+                'Payment History',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 8),
           if (!hasHistory)
-            Text('No payments recorded yet.',
-                style: GoogleFonts.poppins(
-                    fontSize: 11.5, color: Colors.grey.shade700))
+            Text(
+              'No payments recorded yet.',
+              style: GoogleFonts.poppins(
+                fontSize: 11.5,
+                color: Colors.grey.shade700,
+              ),
+            )
           else
-            ..._appointment!.paymentHistory!
-                .map((p) => Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(p.paymentMethod?.capitalize() ?? 'Paid',
-                              style: GoogleFonts.poppins(
-                                  fontSize: 11.5, color: Colors.black)),
-                          Text('₹${p.amount?.toStringAsFixed(2) ?? '0.00'}',
-                              style: GoogleFonts.poppins(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.black)),
-                        ],
+            ..._appointment!.paymentHistory!.map((p) {
+              String dateStr = '';
+              if (p.paymentDate != null) {
+                try {
+                  dateStr = DateFormat(
+                    'MMM d, yyyy • h:mm a',
+                  ).format(DateTime.parse(p.paymentDate!).toLocal());
+                } catch (e) {
+                  dateStr = p.paymentDate!;
+                }
+              }
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  border: Border.all(color: Colors.grey.shade200),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          p.paymentMethod?.capitalize() ?? 'Payment',
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black,
+                          ),
+                        ),
+                        Text(
+                          '₹${p.amount?.toStringAsFixed(2) ?? '0.00'}',
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (dateStr.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        dateStr,
+                        style: GoogleFonts.poppins(
+                          fontSize: 9.5,
+                          color: Colors.grey.shade600,
+                        ),
                       ),
-                    ))
-                .toList(),
+                    ],
+                    if (p.notes != null && p.notes!.trim().isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Notes: ${p.notes}',
+                        style: GoogleFonts.poppins(
+                          fontSize: 9.5,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ],
+                    if (p.transactionId != null &&
+                        p.transactionId!.trim().isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        'Transaction ID: ${p.transactionId}',
+                        style: GoogleFonts.poppins(
+                          fontSize: 9.5,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            }).toList(),
         ],
       ),
     );
   }
 
-  Widget _infoCard(IconData icon, String label, String value,
-      {String? subtitle,
-      IconData? iconData,
-      VoidCallback? onTap,
-      Widget? extraContent,
-      bool fullWidthExtra = false}) {
+  Widget _infoCard(
+    IconData icon,
+    String label,
+    String value, {
+    String? subtitle,
+    IconData? iconData,
+    VoidCallback? onTap,
+    Widget? extraContent,
+    bool fullWidthExtra = false,
+  }) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
@@ -1279,32 +1513,45 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(label,
-                          style: GoogleFonts.poppins(
-                              fontSize: 7,
-                              color: const Color(0xFF64748B),
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.5)),
-                      Text(value,
-                          style: GoogleFonts.poppins(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF1E293B))),
+                      Text(
+                        label,
+                        style: GoogleFonts.poppins(
+                          fontSize: 7,
+                          color: const Color(0xFF64748B),
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      Text(
+                        value,
+                        style: GoogleFonts.poppins(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF1E293B),
+                        ),
+                      ),
                       if (subtitle != null) ...[
                         const SizedBox(height: 4),
                         Row(
                           children: [
                             if (iconData != null) ...[
-                              Icon(iconData,
-                                  size: 12, color: Colors.grey.shade600),
+                              Icon(
+                                iconData,
+                                size: 12,
+                                color: Colors.grey.shade600,
+                              ),
                               const SizedBox(width: 4),
                             ],
                             Expanded(
-                                child: Text(subtitle,
-                                    style: GoogleFonts.poppins(
-                                        fontSize: 9,
-                                        color: Colors.grey.shade700,
-                                        fontWeight: FontWeight.w500))),
+                              child: Text(
+                                subtitle,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 9,
+                                  color: Colors.grey.shade700,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ],
@@ -1332,9 +1579,60 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
     String label = 'SERVICE';
     String mainValue = displayServiceName;
 
+    // Determine if this is a wedding package with sub-services
+    final bool isWedding = _appointment!.isWeddingService == true;
+    final weddingPkg = _appointment!.weddingPackageDetails;
+    final List<PackageService> pkgServices = weddingPkg?.packageServices ?? [];
+
     if (_appointment!.isMultiService == true) {
       label = 'SERVICES';
       mainValue = 'Multi-Service (${items.length} Services)';
+    } else if (isWedding && pkgServices.isNotEmpty) {
+      label = 'WEDDING PACKAGE';
+      mainValue =
+          '${weddingPkg?.packageName ?? displayServiceName} (${pkgServices.length} Services)';
+    }
+
+    // Build the child service detail widgets
+    List<Widget> serviceWidgets;
+
+    if (items.isNotEmpty) {
+      // Normal / multi-service path — use serviceItems directly
+      serviceWidgets = items.map((it) {
+        final effectiveAddOns = (it.addOns != null && it.addOns!.isNotEmpty)
+            ? it.addOns
+            : (items.length == 1 ? _appointment!.addOns : null);
+
+        return _serviceItemDetail(
+          it.serviceName ?? '—',
+          (it.amount ?? 0).toDouble(),
+          it.staffName ?? '—',
+          '${it.startTime ?? "—"} - ${it.endTime ?? "—"} (${it.duration ?? 0} min)',
+          addOns: effectiveAddOns,
+        );
+      }).toList();
+    } else if (isWedding && pkgServices.isNotEmpty) {
+      // Wedding package — expand packageServices
+      serviceWidgets = pkgServices.map((ps) {
+        return _serviceItemDetail(
+          ps.serviceName ?? '—',
+          (ps.amount ?? 0.0)
+              .toDouble(), // individual prices now stored on PackageService
+          _appointment!.staffName ?? '—',
+          'Included in package',
+        );
+      }).toList();
+    } else {
+      // Fallback — single service
+      serviceWidgets = [
+        _serviceItemDetail(
+          _appointment!.serviceName ?? '—',
+          (_appointment!.amount ?? 0).toDouble(),
+          _appointment!.staffName ?? '—',
+          '${_appointment!.startTime ?? "—"} - ${_appointment!.endTime ?? "—"} (${_appointment!.duration ?? 0} min)',
+          addOns: _appointment!.addOns,
+        ),
+      ];
     }
 
     return _infoCard(
@@ -1342,36 +1640,17 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
       label,
       mainValue,
       fullWidthExtra: true,
-      extraContent: Column(
-        children: items.isNotEmpty
-            ? items.map((it) {
-                final effectiveAddOns =
-                    (it.addOns != null && it.addOns!.isNotEmpty)
-                        ? it.addOns
-                        : (items.length == 1 ? _appointment!.addOns : null);
-
-                return _serviceItemDetail(
-                    it.serviceName ?? '—',
-                    (it.amount ?? 0).toDouble(),
-                    it.staffName ?? '—',
-                    '${it.startTime ?? "—"} - ${it.endTime ?? "—"} (${it.duration ?? 0} min)',
-                    addOns: effectiveAddOns);
-              }).toList()
-            : [
-                _serviceItemDetail(
-                    _appointment!.serviceName ?? '—',
-                    (_appointment!.amount ?? 0).toDouble(),
-                    _appointment!.staffName ?? '—',
-                    '${_appointment!.startTime ?? "—"} - ${_appointment!.endTime ?? "—"} (${_appointment!.duration ?? 0} min)',
-                    addOns: _appointment!.addOns)
-              ],
-      ),
+      extraContent: Column(children: serviceWidgets),
     );
   }
 
   Widget _serviceItemDetail(
-      String name, double price, String staff, String time,
-      {List<AddOn>? addOns}) {
+    String name,
+    double price,
+    String staff,
+    String time, {
+    List<AddOn>? addOns,
+  }) {
     return Container(
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(12),
@@ -1387,58 +1666,77 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
-                child: Text(name,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF1E293B))),
+                child: Text(
+                  name,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF1E293B),
+                  ),
+                ),
               ),
               const SizedBox(width: 8),
-              Text('₹${price.toStringAsFixed(2)}',
-                  style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF1E293B))),
+              Text(
+                '₹${price.toStringAsFixed(2)}',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF1E293B),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 2),
-          Text('$staff • $time',
-              style: GoogleFonts.poppins(
-                  fontSize: 10,
-                  color: const Color(0xFF64748B),
-                  fontWeight: FontWeight.w400)),
+          Text(
+            '$staff • $time',
+            style: GoogleFonts.poppins(
+              fontSize: 10,
+              color: const Color(0xFF64748B),
+              fontWeight: FontWeight.w400,
+            ),
+          ),
           if (addOns != null && addOns.isNotEmpty) ...[
             const SizedBox(height: 12),
-            Text('Add-ons:',
-                style: GoogleFonts.poppins(
-                    fontSize: 10,
-                    color: const Color(0xFF64748B),
-                    fontWeight: FontWeight.w500)),
+            Text(
+              'Add-ons:',
+              style: GoogleFonts.poppins(
+                fontSize: 10,
+                color: const Color(0xFF64748B),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
             const SizedBox(height: 6),
-            ...addOns.map((addon) => Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                            '+ ${addon.name ?? 'Add-on'}${addon.duration != null && addon.duration! > 0 ? " (${addon.duration} min)" : ""}',
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.poppins(
-                                fontSize: 10,
-                                color: const Color(0xFF475569),
-                                fontWeight: FontWeight.w500)),
+            ...addOns.map(
+              (addon) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '+ ${addon.name ?? 'Add-on'}${addon.duration != null && addon.duration! > 0 ? " (${addon.duration} min)" : ""}',
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(
+                          fontSize: 10,
+                          color: const Color(0xFF475569),
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                      const SizedBox(width: 8),
-                      Text('₹${(addon.price ?? 0).toStringAsFixed(2)}',
-                          style: GoogleFonts.poppins(
-                              fontSize: 10,
-                              color: const Color(0xFF1E293B),
-                              fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                )),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '₹${(addon.price ?? 0).toStringAsFixed(2)}',
+                      style: GoogleFonts.poppins(
+                        fontSize: 10,
+                        color: const Color(0xFF1E293B),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ],
       ),
@@ -1470,17 +1768,23 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('STATUS',
-                    style: GoogleFonts.poppins(
-                        fontSize: 8.5,
-                        color: Colors.grey.shade800,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5)),
-                Text(_formatStatus(status),
-                    style: GoogleFonts.poppins(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black)),
+                Text(
+                  'STATUS',
+                  style: GoogleFonts.poppins(
+                    fontSize: 8.5,
+                    color: Colors.grey.shade800,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                Text(
+                  _formatStatus(status),
+                  style: GoogleFonts.poppins(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1489,33 +1793,45 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
     );
   }
 
-  Widget _paymentDetailRow(String label, double value,
-      {bool bold = false,
-      Color? color,
-      bool isStatusText = false,
-      String? status}) {
+  Widget _paymentDetailRow(
+    String label,
+    double value, {
+    bool bold = false,
+    Color? color,
+    bool isStatusText = false,
+    String? status,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 5),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
-              style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  color: color ?? Colors.black87,
-                  fontWeight: bold ? FontWeight.w700 : FontWeight.w400)),
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              color: color ?? Colors.black87,
+              fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
+            ),
+          ),
           if (isStatusText)
-            Text(status ?? 'Unpaid',
-                style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    color: Colors.black,
-                    fontWeight: FontWeight.w700))
+            Text(
+              status ?? 'Unpaid',
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                color: Colors.black,
+                fontWeight: FontWeight.w700,
+              ),
+            )
           else
-            Text('₹${value.toStringAsFixed(2)}',
-                style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    color: color ?? Colors.black,
-                    fontWeight: bold ? FontWeight.w700 : FontWeight.w500)),
+            Text(
+              '₹${value.toStringAsFixed(2)}',
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                color: color ?? Colors.black,
+                fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
         ],
       ),
     );
@@ -1559,68 +1875,8 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
   void _showInvoice() {
     if (_appointment == null) return;
 
-    final billingInvoice = BillingInvoice(
-      id: _appointment!.id ?? '',
-      invoiceNumber: _appointment!.invoiceNumber ?? _appointment!.id ?? 'N/A',
-      vendorId: _appointment!.vendorId ?? '',
-      clientId: _appointment!.client?.id ?? '',
-      clientInfo: ClientInfo(
-        fullName: _appointment!.clientName ?? 'Customer',
-        email: _appointment!.client?.email ?? 'N/A',
-        phone: _appointment!.client?.phone ?? 'N/A',
-        profilePicture: '',
-        address: '',
-      ),
-      items: _appointment!.serviceItems
-              ?.map((s) => BillingItem(
-                    itemId: '',
-                    itemType: 'Service',
-                    name: s.serviceName ?? 'Unknown',
-                    description: '',
-                    price: (s.amount ?? 0.0).toDouble(),
-                    quantity: 1,
-                    totalPrice: (s.amount ?? 0.0).toDouble(),
-                    duration: s.duration ?? 0,
-                    addOns: s.addOns
-                            ?.map((a) => AddOnItem(
-                                  id: a.id ?? '',
-                                  name: a.name ?? 'Add-on',
-                                  price: (a.price ?? 0.0).toDouble(),
-                                  duration: a.duration ?? 0,
-                                ))
-                            .toList() ??
-                        [],
-                    discount: 0.0,
-                    discountType: 'flat',
-                  ))
-              .toList() ??
-          [
-            BillingItem(
-              itemId: '',
-              itemType: 'Service',
-              name: _appointment!.serviceName ?? 'Unknown',
-              description: '',
-              price: _appointment!.amount ?? 0.0,
-              quantity: 1,
-              totalPrice: _appointment!.amount ?? 0.0,
-              duration: _appointment!.duration ?? 0,
-              addOns: [],
-              discount: 0.0,
-              discountType: 'flat',
-            )
-          ],
-      subtotal: _appointment!.amount ?? _appointment!.totalAmount ?? 0.0,
-      taxRate: 0.0, // We could calculate this if needed
-      taxAmount: _appointment!.serviceTax ?? 0.0,
-      platformFee: _appointment!.platformFee ?? 0.0,
-      totalAmount: _appointment!.totalAmount ?? _appointment!.amount ?? 0.0,
-      balance: _appointment!.amountRemaining ?? 0.0,
-      paymentMethod: _appointment!.paymentMethod ?? 'Cash',
-      paymentStatus: _getPaymentStatusText(_appointment!),
-      billingType: 'Appointment',
-      createdAt: _appointment!.date ?? DateTime.now(),
-      updatedAt: DateTime.now(),
-    );
+    // Safely Build invoice from appointment for display using helper
+    final billingInvoice = _getBillingInvoiceFromAppointment(_appointment!);
 
     showDialog(
       context: context,
@@ -1661,23 +1917,31 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
         context: context,
         builder: (context) => AlertDialog(
           shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.grey.shade400)),
-          title: Text('Cancel Appointment',
-              style: GoogleFonts.poppins(fontWeight: FontWeight.w700)),
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: Colors.grey.shade400),
+          ),
+          title: Text(
+            'Cancel Appointment',
+            style: GoogleFonts.poppins(fontWeight: FontWeight.w700),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Please provide a reason for cancellation:',
-                  style: GoogleFonts.poppins(fontSize: 13)),
+              Text(
+                'Please provide a reason for cancellation:',
+                style: GoogleFonts.poppins(fontSize: 13),
+              ),
               const SizedBox(height: 12),
               TextField(
                 controller: reasonController,
                 decoration: InputDecoration(
-                    hintText: 'Reason...',
-                    border: const OutlineInputBorder(),
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8)),
+                  hintText: 'Reason...',
+                  border: const OutlineInputBorder(),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                ),
                 maxLines: 3,
               ),
             ],
@@ -1691,14 +1955,17 @@ class _AppointmentDetailDialogState extends State<AppointmentDetailDialog>
               onPressed: () {
                 if (reasonController.text.trim().isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Reason is required')));
+                    const SnackBar(content: Text('Reason is required')),
+                  );
                   return;
                 }
                 Navigator.pop(context, reasonController.text.trim());
               },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.black),
-              child: const Text('Cancel Appointment',
-                  style: TextStyle(color: Colors.white)),
+              child: const Text(
+                'Cancel Appointment',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         ),

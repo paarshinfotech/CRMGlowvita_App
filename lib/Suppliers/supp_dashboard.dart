@@ -5,6 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter/animation.dart';
 import 'dart:math' as math;
+import 'package:fl_chart/fl_chart.dart';
+
 import './supp_drawer.dart';
 import 'supp_profile.dart';
 import 'supp_notifications.dart';
@@ -130,7 +132,7 @@ class _SuppDashboardPageState extends State<Supp_DashboardPage>
 
   void _calculateCharts() {
     // Sales Overview - Last 7 months (Sample data)
-    _monthlySalesData = [0.4, 0.6, 0.5, 0.8, 0.7, 0.9, 0.85];
+    _monthlySalesData = [12000.0, 15000.0, 9500.0, 19250.0, 17000.0, 22000.0, 18500.0];
 
     // Top Products (Sample data)
     _topProductNames = [
@@ -761,164 +763,156 @@ class _SalesOverviewChart extends StatelessWidget {
     });
   }
 
-  static const _yLabels = ['Max', '0.75', '0.5', '0.25', '0'];
-
   @override
   Widget build(BuildContext context) {
+    double maxVal = data.isEmpty ? 0.0 : data.reduce(math.max);
+    double maxY = 5000.0;
+    if (maxVal > 0) {
+      double step;
+      if (maxVal <= 1000) {
+        step = 250;
+      } else if (maxVal <= 5000) {
+        step = 1000;
+      } else if (maxVal <= 20000) {
+        step = 5000;
+      } else {
+        step = 10000;
+      }
+      maxY = (maxVal / step).ceil() * step;
+    }
+
     const double chartH = 150;
-    const double yAxisW = 30;
-    const double xLabelH = 20;
-    const double slotW = 44;
 
     return SizedBox(
-      height: chartH + xLabelH,
-      child: Row(
-        children: [
-          SizedBox(
-            width: yAxisW,
-            height: chartH,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: _yLabels
-                  .map(
-                    (l) => Text(
-                      l,
-                      style: TextStyle(fontSize: 7.sp, color: Colors.grey[500]),
-                    ),
-                  )
-                  .toList(),
+      height: chartH + 20,
+      child: LineChart(
+        LineChartData(
+          minY: 0,
+          maxY: maxY,
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: maxY / 4,
+            getDrawingHorizontalLine: (value) => FlLine(
+              color: Colors.grey[200],
+              strokeWidth: 0.8,
+              dashArray: [4, 3],
             ),
           ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SizedBox(
-                width: slotW * _months.length,
-                child: Column(
-                  children: [
-                    SizedBox(
-                      height: chartH,
-                      child: CustomPaint(
-                        painter: _SalesLinePainter(data: data),
-                        size: Size(slotW * _months.length, chartH),
+          titlesData: FlTitlesData(
+            show: true,
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 22,
+                interval: 1,
+                getTitlesWidget: (value, meta) {
+                  final idx = value.toInt();
+                  if (idx >= 0 && idx < _months.length) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 4.0),
+                      child: Text(
+                        _months[idx],
+                        style: TextStyle(
+                          fontSize: 8.sp,
+                          color: Colors.grey[500],
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ),
-                    SizedBox(
-                      height: xLabelH,
-                      child: Row(
-                        children: _months
-                            .map(
-                              (m) => SizedBox(
-                                width: slotW,
-                                child: Text(
-                                  m,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 8.sp,
-                                    color: Colors.grey[500],
-                                  ),
-                                ),
-                              ),
-                            )
-                            .toList(),
-                      ),
-                    ),
+                    );
+                  }
+                  return const Text('');
+                },
+              ),
+            ),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 34,
+                interval: maxY / 4,
+                getTitlesWidget: (value, meta) {
+                  if (value == 0) {
+                    return Text(
+                      '0',
+                      style: TextStyle(fontSize: 7.5.sp, color: Colors.grey[500]),
+                      textAlign: TextAlign.right,
+                    );
+                  }
+                  if (value >= 1000) {
+                    return Text(
+                      '${(value / 1000).toStringAsFixed(0)}k',
+                      style: TextStyle(fontSize: 7.5.sp, color: Colors.grey[500]),
+                      textAlign: TextAlign.right,
+                    );
+                  }
+                  return Text(
+                    value.toStringAsFixed(0),
+                    style: TextStyle(fontSize: 7.5.sp, color: Colors.grey[500]),
+                    textAlign: TextAlign.right,
+                  );
+                },
+              ),
+            ),
+            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          ),
+          borderData: FlBorderData(show: false),
+          lineBarsData: [
+            LineChartBarData(
+              spots: List.generate(
+                data.length,
+                (i) => FlSpot(i.toDouble(), data[i]),
+              ),
+              isCurved: false,
+              color: const Color(0xFF42A5F5),
+              barWidth: 2,
+              isStrokeCapRound: true,
+              dotData: FlDotData(
+                show: true,
+                getDotPainter: (spot, percent, barData, index) =>
+                    FlDotCirclePainter(
+                  radius: 3.5,
+                  color: const Color(0xFF42A5F5),
+                  strokeWidth: 1.5,
+                  strokeColor: Colors.white,
+                ),
+              ),
+              belowBarData: BarAreaData(
+                show: true,
+                gradient: LinearGradient(
+                  colors: [
+                    const Color(0xFF42A5F5).withOpacity(0.22),
+                    const Color(0xFF42A5F5).withOpacity(0.01),
                   ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
                 ),
               ),
             ),
+          ],
+          lineTouchData: LineTouchData(
+            enabled: true,
+            touchTooltipData: LineTouchTooltipData(
+              getTooltipColor: (touchedSpot) => const Color(0xFF42A5F5),
+              tooltipRoundedRadius: 4,
+              getTooltipItems: (touchedSpots) {
+                return touchedSpots.map((spot) {
+                  return LineTooltipItem(
+                    '₹ ${spot.y.toStringAsFixed(0)}',
+                    const TextStyle(
+                      color: Colors.white,
+                      fontSize: 8,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  );
+                }).toList();
+              },
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
-}
-
-class _SalesLinePainter extends CustomPainter {
-  final List<double> data;
-  const _SalesLinePainter({required this.data});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final n = data.length;
-    final slotW = size.width / n;
-    const padTop = 24.0;
-    final chartH = size.height - padTop;
-
-    final points = List.generate(
-      n,
-      (i) => Offset(slotW * i + slotW / 2, padTop + chartH * (1 - data[i])),
-    );
-
-    final fill = Path()
-      ..moveTo(points.first.dx, size.height)
-      ..lineTo(points.first.dx, points.first.dy);
-    for (int i = 1; i < points.length; i++)
-      fill.lineTo(points[i].dx, points[i].dy);
-    fill
-      ..lineTo(points.last.dx, size.height)
-      ..close();
-    canvas.drawPath(
-      fill,
-      Paint()
-        ..shader =
-            ui.Gradient.linear(Offset(0, padTop), Offset(0, size.height), [
-              const Color(0xFF42A5F5).withOpacity(0.22),
-              const Color(0xFF42A5F5).withOpacity(0.01),
-            ]),
-    );
-
-    final gridP = Paint()
-      ..color = Colors.grey[200]!
-      ..strokeWidth = 0.8;
-    for (int i = 0; i <= 4; i++) {
-      final y = padTop + chartH * i / 4;
-      _drawDashedLine(canvas, Offset(0, y), Offset(size.width, y), gridP);
-    }
-
-    final linePaint = Paint()
-      ..color = const Color(0xFF42A5F5)
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
-    final path = Path()..moveTo(points[0].dx, points[0].dy);
-    for (int i = 1; i < points.length; i++)
-      path.lineTo(points[i].dx, points[i].dy);
-    canvas.drawPath(path, linePaint);
-
-    for (final p in points) {
-      canvas.drawCircle(p, 3.5, Paint()..color = const Color(0xFF42A5F5));
-      canvas.drawCircle(
-        p,
-        3.5,
-        Paint()
-          ..color = Colors.white
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.5,
-      );
-    }
-  }
-
-  void _drawDashedLine(Canvas c, Offset s, Offset e, Paint p) {
-    const dash = 4.0, gap = 3.0;
-    final dx = e.dx - s.dx, dy = e.dy - s.dy;
-    final len = math.sqrt(dx * dx + dy * dy);
-    final ux = dx / len, uy = dy / len;
-    double pos = 0;
-    while (pos < len) {
-      final end = math.min(pos + dash, len);
-      c.drawLine(
-        Offset(s.dx + ux * pos, s.dy + uy * pos),
-        Offset(s.dx + ux * end, s.dy + uy * end),
-        p,
-      );
-      pos += dash + gap;
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _SalesLinePainter o) => o.data != data;
 }
 
 // ═══════════════════════════════════════════════════════

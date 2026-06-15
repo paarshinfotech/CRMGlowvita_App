@@ -43,6 +43,7 @@ class BillingInvoice {
   final String billingType;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String staffName;
 
   BillingInvoice({
     required this.id,
@@ -62,6 +63,7 @@ class BillingInvoice {
     required this.billingType,
     required this.createdAt,
     required this.updatedAt,
+    required this.staffName,
   });
 
   factory BillingInvoice.fromJson(Map<String, dynamic> json) {
@@ -90,6 +92,7 @@ class BillingInvoice {
       updatedAt: json['updatedAt'] != null
           ? DateTime.parse(json['updatedAt'])
           : DateTime.now(),
+      staffName: json['staffName'] ?? '',
     );
   }
 }

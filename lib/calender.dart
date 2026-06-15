@@ -28,6 +28,7 @@ class Appointments {
   final String mode;
   final bool hasAddOns;
   final bool isWeddingService;
+  final bool isHomeService;
   final int addOnCount;
 
   Appointments({
@@ -42,6 +43,7 @@ class Appointments {
     this.mode = 'offline',
     this.hasAddOns = false,
     this.isWeddingService = false,
+    this.isHomeService = false,
     this.addOnCount = 0,
   });
 
@@ -150,6 +152,7 @@ class _CalendarState extends State<Calendar> {
                 m.serviceItems?.any((s) => s.addOns?.isNotEmpty ?? false) ??
                     false,
             isWeddingService: m.isWeddingService ?? false,
+            isHomeService: m.isHomeService ?? false,
             addOnCount: m.serviceItems
                     ?.fold<int>(0, (sum, s) => sum + (s.addOns?.length ?? 0)) ??
                 0,
@@ -1389,6 +1392,52 @@ class _CalendarState extends State<Calendar> {
                             ),
                           ],
                         ]),
+                        if (appt.isHomeService || appt.isWeddingService) ...[
+                          SizedBox(height: 3.h),
+                          Row(
+                            children: [
+                              if (appt.isHomeService) ...[
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 5.w, vertical: 1.h),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFE3F2FD),
+                                    borderRadius: BorderRadius.circular(4.r),
+                                    border: Border.all(
+                                        color: const Color(0xFF90CAF9)),
+                                  ),
+                                  child: Text(
+                                    'Home Service',
+                                    style: TextStyle(
+                                        fontSize: 6.sp,
+                                        fontWeight: FontWeight.bold,
+                                        color: const Color(0xFF1976D2)),
+                                  ),
+                                ),
+                                if (appt.isWeddingService) SizedBox(width: 4.w),
+                              ],
+                              if (appt.isWeddingService) ...[
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 5.w, vertical: 1.h),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFCE4EC),
+                                    borderRadius: BorderRadius.circular(4.r),
+                                    border: Border.all(
+                                        color: const Color(0xFFF8BBD0)),
+                                  ),
+                                  child: Text(
+                                    'Wedding',
+                                    style: TextStyle(
+                                        fontSize: 6.sp,
+                                        fontWeight: FontWeight.bold,
+                                        color: const Color(0xFFC2185B)),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),

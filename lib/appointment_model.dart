@@ -40,6 +40,7 @@ class AppointmentModel {
   final double? platformFee;
   final String? venueAddress;
   final String? invoiceNumber;
+  final double? taxRate;
 
   AppointmentModel({
     this.id,
@@ -78,6 +79,7 @@ class AppointmentModel {
     this.venueAddress,
     this.paymentStatus,
     this.invoiceNumber,
+    this.taxRate,
   });
 
   factory AppointmentModel.fromJson(Map<String, dynamic> json) {
@@ -136,6 +138,7 @@ class AppointmentModel {
       venueAddress: json['venueAddress'],
       paymentStatus: json['paymentStatus'],
       invoiceNumber: json['invoiceNumber'] ?? json['invoiceNo'],
+      taxRate: (json['taxRate'] as num?)?.toDouble(),
     );
   }
 }
@@ -177,12 +180,16 @@ class PaymentRecord {
   final String? paymentMethod;
   final String? paymentDate;
   final String? notes;
+  final String? transactionId;
+  final String? paymentCollectionId;
 
   PaymentRecord({
     this.amount,
     this.paymentMethod,
     this.paymentDate,
     this.notes,
+    this.transactionId,
+    this.paymentCollectionId,
   });
 
   factory PaymentRecord.fromJson(Map<String, dynamic> json) {
@@ -191,6 +198,8 @@ class PaymentRecord {
       paymentMethod: json['paymentMethod'],
       paymentDate: json['paymentDate'],
       notes: json['notes'],
+      transactionId: json['transactionId'],
+      paymentCollectionId: json['paymentCollectionId'],
     );
   }
 }
@@ -252,12 +261,14 @@ class WeddingPackageDetails {
 
 class PackageService {
   final String? serviceName;
+  final double? amount;
 
-  PackageService({this.serviceName});
+  PackageService({this.serviceName, this.amount});
 
   factory PackageService.fromJson(Map<String, dynamic> json) {
     return PackageService(
       serviceName: json['serviceName'],
+      amount: (json['amount'] as num?)?.toDouble(),
     );
   }
 }

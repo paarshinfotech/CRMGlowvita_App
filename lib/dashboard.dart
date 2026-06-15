@@ -6,7 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter/animation.dart';
 import 'dart:math' as math;
-
+import 'package:fl_chart/fl_chart.dart';
 import 'Notification.dart';
 import 'appointment.dart';
 import 'widgets/custom_drawer.dart';
@@ -84,7 +84,7 @@ class _DashboardPageState extends State<DashboardPage>
   // Chart Data
   List<_PieSegment> _servicePieSegments = [];
   List<Map<String, dynamic>> _topServicesLegend = [];
-  List<double> _monthlySalesData = List.filled(12, 0.0);
+  List<double> _monthlySalesData = List.filled(7, 0.0);
   List<String> _topProductNames = [];
   List<double> _topProductValues = [];
   double _salonFeedback = 0, _productFeedback = 0, _serviceFeedback = 0;
@@ -141,7 +141,10 @@ class _DashboardPageState extends State<DashboardPage>
           _allReviews = results[3] as List<Map<String, dynamic>>;
           _allInvoices = results[4] as List<BillingInvoice>;
           _allExpenses = results[5] as List<Map<String, dynamic>>;
-          _salesByProductData = (salesReportData['data']?['salesByProduct'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+          _salesByProductData =
+              (salesReportData['data']?['salesByProduct'] as List?)
+                  ?.cast<Map<String, dynamic>>() ??
+              [];
           _calculateKpis();
           _isLoading = false;
         });
@@ -207,10 +210,16 @@ class _DashboardPageState extends State<DashboardPage>
 
       // Check for upcoming
       if (appt.date != null) {
-        final apptDate = DateTime(appt.date!.year, appt.date!.month, appt.date!.day);
+        final apptDate = DateTime(
+          appt.date!.year,
+          appt.date!.month,
+          appt.date!.day,
+        );
         final todayDate = DateTime(now.year, now.month, now.day);
-        if (apptDate.isAfter(todayDate) || apptDate.isAtSameMomentAs(todayDate)) {
-          if (appt.status?.toLowerCase() != 'cancelled' && appt.status?.toLowerCase() != 'completed') {
+        if (apptDate.isAfter(todayDate) ||
+            apptDate.isAtSameMomentAs(todayDate)) {
+          if (appt.status?.toLowerCase() != 'cancelled' &&
+              appt.status?.toLowerCase() != 'completed') {
             _upcomingAppts++;
           }
         }
@@ -241,9 +250,11 @@ class _DashboardPageState extends State<DashboardPage>
 
     _servicePieSegments = [];
     _topServicesLegend = [];
-    int totalTopBookings = 0;
+    int totalBookings = 0;
+    for (var count in serviceCounts.values) {
+      totalBookings += count;
+    }
     final top4Services = sortedServices.take(4).toList();
-    for (var e in top4Services) totalTopBookings += e.value;
 
     final List<Color> pieColors = [
       const Color(0xFF26A69A),
@@ -253,8 +264,8 @@ class _DashboardPageState extends State<DashboardPage>
     ];
 
     for (int i = 0; i < top4Services.length; i++) {
-      final percent = totalTopBookings > 0
-          ? (top4Services[i].value / totalTopBookings) * 100
+      final double percentage = totalBookings > 0
+          ? (top4Services[i].value / totalBookings) * 100
           : 0.0;
       _servicePieSegments.add(
         _PieSegment(
@@ -264,14 +275,13 @@ class _DashboardPageState extends State<DashboardPage>
       );
       _topServicesLegend.add({
         'label': top4Services[i].key,
-        'percent': '${percent.toStringAsFixed(0)}%',
+        'percent': '${percentage.toStringAsFixed(0)}%',
         'color': pieColors[i],
       });
     }
 
     // Sales Overview - Last 7 months (Appointment Revenue Only)
     _monthlySalesData = List.filled(7, 0.0);
-    double maxMonthly = 0;
     DateTime now = DateTime.now();
     for (var appt in _allAppointments) {
       bool isPaid = appt.paymentStatus == 'completed';
@@ -285,14 +295,8 @@ class _DashboardPageState extends State<DashboardPage>
           int index = 6 - monthsDiff; // 0 is 6 months ago, 6 is current month
           double amt = appt.totalAmount ?? appt.finalAmount ?? 0.0;
           _monthlySalesData[index] += amt;
-          if (_monthlySalesData[index] > maxMonthly) {
-            maxMonthly = _monthlySalesData[index];
-          }
         }
       }
-    }
-    if (maxMonthly > 0) {
-      for (int i = 0; i < 7; i++) _monthlySalesData[i] /= maxMonthly;
     }
 
     // Top Products
@@ -307,11 +311,15 @@ class _DashboardPageState extends State<DashboardPage>
       _topProductNames = [];
       _topProductValues = [];
       final top5Products = sortedProducts.take(5).toList();
-      int maxProd = top5Products.isNotEmpty ? ((top5Products[0]['quantitySold'] as num?)?.toInt() ?? 1) : 1;
+      int maxProd = top5Products.isNotEmpty
+          ? ((top5Products[0]['quantitySold'] as num?)?.toInt() ?? 1)
+          : 1;
       if (maxProd == 0) maxProd = 1;
       for (var p in top5Products) {
         _topProductNames.add(p['productName']?.toString() ?? 'N/A');
-        _topProductValues.add(((p['quantitySold'] as num?)?.toDouble() ?? 0.0) / maxProd);
+        _topProductValues.add(
+          ((p['quantitySold'] as num?)?.toDouble() ?? 0.0) / maxProd,
+        );
       }
     } else {
       Map<String, int> productSales = {};
@@ -341,7 +349,9 @@ class _DashboardPageState extends State<DashboardPage>
     int cSalon = 0, cProd = 0, cServ = 0;
     for (var rev in _allReviews) {
       double rating = (rev['rating'] as num?)?.toDouble() ?? 0;
-      String type = (rev['entityType'] ?? rev['category'] ?? '').toString().toLowerCase();
+      String type = (rev['entityType'] ?? rev['category'] ?? '')
+          .toString()
+          .toLowerCase();
       if (type.contains('salon')) {
         totalSalon += rating;
         cSalon++;
@@ -1308,199 +1318,166 @@ class _SalesOverviewChart extends StatelessWidget {
     });
   }
 
-  static const _yLabels = ['Max', '0.75', '0.5', '0.25', '0'];
-
   @override
   Widget build(BuildContext context) {
+    double maxVal = data.isEmpty ? 0.0 : data.reduce(math.max);
+    double maxY = 5000.0;
+    if (maxVal > 0) {
+      double step;
+      if (maxVal <= 1000) {
+        step = 250;
+      } else if (maxVal <= 5000) {
+        step = 1000;
+      } else if (maxVal <= 20000) {
+        step = 5000;
+      } else {
+        step = 10000;
+      }
+      maxY = (maxVal / step).ceil() * step;
+    }
+
     const double chartH = 150;
-    const double yAxisW = 30;
-    const double xLabelH = 20;
-    const double slotW = 44;
 
     return SizedBox(
-      height: chartH + xLabelH,
-      child: Row(
-        children: [
-          // Y-axis labels
-          SizedBox(
-            width: yAxisW,
-            height: chartH,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: _yLabels
-                  .map(
-                    (l) => Text(
-                      l,
-                      style: TextStyle(fontSize: 7.sp, color: Colors.grey[500]),
-                    ),
-                  )
-                  .toList(),
+      height: chartH + 20,
+      child: LineChart(
+        LineChartData(
+          minY: 0,
+          maxY: maxY,
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: maxY / 4,
+            getDrawingHorizontalLine: (value) => FlLine(
+              color: Colors.grey[200],
+              strokeWidth: 0.8,
+              dashArray: [4, 3],
             ),
           ),
-          const SizedBox(width: 4),
-          // Scrollable chart + x labels
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SizedBox(
-                width: slotW * _months.length,
-                child: Column(
-                  children: [
-                    SizedBox(
-                      height: chartH,
-                      child: CustomPaint(
-                        painter: _SalesLinePainter(
-                          data: data,
-                          totalRevenue: totalRevenue,
+          titlesData: FlTitlesData(
+            show: true,
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 22,
+                interval: 1,
+                getTitlesWidget: (value, meta) {
+                  final idx = value.toInt();
+                  if (idx >= 0 && idx < _months.length) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 4.0),
+                      child: Text(
+                        _months[idx],
+                        style: TextStyle(
+                          fontSize: 8.sp,
+                          color: Colors.grey[500],
+                          fontWeight: FontWeight.w500,
                         ),
-                        size: Size(slotW * _months.length, chartH),
                       ),
-                    ),
-                    SizedBox(
-                      height: xLabelH,
-                      child: Row(
-                        children: _months
-                            .map(
-                              (m) => SizedBox(
-                                width: slotW,
-                                child: Text(
-                                  m,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 8.sp,
-                                    color: Colors.grey[500],
-                                  ),
-                                ),
-                              ),
-                            )
-                            .toList(),
+                    );
+                  }
+                  return const Text('');
+                },
+              ),
+            ),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 34,
+                interval: maxY / 4,
+                getTitlesWidget: (value, meta) {
+                  if (value == 0) {
+                    return Text(
+                      '0',
+                      style: TextStyle(
+                        fontSize: 7.5.sp,
+                        color: Colors.grey[500],
                       ),
+                      textAlign: TextAlign.right,
+                    );
+                  }
+                  if (value >= 1000) {
+                    return Text(
+                      '${(value / 1000).toStringAsFixed(0)}k',
+                      style: TextStyle(
+                        fontSize: 7.5.sp,
+                        color: Colors.grey[500],
+                      ),
+                      textAlign: TextAlign.right,
+                    );
+                  }
+                  return Text(
+                    value.toStringAsFixed(0),
+                    style: TextStyle(fontSize: 7.5.sp, color: Colors.grey[500]),
+                    textAlign: TextAlign.right,
+                  );
+                },
+              ),
+            ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+          ),
+          borderData: FlBorderData(show: false),
+          lineBarsData: [
+            LineChartBarData(
+              spots: List.generate(
+                data.length,
+                (i) => FlSpot(i.toDouble(), data[i]),
+              ),
+              isCurved: false,
+              color: const Color(0xFF42A5F5),
+              barWidth: 2,
+              isStrokeCapRound: true,
+              dotData: FlDotData(
+                show: true,
+                getDotPainter: (spot, percent, barData, index) =>
+                    FlDotCirclePainter(
+                      radius: 3.5,
+                      color: const Color(0xFF42A5F5),
+                      strokeWidth: 1.5,
+                      strokeColor: Colors.white,
                     ),
+              ),
+              belowBarData: BarAreaData(
+                show: true,
+                gradient: LinearGradient(
+                  colors: [
+                    const Color(0xFF42A5F5).withOpacity(0.22),
+                    const Color(0xFF42A5F5).withOpacity(0.01),
                   ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
                 ),
               ),
             ),
+          ],
+          lineTouchData: LineTouchData(
+            enabled: true,
+            touchTooltipData: LineTouchTooltipData(
+              getTooltipColor: (touchedSpot) => const Color(0xFF42A5F5),
+              tooltipRoundedRadius: 4,
+              getTooltipItems: (touchedSpots) {
+                return touchedSpots.map((spot) {
+                  return LineTooltipItem(
+                    '₹ ${spot.y.toStringAsFixed(0)}',
+                    const TextStyle(
+                      color: Colors.white,
+                      fontSize: 8,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  );
+                }).toList();
+              },
+            ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SalesLinePainter extends CustomPainter {
-  final List<double> data;
-  final double totalRevenue;
-  const _SalesLinePainter({required this.data, required this.totalRevenue});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final n = data.length;
-    final slotW = size.width / n;
-    const padTop = 24.0;
-    final chartH = size.height - padTop;
-
-    final points = List.generate(
-      n,
-      (i) => Offset(slotW * i + slotW / 2, padTop + chartH * (1 - data[i])),
-    );
-
-    // Fill under line
-    final fill = Path()
-      ..moveTo(points.first.dx, size.height)
-      ..lineTo(points.first.dx, points.first.dy);
-    for (int i = 1; i < points.length; i++)
-      fill.lineTo(points[i].dx, points[i].dy);
-    fill
-      ..lineTo(points.last.dx, size.height)
-      ..close();
-    canvas.drawPath(
-      fill,
-      Paint()
-        ..shader =
-            ui.Gradient.linear(Offset(0, padTop), Offset(0, size.height), [
-              const Color(0xFF42A5F5).withOpacity(0.22),
-              const Color(0xFF42A5F5).withOpacity(0.01),
-            ]),
-    );
-
-    // Grid lines (dashed)
-    final gridP = Paint()
-      ..color = Colors.grey[200]!
-      ..strokeWidth = 0.8;
-    for (int i = 0; i <= 4; i++) {
-      final y = padTop + chartH * i / 4;
-      _drawDashedLine(canvas, Offset(0, y), Offset(size.width, y), gridP);
-    }
-
-    // Line
-    final linePaint = Paint()
-      ..color = const Color(0xFF42A5F5)
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
-    final path = Path()..moveTo(points[0].dx, points[0].dy);
-    for (int i = 1; i < points.length; i++)
-      path.lineTo(points[i].dx, points[i].dy);
-    canvas.drawPath(path, linePaint);
-
-    // Dots
-    for (final p in points) {
-      canvas.drawCircle(p, 3.5, Paint()..color = const Color(0xFF42A5F5));
-      canvas.drawCircle(
-        p,
-        3.5,
-        Paint()
-          ..color = Colors.white
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.5,
-      );
-    }
-
-    // Tooltip on peak
-    final peakIdx = data.indexOf(data.reduce(math.max));
-    final peak = points[peakIdx];
-    const tw = 68.0, th = 20.0;
-    final tx = peak.dx + tw / 2 + 6 > size.width
-        ? peak.dx - tw - 4
-        : peak.dx + 4;
-    final trect = Rect.fromLTWH(tx, peak.dy - th - 4, tw, th);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(trect, const Radius.circular(4)),
-      Paint()..color = const Color(0xFF42A5F5),
-    );
-    final tp = TextPainter(
-      text: TextSpan(
-        text: '₹ ${totalRevenue.toStringAsFixed(0)}',
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 8,
-          fontWeight: FontWeight.w600,
         ),
       ),
-      textDirection: ui.TextDirection.ltr,
-    )..layout(maxWidth: tw);
-    tp.paint(canvas, Offset(tx + (tw - tp.width) / 2, peak.dy - th - 2));
+    );
   }
-
-  void _drawDashedLine(Canvas c, Offset s, Offset e, Paint p) {
-    const dash = 4.0, gap = 3.0;
-    final dx = e.dx - s.dx, dy = e.dy - s.dy;
-    final len = math.sqrt(dx * dx + dy * dy);
-    final ux = dx / len, uy = dy / len;
-    double pos = 0;
-    while (pos < len) {
-      final end = math.min(pos + dash, len);
-      c.drawLine(
-        Offset(s.dx + ux * pos, s.dy + uy * pos),
-        Offset(s.dx + ux * end, s.dy + uy * end),
-        p,
-      );
-      pos += dash + gap;
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _SalesLinePainter o) => o.data != data;
 }
 
 // ═══════════════════════════════════════════════════════

@@ -755,6 +755,50 @@ class _AppointmentCard extends StatelessWidget {
                               overflow: TextOverflow.ellipsis),
                         ),
                       ]),
+                      if (appt.isHomeService == true || appt.isWeddingService == true) ...[
+                        SizedBox(height: 4.h),
+                        Row(
+                          children: [
+                            if (appt.isHomeService == true) ...[
+                              Container(
+                                padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.h),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE3F2FD),
+                                  borderRadius: BorderRadius.circular(4.r),
+                                  border: Border.all(color: const Color(0xFF90CAF9)),
+                                ),
+                                child: Text(
+                                  'Home Service',
+                                  style: TextStyle(
+                                    fontSize: 6.sp,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFF1976D2),
+                                  ),
+                                ),
+                              ),
+                              if (appt.isWeddingService == true) SizedBox(width: 4.w),
+                            ],
+                            if (appt.isWeddingService == true) ...[
+                              Container(
+                                padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.h),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFCE4EC),
+                                  borderRadius: BorderRadius.circular(4.r),
+                                  border: Border.all(color: const Color(0xFFF8BBD0)),
+                                ),
+                                child: Text(
+                                  'Wedding',
+                                  style: TextStyle(
+                                    fontSize: 6.sp,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFFC2185B),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
                       SizedBox(height: 5.h),
                       Divider(
                           height: 1, thickness: 0.5, color: Colors.grey[100]),

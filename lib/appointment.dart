@@ -137,6 +137,16 @@ class _AppointmentState extends State<Appointment>
       final int total = result['total'] ?? 0;
 
       setState(() {
+        // Sort appointments: latest date first, then latest time
+        appointments.sort((a, b) {
+          final dateA = a.date ?? DateTime(0);
+          final dateB = b.date ?? DateTime(0);
+          int cmp = dateB.compareTo(dateA);
+          if (cmp != 0) return cmp;
+          final timeA = a.startTime ?? '';
+          final timeB = b.startTime ?? '';
+          return timeB.compareTo(timeA);
+        });
         _apiAppointments = appointments;
         _totalCount = total;
         _isLoading = false;
@@ -1425,39 +1435,80 @@ class _AppointmentState extends State<Appointment>
                             ),
                           ],
                         ),
-                        if (appt.isWeddingService == true) ...[
+                        if (appt.isHomeService == true || appt.isWeddingService == true) ...[
                           SizedBox(height: 3.h),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 5.w,
-                              vertical: 1.h,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.pink.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(4.r),
-                              border: Border.all(
-                                color: Colors.pink.withValues(alpha: 0.25),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.auto_awesome,
-                                  size: 7.sp,
-                                  color: Colors.pink,
+                          Row(
+                            children: [
+                              if (appt.isHomeService == true) ...[
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 5.w,
+                                    vertical: 1.h,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFE3F2FD),
+                                    borderRadius: BorderRadius.circular(4.r),
+                                    border: Border.all(
+                                      color: const Color(0xFF90CAF9),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.home_outlined,
+                                        size: 7.sp,
+                                        color: const Color(0xFF1976D2),
+                                      ),
+                                      SizedBox(width: 2.w),
+                                      Text(
+                                        'Home Service',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 7.sp,
+                                          fontWeight: FontWeight.w700,
+                                          color: const Color(0xFF1976D2),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                SizedBox(width: 2.w),
-                                Text(
-                                  'Wedding',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 7.sp,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.pink,
+                                if (appt.isWeddingService == true) SizedBox(width: 4.w),
+                              ],
+                              if (appt.isWeddingService == true) ...[
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 5.w,
+                                    vertical: 1.h,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFCE4EC),
+                                    borderRadius: BorderRadius.circular(4.r),
+                                    border: Border.all(
+                                      color: const Color(0xFFF8BBD0),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.auto_awesome,
+                                        size: 7.sp,
+                                        color: const Color(0xFFC2185B),
+                                      ),
+                                      SizedBox(width: 2.w),
+                                      Text(
+                                        'Wedding',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 7.sp,
+                                          fontWeight: FontWeight.w700,
+                                          color: const Color(0xFFC2185B),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
-                            ),
+                            ],
                           ),
                         ],
                       ],
@@ -1604,7 +1655,7 @@ class _AppointmentState extends State<Appointment>
                             ),
                             TextSpan(
                               text:
-                                  '₹${(appt.totalAmount ?? appt.amount ?? 0).toStringAsFixed(2)}',
+                                  '₹${(appt.finalAmount ?? appt.totalAmount ?? appt.amount ?? 0).toStringAsFixed(2)}',
                               style: GoogleFonts.poppins(
                                 fontSize: 8.5.sp,
                                 fontWeight: FontWeight.w700,
