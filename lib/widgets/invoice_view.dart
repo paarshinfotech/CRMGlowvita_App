@@ -26,19 +26,34 @@ class InvoiceView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double subtotal = invoice.items.fold(0.0, (sum, item) => sum + (item.price * item.quantity));
-    final double tax = invoice.taxAmount > 0 ? invoice.taxAmount : invoice.items.fold(0.0, (sum, item) => sum + (item.price * item.quantity * (invoice.taxRate / 100.0)));
-    final double discount = invoice.items.fold(0.0, (sum, item) => sum + item.discount);
+    final double subtotal = invoice.items.fold(
+      0.0,
+      (sum, item) => sum + (item.price * item.quantity),
+    );
+    final double tax = invoice.taxAmount > 0
+        ? invoice.taxAmount
+        : invoice.items.fold(
+            0.0,
+            (sum, item) =>
+                sum + (item.price * item.quantity * (invoice.taxRate / 100.0)),
+          );
+    final double discount = invoice.items.fold(
+      0.0,
+      (sum, item) => sum + item.discount,
+    );
     final double platformFee = invoice.platformFee;
     final double total = subtotal + tax + platformFee - discount;
-    final double effectiveTaxRate = invoice.taxRate > 0 ? invoice.taxRate : (subtotal > 0 ? (tax / subtotal) * 100.0 : 0.0);
+    final double effectiveTaxRate = invoice.taxRate > 0
+        ? invoice.taxRate
+        : (subtotal > 0 ? (tax / subtotal) * 100.0 : 0.0);
 
     final isMobile = MediaQuery.of(context).size.width < 600;
 
-
     return SingleChildScrollView(
       padding: EdgeInsets.symmetric(
-          horizontal: isMobile ? 8 : 16, vertical: isMobile ? 6 : 12),
+        horizontal: isMobile ? 8 : 16,
+        vertical: isMobile ? 6 : 12,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -49,29 +64,27 @@ class InvoiceView extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("Invoice Details",
-                      style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.bold,
-                        fontSize: isMobile ? 10 : 12,
-                      )),
+                  Text(
+                    "Invoice Details",
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.bold,
+                      fontSize: isMobile ? 10 : 12,
+                    ),
+                  ),
                   const Spacer(),
                   InkWell(
                     child: const Padding(
-                        padding: EdgeInsets.all(3),
-                        child: Icon(Icons.close, size: 20)),
+                      padding: EdgeInsets.all(3),
+                      child: Icon(Icons.close, size: 20),
+                    ),
                     onTap: onClose ?? () => Navigator.of(context).pop(),
                     borderRadius: BorderRadius.circular(18),
-                  )
+                  ),
                 ],
               ),
             ),
           // Header with Logo
-          Center(
-            child: Image.asset(
-              'assets/images/logo.png',
-              height: 50,
-            ),
-          ),
+          Center(child: Image.asset('assets/images/logo.png', height: 50)),
           const SizedBox(height: 12),
           // Company Info
           Padding(
@@ -124,9 +137,10 @@ class InvoiceView extends StatelessWidget {
           const SizedBox(height: 5),
           // Section line
           Container(
-              height: 2,
-              color: Colors.black54,
-              margin: const EdgeInsets.symmetric(vertical: 7)),
+            height: 2,
+            color: Colors.black54,
+            margin: const EdgeInsets.symmetric(vertical: 7),
+          ),
           // Date/Invoice No row
           Row(
             children: [
@@ -137,7 +151,9 @@ class InvoiceView extends StatelessWidget {
                       TextSpan(
                         text: "Date: ",
                         style: GoogleFonts.poppins(
-                            fontSize: 10, fontWeight: FontWeight.w600),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       TextSpan(
                         text: _invoiceFormatDate(invoice.createdAt),
@@ -156,14 +172,17 @@ class InvoiceView extends StatelessWidget {
                         TextSpan(
                           text: "Invoice No: ",
                           style: GoogleFonts.poppins(
-                              fontSize: 10, fontWeight: FontWeight.w600),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                         TextSpan(
                           text: "#${invoice.invoiceNumber}",
                           style: GoogleFonts.poppins(
-                              fontSize: 10,
-                              color: Theme.of(context).primaryColor,
-                              fontWeight: FontWeight.w500),
+                            fontSize: 10,
+                            color: Theme.of(context).primaryColor,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ],
                     ),
@@ -174,9 +193,10 @@ class InvoiceView extends StatelessWidget {
             ],
           ),
           Container(
-              height: 2,
-              color: Colors.black54,
-              margin: const EdgeInsets.symmetric(vertical: 7)),
+            height: 2,
+            color: Colors.black54,
+            margin: const EdgeInsets.symmetric(vertical: 7),
+          ),
           // Invoice to & Staff Name
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -189,7 +209,9 @@ class InvoiceView extends StatelessWidget {
                         TextSpan(
                           text: "Invoice To: ",
                           style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.w600, fontSize: 10),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 10,
+                          ),
                         ),
                         TextSpan(
                           text: invoice.clientInfo.fullName,
@@ -210,7 +232,9 @@ class InvoiceView extends StatelessWidget {
                           TextSpan(
                             text: "Staff Name: ",
                             style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.w600, fontSize: 10),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 10,
+                            ),
                           ),
                           TextSpan(
                             text: invoice.staffName,
@@ -245,22 +269,30 @@ class InvoiceView extends StatelessWidget {
               defaultVerticalAlignment: TableCellVerticalAlignment.middle,
               children: [
                 TableRow(
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                  ),
+                  decoration: BoxDecoration(color: Colors.grey[200]),
                   children: [
-                    _cellTxt("ITEM DESCRIPTION",
-                        weight: FontWeight.w600, isHeader: true),
-                    _cellTxt("₹ PRICE",
-                        weight: FontWeight.w600, isHeader: true),
+                    _cellTxt(
+                      "ITEM DESCRIPTION",
+                      weight: FontWeight.w600,
+                      isHeader: true,
+                    ),
+                    _cellTxt(
+                      "₹ PRICE",
+                      weight: FontWeight.w600,
+                      isHeader: true,
+                    ),
                     _cellTxt("₹ TAX", weight: FontWeight.w600, isHeader: true),
                     _cellTxt("QTY", weight: FontWeight.w600, isHeader: true),
-                    _cellTxt("₹ AMOUNT",
-                        weight: FontWeight.w600, isHeader: true),
+                    _cellTxt(
+                      "₹ AMOUNT",
+                      weight: FontWeight.w600,
+                      isHeader: true,
+                    ),
                   ],
                 ),
                 ...invoice.items.map((item) {
-                  final double itemTax = item.price * item.quantity * (effectiveTaxRate / 100.0);
+                  final double itemTax =
+                      item.price * item.quantity * (effectiveTaxRate / 100.0);
                   final double itemAmount = item.price * item.quantity;
                   return TableRow(
                     decoration: BoxDecoration(
@@ -272,57 +304,70 @@ class InvoiceView extends StatelessWidget {
                       // Item Description with Add-ons
                       Padding(
                         padding: const EdgeInsets.symmetric(
-                            vertical: 8, horizontal: 4),
+                          vertical: 8,
+                          horizontal: 4,
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               item.name,
                               style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.w600, fontSize: 10),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 10,
+                              ),
                             ),
                             if (item.addOns.isNotEmpty) ...[
                               const SizedBox(height: 2),
-                              ...item.addOns.map((addon) => Padding(
-                                    padding: const EdgeInsets.only(left: 0),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          "+ ${addon.name}",
-                                          style: GoogleFonts.poppins(
-                                              fontSize: 9,
-                                              color: Colors.grey[700]),
+                              ...item.addOns.map(
+                                (addon) => Padding(
+                                  padding: const EdgeInsets.only(left: 0),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        "+ ${addon.name}",
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 9,
+                                          color: Colors.grey[700],
                                         ),
-                                        Text(
-                                          "₹${addon.price.toStringAsFixed(0)}",
-                                          style: GoogleFonts.poppins(
-                                              fontSize: 9,
-                                              color: Colors.grey[700]),
+                                      ),
+                                      Text(
+                                        "₹${addon.price.toStringAsFixed(0)}",
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 9,
+                                          color: Colors.grey[700],
                                         ),
-                                      ],
-                                    ),
-                                  )),
-                            ]
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
                       _cellTxt("₹${item.price.toStringAsFixed(2)}"),
                       _cellTxt("₹${itemTax.toStringAsFixed(2)}"),
                       _cellTxt("${item.quantity}"),
-                      _cellTxt("₹${itemAmount.toStringAsFixed(2)}",
-                          align: TextAlign.right),
+                      _cellTxt(
+                        "₹${itemAmount.toStringAsFixed(2)}",
+                        align: TextAlign.right,
+                      ),
                     ],
                   );
                 }),
                 // empty row for look
                 ...List.generate(
-                    1,
-                    (_) => TableRow(
-                          children: List.generate(
-                              5, (_) => const SizedBox(height: 18)),
-                        )),
+                  1,
+                  (_) => TableRow(
+                    children: List.generate(
+                      5,
+                      (_) => const SizedBox(height: 18),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -348,38 +393,57 @@ class InvoiceView extends StatelessWidget {
               children: [
                 TableRow(
                   children: [
-                    _cellTxt("Subtotal:",
-                        align: TextAlign.right, weight: FontWeight.w600),
-                    _cellTxt("₹${subtotal.toStringAsFixed(2)}",
-                        align: TextAlign.right),
+                    _cellTxt(
+                      "Subtotal:",
+                      align: TextAlign.right,
+                      weight: FontWeight.w600,
+                    ),
+                    _cellTxt(
+                      "₹${subtotal.toStringAsFixed(2)}",
+                      align: TextAlign.right,
+                    ),
                   ],
                 ),
                 TableRow(
                   children: [
-                    _cellTxt("Discount:",
-                        align: TextAlign.right,
-                        weight: FontWeight.w600,
-                        color: Colors.green[800]),
-                    _cellTxt("-₹${discount.toStringAsFixed(2)}",
-                        color: Colors.green[800],
-                        align: TextAlign.right,
-                        weight: FontWeight.w500),
+                    _cellTxt(
+                      "Discount:",
+                      align: TextAlign.right,
+                      weight: FontWeight.w600,
+                      color: Colors.green[800],
+                    ),
+                    _cellTxt(
+                      "-₹${discount.toStringAsFixed(2)}",
+                      color: Colors.green[800],
+                      align: TextAlign.right,
+                      weight: FontWeight.w500,
+                    ),
                   ],
                 ),
                 TableRow(
                   children: [
-                    _cellTxt("Tax (${effectiveTaxRate.toStringAsFixed(0)}%):",
-                        align: TextAlign.right, weight: FontWeight.w600),
-                    _cellTxt("₹${tax.toStringAsFixed(2)}",
-                        align: TextAlign.right),
+                    _cellTxt(
+                      "Tax (${effectiveTaxRate.toStringAsFixed(0)}%):",
+                      align: TextAlign.right,
+                      weight: FontWeight.w600,
+                    ),
+                    _cellTxt(
+                      "₹${tax.toStringAsFixed(2)}",
+                      align: TextAlign.right,
+                    ),
                   ],
                 ),
                 TableRow(
                   children: [
-                    _cellTxt("Platform Fee:",
-                        align: TextAlign.right, weight: FontWeight.w600),
-                    _cellTxt("₹${platformFee.toStringAsFixed(2)}",
-                        align: TextAlign.right),
+                    _cellTxt(
+                      "Platform Fee:",
+                      align: TextAlign.right,
+                      weight: FontWeight.w600,
+                    ),
+                    _cellTxt(
+                      "₹${platformFee.toStringAsFixed(2)}",
+                      align: TextAlign.right,
+                    ),
                   ],
                 ),
                 TableRow(
@@ -389,10 +453,16 @@ class InvoiceView extends StatelessWidget {
                     ),
                   ),
                   children: [
-                    _cellTxt("Total:",
-                        align: TextAlign.right, weight: FontWeight.bold),
-                    _cellTxt("₹${total.toStringAsFixed(2)}",
-                        align: TextAlign.right, weight: FontWeight.bold),
+                    _cellTxt(
+                      "Total:",
+                      align: TextAlign.right,
+                      weight: FontWeight.bold,
+                    ),
+                    _cellTxt(
+                      "₹${total.toStringAsFixed(2)}",
+                      align: TextAlign.right,
+                      weight: FontWeight.bold,
+                    ),
                   ],
                 ),
               ],
@@ -401,15 +471,18 @@ class InvoiceView extends StatelessWidget {
           const SizedBox(height: 14),
           // Section line: strong & full
           Container(
-              height: 2,
-              color: Colors.black87,
-              margin: const EdgeInsets.symmetric(vertical: 3)),
+            height: 2,
+            color: Colors.black87,
+            margin: const EdgeInsets.symmetric(vertical: 3),
+          ),
           const SizedBox(height: 10),
           Center(
             child: Text(
               "Payment Of ₹${total.toStringAsFixed(2)} Received By ${invoice.paymentMethod}",
               style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.w600, fontSize: 10),
+                fontWeight: FontWeight.w600,
+                fontSize: 10,
+              ),
             ),
           ),
           const SizedBox(height: 2),
@@ -417,9 +490,10 @@ class InvoiceView extends StatelessWidget {
             child: Text(
               "NOTE: This is computer generated receipt and does not require physical signature.",
               style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.w400,
-                  fontSize: 8,
-                  color: Colors.grey[700]),
+                fontWeight: FontWeight.w400,
+                fontSize: 8,
+                color: Colors.grey[700],
+              ),
               textAlign: TextAlign.center,
             ),
           ),
@@ -432,22 +506,21 @@ class InvoiceView extends StatelessWidget {
                 Text(
                   "Powered by",
                   style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      color: const Color(0xFF64748B),
-                      fontWeight: FontWeight.w500),
+                    fontSize: 11,
+                    color: const Color(0xFF64748B),
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 const SizedBox(height: 8),
-                Image.asset(
-                  'assets/images/logo.png',
-                  height: 35,
-                ),
+                Image.asset('assets/images/logo.png', height: 35),
                 const SizedBox(height: 8),
                 Text(
                   "www.glowvitasalon.com",
                   style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      color: const Color(0xFF64748B),
-                      fontWeight: FontWeight.w500),
+                    fontSize: 11,
+                    color: const Color(0xFF64748B),
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
@@ -476,9 +549,12 @@ class InvoiceView extends StatelessWidget {
                     foregroundColor: Colors.white,
                     backgroundColor: Theme.of(context).primaryColor,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 13),
+                      horizontal: 24,
+                      vertical: 13,
+                    ),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(5)),
+                      borderRadius: BorderRadius.circular(5),
+                    ),
                   ),
                   child: const Text("Close"),
                 ),
@@ -490,23 +566,24 @@ class InvoiceView extends StatelessWidget {
     );
   }
 
-  Widget _cellTxt(String text,
-          {FontWeight weight = FontWeight.normal,
-          TextAlign align = TextAlign.left,
-          bool isHeader = false,
-          Color? color}) =>
-      Padding(
-        padding:
-            EdgeInsets.symmetric(vertical: isHeader ? 4 : 2, horizontal: 4),
-        child: Text(
-          text,
-          textAlign: align,
-          style: GoogleFonts.poppins(
-              fontSize: isHeader ? 9 : 10,
-              fontWeight: weight,
-              color: color ?? Colors.black87),
-        ),
-      );
+  Widget _cellTxt(
+    String text, {
+    FontWeight weight = FontWeight.normal,
+    TextAlign align = TextAlign.left,
+    bool isHeader = false,
+    Color? color,
+  }) => Padding(
+    padding: EdgeInsets.symmetric(vertical: isHeader ? 4 : 2, horizontal: 4),
+    child: Text(
+      text,
+      textAlign: align,
+      style: GoogleFonts.poppins(
+        fontSize: isHeader ? 9 : 10,
+        fontWeight: weight,
+        color: color ?? Colors.black87,
+      ),
+    ),
+  );
 
   String _invoiceFormatDate(DateTime dt) {
     return "${_weekday(dt.weekday)}, ${_month(dt.month)} ${dt.day}, ${dt.year}";
@@ -530,13 +607,15 @@ class InvoiceView extends StatelessWidget {
       "Sep",
       "Oct",
       "Nov",
-      "Dec"
+      "Dec",
     ];
     return months[(month - 1) % 12];
   }
 
   Future<void> _handlePrint(
-      BillingInvoice invoice, BuildContext context) async {
+    BillingInvoice invoice,
+    BuildContext context,
+  ) async {
     try {
       final pdf = await _generatePdfDocument(invoice);
       await Printing.layoutPdf(
@@ -555,7 +634,9 @@ class InvoiceView extends StatelessWidget {
   }
 
   Future<void> _handlePdfDownload(
-      BillingInvoice invoice, BuildContext context) async {
+    BillingInvoice invoice,
+    BuildContext context,
+  ) async {
     try {
       final pdf = await _generatePdfDocument(invoice);
       final bytes = await pdf.save();
@@ -616,12 +697,26 @@ class InvoiceView extends StatelessWidget {
     final logoData = await rootBundle.load('assets/images/logo.png');
     final logoImage = pw.MemoryImage(logoData.buffer.asUint8List());
 
-    final double subtotal = invoice.items.fold(0.0, (sum, item) => sum + (item.price * item.quantity));
-    final double tax = invoice.taxAmount > 0 ? invoice.taxAmount : invoice.items.fold(0.0, (sum, item) => sum + (item.price * item.quantity * (invoice.taxRate / 100.0)));
-    final double discount = invoice.items.fold(0.0, (sum, item) => sum + item.discount);
+    final double subtotal = invoice.items.fold(
+      0.0,
+      (sum, item) => sum + (item.price * item.quantity),
+    );
+    final double tax = invoice.taxAmount > 0
+        ? invoice.taxAmount
+        : invoice.items.fold(
+            0.0,
+            (sum, item) =>
+                sum + (item.price * item.quantity * (invoice.taxRate / 100.0)),
+          );
+    final double discount = invoice.items.fold(
+      0.0,
+      (sum, item) => sum + item.discount,
+    );
     final double platformFee = invoice.platformFee;
     final double total = subtotal + tax + platformFee - discount;
-    final double effectiveTaxRate = invoice.taxRate > 0 ? invoice.taxRate : (subtotal > 0 ? (tax / subtotal) * 100.0 : 0.0);
+    final double effectiveTaxRate = invoice.taxRate > 0
+        ? invoice.taxRate
+        : (subtotal > 0 ? (tax / subtotal) * 100.0 : 0.0);
 
     pdf.addPage(
       pw.Page(
@@ -631,9 +726,7 @@ class InvoiceView extends StatelessWidget {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              pw.Center(
-                child: pw.Image(logoImage, height: 60),
-              ),
+              pw.Center(child: pw.Image(logoImage, height: 60)),
               pw.SizedBox(height: 24),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -692,8 +785,9 @@ class InvoiceView extends StatelessWidget {
                           ),
                         ),
                         pw.TextSpan(
-                          text: DateFormat('EEEE, MMM dd, yyyy')
-                              .format(invoice.createdAt),
+                          text: DateFormat(
+                            'EEEE, MMM dd, yyyy',
+                          ).format(invoice.createdAt),
                           style: pw.TextStyle(fontSize: 10, font: font),
                         ),
                       ],
@@ -776,32 +870,45 @@ class InvoiceView extends StatelessWidget {
                       color: PdfColors.grey300,
                     ),
                     children: [
-                      _pdfCell('ITEM DESCRIPTION',
-                          bold: true, font: font, boldFont: boldFont),
-                      _pdfCell('₹ PRICE',
-                          bold: true,
-                          align: pw.TextAlign.right,
-                          font: font,
-                          boldFont: boldFont),
-                      _pdfCell('₹ TAX',
-                          bold: true,
-                          align: pw.TextAlign.right,
-                          font: font,
-                          boldFont: boldFont),
-                      _pdfCell('QTY',
-                          bold: true,
-                          align: pw.TextAlign.center,
-                          font: font,
-                          boldFont: boldFont),
-                      _pdfCell('₹ AMOUNT',
-                          bold: true,
-                          align: pw.TextAlign.right,
-                          font: font,
-                          boldFont: boldFont),
+                      _pdfCell(
+                        'ITEM DESCRIPTION',
+                        bold: true,
+                        font: font,
+                        boldFont: boldFont,
+                      ),
+                      _pdfCell(
+                        '₹ PRICE',
+                        bold: true,
+                        align: pw.TextAlign.right,
+                        font: font,
+                        boldFont: boldFont,
+                      ),
+                      _pdfCell(
+                        '₹ TAX',
+                        bold: true,
+                        align: pw.TextAlign.right,
+                        font: font,
+                        boldFont: boldFont,
+                      ),
+                      _pdfCell(
+                        'QTY',
+                        bold: true,
+                        align: pw.TextAlign.center,
+                        font: font,
+                        boldFont: boldFont,
+                      ),
+                      _pdfCell(
+                        '₹ AMOUNT',
+                        bold: true,
+                        align: pw.TextAlign.right,
+                        font: font,
+                        boldFont: boldFont,
+                      ),
                     ],
                   ),
                   ...invoice.items.map((item) {
-                    final double itemTax = item.price * item.quantity * (effectiveTaxRate / 100.0);
+                    final double itemTax =
+                        item.price * item.quantity * (effectiveTaxRate / 100.0);
                     final double itemAmount = item.price * item.quantity;
                     return pw.TableRow(
                       children: [
@@ -819,50 +926,58 @@ class InvoiceView extends StatelessWidget {
                               ),
                               if (item.addOns.isNotEmpty) ...[
                                 pw.SizedBox(height: 2),
-                                ...item.addOns.map((addon) => pw.Row(
-                                      mainAxisAlignment:
-                                          pw.MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        pw.Text(
-                                          "+ ${addon.name}",
-                                          style: pw.TextStyle(
-                                            fontSize: 9,
-                                            color:
-                                                PdfColor.fromHex('#6B7280'),
-                                            font: font,
-                                          ),
+                                ...item.addOns.map(
+                                  (addon) => pw.Row(
+                                    mainAxisAlignment:
+                                        pw.MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      pw.Text(
+                                        "+ ${addon.name}",
+                                        style: pw.TextStyle(
+                                          fontSize: 9,
+                                          color: PdfColor.fromHex('#6B7280'),
+                                          font: font,
                                         ),
-                                        pw.Text(
-                                          "₹${addon.price.toStringAsFixed(0)}",
-                                          style: pw.TextStyle(
-                                            fontSize: 9,
-                                            color:
-                                                PdfColor.fromHex('#6B7280'),
-                                            font: font,
-                                          ),
+                                      ),
+                                      pw.Text(
+                                        "₹${addon.price.toStringAsFixed(0)}",
+                                        style: pw.TextStyle(
+                                          fontSize: 9,
+                                          color: PdfColor.fromHex('#6B7280'),
+                                          font: font,
                                         ),
-                                      ],
-                                    )),
-                              ]
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),
-                        _pdfCell('₹${item.price.toStringAsFixed(2)}',
-                            align: pw.TextAlign.right,
-                            font: font,
-                            boldFont: boldFont),
-                        _pdfCell('₹${itemTax.toStringAsFixed(2)}',
-                            align: pw.TextAlign.right,
-                            font: font,
-                            boldFont: boldFont),
-                        _pdfCell('${item.quantity}',
-                            align: pw.TextAlign.center,
-                            font: font,
-                            boldFont: boldFont),
-                        _pdfCell('₹${itemAmount.toStringAsFixed(2)}',
-                            align: pw.TextAlign.right,
-                            font: font,
-                            boldFont: boldFont),
+                        _pdfCell(
+                          '₹${item.price.toStringAsFixed(2)}',
+                          align: pw.TextAlign.right,
+                          font: font,
+                          boldFont: boldFont,
+                        ),
+                        _pdfCell(
+                          '₹${itemTax.toStringAsFixed(2)}',
+                          align: pw.TextAlign.right,
+                          font: font,
+                          boldFont: boldFont,
+                        ),
+                        _pdfCell(
+                          '${item.quantity}',
+                          align: pw.TextAlign.center,
+                          font: font,
+                          boldFont: boldFont,
+                        ),
+                        _pdfCell(
+                          '₹${itemAmount.toStringAsFixed(2)}',
+                          align: pw.TextAlign.right,
+                          font: font,
+                          boldFont: boldFont,
+                        ),
                       ],
                     );
                   }),
@@ -871,7 +986,10 @@ class InvoiceView extends StatelessWidget {
               pw.Table(
                 border: pw.TableBorder.symmetric(
                   inside: const pw.BorderSide(color: PdfColors.black, width: 1),
-                  outside: const pw.BorderSide(color: PdfColors.black, width: 1),
+                  outside: const pw.BorderSide(
+                    color: PdfColors.black,
+                    width: 1,
+                  ),
                 ),
                 columnWidths: {
                   0: const pw.FlexColumnWidth(6.7),
@@ -880,56 +998,72 @@ class InvoiceView extends StatelessWidget {
                 children: [
                   pw.TableRow(
                     children: [
-                      _pdfCell('Subtotal:',
-                          bold: true,
-                          align: pw.TextAlign.right,
-                          font: font,
-                          boldFont: boldFont),
-                      _pdfCell('₹${subtotal.toStringAsFixed(2)}',
-                          align: pw.TextAlign.right,
-                          font: font,
-                          boldFont: boldFont),
+                      _pdfCell(
+                        'Subtotal:',
+                        bold: true,
+                        align: pw.TextAlign.right,
+                        font: font,
+                        boldFont: boldFont,
+                      ),
+                      _pdfCell(
+                        '₹${subtotal.toStringAsFixed(2)}',
+                        align: pw.TextAlign.right,
+                        font: font,
+                        boldFont: boldFont,
+                      ),
                     ],
                   ),
                   pw.TableRow(
                     children: [
-                      _pdfCell('Discount:',
-                          bold: true,
-                          align: pw.TextAlign.right,
-                          color: PdfColor.fromHex('#15803D'),
-                          font: font,
-                          boldFont: boldFont),
-                      _pdfCell('-₹${discount.toStringAsFixed(2)}',
-                          align: pw.TextAlign.right,
-                          color: PdfColor.fromHex('#15803D'),
-                          font: font,
-                          boldFont: boldFont),
+                      _pdfCell(
+                        'Discount:',
+                        bold: true,
+                        align: pw.TextAlign.right,
+                        color: PdfColor.fromHex('#15803D'),
+                        font: font,
+                        boldFont: boldFont,
+                      ),
+                      _pdfCell(
+                        '-₹${discount.toStringAsFixed(2)}',
+                        align: pw.TextAlign.right,
+                        color: PdfColor.fromHex('#15803D'),
+                        font: font,
+                        boldFont: boldFont,
+                      ),
                     ],
                   ),
                   pw.TableRow(
                     children: [
-                      _pdfCell('Tax (${invoice.taxRate.toStringAsFixed(0)}%):',
-                          bold: true,
-                          align: pw.TextAlign.right,
-                          font: font,
-                          boldFont: boldFont),
-                      _pdfCell('₹${tax.toStringAsFixed(2)}',
-                          align: pw.TextAlign.right,
-                          font: font,
-                          boldFont: boldFont),
+                      _pdfCell(
+                        'Tax (${invoice.taxRate.toStringAsFixed(0)}%):',
+                        bold: true,
+                        align: pw.TextAlign.right,
+                        font: font,
+                        boldFont: boldFont,
+                      ),
+                      _pdfCell(
+                        '₹${tax.toStringAsFixed(2)}',
+                        align: pw.TextAlign.right,
+                        font: font,
+                        boldFont: boldFont,
+                      ),
                     ],
                   ),
                   pw.TableRow(
                     children: [
-                      _pdfCell('Platform Fee:',
-                          bold: true,
-                          align: pw.TextAlign.right,
-                          font: font,
-                          boldFont: boldFont),
-                      _pdfCell('₹${platformFee.toStringAsFixed(2)}',
-                          align: pw.TextAlign.right,
-                          font: font,
-                          boldFont: boldFont),
+                      _pdfCell(
+                        'Platform Fee:',
+                        bold: true,
+                        align: pw.TextAlign.right,
+                        font: font,
+                        boldFont: boldFont,
+                      ),
+                      _pdfCell(
+                        '₹${platformFee.toStringAsFixed(2)}',
+                        align: pw.TextAlign.right,
+                        font: font,
+                        boldFont: boldFont,
+                      ),
                     ],
                   ),
                   pw.TableRow(
@@ -939,16 +1073,20 @@ class InvoiceView extends StatelessWidget {
                       ),
                     ),
                     children: [
-                      _pdfCell('Total:',
-                          bold: true,
-                          align: pw.TextAlign.right,
-                          font: font,
-                          boldFont: boldFont),
-                      _pdfCell('₹${total.toStringAsFixed(2)}',
-                          bold: true,
-                          align: pw.TextAlign.right,
-                          font: font,
-                          boldFont: boldFont),
+                      _pdfCell(
+                        'Total:',
+                        bold: true,
+                        align: pw.TextAlign.right,
+                        font: font,
+                        boldFont: boldFont,
+                      ),
+                      _pdfCell(
+                        '₹${total.toStringAsFixed(2)}',
+                        bold: true,
+                        align: pw.TextAlign.right,
+                        font: font,
+                        boldFont: boldFont,
+                      ),
                     ],
                   ),
                 ],
@@ -1015,12 +1153,14 @@ class InvoiceView extends StatelessWidget {
     return pdf;
   }
 
-  pw.Widget _pdfCell(String text,
-      {bool bold = false,
-      pw.TextAlign align = pw.TextAlign.left,
-      PdfColor? color,
-      required pw.Font font,
-      required pw.Font boldFont}) {
+  pw.Widget _pdfCell(
+    String text, {
+    bool bold = false,
+    pw.TextAlign align = pw.TextAlign.left,
+    PdfColor? color,
+    required pw.Font font,
+    required pw.Font boldFont,
+  }) {
     return pw.Padding(
       padding: const pw.EdgeInsets.all(6),
       child: pw.Text(

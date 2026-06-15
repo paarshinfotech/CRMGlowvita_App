@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -13,7 +14,7 @@ class AddStaffDialog extends StatefulWidget {
   final VoidCallback? onRefresh;
 
   const AddStaffDialog({Key? key, this.existing, this.onRefresh})
-    : super(key: key);
+      : super(key: key);
 
   @override
   State<AddStaffDialog> createState() => _AddStaffDialogState();
@@ -21,7 +22,14 @@ class AddStaffDialog extends StatefulWidget {
 
 class _AddStaffDialogState extends State<AddStaffDialog>
     with SingleTickerProviderStateMixin {
+  // Theme constants
+  final Color _kPrimary = const Color(0xFF4A2C40);
+  final Color _kPink = const Color(0xFFB33A6B);
+  final Color _kBorder = const Color(0xFFE5E5E5);
+  final Color _kLabel = const Color(0xFF2C2C2C);
+
   // Personal
+  final _fullName = TextEditingController();
   final _firstName = TextEditingController();
   final _lastName = TextEditingController();
   final _position = TextEditingController();
@@ -33,7 +41,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
-  // Employment
+  // Employment / Job
   final _salary = TextEditingController();
   final _experience = TextEditingController();
   final _clients = TextEditingController();
@@ -49,7 +57,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
   final _ifsc = TextEditingController();
   final _upi = TextEditingController();
 
-  // Permissions (display name -> checked)
+  // Permissions (Access)
   final Map<String, bool> _permissions = {
     'Dashboard': false,
     'Staff': false,
@@ -69,6 +77,15 @@ class _AddStaffDialogState extends State<AddStaffDialog>
     'Settlements': false,
     'Marketing': false,
     'Expenses': false,
+  };
+
+  // Grouped permissions matching Figma
+  final Map<String, List<String>> _permissionGroups = {
+    'CORE OPERATIONS': ['Dashboard', 'Calendar', 'Appointments', 'Clients', 'Staff'],
+    'SERVICES & PRODUCTS': ['Services', 'Products'],
+    'SALES & COMMERCE': ['Sales', 'Orders', 'Marketplace', 'Referrals', 'Offers & Coupons'],
+    'FINANCIAL & OPERATIONS': ['Settlements', 'Expenses', 'Reports'],
+    'COMMUNICATION': ['Notifications', 'Marketing'],
   };
 
   // Timing controllers
@@ -97,7 +114,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
   VendorProfile? _vendorProfile;
   bool _isLoadingSalonHours = true;
 
-  // Photo (either http url or local file path)
+  // Photo
   String? _imagePath;
 
   // Form keys per tab
@@ -109,7 +126,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
   bool _isSaving = false;
   Map? _localExisting;
 
-  // Mapping: Display permission -> API permission string
+  // Mapping
   static const Map<String, String> displayToPerm = {
     'Dashboard': 'dashboard_view',
     'Calendar': 'calendar_view',
@@ -158,24 +175,20 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       return MemoryImage(base64Decode(path.split(',').last));
     }
     if (path.contains('/')) {
-      // Relative path
       final baseUrl = 'https://partners.glowvitasalon.com';
       final fullUrl = '$baseUrl${path.startsWith('/') ? path : '/$path'}';
       return NetworkImage(fullUrl);
     }
-    // Local file path
     return FileImage(File(path));
   }
 
   int _timeToMinutes(String time) {
     if (time.isEmpty) return 0;
     try {
-      // Try parsing with AM/PM first
       try {
         final date = DateFormat.jm().parse(time.trim());
         return date.hour * 60 + date.minute;
       } catch (_) {
-        // Fallback to 24h format
         final date = DateFormat("HH:mm").parse(time.trim());
         return date.hour * 60 + date.minute;
       }
@@ -188,11 +201,24 @@ class _AddStaffDialogState extends State<AddStaffDialog>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
     _localExisting = widget.existing;
     _fetchSalonHours();
 
-    // Initialize default availability to true for all days
+    // Auto split Full Name to First & Last Name
+    _fullName.addListener(() {
+      final text = _fullName.text.trim();
+      final parts = text.split(RegExp(r'\s+'));
+      if (parts.isNotEmpty) {
+        _firstName.text = parts.first;
+        _lastName.text = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+      } else {
+        _firstName.text = '';
+        _lastName.text = '';
+      }
+    });
+
+    // Initialize default availability
     _weeklyAvailability['monday'] = true;
     _weeklyAvailability['tuesday'] = true;
     _weeklyAvailability['wednesday'] = true;
@@ -206,9 +232,7 @@ class _AddStaffDialogState extends State<AddStaffDialog>
 
       // Personal
       final fullName = m['fullName'] ?? '';
-      final parts = fullName.toString().split(RegExp(r'\s+'));
-      _firstName.text = parts.isNotEmpty ? parts.first : '';
-      _lastName.text = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+      _fullName.text = fullName;
       _position.text = m['position'] ?? '';
       _mobile.text = m['mobileNo'] ?? '';
       _email.text = m['emailAddress'] ?? '';
@@ -222,10 +246,12 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       _commissionPercentage.text =
           (m['commissionRate'] ?? m['commissionPercentage'] ?? '').toString();
 
-      if (m['startDate'] != null)
+      if (m['startDate'] != null) {
         _startDate = DateTime.tryParse(m['startDate'].toString());
-      if (m['endDate'] != null)
+      }
+      if (m['endDate'] != null) {
         _endDate = DateTime.tryParse(m['endDate'].toString());
+      }
 
       // Bank
       final bank = (m['bankDetails'] as Map?) ?? {};
@@ -246,26 +272,19 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       // Availability
       for (final fullDay in dayFullToAbbr.keys) {
         final abbr = dayFullToAbbr[fullDay]!;
-
         bool available = false;
         List slots = [];
 
-        // 1. Try flat fields (priority)
         if (m.containsKey('${fullDay}Available')) {
           available = m['${fullDay}Available'] == true;
           slots = m['${fullDay}Slots'] as List? ?? [];
-        }
-        // 2. Try nested availability object
-        else {
+        } else {
           final availabilityData = m['availability'] as Map?;
           if (availabilityData != null) {
-            // Check for flattened key inside (StaffMember.toJson adds them there)
             if (availabilityData.containsKey('${fullDay}Available')) {
               available = availabilityData['${fullDay}Available'] == true;
               slots = availabilityData['${fullDay}Slots'] as List? ?? [];
-            }
-            // Check for nested day key
-            else if (availabilityData.containsKey(fullDay)) {
+            } else if (availabilityData.containsKey(fullDay)) {
               final dayData = availabilityData[fullDay] as Map?;
               if (dayData != null) {
                 available = dayData['available'] == true;
@@ -310,42 +329,9 @@ class _AddStaffDialogState extends State<AddStaffDialog>
     }
   }
 
-  bool _isTimeWithinSalonHours(
-    String day,
-    TimeOfDay staffStart,
-    TimeOfDay staffEnd,
-  ) {
-    if (_vendorProfile == null) return true; // Fallback if profile not loaded
-
-    final fullDay = day.toLowerCase();
-    final oh = _vendorProfile!.openingHours.firstWhere(
-      (h) => h.day.toLowerCase() == fullDay,
-      orElse: () =>
-          OpeningHour(day: day, open: '00:00', close: '23:59', isOpen: true),
-    );
-
-    if (!oh.isOpen) return false;
-
-    final salonOpen = _parseTimeOfDay(oh.open);
-    final salonClose = _parseTimeOfDay(oh.close);
-
-    final staffStartMins = staffStart.hour * 60 + staffStart.minute;
-    final staffEndMins = staffEnd.hour * 60 + staffEnd.minute;
-    final salonOpenMins = salonOpen.hour * 60 + salonOpen.minute;
-    final salonCloseMins = salonClose.hour * 60 + salonClose.minute;
-
-    return staffStartMins >= salonOpenMins && staffEndMins <= salonCloseMins;
-  }
-
-  TimeOfDay _parseTimeOfDay(String time) {
-    final parts = time.split(':');
-    return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
-  }
-
   @override
   void dispose() {
-    _tabController.dispose();
-
+    _fullName.dispose();
     _firstName.dispose();
     _lastName.dispose();
     _position.dispose();
@@ -354,20 +340,17 @@ class _AddStaffDialogState extends State<AddStaffDialog>
     _password.dispose();
     _confirmPassword.dispose();
     _description.dispose();
-
     _salary.dispose();
     _experience.dispose();
     _clients.dispose();
     _commissionPercentage.dispose();
-
     _accHolder.dispose();
     _accNumber.dispose();
     _bankName.dispose();
     _ifsc.dispose();
     _upi.dispose();
-
     _weeklyTiming.values.forEach((c) => c.dispose());
-
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -386,10 +369,11 @@ class _AddStaffDialogState extends State<AddStaffDialog>
     );
     if (picked != null) {
       setState(() {
-        if (start)
+        if (start) {
           _startDate = picked;
-        else
+        } else {
           _endDate = picked;
+        }
       });
     }
   }
@@ -408,27 +392,20 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       return false;
     }
     if (!bankOk) {
-      _tabController.animateTo(2);
+      _tabController.animateTo(3); // bank is index 3
       return false;
     }
 
-    // Extra password checks
+    // Password validations
     if (widget.existing == null) {
       final passErr = Validators.validatePassword(_password.text);
       if (passErr != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(passErr), backgroundColor: Colors.red),
-        );
+        _showError(passErr);
         _tabController.animateTo(0);
         return false;
       }
       if (_confirmPassword.text != _password.text) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Passwords do not match'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showError('Passwords do not match');
         _tabController.animateTo(0);
         return false;
       }
@@ -436,19 +413,12 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       if (_password.text.isNotEmpty) {
         final passErr = Validators.validatePassword(_password.text);
         if (passErr != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(passErr), backgroundColor: Colors.red),
-          );
+          _showError(passErr);
           _tabController.animateTo(0);
           return false;
         }
         if (_confirmPassword.text != _password.text) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Passwords do not match'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          _showError('Passwords do not match');
           _tabController.animateTo(0);
           return false;
         }
@@ -458,29 +428,21 @@ class _AddStaffDialogState extends State<AddStaffDialog>
     return true;
   }
 
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: Colors.red),
+    );
+  }
+
   Future<void> _save() async {
-    debugPrint('=== Staff Save Process Started ===');
-    debugPrint('Status: Validating form data');
+    if (!_validateAll()) return;
 
-    if (!_validateAll()) {
-      debugPrint('Status: Validation failed, cannot proceed with save');
-      return;
-    }
-
-    debugPrint('Status: Validation passed, processing staff data');
-
-    final fullName = '${_firstName.text.trim()} ${_lastName.text.trim()}'
-        .trim();
-    debugPrint('Activities: Full name constructed: $fullName');
-
-    // Permissions -> API list
+    final fullName = _fullName.text.trim();
     final List<String> permissions = _permissions.entries
         .where((e) => e.value)
         .map((e) => displayToPerm[e.key]!)
         .toList();
-    debugPrint('Activities: Permissions selected: $permissions');
 
-    // Availability format (Flattened day-specific fields)
     final Map<String, dynamic> availabilityFields = {};
 
     _weeklyTiming.forEach((abbr, controller) {
@@ -511,16 +473,10 @@ class _AddStaffDialogState extends State<AddStaffDialog>
         }
       }
     });
-    debugPrint('Activities: Availability fields set: $availabilityFields');
 
-    // Commission percentage
     final double commissionPercentage =
         double.tryParse(_commissionPercentage.text.trim()) ?? 0.0;
 
-    // Blocked times (None as requested)
-    final List<Map<String, dynamic>> blockedTimes = [];
-
-    // Bank details
     final Map<String, dynamic> bankDetails = {
       "accountHolderName": _accHolder.text.trim(),
       "accountNumber": _accNumber.text.trim(),
@@ -528,42 +484,27 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       "ifscCode": _ifsc.text.trim(),
       "upiId": _upi.text.trim(),
     };
-    debugPrint('Activities: Bank details set: $bankDetails');
 
-    // Numeric fields
     final int salary = int.tryParse(_salary.text.trim()) ?? 0;
     final int yearOfExperience = int.tryParse(_experience.text.trim()) ?? 0;
     final int clientsServed = int.tryParse(_clients.text.trim()) ?? 0;
-    debugPrint(
-      'Activities: Numeric values - Salary: $salary, Experience: $yearOfExperience, Clients: $clientsServed',
-    );
 
-    // Dates
     final String? startDate = _startDate != null
         ? DateFormat('yyyy-MM-dd').format(_startDate!)
         : null;
     final String? endDate = _endDate != null
         ? DateFormat('yyyy-MM-dd').format(_endDate!)
         : null;
-    debugPrint(
-      'Activities: Employment dates - Start: $startDate, End: $endDate',
-    );
 
-    // Password (optional on edit)
     String? password;
     if (widget.existing == null) {
       password = _password.text.trim();
-      debugPrint('Activities: Creating new staff, password provided');
     } else {
       if (_password.text.trim().isNotEmpty) {
         password = _password.text.trim();
-        debugPrint('Activities: Updating staff, password changed');
-      } else {
-        debugPrint('Activities: Updating staff, password unchanged');
       }
     }
 
-    // Convert photo to base64 if it's a local file
     String? photoBase64 = _imagePath;
     if (_imagePath != null &&
         !_imagePath!.startsWith('http') &&
@@ -593,17 +534,16 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       'permissions': permissions,
       'permission': permissions,
       ...availabilityFields,
-      'blockedTimes': blockedTimes,
+      'blockedTimes': [],
       'bankDetails': bankDetails,
       'userType': 'staff',
       if (password != null) 'password': password,
       if (photoBase64 != null) 'photo': photoBase64,
     };
-    // keep id for edit
+
     if (_localExisting != null) {
       result['id'] = _localExisting!['_id'];
       result['_id'] = _localExisting!['_id'];
-      debugPrint('Activities: Editing existing staff with ID: ${result['id']}');
     }
 
     setState(() => _isSaving = true);
@@ -636,14 +576,10 @@ class _AddStaffDialogState extends State<AddStaffDialog>
         }
       }
       widget.onRefresh?.call();
+      Navigator.pop(context);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error saving staff: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showError('Error saving staff: $e');
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -653,113 +589,286 @@ class _AddStaffDialogState extends State<AddStaffDialog>
   @override
   Widget build(BuildContext context) {
     final screenW = MediaQuery.of(context).size.width;
-    final dialogW = screenW < 960 ? screenW - 32 : 920.0;
-    final dialogH = MediaQuery.of(context).size.height * 0.85;
+    final dialogW = screenW < 480 ? screenW - 16 : 420.0;
+    final dialogH = MediaQuery.of(context).size.height * 0.88;
 
-    return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      child: SizedBox(
-        width: dialogW,
-        height: dialogH,
-        child: Column(
-          children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
-              ),
-              child: Row(
-                children: [
-                  Text(
-                    widget.existing == null ? 'Add New Staff' : 'Edit Staff',
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+    return BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
+      child: Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: Colors.white,
+        child: Container(
+          width: dialogW,
+          height: dialogH,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Add Staff Member',
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: _kPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Add a new staff member to your team.',
+                            style: GoogleFonts.poppins(
+                              fontSize: 9,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
+                    InkWell(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.close, size: 16, color: _kPrimary),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
 
-            // Tabs
-            TabBar(
-              controller: _tabController,
-              isScrollable: true,
-              labelStyle: GoogleFonts.poppins(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-              ),
-              unselectedLabelStyle: GoogleFonts.poppins(fontSize: 10),
-              labelColor: Theme.of(context).primaryColor,
-              unselectedLabelColor: Colors.grey,
-              indicatorColor: Theme.of(context).primaryColor,
-              indicatorSize: TabBarIndicatorSize.label,
-              tabs: const [
-                Tab(text: 'Personal'),
-                Tab(text: 'Employment'),
-                Tab(text: 'Bank Details'),
-                Tab(text: 'Permissions'),
-                Tab(text: 'Timing'),
-              ],
-            ),
-
-            // Content
-            Expanded(
-              child: TabBarView(
+              // TabBar Scrollable
+              TabBar(
                 controller: _tabController,
-                children: [
-                  _buildPersonalTab(),
-                  _buildEmploymentTab(),
-                  _buildBankTab(),
-                  _buildPermissionsTab(),
-                  _buildTimingTab(),
+                isScrollable: true,
+                labelStyle: GoogleFonts.poppins(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                ),
+                unselectedLabelStyle: GoogleFonts.poppins(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w400,
+                ),
+                labelColor: _kPink,
+                unselectedLabelColor: Colors.grey,
+                indicatorColor: _kPink,
+                indicatorWeight: 2,
+                indicatorSize: TabBarIndicatorSize.label,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                labelPadding: const EdgeInsets.symmetric(horizontal: 12),
+                tabs: const [
+                  Tab(text: 'Personal'),
+                  Tab(text: 'Job'),
+                  Tab(text: 'Commission'),
+                  Tab(text: 'Bank'),
+                  Tab(text: 'Access'),
+                  Tab(text: 'Timing'),
                 ],
               ),
+              const Divider(height: 1, color: Color(0xFFF1F1F1)),
+
+              // Tab Content
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildPersonalTab(),
+                    _buildJobTab(),
+                    _buildCommissionTab(),
+                    _buildBankTab(),
+                    _buildAccessTab(),
+                    _buildTimingTab(),
+                  ],
+                ),
+              ),
+
+              // Footer navigation buttons
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: const BoxDecoration(
+                  border: Border(top: BorderSide(color: Color(0xFFF1F1F1))),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          side: BorderSide(color: _kBorder),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Text(
+                          'Cancel',
+                          style: GoogleFonts.poppins(
+                            fontSize: 10,
+                            color: _kPrimary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          if (_tabController.index > 0) {
+                            _tabController.animateTo(_tabController.index - 1);
+                          }
+                        },
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          side: BorderSide(color: _kBorder),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Text(
+                          'Previous',
+                          style: GoogleFonts.poppins(
+                            fontSize: 10,
+                            color: _kPrimary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          if (_tabController.index < 5) {
+                            _tabController.animateTo(_tabController.index + 1);
+                          } else {
+                            _save();
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _kPrimary,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Text(
+                          _tabController.index == 5 ? 'Save Staff' : 'Next',
+                          style: GoogleFonts.poppins(
+                            fontSize: 10,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Text(
+            title,
+            style: GoogleFonts.poppins(
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+              color: _kPink,
+              letterSpacing: 0.5,
             ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(child: Divider(color: _kPink.withOpacity(0.3), height: 1)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFieldLabel(String label, {bool required = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4, top: 8),
+      child: RichText(
+        text: TextSpan(
+          text: label,
+          style: GoogleFonts.poppins(
+            fontSize: 9,
+            fontWeight: FontWeight.w600,
+            color: _kLabel,
+          ),
+          children: [
+            if (required)
+              const TextSpan(
+                text: ' *',
+                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+              ),
           ],
         ),
       ),
     );
   }
 
-  Widget _saveButton() => Padding(
-    padding: const EdgeInsets.only(top: 24, bottom: 8),
-    child: SizedBox(
-      width: double.infinity,
-      height: 40,
-      child: ElevatedButton(
-        onPressed: _isSaving ? null : _save,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF4A2C40),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+  Widget _buildTextField({
+    required TextEditingController controller,
+    String? hintText,
+    TextInputType keyboardType = TextInputType.text,
+    bool obscureText = false,
+    Widget? suffixIcon,
+    String? Function(String?)? validator,
+    int maxLines = 1,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      obscureText: obscureText,
+      maxLines: maxLines,
+      style: GoogleFonts.poppins(fontSize: 10, color: Colors.black87),
+      decoration: InputDecoration(
+        isDense: true,
+        hintText: hintText,
+        hintStyle: GoogleFonts.poppins(fontSize: 10, color: Colors.grey[400]),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        suffixIcon: suffixIcon,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: BorderSide(color: _kBorder),
         ),
-        child: _isSaving
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2,
-                ),
-              )
-            : Text(
-                _localExisting == null ? 'Save Staff' : 'Update Staff',
-                style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: BorderSide(color: _kBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: BorderSide(color: _kPrimary, width: 1.5),
+        ),
+        errorStyle: GoogleFonts.poppins(fontSize: 8, color: Colors.red),
       ),
-    ),
-  );
+      validator: validator,
+    );
+  }
 
   Widget _buildPersonalTab() {
     return Form(
@@ -767,378 +876,417 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: _labeled(
-                    'First Name',
-                    TextFormField(
-                      controller: _firstName,
-                      validator: (v) =>
-                          Validators.validateName(v, 'First name'),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _labeled(
-                    'Last Name',
-                    TextFormField(
-                      controller: _lastName,
-                      validator: (v) {
-                        if (v != null && v.trim().isNotEmpty) {
-                          if (!RegExp(r'^[a-zA-Z\s]+$').hasMatch(v.trim())) {
-                            return 'Only alphabets and spaces are allowed';
-                          }
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            _labeled(
-              'Position',
-              TextFormField(
-                controller: _position,
-                validator: (v) => Validators.validateName(v, 'Position'),
-              ),
-            ),
-            _labeled(
-              'Mobile Number',
-              TextFormField(
-                controller: _mobile,
-                keyboardType: TextInputType.phone,
-                validator: Validators.validatePhone,
-              ),
-            ),
-            _labeled(
-              'Email Address',
-              TextFormField(
-                controller: _email,
-                keyboardType: TextInputType.emailAddress,
-                validator: Validators.validateEmail,
-              ),
-            ),
-            // Password always shown; on edit it's optional
-            _labeled(
-              'Password ${widget.existing == null ? "(Required)" : "(Optional)"}',
-              TextFormField(
-                controller: _password,
-                obscureText: _obscurePassword,
-                decoration: InputDecoration(
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_off
-                          : Icons.visibility,
-                      size: 16,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _obscurePassword = !_obscurePassword;
-                      });
-                    },
-                  ),
-                ),
-                validator: (v) {
-                  if (widget.existing == null) {
-                    return Validators.validatePassword(v);
-                  } else {
-                    if (v != null && v.isNotEmpty) {
-                      return Validators.validatePassword(v);
-                    }
-                  }
-                  return null;
-                },
-              ),
-            ),
-            _labeled(
-              'Confirm Password ${widget.existing == null ? "(Required)" : "(If changing password)"}',
-              TextFormField(
-                controller: _confirmPassword,
-                obscureText: _obscureConfirmPassword,
-                decoration: InputDecoration(
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscureConfirmPassword
-                          ? Icons.visibility_off
-                          : Icons.visibility,
-                      size: 16,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _obscureConfirmPassword = !_obscureConfirmPassword;
-                      });
-                    },
-                  ),
-                ),
-                validator: (v) {
-                  if (widget.existing == null) {
-                    if (v == null || v.isEmpty) {
-                      return 'Confirm password is required';
-                    }
-                    if (v != _password.text) return 'Passwords do not match';
-                  } else {
-                    if (_password.text.trim().isNotEmpty) {
-                      if (v != _password.text) return 'Passwords do not match';
-                    }
-                  }
-                  return null;
-                },
-              ),
-            ),
-            _labeled(
-              'Description',
-              TextFormField(controller: _description, maxLines: 3),
-            ),
-            const SizedBox(height: 16),
+            // Profile photo upload row
             Row(
               children: [
                 CircleAvatar(
-                  radius: 35,
+                  radius: 24,
                   backgroundColor: Colors.grey[100],
                   backgroundImage: _getImageProvider(_imagePath),
                   child: _imagePath == null
-                      ? const Icon(Icons.person, size: 40)
+                      ? Icon(Icons.person, size: 28, color: Colors.grey[400])
                       : null,
                 ),
-                const SizedBox(width: 16),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: _pickImage,
-                      icon: const Icon(Icons.add_a_photo_outlined, size: 16),
-                      label: Text(
-                        'Upload Photo',
-                        style: GoogleFonts.poppins(fontSize: 11),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF4A2C40),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'PROFILE PHOTO',
+                        style: GoogleFonts.poppins(
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          color: _kPrimary,
                         ),
                       ),
+                      Text(
+                        'JPG, PNG or WEBP - Max 5MB',
+                        style: GoogleFonts.poppins(
+                          fontSize: 8,
+                          color: Colors.grey[500],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                OutlinedButton(
+                  onPressed: _pickImage,
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    side: BorderSide(color: _kPink),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
                     ),
-                    if (_imagePath != null)
-                      TextButton.icon(
-                        onPressed: () => setState(() => _imagePath = null),
-                        icon: const Icon(
-                          Icons.delete_outline,
-                          size: 14,
-                          color: Colors.red,
-                        ),
-                        label: Text(
-                          'Remove',
-                          style: GoogleFonts.poppins(
-                            fontSize: 10,
-                            color: Colors.red,
-                          ),
-                        ),
-                      ),
-                  ],
+                  ),
+                  child: Text(
+                    'UPLOAD',
+                    style: GoogleFonts.poppins(
+                      fontSize: 8,
+                      color: _kPink,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ],
             ),
-            _saveButton(),
+            const SizedBox(height: 16),
+
+            _buildSectionHeader('PERSONAL INFORMATION'),
+
+            _buildFieldLabel('FULL NAME', required: true),
+            _buildTextField(
+              controller: _fullName,
+              hintText: 'e.g. Priya Sharma',
+              validator: (v) => Validators.validateName(v, 'Full name'),
+            ),
+
+            _buildFieldLabel('POSITION', required: true),
+            _buildTextField(
+              controller: _position,
+              hintText: 'e.g. Senior Stylist',
+              validator: (v) => Validators.validateName(v, 'Position'),
+            ),
+
+            _buildFieldLabel('MOBILE NUMBER', required: true),
+            _buildTextField(
+              controller: _mobile,
+              keyboardType: TextInputType.phone,
+              hintText: '+91 9085412873',
+              validator: Validators.validatePhone,
+            ),
+
+            _buildFieldLabel('EMAIL ADDRESS', required: true),
+            _buildTextField(
+              controller: _email,
+              keyboardType: TextInputType.emailAddress,
+              hintText: 'e.g. staff@salon.com',
+              validator: Validators.validateEmail,
+            ),
+
+            // Password
+            _buildFieldLabel(
+              'PASSWORD ${widget.existing == null ? "(Required)" : "(Optional)"}',
+              required: widget.existing == null,
+            ),
+            _buildTextField(
+              controller: _password,
+              obscureText: _obscurePassword,
+              hintText: 'Password',
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                  size: 14,
+                ),
+                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+              ),
+              validator: (v) {
+                if (widget.existing == null) {
+                  return Validators.validatePassword(v);
+                }
+                if (v != null && v.isNotEmpty) {
+                  return Validators.validatePassword(v);
+                }
+                return null;
+              },
+            ),
+
+            _buildFieldLabel(
+              'CONFIRM PASSWORD ${widget.existing == null ? "(Required)" : "(Optional)"}',
+              required: widget.existing == null,
+            ),
+            _buildTextField(
+              controller: _confirmPassword,
+              obscureText: _obscureConfirmPassword,
+              hintText: 'Confirm Password',
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                  size: 14,
+                ),
+                onPressed: () =>
+                    setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+              ),
+              validator: (v) {
+                if (widget.existing == null) {
+                  if (v == null || v.isEmpty) return 'Confirm password is required';
+                  if (v != _password.text) return 'Passwords do not match';
+                } else if (_password.text.trim().isNotEmpty) {
+                  if (v != _password.text) return 'Passwords do not match';
+                }
+                return null;
+              },
+            ),
+
+            _buildFieldLabel('DESCRIPTION (Optional)'),
+            _buildTextField(
+              controller: _description,
+              hintText: 'Brief bio or notes about this staff member...',
+              maxLines: 3,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildEmploymentTab() {
+  Widget _buildJobTab() {
     return Form(
       key: _employmentFormKey,
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: _labeled(
-                    'Salary',
-                    TextFormField(
-                      controller: _salary,
-                      keyboardType: TextInputType.number,
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty)
-                          return null; // optional
-                        if (double.tryParse(v.trim()) == null)
-                          return 'Enter a valid salary';
-                        return null;
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _labeled(
-                    'Years of Experience',
-                    TextFormField(
-                      controller: _experience,
-                      keyboardType: TextInputType.number,
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty)
-                          return null; // optional
-                        if (int.tryParse(v.trim()) == null)
-                          return 'Enter a valid number';
-                        return null;
-                      },
-                    ),
-                  ),
-                ),
-              ],
+            _buildSectionHeader('JOB INFORMATION'),
+
+            _buildFieldLabel('SALARY (Per Month) *', required: true),
+            _buildTextField(
+              controller: _salary,
+              keyboardType: TextInputType.number,
+              hintText: 'e.g. 50,000/-',
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return 'Salary is required';
+                if (double.tryParse(v.trim()) == null) return 'Enter a valid salary';
+                return null;
+              },
             ),
+
+            _buildFieldLabel('YEARS OF EXPERIENCE *', required: true),
+            _buildTextField(
+              controller: _experience,
+              keyboardType: TextInputType.number,
+              hintText: 'e.g. 4',
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return 'Experience is required';
+                if (int.tryParse(v.trim()) == null) return 'Enter a valid number';
+                return null;
+              },
+            ),
+
+            // Start & End Date row
             Row(
               children: [
-                Expanded(
-                  child: _labeled(
-                    'Clients Served',
-                    TextFormField(
-                      controller: _clients,
-                      keyboardType: TextInputType.number,
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty)
-                          return null; // optional
-                        if (int.tryParse(v.trim()) == null)
-                          return 'Enter a valid number';
-                        return null;
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Switch(
-                            value: _commissionEnabled,
-                            activeColor: const Color(0xFF4A2C40),
-                            onChanged: (v) =>
-                                setState(() => _commissionEnabled = v),
+                      _buildFieldLabel('START DATE *', required: true),
+                      InkWell(
+                        onTap: () => _pickDate(start: true),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: _kBorder),
+                            borderRadius: BorderRadius.circular(6),
                           ),
-                          Text(
-                            'Staff \n Commission',
-                            style: GoogleFonts.poppins(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w500,
-                            ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                _startDate == null
+                                    ? 'Select Date'
+                                    : DateFormat('dd-MM-yyyy').format(_startDate!),
+                                style: GoogleFonts.poppins(
+                                  fontSize: 10,
+                                  color: _startDate == null ? Colors.grey[400] : Colors.black87,
+                                ),
+                              ),
+                              Icon(Icons.calendar_today_outlined, size: 12, color: Colors.grey[500]),
+                            ],
                           ),
-                        ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildFieldLabel('END DATE *', required: true),
+                      InkWell(
+                        onTap: () => _pickDate(start: false),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: _kBorder),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                _endDate == null
+                                    ? 'Select Date'
+                                    : DateFormat('dd-MM-yyyy').format(_endDate!),
+                                style: GoogleFonts.poppins(
+                                  fontSize: 10,
+                                  color: _endDate == null ? Colors.grey[400] : Colors.black87,
+                                ),
+                              ),
+                              Icon(Icons.calendar_today_outlined, size: 12, color: Colors.grey[500]),
+                            ],
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ),
               ],
             ),
-            if (_commissionEnabled) ...[
-              const SizedBox(height: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Commission Percentage (%)',
-                    style: GoogleFonts.poppins(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _commissionPercentage,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: '10',
-                      suffixText: '%',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(
-                          color: Color(0xFF4A2C40),
-                          width: 2,
+
+            _buildFieldLabel('CLIENTS SERVED (Optional) *', required: true),
+            _buildTextField(
+              controller: _clients,
+              keyboardType: TextInputType.number,
+              hintText: 'Total number of clients served',
+              validator: (v) {
+                if (v != null && v.trim().isNotEmpty) {
+                  if (int.tryParse(v.trim()) == null) return 'Enter a valid number';
+                }
+                return null;
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCommissionTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader('COMMISSION DETAILS'),
+
+          // Commission Switch Box
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              border: Border.all(color: _kBorder),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Enable Commission',
+                        style: GoogleFonts.poppins(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: _kPrimary,
                         ),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                    ),
-                    validator: (v) {
-                      if (_commissionEnabled) {
-                        if (v == null || v.trim().isEmpty)
-                          return 'Percentage is required';
-                        if (double.tryParse(v.trim()) == null)
-                          return 'Enter a valid number';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.auto_graph,
-                        size: 14,
-                        color: Colors.grey,
-                      ),
-                      const SizedBox(width: 4),
                       Text(
-                        'Staff will earn ${_commissionPercentage.text.isEmpty ? '0' : _commissionPercentage.text}% on all completed appointments.',
+                        'Enable automatic commission calculation for this staff.',
                         style: GoogleFonts.poppins(
-                          fontSize: 11,
-                          color: Colors.grey[600],
+                          fontSize: 8,
+                          color: Colors.grey[500],
                         ),
                       ),
                     ],
+                  ),
+                ),
+                Switch(
+                  value: _commissionEnabled,
+                  activeColor: _kPink,
+                  onChanged: (v) => setState(() => _commissionEnabled = v),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Conditional display based on toggle
+          if (!_commissionEnabled)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 36),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.auto_graph_outlined, size: 36, color: Colors.grey[400]),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Commission is Disabled',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: _kPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Turn on the switch above to start tracking\nperformance-based earnings for this staff member.',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.poppins(
+                        fontSize: 9,
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else ...[
+            _buildFieldLabel('COMMISSION RATE (%)', required: true),
+            _buildTextField(
+              controller: _commissionPercentage,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              hintText: 'e.g. 10',
+              suffixIcon: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text('%', style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.bold)),
+              ),
+              validator: (v) {
+                if (_commissionEnabled) {
+                  if (v == null || v.trim().isEmpty) return 'Percentage is required';
+                  if (double.tryParse(v.trim()) == null) return 'Enter a valid number';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.green[50],
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, size: 14, color: Colors.green[800]),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Staff will earn ${_commissionPercentage.text.isEmpty ? '0' : _commissionPercentage.text}% on all completed appointments.',
+                      style: GoogleFonts.poppins(
+                        fontSize: 8.5,
+                        color: Colors.green[800],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
                 ],
               ),
-            ],
-            Row(
-              children: [
-                Expanded(
-                  child: _DateField(
-                    label: 'Start Date',
-                    date: _startDate,
-                    onTap: () => _pickDate(start: true),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _DateField(
-                    label: 'End Date (Optional)',
-                    date: _endDate,
-                    onTap: () => _pickDate(start: false),
-                  ),
-                ),
-              ],
             ),
-            _saveButton(),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -1149,88 +1297,200 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _labeled(
-              'Account Holder Name',
-              TextFormField(
-                controller: _accHolder,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty)
-                    return 'Account holder name is required';
-                  return null;
-                },
+            // Warning Banner
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.amber[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amber[100]!),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.security_outlined, size: 16, color: Colors.amber[900]),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'SECURE & CONFIDENTIAL',
+                          style: GoogleFonts.poppins(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.amber[900],
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Bank details are encrypted and stored securely. This information is only used for salary disbursement.',
+                          style: GoogleFonts.poppins(
+                            fontSize: 8,
+                            color: Colors.amber[800],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            _labeled(
-              'Account Number',
-              TextFormField(
-                controller: _accNumber,
-                keyboardType: TextInputType.number,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty)
-                    return 'Account number is required';
-                  if (int.tryParse(v.trim()) == null)
-                    return 'Enter a valid account number';
-                  return null;
-                },
-              ),
+            const SizedBox(height: 16),
+
+            _buildSectionHeader('BANKING INFORMATION'),
+
+            _buildFieldLabel('ACCOUNT HOLDER NAME', required: true),
+            _buildTextField(
+              controller: _accHolder,
+              hintText: 'Full name as per bank records',
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
             ),
-            _labeled(
-              'Bank Name',
-              TextFormField(
-                controller: _bankName,
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? 'Bank name is required'
-                    : null,
-              ),
+
+            _buildFieldLabel('ACCOUNT NUMBER', required: true),
+            _buildTextField(
+              controller: _accNumber,
+              keyboardType: TextInputType.number,
+              hintText: 'e.g. 1234567890',
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
             ),
-            _labeled(
-              'IFSC Code',
-              TextFormField(
-                controller: _ifsc,
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? 'IFSC code is required'
-                    : null,
-              ),
+
+            _buildFieldLabel('BANK NAME', required: true),
+            _buildTextField(
+              controller: _bankName,
+              hintText: 'e.g. HDFC Bank, ICICI Bank......',
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
             ),
-            _labeled(
-              'UPI ID',
-              TextFormField(
-                controller: _upi,
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? 'UPI ID is required'
-                    : null,
-              ),
+
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildFieldLabel('IFSC CODE *', required: true),
+                      _buildTextField(
+                        controller: _ifsc,
+                        hintText: 'e.g. HDFC0123456',
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildFieldLabel('UPI ID (Optional) *', required: true),
+                      _buildTextField(
+                        controller: _upi,
+                        hintText: 'e.g. name@upi',
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            _saveButton(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildPermissionsTab() {
+  Widget _buildAccessTab() {
+    // Check if all permissions are enabled
+    bool isAllSelected = _permissions.values.every((v) => v);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Wrap(
-            spacing: 16,
-            runSpacing: 8,
-            children: _permissions.keys.map((key) {
-              return SizedBox(
-                width: 200,
-                child: CheckboxListTile(
-                  title: Text(key, style: GoogleFonts.poppins(fontSize: 11)),
-                  value: _permissions[key],
-                  onChanged: (v) =>
-                      setState(() => _permissions[key] = v ?? false),
-                  dense: true,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'PERMISSIONS',
+                style: GoogleFonts.poppins(
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                  color: _kPink,
                 ),
-              );
-            }).toList(),
+              ),
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    final target = !isAllSelected;
+                    _permissions.keys.forEach((k) => _permissions[k] = target);
+                  });
+                },
+                child: Text(
+                  isAllSelected ? 'Deselect All' : 'Select All',
+                  style: GoogleFonts.poppins(
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    color: _kPrimary,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+            ],
           ),
-          _saveButton(),
+          const SizedBox(height: 4),
+          Divider(color: _kPink.withOpacity(0.3), height: 1),
+          const SizedBox(height: 12),
+
+          // Loop grouped permissions
+          ..._permissionGroups.entries.map((group) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Text(
+                    group.key,
+                    style: GoogleFonts.poppins(
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                ),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 4,
+                  children: group.value.map((permission) {
+                    final isChecked = _permissions[permission] ?? false;
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Checkbox(
+                          value: isChecked,
+                          activeColor: _kPink,
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          onChanged: (v) {
+                            setState(() => _permissions[permission] = v ?? false);
+                          },
+                        ),
+                        Text(
+                          permission,
+                          style: GoogleFonts.poppins(
+                            fontSize: 9.5,
+                            color: Colors.grey[800],
+                          ),
+                        ),
+                      ],
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 12),
+              ],
+            );
+          }).toList(),
         ],
       ),
     );
@@ -1241,93 +1501,104 @@ class _AddStaffDialogState extends State<AddStaffDialog>
       return const Center(child: CircularProgressIndicator());
     }
 
+    final List<String> orderedDays = [
+      'sunday',
+      'monday',
+      'tuesday',
+      'wednesday',
+      'thursday',
+      'friday',
+      'saturday'
+    ];
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.blue.shade50,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.blue.shade100),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.info_outline, color: Colors.blue, size: 20),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Set staff working hours within salon opening hours.',
-                    style: GoogleFonts.poppins(
-                      fontSize: 10,
-                      color: Colors.blue.shade800,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          ..._weeklyTiming.keys.map((abbr) {
-            final fullDay = dayAbbrToFull[abbr]!;
+          _buildSectionHeader('WEEKLY WORKING HOURS'),
+
+          ...orderedDays.map((fullDay) {
+            final abbr = dayFullToAbbr[fullDay]!;
             final isAvailable = _weeklyAvailability[fullDay] ?? false;
 
-            // Get salon hours for this day
             final oh = _vendorProfile?.openingHours.firstWhere(
               (h) => h.day.toLowerCase() == fullDay.toLowerCase(),
               orElse: () => OpeningHour(
                 day: fullDay,
-                open: '00:00',
-                close: '23:59',
+                open: '09:00',
+                close: '18:00',
                 isOpen: true,
               ),
             );
 
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+            // Compute hour counts
+            String hoursLabel = 'Off';
+            if (isAvailable && _weeklyTiming[abbr]!.text.isNotEmpty) {
+              final text = _weeklyTiming[abbr]!.text;
+              final parts = text.split(' - ');
+              if (parts.length == 2) {
+                final sm = _timeToMinutes(parts[0]);
+                final em = _timeToMinutes(parts[1]);
+                final diff = em - sm;
+                if (diff > 0) {
+                  final hrs = (diff / 60).toStringAsFixed(1);
+                  hoursLabel = '${hrs.replaceAll('.0', '')} Hrs';
+                }
+              }
+            }
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                border: Border.all(color: _kBorder),
+                borderRadius: BorderRadius.circular(8),
+              ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      SizedBox(
-                        width: 100,
-                        child: Text(
-                          fullDay[0].toUpperCase() + fullDay.substring(1),
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ),
-                      Switch(
-                        value: isAvailable,
-                        activeColor: const Color(0xFF4A2C40),
-                        onChanged: (v) {
-                          setState(() {
-                            _weeklyAvailability[fullDay] = v;
-                            if (!v) {
-                              _weeklyTiming[abbr]!.clear();
-                            } else if (_weeklyTiming[abbr]!.text.isEmpty) {
-                              // Default hours if toggled ON and empty
-                              if (oh != null && oh.isOpen) {
-                                _weeklyTiming[abbr]!.text =
-                                    '${oh.open} - ${oh.close}';
-                              } else {
-                                _weeklyTiming[abbr]!.text = '10:00 - 19:00';
-                              }
-                            }
-                          });
-                        },
-                      ),
-                      const SizedBox(width: 8),
                       Text(
-                        isAvailable ? 'Available' : 'Unavailable',
+                        fullDay.substring(0, 1).toUpperCase() + fullDay.substring(1),
                         style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: isAvailable ? Colors.green : Colors.red,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: _kPrimary,
                         ),
+                      ),
+                      Row(
+                        children: [
+                          Text(
+                            hoursLabel,
+                            style: GoogleFonts.poppins(
+                              fontSize: 9.5,
+                              color: isAvailable ? _kPink : Colors.red,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Switch(
+                            value: isAvailable,
+                            activeColor: _kPink,
+                            onChanged: (v) {
+                              setState(() {
+                                _weeklyAvailability[fullDay] = v;
+                                if (!v) {
+                                  _weeklyTiming[abbr]!.clear();
+                                } else if (_weeklyTiming[abbr]!.text.isEmpty) {
+                                  if (oh != null && oh.isOpen) {
+                                    _weeklyTiming[abbr]!.text = '${oh.open} - ${oh.close}';
+                                  } else {
+                                    _weeklyTiming[abbr]!.text = '10:00 - 19:00';
+                                  }
+                                }
+                              });
+                            },
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -1335,150 +1606,22 @@ class _AddStaffDialogState extends State<AddStaffDialog>
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const SizedBox(width: 100),
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _TimeRangePicker(
-                                day: fullDay,
-                                controller: _weeklyTiming[abbr]!,
-                                salonHours: oh,
-                              ),
-                              if (oh != null && oh.isOpen)
-                                Padding(
-                                  padding: const EdgeInsets.only(
-                                    top: 4,
-                                    left: 4,
-                                  ),
-                                  child: Text(
-                                    'Salon Hours: ${oh.open} - ${oh.close}',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 10,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                ),
-                            ],
+                          child: _TimeRangePicker(
+                            day: fullDay,
+                            controller: _weeklyTiming[abbr]!,
+                            salonHours: oh,
                           ),
                         ),
                       ],
                     ),
                   ],
-                  const Divider(),
                 ],
               ),
             );
           }).toList(),
-          _saveButton(),
         ],
       ),
-    );
-  }
-
-  Widget _labeled(String label, Widget field) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 6),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.poppins(
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey[700],
-          ),
-        ),
-        const SizedBox(height: 4),
-        Theme(
-          data: Theme.of(context).copyWith(
-            inputDecorationTheme: InputDecorationTheme(
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 10,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: Colors.grey.shade300),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: Colors.grey.shade200),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: Theme.of(context).primaryColor),
-              ),
-              labelStyle: GoogleFonts.poppins(fontSize: 11),
-              hintStyle: GoogleFonts.poppins(fontSize: 11, color: Colors.grey),
-              errorStyle: GoogleFonts.poppins(fontSize: 9),
-            ),
-          ),
-          child: field,
-        ),
-      ],
-    ),
-  );
-
-  Widget _buildBlockTimeTab() {
-    return Container();
-  }
-
-  Widget _buildNoData(String s) {
-    return Center(child: Text(s, style: GoogleFonts.poppins(fontSize: 11)));
-  }
-}
-
-class _DateField extends StatelessWidget {
-  final String label;
-  final DateTime? date;
-  final VoidCallback onTap;
-
-  const _DateField({
-    required this.label,
-    required this.date,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.poppins(
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey[700],
-          ),
-        ),
-        const SizedBox(height: 4),
-        InkWell(
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade200),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    date == null
-                        ? 'Not set'
-                        : DateFormat('dd/MM/yyyy').format(date!),
-                    style: GoogleFonts.poppins(fontSize: 11),
-                  ),
-                ),
-                Icon(Icons.calendar_today, size: 14, color: Colors.grey[600]),
-              ],
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
@@ -1522,22 +1665,9 @@ class _TimeRangePickerState extends State<_TimeRangePicker> {
 
   void _updateText() {
     if (start != null && end != null) {
-      // Use 12h format with AM/PM for display
       final now = DateTime.now();
-      final dtStart = DateTime(
-        now.year,
-        now.month,
-        now.day,
-        start!.hour,
-        start!.minute,
-      );
-      final dtEnd = DateTime(
-        now.year,
-        now.month,
-        now.day,
-        end!.hour,
-        end!.minute,
-      );
+      final dtStart = DateTime(now.year, now.month, now.day, start!.hour, start!.minute);
+      final dtEnd = DateTime(now.year, now.month, now.day, end!.hour, end!.minute);
       widget.controller.text =
           '${DateFormat.jm().format(dtStart)} - ${DateFormat.jm().format(dtEnd)}';
     } else {
@@ -1575,10 +1705,11 @@ class _TimeRangePickerState extends State<_TimeRangePicker> {
       }
 
       setState(() {
-        if (isStart)
+        if (isStart) {
           start = picked;
-        else
+        } else {
           end = picked;
+        }
       });
 
       if (start != null && end != null) {
@@ -1591,7 +1722,6 @@ class _TimeRangePickerState extends State<_TimeRangePicker> {
               backgroundColor: Colors.red,
             ),
           );
-          // Don't clear but flag maybe?
         }
       }
 
@@ -1601,12 +1731,10 @@ class _TimeRangePickerState extends State<_TimeRangePicker> {
 
   TimeOfDay _parseTime(String time) {
     try {
-      // Try AM/PM
       try {
         final date = DateFormat.jm().parse(time.trim());
         return TimeOfDay(hour: date.hour, minute: date.minute);
       } catch (_) {
-        // Fallback to 24h
         final pts = time.split(':');
         return TimeOfDay(
           hour: int.parse(pts[0].trim()),
@@ -1627,16 +1755,20 @@ class _TimeRangePickerState extends State<_TimeRangePicker> {
           child: InkWell(
             onTap: () => _pick(true),
             child: Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
-                border: Border.all(),
-                borderRadius: BorderRadius.circular(8),
-                color: Theme.of(context).primaryColor.withOpacity(0.05),
+                border: Border.all(color: const Color(0xFFE5E5E5)),
+                borderRadius: BorderRadius.circular(6),
               ),
-              child: Text(
-                start?.format(context) ?? 'Start',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(fontSize: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    start?.format(context) ?? 'Start Time',
+                    style: GoogleFonts.poppins(fontSize: 10, color: Colors.black87),
+                  ),
+                  const Icon(Icons.access_time, size: 12, color: Colors.grey),
+                ],
               ),
             ),
           ),
@@ -1649,31 +1781,24 @@ class _TimeRangePickerState extends State<_TimeRangePicker> {
           child: InkWell(
             onTap: () => _pick(false),
             child: Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade200),
-                borderRadius: BorderRadius.circular(8),
-                color: Theme.of(context).primaryColor.withOpacity(0.02),
+                border: Border.all(color: const Color(0xFFE5E5E5)),
+                borderRadius: BorderRadius.circular(6),
               ),
-              child: Text(
-                end?.format(context) ?? 'End',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(fontSize: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    end?.format(context) ?? 'End Time',
+                    style: GoogleFonts.poppins(fontSize: 10, color: Colors.black87),
+                  ),
+                  const Icon(Icons.access_time, size: 12, color: Colors.grey),
+                ],
               ),
             ),
           ),
         ),
-        if (start != null || end != null)
-          IconButton(
-            icon: const Icon(Icons.clear),
-            onPressed: () {
-              setState(() {
-                start = null;
-                end = null;
-              });
-              widget.controller.clear();
-            },
-          ),
       ],
     );
   }

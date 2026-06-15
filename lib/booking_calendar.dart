@@ -148,6 +148,7 @@ class _BookingCalendarPageState extends State<BookingCalendarPage> {
   void _openBlockTimeDialog() {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (_) => BlockStaffTimeDialog(
         staff: _staff,
         onBlocked: _loadData,

@@ -371,7 +371,10 @@ class _StaffState extends State<Staff> {
           ),
           actions: [
             IconButton(
-              icon: const Icon(Icons.notifications_outlined, color: Colors.black),
+              icon: const Icon(
+                Icons.notifications_outlined,
+                color: Colors.black,
+              ),
               onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const NotificationPage()),
@@ -388,7 +391,8 @@ class _StaffState extends State<Staff> {
                   radius: 16,
                   backgroundColor: Theme.of(context).primaryColor,
                   child: ClipOval(
-                    child: (_profile != null && _profile!.profileImage.isNotEmpty)
+                    child:
+                        (_profile != null && _profile!.profileImage.isNotEmpty)
                         ? Image.network(
                             _profile!.profileImage,
                             width: 32,
@@ -397,8 +401,8 @@ class _StaffState extends State<Staff> {
                             errorBuilder: (ctx, _, __) => _buildInitialAvatar(),
                             loadingBuilder: (ctx, child, progress) =>
                                 progress == null
-                                    ? child
-                                    : const CircularProgressIndicator(),
+                                ? child
+                                : const CircularProgressIndicator(),
                           )
                         : _buildInitialAvatar(),
                   ),
@@ -801,7 +805,7 @@ class _StaffState extends State<Staff> {
   void _showEarningsDialog(Map<String, dynamic> staff) {
     showDialog(
       context: context,
-      barrierDismissible: true,
+      barrierDismissible: false,
       builder: (ctx) => StaffEarningsDialog(staff: staff),
     );
   }
